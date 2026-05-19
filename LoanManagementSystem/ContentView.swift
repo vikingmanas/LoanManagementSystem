@@ -1,22 +1,33 @@
-//
-//  ContentView.swift
-//  LoanManagementSystem
-//
-//  Created by apple on 14/05/26.
-//
-
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var appState = AppStateManager()
+    @State private var showSplash = true
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, manas!")
-            Text("Aditya is here")
+        ZStack {
+            if showSplash {
+                SplashScreenView()
+                    .transition(.opacity)
+            } else {
+                Group {
+                    if appState.isAuthenticated {
+                        MainTabView()
+                    } else {
+                        SignInView()
+                    }
+                }
+                .environmentObject(appState)
+                .transition(.opacity)
+            }
         }
-        .padding()
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    showSplash = false
+                }
+            }
+        }
     }
 }
 
