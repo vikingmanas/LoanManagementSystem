@@ -11,7 +11,7 @@ import SwiftUI
 struct LoanManagementSystemApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            LoanDetailScreen()
         }
     }
 }
