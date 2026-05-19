@@ -6,12 +6,24 @@
 //
 
 import SwiftUI
+import FirebaseCore
 
 @main
 struct LoanManagementSystemApp: App {
+    
+    /// Shared authentication manager injected into the environment.
+    @StateObject private var authManager = AuthManager()
+    
+    init() {
+        // Configure Firebase SDK on app launch.
+        // This reads GoogleService-Info.plist automatically.
+        FirebaseApp.configure()
+    }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(authManager)
         }
     }
 }

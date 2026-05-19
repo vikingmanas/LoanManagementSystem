@@ -18,6 +18,7 @@ public enum DashboardRoute: Hashable {
 }
 
 public struct DashboardView: View {
+    @EnvironmentObject private var authManager: AuthManager
     @StateObject private var viewModel = DashboardViewModel()
     @State private var navigationPath = NavigationPath()
     
@@ -40,7 +41,7 @@ public struct DashboardView: View {
                 VStack(spacing: 20) {
                     
                     // 1. TOP NAVIGATION BAR
-                    TopNavigationBarSection(viewModel: viewModel)
+                    TopNavigationBarSection(viewModel: viewModel, authManager: authManager)
                         .padding(.top, 8)
                     
                     // 2. PORTFOLIO CARDS
@@ -126,17 +127,22 @@ public struct DashboardView: View {
 
 struct TopNavigationBarSection: View {
     @ObservedObject var viewModel: DashboardViewModel
+    @ObservedObject var authManager: AuthManager
+    @State private var showLogoutAlert = false
     
     var body: some View {
         VStack(spacing: 0) {
             // Header Row
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Audit")
+                    Text("Hello, \(authManager.userDisplayName.components(separatedBy: " ").first ?? "User") 👋")
+                        .font(.system(.subheadline, design: .rounded))
+                        .foregroundColor(Color(.secondaryLabel))
+                    
+                    Text("Dashboard")
                         .font(.title)
                         .fontWeight(.bold)
                         .foregroundColor(Color(.label))
-                    
                 }
                 
                 Spacer()
@@ -156,25 +162,34 @@ struct TopNavigationBarSection: View {
                     .frame(width: 44, height: 44) // HIG Target
                     .buttonStyle(.plain)
                     
-                    // User Avatar placeholder
+                    // User Avatar — tap to show logout
                     Button {
-                        // Profile Action
+                        showLogoutAlert = true
                     } label: {
                         ZStack {
                             Circle()
                                 .fill(Color.brandNavy)
                                 .frame(width: 40, height: 40)
                             
-                            Text("RK")
+                            Text(authManager.userInitials)
                                 .font(.system(.body, design: .rounded))
                                 .fontWeight(.bold)
                                 .foregroundColor(.white)
                         }
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Profile. Tap to sign out.")
                 }
             }
             .padding(.horizontal, 20)
+        }
+        .alert("Sign Out", isPresented: $showLogoutAlert) {
+            Button("Sign Out", role: .destructive) {
+                authManager.signOut()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Are you sure you want to sign out of your account?")
         }
     }
 }
