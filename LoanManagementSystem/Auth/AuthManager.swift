@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 import FirebaseAuth
 
 // MARK: - AuthManager
@@ -33,16 +34,24 @@ public final class AuthManager: ObservableObject {
     
     // MARK: - Private
     
-    /// Handle for the Firebase auth state listener so we can detach on deinit.
-    private var authStateListenerHandle: AuthStateDidChangeListenerHandle?
+    /// Handle for the Firebase auth state listener.
+    /// Marked nonisolated(unsafe) so deinit (which is nonisolated) can access it to remove the listener.
+    private nonisolated(unsafe) var authStateListenerHandle: AuthStateDidChangeListenerHandle?
     
-    // MARK: - Init
+    // MARK: - Init / Deinit
     
     public init() {
+        // Listener setup is deferred to configure() which must be called
+        // after FirebaseApp.configure() in the App's init().
+    }
+    
+    /// Call this once after FirebaseApp.configure() to start listening for auth state changes.
+    public func configure() {
+        guard authStateListenerHandle == nil else { return }
         listenToAuthState()
     }
     
-    deinit {
+    nonisolated deinit {
         if let handle = authStateListenerHandle {
             Auth.auth().removeStateDidChangeListener(handle)
         }
@@ -180,13 +189,11 @@ public final class AuthManager: ObservableObject {
     // MARK: - Firebase Error Mapping
     /// Converts Firebase Auth errors into user-friendly messages.
     private func mapFirebaseError(_ error: Error) -> String {
-        let nsError = error as NSError
-        guard nsError.domain == AuthErrorDomain,
-              let code = AuthErrorCode(rawValue: nsError.code) else {
+        guard let authError = AuthErrorCode(_bridgedNSError: error as NSError) else {
             return error.localizedDescription
         }
         
-        switch code {
+        switch authError.code {
         case .invalidEmail:
             return "Please enter a valid email address."
         case .emailAlreadyInUse:
