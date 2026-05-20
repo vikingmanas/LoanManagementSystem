@@ -12,7 +12,7 @@ class SignInViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var showSuccess: Bool = false
     @Published var generalError: String = ""
-    @Published var navigateToOTP: Bool = false
+
     
     var isFormValid: Bool {
         return !emailOrPhone.isEmpty && !password.isEmpty
@@ -44,20 +44,5 @@ class SignInViewModel: ObservableObject {
             self.showSuccess = true
         }
     }
-    
-    func loginWithOTP() {
-        generalError = ""
-        
-        if emailOrPhone.isEmpty {
-            generalError = "Please enter your Email or Mobile Number to receive an OTP."
-            return
-        }
-        
-        isLoading = true
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            self.isLoading = false
-            self.navigateToOTP = true
-        }
-    }
+
 }

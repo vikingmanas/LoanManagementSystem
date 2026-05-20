@@ -26,7 +26,7 @@ struct ProfileInfoDetailView: View {
                             StatusBadgeView(status: "Verified")
                         } else {
                             Button(action: {
-                                activeSheet = .otpVerifyPhone
+                                viewModel.verifyMobile()
                             }) {
                                 Text("Verify")
                                     .font(Font.AppTheme.caption)
@@ -43,7 +43,7 @@ struct ProfileInfoDetailView: View {
                             StatusBadgeView(status: "Verified")
                         } else {
                             Button(action: {
-                                activeSheet = .otpVerifyEmail
+                                viewModel.verifyEmail()
                             }) {
                                 Text("Verify")
                                     .font(Font.AppTheme.caption)
@@ -117,14 +117,6 @@ struct ProfileInfoDetailView: View {
                 EditKYCView(viewModel: viewModel)
             case .loan:
                 EditLoanOverviewView(viewModel: viewModel)
-            case .otpVerifyPhone:
-                OTPVerificationView(isForLogin: false) {
-                    viewModel.verifyMobile()
-                }
-            case .otpVerifyEmail:
-                OTPVerificationView(isForLogin: false) {
-                    viewModel.verifyEmail()
-                }
             }
         }
     }

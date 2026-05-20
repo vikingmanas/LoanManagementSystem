@@ -73,37 +73,14 @@ struct SignInView: View {
                         .padding(.top, 4)
                         
                         // Action Buttons
-                        VStack(spacing: 16) {
-                            PrimaryButton(
-                                title: "Sign In",
-                                isLoading: viewModel.isLoading && !viewModel.navigateToOTP,
-                                isDisabled: !viewModel.isFormValid,
-                                action: {
-                                    viewModel.signIn()
-                                }
-                            )
-                            
-                            Button(action: {
-                                viewModel.loginWithOTP()
-                            }) {
-                                HStack {
-                                    Spacer()
-                                    if viewModel.isLoading && viewModel.navigateToOTP {
-                                        ProgressView()
-                                            .progressViewStyle(CircularProgressViewStyle(tint: Color.AppTheme.primary))
-                                    } else {
-                                        Text("Login with OTP")
-                                            .font(Font.AppTheme.button)
-                                    }
-                                    Spacer()
-                                }
-                                .padding()
-                                .foregroundColor(Color.AppTheme.primary)
-                                .background(Color.AppTheme.primary.opacity(0.15))
-                                .cornerRadius(12)
+                        PrimaryButton(
+                            title: "Sign In",
+                            isLoading: viewModel.isLoading,
+                            isDisabled: !viewModel.isFormValid,
+                            action: {
+                                viewModel.signIn()
                             }
-                            .disabled(viewModel.isLoading)
-                        }
+                        )
                         .padding(.top, 8)
                         
                         // Divider
@@ -145,9 +122,7 @@ struct SignInView: View {
                     appState.login()
                 }
             }
-            .navigationDestination(isPresented: $viewModel.navigateToOTP) {
-                OTPVerificationView(isForLogin: true)
-            }
+
         }
     }
 }

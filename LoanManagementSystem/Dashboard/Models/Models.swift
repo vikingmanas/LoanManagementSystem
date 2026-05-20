@@ -2,12 +2,13 @@
 //  Models.swift
 //  LoanManagementSystem
 //
-//
+//  Dashboard-specific UI display models.
+//  These are distinct from the canonical backend models in Models/.
 //
 
 import Foundation
 
-public struct LoanAccount: Identifiable, Hashable, Sendable {
+public struct DashboardLoanAccount: Identifiable, Hashable, Sendable {
     public let id: UUID
     public var accountNumber: String
     public var loanType: String  // e.g., "Home Loan", "Personal Loan", etc.
@@ -39,13 +40,13 @@ public struct BankAccount: Identifiable, Hashable, Sendable {
     public let id: UUID
     public var accountNumber: String
     public var bankName: String
-    public var accountType: AccountType
+    public var accountType: DashboardAccountType
     public var availableBalance: Double
     public var odLimit: Double?
     public var minBalance: Double?
     public var linkedLoanIds: [UUID]
 
-    public init(id: UUID = UUID(), accountNumber: String, bankName: String = "", accountType: AccountType, availableBalance: Double, odLimit: Double? = nil, minBalance: Double? = nil, linkedLoanIds: [UUID] = []) {
+    public init(id: UUID = UUID(), accountNumber: String, bankName: String = "", accountType: DashboardAccountType, availableBalance: Double, odLimit: Double? = nil, minBalance: Double? = nil, linkedLoanIds: [UUID] = []) {
         self.id = id
         self.accountNumber = accountNumber
         self.bankName = bankName
@@ -57,7 +58,7 @@ public struct BankAccount: Identifiable, Hashable, Sendable {
     }
 }
 
-public enum AccountType: String, CaseIterable, Identifiable, Hashable, Sendable {
+public enum DashboardAccountType: String, CaseIterable, Identifiable, Hashable, Sendable {
     case savings = "Savings Account"
     case current = "Current Account"
     case overdraft = "OD Account"
@@ -71,9 +72,9 @@ public struct EMIRecord: Identifiable, Hashable, Sendable {
     public var dueDate: Date
     public var amount: Double
     public var loanType: String
-    public var status: EMIStatus
+    public var status: DashboardEMIStatus
 
-    public init(id: UUID = UUID(), dueDate: Date, amount: Double, loanType: String, status: EMIStatus) {
+    public init(id: UUID = UUID(), dueDate: Date, amount: Double, loanType: String, status: DashboardEMIStatus) {
         self.id = id
         self.dueDate = dueDate
         self.amount = amount
@@ -82,7 +83,7 @@ public struct EMIRecord: Identifiable, Hashable, Sendable {
     }
 }
 
-public enum EMIStatus: String, CaseIterable, Identifiable, Hashable, Sendable {
+public enum DashboardEMIStatus: String, CaseIterable, Identifiable, Hashable, Sendable {
     case paid = "Paid"
     case upcoming = "Upcoming"
     case dueSoon = "Due Soon"

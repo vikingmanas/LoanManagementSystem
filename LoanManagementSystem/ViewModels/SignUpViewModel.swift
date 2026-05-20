@@ -16,7 +16,7 @@ class SignUpViewModel: ObservableObject {
     
     @Published var isLoading: Bool = false
     @Published var showSuccess: Bool = false
-    @Published var navigateToOTP: Bool = false
+
     @Published var generalError: String = ""
     
     var isMinLength: Bool { password.count >= 8 }
@@ -57,7 +57,7 @@ class SignUpViewModel: ObservableObject {
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             self.isLoading = false
-            self.navigateToOTP = true
+            self.showSuccess = true
         }
     }
 }

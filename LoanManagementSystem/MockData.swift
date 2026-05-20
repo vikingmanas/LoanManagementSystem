@@ -87,7 +87,7 @@ public struct MockData {
     )
     
     // 3 Loans
-    public static let home = LoanAccount(
+    public static let home = DashboardLoanAccount(
         id: loanId1,
         accountNumber: "XXXX XXXX 4321",
         loanType: "Home Loan",
@@ -101,7 +101,7 @@ public struct MockData {
         linkedBankAccountId: uuid1
     )
     
-    public static let business = LoanAccount(
+    public static let business = DashboardLoanAccount(
         id: loanId2,
         accountNumber: "XXXX XXXX 8765",
         loanType: "Business Loan",
@@ -115,7 +115,7 @@ public struct MockData {
         linkedBankAccountId: uuid2
     )
     
-    public static let car = LoanAccount(
+    public static let car = DashboardLoanAccount(
         id: loanId3,
         accountNumber: "XXXX XXXX 9911",
         loanType: "Car Loan",

@@ -10,7 +10,7 @@ import Combine
 
 @MainActor
 public final class DashboardViewModel: ObservableObject {
-    @Published public var loanAccounts: [LoanAccount] = []
+    @Published public var loanAccounts: [DashboardLoanAccount] = []
     @Published public var bankAccount: BankAccount = BankAccount(accountNumber: "XXXX 7890", accountType: .savings, availableBalance: 0)
     @Published public var bankAccounts: [BankAccount] = []
     @Published public var pendingEMIs: [EMIRecord] = []

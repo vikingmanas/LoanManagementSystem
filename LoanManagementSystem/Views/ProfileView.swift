@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum ProfileEditSheet: Identifiable {
-    case personal, contact, address, employment, bank, kyc, loan, otpVerifyPhone, otpVerifyEmail
+    case personal, contact, address, employment, bank, kyc, loan
     var id: String { String(describing: self) }
 }
 
