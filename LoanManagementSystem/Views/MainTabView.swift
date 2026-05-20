@@ -9,11 +9,11 @@ struct MainTabView: View {
                     Text("Dashboard")
                 }
             
-            ProfileView()
-                .tabItem {
-                    Image(systemName: "person.crop.circle.fill")
-                    Text("Profile")
-                }
+//            ProfileView()
+//                .tabItem {
+//                    Image(systemName: "person.crop.circle.fill")
+//                    Text("Profile")
+//                }
         }
         .accentColor(Color.AppTheme.primary)
     }
