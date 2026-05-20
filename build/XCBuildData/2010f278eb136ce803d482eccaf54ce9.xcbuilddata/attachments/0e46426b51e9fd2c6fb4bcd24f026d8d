@@ -1,0 +1,4 @@
+module GoogleUtilities_AppDelegateSwizzler {
+umbrella "/Users/apple/Library/Developer/Xcode/DerivedData/LoanManagementSystem-arihrufvyskxjrbzitmtmmitzgxl/SourcePackages/checkouts/GoogleUtilities/GoogleUtilities/AppDelegateSwizzler/Public"
+export *
+}

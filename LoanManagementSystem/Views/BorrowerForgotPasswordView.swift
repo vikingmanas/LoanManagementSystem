@@ -1,10 +1,6 @@
 import SwiftUI
 
-<<<<<<<< HEAD:LoanManagementSystem/Views/BorrowerForgotPasswordView.swift
 struct BorrowerForgotPasswordView: View {
-========
-struct MockForgotPasswordView: View {
->>>>>>>> Manas:LoanManagementSystem/Views/MockForgotPasswordView.swift
     @Environment(\.presentationMode) var presentationMode
     @StateObject private var viewModel = ForgotPasswordViewModel()
     
@@ -91,15 +87,10 @@ struct MockForgotPasswordView: View {
                     }
                 }
             }
-
         }
     }
 }
 
 #Preview {
-<<<<<<<< HEAD:LoanManagementSystem/Views/BorrowerForgotPasswordView.swift
     BorrowerForgotPasswordView()
-========
-    MockForgotPasswordView()
->>>>>>>> Manas:LoanManagementSystem/Views/MockForgotPasswordView.swift
 }

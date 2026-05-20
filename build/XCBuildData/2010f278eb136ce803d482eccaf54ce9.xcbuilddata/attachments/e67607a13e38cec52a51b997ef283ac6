@@ -1,0 +1,4 @@
+module leveldb {
+umbrella "/Users/apple/Library/Developer/Xcode/DerivedData/LoanManagementSystem-arihrufvyskxjrbzitmtmmitzgxl/SourcePackages/checkouts/leveldb/include"
+export *
+}

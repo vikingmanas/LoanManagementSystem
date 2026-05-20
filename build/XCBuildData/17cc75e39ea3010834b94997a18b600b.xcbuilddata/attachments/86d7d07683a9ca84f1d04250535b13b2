@@ -1,0 +1,4 @@
+module opensslWrapper {
+umbrella "/Users/apple/Library/Developer/Xcode/DerivedData/LoanManagementSystem-arihrufvyskxjrbzitmtmmitzgxl/SourcePackages/checkouts/grpc-binary/openssl-grpc-Wrapper/include"
+export *
+}

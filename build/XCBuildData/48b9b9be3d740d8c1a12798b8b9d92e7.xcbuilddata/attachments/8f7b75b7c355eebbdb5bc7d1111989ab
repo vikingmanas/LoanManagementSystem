@@ -1,0 +1,331 @@
+{
+  "" : {
+    "const-values" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LoanManagementSystem-primary.swiftconstvalues",
+    "dependencies" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LoanManagementSystem-primary.d",
+    "diagnostics" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LoanManagementSystem-primary.dia",
+    "emit-module-dependencies" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LoanManagementSystem-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LoanManagementSystem-primary-emit-module.dia",
+    "pch" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LoanManagementSystem-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LoanManagementSystem-primary.swiftdeps"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Auth/AuthManager.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/AuthManager.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/AuthManager.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/AuthManager.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Auth/Components/AuthTextField.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/AuthTextField.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/AuthTextField.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/AuthTextField.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Auth/Views/ForgotPasswordView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ForgotPasswordView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ForgotPasswordView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ForgotPasswordView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Auth/Views/LoginView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LoginView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LoginView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LoginView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Auth/Views/SignUpView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SignUpView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SignUpView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SignUpView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Components/CheckboxView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/CheckboxView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/CheckboxView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/CheckboxView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Components/CustomTextField.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/CustomTextField.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/CustomTextField.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/CustomTextField.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Components/PasswordStrengthView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/PasswordStrengthView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/PasswordStrengthView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/PasswordStrengthView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Components/PrimaryButton.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/PrimaryButton.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/PrimaryButton.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/PrimaryButton.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Components/Profile/DataRowView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/DataRowView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/DataRowView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/DataRowView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Components/Profile/DocumentUploadCardView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/DocumentUploadCardView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/DocumentUploadCardView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/DocumentUploadCardView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Components/Profile/LockedFieldRow.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LockedFieldRow.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LockedFieldRow.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LockedFieldRow.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Components/Profile/ProfileHeaderView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ProfileHeaderView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ProfileHeaderView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ProfileHeaderView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Components/Profile/SectionCardView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SectionCardView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SectionCardView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SectionCardView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Components/Profile/StatusBadgeView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/StatusBadgeView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/StatusBadgeView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/StatusBadgeView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Components/SecureInputField.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SecureInputField.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SecureInputField.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SecureInputField.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/ContentView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ContentView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ContentView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ContentView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Dashboard/Models/Models.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/Models.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/Models.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/Models.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Dashboard/ViewModel/DashboardViewModel.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/DashboardViewModel.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/DashboardViewModel.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/DashboardViewModel.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Dashboard/Views/DashboardView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/DashboardView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/DashboardView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/DashboardView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Dashboard/Views/EMITrackerView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EMITrackerView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EMITrackerView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EMITrackerView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Dashboard/Views/PortfolioCardView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/PortfolioCardView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/PortfolioCardView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/PortfolioCardView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Dashboard/Views/SchemeCardView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SchemeCardView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SchemeCardView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SchemeCardView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Dashboard/Views/TransactionRowView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/TransactionRowView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/TransactionRowView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/TransactionRowView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/LoanManagementSystemApp.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LoanManagementSystemApp.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LoanManagementSystemApp.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LoanManagementSystemApp.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/MockData.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MockData.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MockData.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MockData.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Models/AuditModels.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/AuditModels.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/AuditModels.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/AuditModels.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Models/BorrowerProfile.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/BorrowerProfile.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/BorrowerProfile.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/BorrowerProfile.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Models/BorrowerProfileStore.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/BorrowerProfileStore.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/BorrowerProfileStore.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/BorrowerProfileStore.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Models/CoreDomainModels.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/CoreDomainModels.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/CoreDomainModels.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/CoreDomainModels.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Models/SupportingModels.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SupportingModels.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SupportingModels.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SupportingModels.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Models/UserModels.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/UserModels.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/UserModels.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/UserModels.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Utilities/Theme.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/Theme.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/Theme.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/Theme.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/ViewModels/AppStateManager.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/AppStateManager.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/AppStateManager.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/AppStateManager.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/ViewModels/BorrowerProfileViewModel.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/BorrowerProfileViewModel.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/BorrowerProfileViewModel.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/BorrowerProfileViewModel.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/ViewModels/ForgotPasswordViewModel.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ForgotPasswordViewModel.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ForgotPasswordViewModel.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ForgotPasswordViewModel.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/ViewModels/MockDashboardViewModel.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MockDashboardViewModel.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MockDashboardViewModel.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MockDashboardViewModel.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/ViewModels/SignInViewModel.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SignInViewModel.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SignInViewModel.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SignInViewModel.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/ViewModels/SignUpViewModel.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SignUpViewModel.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SignUpViewModel.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SignUpViewModel.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/EditForms/EditAddressInfoView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditAddressInfoView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditAddressInfoView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditAddressInfoView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/EditForms/EditBankDetailsView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditBankDetailsView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditBankDetailsView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditBankDetailsView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/EditForms/EditContactInfoView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditContactInfoView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditContactInfoView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditContactInfoView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/EditForms/EditEmploymentView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditEmploymentView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditEmploymentView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditEmploymentView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/EditForms/EditKYCView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditKYCView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditKYCView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditKYCView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/EditForms/EditLoanOverviewView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditLoanOverviewView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditLoanOverviewView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditLoanOverviewView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/EditForms/EditPersonalInfoView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditPersonalInfoView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditPersonalInfoView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/EditPersonalInfoView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/MainTabView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MainTabView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MainTabView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MainTabView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/MockDashboardView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MockDashboardView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MockDashboardView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MockDashboardView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/MockForgotPasswordView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MockForgotPasswordView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MockForgotPasswordView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MockForgotPasswordView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/MockSignUpView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MockSignUpView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MockSignUpView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/MockSignUpView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/ProfileDetails/DocumentManagementDetailView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/DocumentManagementDetailView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/DocumentManagementDetailView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/DocumentManagementDetailView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/ProfileDetails/HelpSupportDetailView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/HelpSupportDetailView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/HelpSupportDetailView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/HelpSupportDetailView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/ProfileDetails/KYCStatusDetailView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/KYCStatusDetailView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/KYCStatusDetailView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/KYCStatusDetailView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/ProfileDetails/LinkedBankAccountsDetailView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LinkedBankAccountsDetailView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LinkedBankAccountsDetailView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/LinkedBankAccountsDetailView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/ProfileDetails/NotificationsDetailView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/NotificationsDetailView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/NotificationsDetailView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/NotificationsDetailView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/ProfileDetails/PrivacyControlsDetailView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/PrivacyControlsDetailView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/PrivacyControlsDetailView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/PrivacyControlsDetailView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/ProfileDetails/ProfileInfoDetailView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ProfileInfoDetailView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ProfileInfoDetailView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ProfileInfoDetailView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/ProfileDetails/ResetPasswordDetailView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ResetPasswordDetailView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ResetPasswordDetailView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ResetPasswordDetailView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/ProfileDetails/SecurityDetailView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SecurityDetailView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SecurityDetailView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SecurityDetailView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/ProfileDetails/SettingsDetailView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SettingsDetailView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SettingsDetailView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SettingsDetailView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/ProfileView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ProfileView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ProfileView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/ProfileView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/SignInView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SignInView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SignInView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SignInView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/LoanManagementSystem/Views/SplashScreenView.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SplashScreenView.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SplashScreenView.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/SplashScreenView.o"
+  },
+  "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "index-unit-output-path" : "/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/apple/Desktop/LoanManagementSystem/build/LoanManagementSystem.build/Release/LoanManagementSystem.build/Objects-normal/x86_64/GeneratedAssetSymbols.o"
+  }
+}

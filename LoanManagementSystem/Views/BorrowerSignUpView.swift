@@ -1,10 +1,12 @@
 import SwiftUI
 
-<<<<<<<< HEAD:LoanManagementSystem/Views/BorrowerSignUpView.swift
 struct BorrowerSignUpView: View {
-========
+    var body: some View {
+        MockSignUpView()
+    }
+}
+
 struct MockSignUpView: View {
->>>>>>>> Manas:LoanManagementSystem/Views/MockSignUpView.swift
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var appState: AppStateManager
     @StateObject private var viewModel = SignUpViewModel()
@@ -149,19 +151,19 @@ struct MockSignUpView: View {
                 appState.login()
             }
         }
-
     }
 }
-
-<<<<<<<< HEAD:LoanManagementSystem/Views/BorrowerSignUpView.swift
 struct BorrowerSignUpView_Previews: PreviewProvider {
     static var previews: some View {
         BorrowerSignUpView()
-========
-struct MockSignUpView_Previews: PreviewProvider {
-    static var previews: some View {
-        MockSignUpView()
->>>>>>>> Manas:LoanManagementSystem/Views/MockSignUpView.swift
             .environmentObject(AppStateManager())
     }
 }
+
+struct MockSignUpView_Previews: PreviewProvider {
+    static var previews: some View {
+        MockSignUpView()
+            .environmentObject(AppStateManager())
+    }
+}
+

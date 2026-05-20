@@ -1,0 +1,4 @@
+module GTMSessionFetcherCore {
+umbrella "/Users/apple/Library/Developer/Xcode/DerivedData/LoanManagementSystem-arihrufvyskxjrbzitmtmmitzgxl/SourcePackages/checkouts/gtm-session-fetcher/Sources/Core/Public"
+export *
+}
