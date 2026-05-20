@@ -132,7 +132,7 @@ struct TopNavigationBarSection: View {
             // Header Row
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Audit")
+                    Text("Borrower")
                         .font(.title)
                         .fontWeight(.bold)
                         .foregroundColor(Color(.label))
