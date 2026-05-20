@@ -1,4 +1,0 @@
-module abslWrapper {
-umbrella "/Users/apple/Library/Developer/Xcode/DerivedData/LoanManagementSystem-arihrufvyskxjrbzitmtmmitzgxl/SourcePackages/checkouts/abseil-cpp-binary/absl-Wrapper/include"
-export *
-}

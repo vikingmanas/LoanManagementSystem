@@ -1,4 +1,0 @@
-module grpcppWrapper {
-umbrella "/Users/apple/Library/Developer/Xcode/DerivedData/LoanManagementSystem-arihrufvyskxjrbzitmtmmitzgxl/SourcePackages/checkouts/grpc-binary/grpcpp-Wrapper/include"
-export *
-}
