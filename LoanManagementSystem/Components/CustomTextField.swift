@@ -15,7 +15,7 @@ struct CustomTextField: View {
                     .frame(width: 20)
                 
                 TextField(placeholder, text: $text)
-                    .font(Font.AppTheme.body)
+                    .font(Font.AppTheme.input)
                     .foregroundColor(Color.AppTheme.textPrimary)
                     .disableAutocapitalization()
                     .autocorrectionDisabled(true)

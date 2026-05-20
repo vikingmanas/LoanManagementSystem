@@ -28,7 +28,7 @@ struct EditBankDetailsView: View {
                             .font(Font.AppTheme.caption)
                             .foregroundColor(Color.AppTheme.textSecondary)
                         TextField("Enter Bank Name", text: $bankName)
-                            .font(Font.AppTheme.body)
+                            .font(Font.AppTheme.input)
                     }
                     
                     VStack(alignment: .leading, spacing: 4) {
@@ -36,7 +36,7 @@ struct EditBankDetailsView: View {
                             .font(Font.AppTheme.caption)
                             .foregroundColor(Color.AppTheme.textSecondary)
                         TextField("Enter Account Holder Name", text: $accountHolder)
-                            .font(Font.AppTheme.body)
+                            .font(Font.AppTheme.input)
                     }
                     
                     VStack(alignment: .leading, spacing: 4) {
@@ -45,7 +45,7 @@ struct EditBankDetailsView: View {
                             .foregroundColor(Color.AppTheme.textSecondary)
                         TextField("Enter Account Number", text: $accountNumber)
                             .keyboardType(.numberPad)
-                            .font(Font.AppTheme.body)
+                            .font(Font.AppTheme.input)
                     }
                     
                     VStack(alignment: .leading, spacing: 4) {
@@ -54,7 +54,7 @@ struct EditBankDetailsView: View {
                             .foregroundColor(Color.AppTheme.textSecondary)
                         TextField("Enter IFSC Code", text: $ifscCode)
                             .autocapitalization(.allCharacters)
-                            .font(Font.AppTheme.body)
+                            .font(Font.AppTheme.input)
                     }
                     
                     VStack(alignment: .leading, spacing: 4) {
@@ -63,7 +63,7 @@ struct EditBankDetailsView: View {
                             .foregroundColor(Color.AppTheme.textSecondary)
                         TextField("Enter UPI ID (e.g. username@bank)", text: $upiID)
                             .autocapitalization(.none)
-                            .font(Font.AppTheme.body)
+                            .font(Font.AppTheme.input)
                     }
                 }
             }

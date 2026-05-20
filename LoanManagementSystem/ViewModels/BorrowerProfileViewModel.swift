@@ -9,39 +9,15 @@ class BorrowerProfileViewModel: ObservableObject {
     @Published var profile: BorrowerProfile?
     @Published var isLoading: Bool = false
     
-    init() {
-        loadProfile()
-    }
+    private var cancellables = Set<AnyCancellable>()
     
-    func loadProfile() {
-        isLoading = true
-        
-        // Mocking a network call delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            self.profile = BorrowerProfile(
-                id: "B-109482",
-                fullName: "Rahul Sharma",
-                email: "rahul.sharma@example.com",
-                mobileNumber: "+91 98765 43210",
-                alternateNumber: "+91 91234 56789",
-                dateOfBirth: Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date(),
-                gender: "Male",
-                maritalStatus: "Single",
-                nationality: "Indian",
-                aadhaarNumber: "123456789012",
-                panNumber: "ABCDE1234F",
-                isEmailVerified: true,
-                isPhoneVerified: true,
-                currentAddress: AddressInfo(streetAddress: "14B, Tech Park Road, Andheri East", city: "Mumbai", state: "Maharashtra", zipCode: "400069", country: "India", isSameAsCurrent: true),
-                permanentAddress: AddressInfo(streetAddress: "14B, Tech Park Road, Andheri East", city: "Mumbai", state: "Maharashtra", zipCode: "400069", country: "India", isSameAsCurrent: true),
-                employment: EmploymentInfo(employmentType: "Salaried", companyName: "Tech Global Pvt Ltd.", designation: "Senior Software Engineer", workExperienceYears: 8, employerAddress: "Mindspace, Malad West, Mumbai"),
-                income: IncomeInfo(monthlyIncome: 120000.0, annualIncome: 1440000.0, existingEMIs: 15000.0, creditScore: 780, incomeSource: "Salary"),
-                bankDetails: BankDetails(bankName: "HDFC Bank", accountHolderName: "Rahul Sharma", accountNumber: "50100234567890", ifscCode: "HDFC0001234", upiID: "rahulsharma@okhdfcbank", isVerified: true),
-                kycVerification: KYCVerification(aadhaarStatus: .verified, panStatus: .verified, addressProofStatus: .rejected, selfieStatus: .verified, aadhaarFileName: "aadhaar_card.pdf", panFileName: "pan_card.pdf", addressProofFileName: nil),
-                loanOverview: LoanOverview(activeLoans: 1, loanHistoryCount: 2, nextEmiDueDate: Calendar.current.date(byAdding: .day, value: 15, to: Date()), remainingBalance: 450000.0, currentLoanStatus: "Active")
-            )
-            self.isLoading = false
-        }
+    init() {
+        // Observe changes from the shared store
+        BorrowerProfileStore.shared.$profile
+            .sink { [weak self] updatedProfile in
+                self?.profile = updatedProfile
+            }
+            .store(in: &cancellables)
     }
     
     func updatePersonalInfo(fullName: String, gender: String, maritalStatus: String, nationality: String, dateOfBirth: Date, aadhaarNumber: String, panNumber: String) {
@@ -53,7 +29,8 @@ class BorrowerProfileViewModel: ObservableObject {
         updatedProfile.dateOfBirth = dateOfBirth
         updatedProfile.aadhaarNumber = aadhaarNumber
         updatedProfile.panNumber = panNumber
-        self.profile = updatedProfile
+        
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
     
     func updateContact(mobile: String, email: String, alternate: String) {
@@ -67,7 +44,8 @@ class BorrowerProfileViewModel: ObservableObject {
             updatedProfile.isEmailVerified = false
         }
         updatedProfile.alternateNumber = alternate.isEmpty ? nil : alternate
-        self.profile = updatedProfile
+        
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
     
     func updateAddress(street: String, city: String, state: String, zip: String, isSame: Bool) {
@@ -75,7 +53,8 @@ class BorrowerProfileViewModel: ObservableObject {
         let newAddress = AddressInfo(streetAddress: street, city: city, state: state, zipCode: zip, country: updatedProfile.currentAddress.country, isSameAsCurrent: isSame)
         updatedProfile.currentAddress = newAddress
         updatedProfile.permanentAddress = isSame ? newAddress : updatedProfile.permanentAddress
-        self.profile = updatedProfile
+        
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
     
     func updateEmployment(type: String, company: String, designation: String, income: Double) {
@@ -94,7 +73,8 @@ class BorrowerProfileViewModel: ObservableObject {
             creditScore: updatedProfile.income.creditScore,
             incomeSource: updatedProfile.income.incomeSource
         )
-        self.profile = updatedProfile
+        
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
     
     func updateBankDetails(bank: String, holder: String, account: String, ifsc: String, upi: String) {
@@ -107,7 +87,8 @@ class BorrowerProfileViewModel: ObservableObject {
             upiID: upi.isEmpty ? nil : upi,
             isVerified: updatedProfile.bankDetails.isVerified
         )
-        self.profile = updatedProfile
+        
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
     
     func updateKYC(
@@ -128,7 +109,8 @@ class BorrowerProfileViewModel: ObservableObject {
             panFileName: panFile ?? updatedProfile.kycVerification.panFileName,
             addressProofFileName: addressProofFile ?? updatedProfile.kycVerification.addressProofFileName
         )
-        self.profile = updatedProfile
+        
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
     
     func updateKYCDoc(type: KYCDocumentType, status: VerificationStatus, fileName: String? = nil) {
@@ -148,19 +130,19 @@ class BorrowerProfileViewModel: ObservableObject {
         }
         
         updatedProfile.kycVerification = currentKYC
-        self.profile = updatedProfile
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
     
     func verifyMobile() {
         guard var updatedProfile = profile else { return }
         updatedProfile.isPhoneVerified = true
-        self.profile = updatedProfile
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
     
     func verifyEmail() {
         guard var updatedProfile = profile else { return }
         updatedProfile.isEmailVerified = true
-        self.profile = updatedProfile
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
     
     // Formatting Helpers

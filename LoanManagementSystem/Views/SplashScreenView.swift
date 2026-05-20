@@ -32,11 +32,11 @@ struct SplashScreenView: View {
                 .opacity(opacity)
                 
                 VStack(spacing: 8) {
-                    Text("LendLock")
+                    Text("LMS")
                         .font(.system(size: 34, weight: .bold, design: .rounded))
                         .foregroundColor(Color.AppTheme.textPrimary)
                     
-                    Text("Secure Borrower Portal")
+                    Text("Simplifying Loans, Empowering Lives")
                         .font(Font.AppTheme.body)
                         .foregroundColor(Color.AppTheme.textSecondary)
                 }

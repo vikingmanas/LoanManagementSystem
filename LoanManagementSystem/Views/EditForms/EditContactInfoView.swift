@@ -48,7 +48,7 @@ struct EditContactInfoView: View {
                                 .foregroundColor(Color.AppTheme.textSecondary)
                             TextField("Enter Mobile Number", text: $mobileNumber)
                                 .keyboardType(.phonePad)
-                                .font(Font.AppTheme.body)
+                                .font(Font.AppTheme.input)
                         }
                     }
                 }
@@ -60,7 +60,7 @@ struct EditContactInfoView: View {
                             .foregroundColor(Color.AppTheme.textSecondary)
                         TextField("Enter Alternate Number (Optional)", text: $alternateNumber)
                             .keyboardType(.phonePad)
-                            .font(Font.AppTheme.body)
+                            .font(Font.AppTheme.input)
                     }
                     
                     VStack(alignment: .leading, spacing: 4) {
@@ -69,7 +69,7 @@ struct EditContactInfoView: View {
                             .foregroundColor(Color.AppTheme.textSecondary)
                         TextField("Enter Email Address", text: $email)
                             .keyboardType(.emailAddress)
-                            .font(Font.AppTheme.body)
+                            .font(Font.AppTheme.input)
                     }
                 }
             }

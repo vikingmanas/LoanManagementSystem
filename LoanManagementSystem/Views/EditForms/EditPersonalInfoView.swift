@@ -63,7 +63,7 @@ struct EditPersonalInfoView: View {
                                 .font(Font.AppTheme.caption)
                                 .foregroundColor(Color.AppTheme.textSecondary)
                             TextField("Enter Full Name", text: $fullName)
-                                .font(Font.AppTheme.body)
+                                .font(Font.AppTheme.input)
                         }
                         
                         DatePicker("Date of Birth", selection: $dateOfBirth, displayedComponents: .date)
@@ -75,7 +75,7 @@ struct EditPersonalInfoView: View {
                                 .foregroundColor(Color.AppTheme.textSecondary)
                             TextField("Enter Aadhaar Number", text: $aadhaarNumber)
                                 .keyboardType(.numberPad)
-                                .font(Font.AppTheme.body)
+                                .font(Font.AppTheme.input)
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
@@ -84,7 +84,7 @@ struct EditPersonalInfoView: View {
                                 .foregroundColor(Color.AppTheme.textSecondary)
                             TextField("Enter PAN Number", text: $panNumber)
                                 .autocapitalization(.allCharacters)
-                                .font(Font.AppTheme.body)
+                                .font(Font.AppTheme.input)
                         }
                     }
                 }
@@ -95,7 +95,7 @@ struct EditPersonalInfoView: View {
                             .font(Font.AppTheme.caption)
                             .foregroundColor(Color.AppTheme.textSecondary)
                         TextField("Enter Gender", text: $gender)
-                            .font(Font.AppTheme.body)
+                            .font(Font.AppTheme.input)
                     }
                     
                     VStack(alignment: .leading, spacing: 4) {
@@ -103,7 +103,7 @@ struct EditPersonalInfoView: View {
                             .font(Font.AppTheme.caption)
                             .foregroundColor(Color.AppTheme.textSecondary)
                         TextField("Enter Marital Status", text: $maritalStatus)
-                            .font(Font.AppTheme.body)
+                            .font(Font.AppTheme.input)
                     }
                     
                     VStack(alignment: .leading, spacing: 4) {
@@ -111,7 +111,7 @@ struct EditPersonalInfoView: View {
                             .font(Font.AppTheme.caption)
                             .foregroundColor(Color.AppTheme.textSecondary)
                         TextField("Enter Nationality", text: $nationality)
-                            .font(Font.AppTheme.body)
+                            .font(Font.AppTheme.input)
                     }
                 }
             }

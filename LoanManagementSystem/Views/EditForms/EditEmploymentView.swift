@@ -24,10 +24,14 @@ struct EditEmploymentView: View {
             Form {
                 Section(header: Text("Employment Details")) {
                     TextField("Employment Type", text: $employmentType)
+                        .font(Font.AppTheme.input)
                     TextField("Company Name", text: $companyName)
+                        .font(Font.AppTheme.input)
                     TextField("Designation", text: $designation)
+                        .font(Font.AppTheme.input)
                     TextField("Monthly Income", text: $monthlyIncome)
                         .keyboardType(.numberPad)
+                        .font(Font.AppTheme.input)
                 }
             }
             .navigationTitle("Edit Employment")

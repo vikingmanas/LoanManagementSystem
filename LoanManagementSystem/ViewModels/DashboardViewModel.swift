@@ -35,8 +35,24 @@ class DashboardViewModel: ObservableObject {
     @Published var recentTransactions: [DashboardTransaction] = []
     @Published var isLoading: Bool = false
     
+    private var cancellables = Set<AnyCancellable>()
+    
     init() {
         loadDashboardData()
+        
+        // Sync with central data store changes
+        BorrowerProfileStore.shared.$profile
+            .compactMap { $0 }
+            .sink { [weak self] profile in
+                self?.remainingBalance = profile.loanOverview.remainingBalance
+                self?.emiAmount = profile.income.existingEMIs
+                if let nextEmi = profile.loanOverview.nextEmiDueDate {
+                    self?.nextEmiDate = nextEmi
+                }
+                self?.creditScore = profile.income.creditScore
+                self?.activeLoansCount = profile.loanOverview.activeLoans
+            }
+            .store(in: &cancellables)
     }
     
     func loadDashboardData() {

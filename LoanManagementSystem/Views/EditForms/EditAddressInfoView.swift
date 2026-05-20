@@ -25,10 +25,14 @@ struct EditAddressInfoView: View {
             Form {
                 Section(header: Text("Current Address")) {
                     TextField("Street Address", text: $streetAddress)
+                        .font(Font.AppTheme.input)
                     TextField("City", text: $city)
+                        .font(Font.AppTheme.input)
                     TextField("State", text: $state)
+                        .font(Font.AppTheme.input)
                     TextField("Zip/Pin Code", text: $zipCode)
                         .keyboardType(.numberPad)
+                        .font(Font.AppTheme.input)
                 }
                 
                 Section {

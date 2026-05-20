@@ -16,13 +16,13 @@ struct SecureInputField: View {
                 
                 if isVisible {
                     TextField(placeholder, text: $text)
-                        .font(Font.AppTheme.body)
+                        .font(Font.AppTheme.input)
                         .foregroundColor(Color.AppTheme.textPrimary)
                         .disableAutocapitalization()
                         .autocorrectionDisabled(true)
                 } else {
                     SecureField(placeholder, text: $text)
-                        .font(Font.AppTheme.body)
+                        .font(Font.AppTheme.input)
                         .foregroundColor(Color.AppTheme.textPrimary)
                         .disableAutocapitalization()
                         .autocorrectionDisabled(true)
