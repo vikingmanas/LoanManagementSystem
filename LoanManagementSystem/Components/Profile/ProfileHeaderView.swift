@@ -1,46 +1,84 @@
 import SwiftUI
+import PhotosUI
 
 struct ProfileHeaderView: View {
     var name: String
     var id: String
     var completionPercentage: Int
     var isVerified: Bool
+    var imageData: Data?
+    var onPhotoSelected: (Data) -> Void
+    
+    @State private var selectedItem: PhotosPickerItem? = nil
     
     var body: some View {
         HStack(spacing: 20) {
-            // Circular Avatar with Progress Ring
-            ZStack {
-                // Background Track
-                Circle()
-                    .stroke(Color.AppTheme.textSecondary.opacity(0.15), lineWidth: 3.5)
-                    .frame(width: 78, height: 78)
-                
-                // Progress Arc
-                Circle()
-                    .trim(from: 0.0, to: CGFloat(completionPercentage) / 100.0)
-                    .stroke(
-                        Color.AppTheme.primary,
-                        style: StrokeStyle(lineWidth: 3.5, lineCap: .round)
-                    )
-                    .frame(width: 78, height: 78)
-                    .rotationEffect(.degrees(-90))
-                
-                // Avatar Image
-                Image(systemName: "person.fill")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 32, height: 32)
-                    .foregroundColor(Color.AppTheme.primary)
+            // Circular Avatar with Progress Ring and Photo Selection
+            PhotosPicker(selection: $selectedItem, matching: .images) {
+                ZStack {
+                    // Background Track
+                    Circle()
+                        .stroke(Color.AppTheme.textSecondary.opacity(0.15), lineWidth: 3.5)
+                        .frame(width: 78, height: 78)
+                    
+                    // Progress Arc
+                    Circle()
+                        .trim(from: 0.0, to: CGFloat(completionPercentage) / 100.0)
+                        .stroke(
+                            Color.AppTheme.primary,
+                            style: StrokeStyle(lineWidth: 3.5, lineCap: .round)
+                        )
+                        .frame(width: 78, height: 78)
+                        .rotationEffect(.degrees(-90))
+                    
+                    // Avatar Image
+                    Group {
+                        if let imageData = imageData, let uiImage = UIImage(data: imageData) {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFill()
+                        } else {
+                            Image(systemName: "person.fill")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 32, height: 32)
+                                .foregroundColor(Color.AppTheme.primary)
+                        }
+                    }
                     .frame(width: 70, height: 70)
                     .background(Circle().fill(Color.AppTheme.secondary.opacity(0.8)))
-                
-                // Verification Badge
-                if isVerified {
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(Color.AppTheme.success)
-                        .background(Circle().fill(Color.AppTheme.background))
+                    .clipShape(Circle())
+                    
+                    // Plus sign badge for photo addition (bottom right)
+                    Image(systemName: "plus")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(width: 22, height: 22)
+                        .background(Circle().fill(Color.AppTheme.primary))
+                        .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                        .shadow(color: Color.black.opacity(0.15), radius: 2, x: 0, y: 1)
                         .offset(x: 26, y: 26)
+                    
+                    // Verification Badge (moved to top right so they don't overlap)
+                    if isVerified {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(Color.AppTheme.success)
+                            .background(Circle().fill(Color.white))
+                            .offset(x: 26, y: -26)
+                    }
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+            .onChange(of: selectedItem) { newItem in
+                if let newItem = newItem {
+                    Task {
+                        if let data = try? await newItem.loadTransferable(type: Data.self) {
+                            DispatchQueue.main.async {
+                                onPhotoSelected(data)
+                            }
+                        }
+                    }
                 }
             }
             .frame(width: 82, height: 82)

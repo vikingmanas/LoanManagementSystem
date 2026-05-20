@@ -25,7 +25,11 @@ struct ProfileView: View {
                                 name: profile.fullName,
                                 id: profile.id,
                                 completionPercentage: profile.profileCompletionPercentage,
-                                isVerified: profile.kycVerification.overallStatus == .verified
+                                isVerified: profile.kycVerification.overallStatus == .verified,
+                                imageData: profile.profileImageData,
+                                onPhotoSelected: { data in
+                                    viewModel.updateProfileImage(data: data)
+                                }
                             )
                             .padding(.horizontal, 20)
                             .padding(.top, 10)

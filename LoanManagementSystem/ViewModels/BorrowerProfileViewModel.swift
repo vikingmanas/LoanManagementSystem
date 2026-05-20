@@ -145,6 +145,12 @@ class BorrowerProfileViewModel: ObservableObject {
         BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
     
+    func updateProfileImage(data: Data) {
+        guard var updatedProfile = profile else { return }
+        updatedProfile.profileImageData = data
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
+    }
+    
     // Formatting Helpers
     func maskedAccountNumber(_ number: String) -> String {
         guard number.count > 4 else { return number }

@@ -27,6 +27,8 @@ struct BorrowerProfile {
     var kycVerification: KYCVerification
     var loanOverview: LoanOverview
     
+    var profileImageData: Data? = nil
+    
     var isKYCVerified: Bool {
         return kycVerification.aadhaarStatus == .verified && kycVerification.panStatus == .verified
     }
@@ -122,6 +124,12 @@ struct BorrowerProfile {
         totalPossible += 5
         if kycVerification.addressProofFileName != nil {
             completedScore += 5
+        }
+        
+        // 7. Profile Picture
+        totalPossible += 10
+        if profileImageData != nil {
+            completedScore += 10
         }
         
         guard totalPossible > 0 else { return 0 }
