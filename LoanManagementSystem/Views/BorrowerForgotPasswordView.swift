@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct ForgotPasswordView: View {
+struct BorrowerForgotPasswordView: View {
     @Environment(\.presentationMode) var presentationMode
     @StateObject private var viewModel = ForgotPasswordViewModel()
     
@@ -125,5 +125,5 @@ struct ForgotPasswordView: View {
 }
 
 #Preview {
-    ForgotPasswordView()
+    BorrowerForgotPasswordView()
 }

@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct SignUpView: View {
+struct BorrowerSignUpView: View {
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var appState: AppStateManager
     @StateObject private var viewModel = SignUpViewModel()
@@ -151,9 +151,9 @@ struct SignUpView: View {
     }
 }
 
-struct SignUpView_Previews: PreviewProvider {
+struct BorrowerSignUpView_Previews: PreviewProvider {
     static var previews: some View {
-        SignUpView()
+        BorrowerSignUpView()
             .environmentObject(AppStateManager())
     }
 }

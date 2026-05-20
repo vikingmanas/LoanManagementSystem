@@ -63,7 +63,7 @@ struct SignInView: View {
                             
                             Spacer()
                             
-                            NavigationLink(destination: ForgotPasswordView()) {
+                            NavigationLink(destination: BorrowerForgotPasswordView()) {
                                 Text("Forgot Password?")
                                     .font(Font.AppTheme.body)
                                     .fontWeight(.semibold)
@@ -126,7 +126,7 @@ struct SignInView: View {
                                 .font(Font.AppTheme.body)
                                 .foregroundColor(Color.AppTheme.textSecondary)
                             
-                            NavigationLink(destination: SignUpView()) {
+                            NavigationLink(destination: BorrowerSignUpView()) {
                                 Text("Sign Up")
                                     .font(Font.AppTheme.body)
                                     .fontWeight(.bold)
