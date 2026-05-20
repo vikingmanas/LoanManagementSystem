@@ -18,9 +18,6 @@ extension Color {
         static let success = Color(hex: "4CAF50") // Soft Green
         static let error = Color(hex: "F44336") // Soft Red
     }
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
     
     public init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
@@ -45,9 +42,6 @@ extension Color {
             opacity: Double(a) / 255
         )
     }
-=======
->>>>>>> d446cd839f940e918615e25b1611255a844f72f6
->>>>>>> Stashed changes
 }
 
 extension Font {
