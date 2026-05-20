@@ -59,14 +59,14 @@ public struct PortfolioCarouselView: View {
     // Auto-scroll timer publisher (increased from 5 to 8 seconds for a more relaxed reading experience)
     @State private var timer = Timer.publish(every: 8, on: .main, in: .common).autoconnect()
     
-    let onNavigateToLoan: (LoanAccount) -> Void
+    let onNavigateToLoan: (DashboardLoanAccount) -> Void
     let onNavigateToBank: (BankAccount) -> Void
     let onNavigateToInsurance: () -> Void
     let onTransferTap: (BankAccount) -> Void
     
     public init(
         viewModel: DashboardViewModel,
-        onNavigateToLoan: @escaping (LoanAccount) -> Void,
+        onNavigateToLoan: @escaping (DashboardLoanAccount) -> Void,
         onNavigateToBank: @escaping (BankAccount) -> Void,
         onNavigateToInsurance: @escaping () -> Void,
         onTransferTap: @escaping (BankAccount) -> Void
@@ -568,7 +568,7 @@ struct LoanProtectionCardRefined: View {
 // MARK: - Legacy PortfolioCardView (For Backward Compatibility with other files)
 public struct PortfolioCardView: View {
     public enum CardType: Hashable {
-        case loan(LoanAccount)
+        case loan(DashboardLoanAccount)
         case bank(BankAccount)
         case insurance
     }
@@ -604,7 +604,7 @@ public struct PortfolioCardView: View {
 }
 
 struct LoanOverviewCard: View {
-    let loan: LoanAccount
+    let loan: DashboardLoanAccount
     
     var body: some View {
         TotalLoanOutstandingCard(viewModel: DashboardViewModel()) // Fallback adapter

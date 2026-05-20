@@ -1,7 +1,7 @@
 import SwiftUI
 
-struct DashboardView: View {
-    @StateObject private var viewModel = DashboardViewModel()
+struct MockDashboardView: View {
+    @StateObject private var viewModel = MockDashboardViewModel()
     @State private var showPayEMISheet = false
     @State private var showApplyLoanSheet = false
     @State private var mockEmiSuccess = false
@@ -311,7 +311,7 @@ struct DashboardView: View {
         }
     }
     
-    private func transactionRow(_ tx: DashboardTransaction) -> some View {
+    private func transactionRow(_ tx: MockDashboardTransaction) -> some View {
         HStack(spacing: 16) {
             ZStack {
                 Circle()
@@ -346,7 +346,7 @@ struct DashboardView: View {
         .padding(.vertical, 12)
     }
     
-    private func transactionIcon(_ tx: DashboardTransaction) -> String {
+    private func transactionIcon(_ tx: MockDashboardTransaction) -> String {
         switch tx.type {
         case .repayment: return "arrow.up.circle.fill"
         case .disbursement: return "arrow.down.circle.fill"
@@ -354,7 +354,7 @@ struct DashboardView: View {
         }
     }
     
-    private func transactionColor(_ tx: DashboardTransaction) -> Color {
+    private func transactionColor(_ tx: MockDashboardTransaction) -> Color {
         switch tx.type {
         case .repayment: return Color.AppTheme.success
         case .disbursement: return Color.AppTheme.primary
@@ -362,7 +362,7 @@ struct DashboardView: View {
         }
     }
     
-    private func transactionSign(_ tx: DashboardTransaction) -> String {
+    private func transactionSign(_ tx: MockDashboardTransaction) -> String {
         switch tx.type {
         case .repayment: return "-"
         case .disbursement: return "+"
@@ -539,8 +539,8 @@ struct DashboardView: View {
     }
 }
 
-struct DashboardView_Previews: PreviewProvider {
+struct MockDashboardView_Previews: PreviewProvider {
     static var previews: some View {
-        DashboardView()
+        MockDashboardView()
     }
 }

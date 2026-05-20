@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct ForgotPasswordView: View {
+struct MockForgotPasswordView: View {
     @Environment(\.presentationMode) var presentationMode
     @StateObject private var viewModel = ForgotPasswordViewModel()
     
@@ -59,41 +59,14 @@ struct ForgotPasswordView: View {
                     Spacer()
                     
                     // Options buttons
-                    VStack(spacing: 12) {
-                        PrimaryButton(
-                            title: "Send Reset Link via Email",
-                            isLoading: viewModel.isLoading && !viewModel.navigateToOTP,
-                            isDisabled: !viewModel.isFormValid || viewModel.showSuccessMessage,
-                            action: {
-                                viewModel.sendResetLink()
-                            }
-                        )
-                        
-                        Button(action: {
-                            viewModel.sendOTPCode()
-                        }) {
-                            HStack {
-                                Spacer()
-                                if viewModel.isLoading && viewModel.navigateToOTP {
-                                    ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle(tint: Color.AppTheme.primary))
-                                } else {
-                                    Image(systemName: "phone.bubble.left.fill")
-                                        .font(.system(size: 15))
-                                    Text("Recover via OTP")
-                                        .font(Font.AppTheme.button)
-                                }
-                                Spacer()
-                            }
-                            .frame(height: 50)
-                            .foregroundColor(Color.AppTheme.primary)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color.AppTheme.primary, lineWidth: 1.5)
-                            )
+                    PrimaryButton(
+                        title: "Send Reset Link via Email",
+                        isLoading: viewModel.isLoading,
+                        isDisabled: !viewModel.isFormValid || viewModel.showSuccessMessage,
+                        action: {
+                            viewModel.sendResetLink()
                         }
-                        .disabled(!viewModel.isFormValid || viewModel.showSuccessMessage)
-                    }
+                    )
                     .padding(.bottom, 20)
                 }
                 .padding(.horizontal, 24)
@@ -114,16 +87,11 @@ struct ForgotPasswordView: View {
                     }
                 }
             }
-            .navigationDestination(isPresented: $viewModel.navigateToOTP) {
-                OTPVerificationView(isForLogin: false) {
-                    // Navigate to password change after OTP verified
-                    print("OTP Verified for Password Reset")
-                }
-            }
+
         }
     }
 }
 
 #Preview {
-    ForgotPasswordView()
+    MockForgotPasswordView()
 }

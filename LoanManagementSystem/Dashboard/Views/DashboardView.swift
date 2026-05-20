@@ -9,7 +9,7 @@ import SwiftUI
 
 // MARK: - Navigation Destinations
 public enum DashboardRoute: Hashable {
-    case loanDetails(LoanAccount)
+    case loanDetails(DashboardLoanAccount)
     case bankDetails(BankAccount)
     case insuranceDetails
     case allTransactions
@@ -717,7 +717,7 @@ struct TopUpSheet: View {
 // MARK: - Premium Detail Views
 
 struct LoanDetailsView: View {
-    let loan: LoanAccount
+    let loan: DashboardLoanAccount
     
     var body: some View {
         ScrollView {

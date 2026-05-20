@@ -1,29 +1,29 @@
 import Foundation
 import Combine
 
-struct DashboardTransaction: Identifiable {
+struct MockDashboardTransaction: Identifiable {
     let id = UUID()
     let title: String
     let description: String
     let amount: Double
     let date: Date
-    let status: TransactionStatus
-    let type: TransactionType
+    let status: MockTransactionStatus
+    let type: MockTransactionType
 }
 
-enum TransactionStatus: String {
+enum MockTransactionStatus: String {
     case completed = "Completed"
     case pending = "Pending"
     case failed = "Failed"
 }
 
-enum TransactionType {
+enum MockTransactionType {
     case repayment
     case disbursement
     case processingFee
 }
 
-class DashboardViewModel: ObservableObject {
+class MockDashboardViewModel: ObservableObject {
     @Published var activeLoanAmount: Double = 500000.0
     @Published var remainingBalance: Double = 450000.0
     @Published var emiAmount: Double = 15000.0
@@ -32,7 +32,7 @@ class DashboardViewModel: ObservableObject {
     @Published var creditScore: Int = 780
     @Published var activeLoansCount: Int = 1
     @Published var pendingApplicationsCount: Int = 0
-    @Published var recentTransactions: [DashboardTransaction] = []
+    @Published var recentTransactions: [MockDashboardTransaction] = []
     @Published var isLoading: Bool = false
     
     private var cancellables = Set<AnyCancellable>()
@@ -58,9 +58,10 @@ class DashboardViewModel: ObservableObject {
     func loadDashboardData() {
         isLoading = true
         // Mock delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            guard let self = self else { return }
             self.recentTransactions = [
-                DashboardTransaction(
+                MockDashboardTransaction(
                     title: "EMI Repayment",
                     description: "Loan Account #L-890214",
                     amount: 15000.0,
@@ -68,7 +69,7 @@ class DashboardViewModel: ObservableObject {
                     status: .completed,
                     type: .repayment
                 ),
-                DashboardTransaction(
+                MockDashboardTransaction(
                     title: "Processing Fee",
                     description: "Personal Loan Application",
                     amount: 2500.0,
@@ -76,7 +77,7 @@ class DashboardViewModel: ObservableObject {
                     status: .completed,
                     type: .processingFee
                 ),
-                DashboardTransaction(
+                MockDashboardTransaction(
                     title: "Loan Disbursement",
                     description: "Loan Account #L-890214",
                     amount: 500000.0,

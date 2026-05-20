@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct SignUpView: View {
+struct MockSignUpView: View {
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var appState: AppStateManager
     @StateObject private var viewModel = SignUpViewModel()
@@ -145,15 +145,13 @@ struct SignUpView: View {
                 appState.login()
             }
         }
-        .navigationDestination(isPresented: $viewModel.navigateToOTP) {
-            OTPVerificationView(isForLogin: false)
-        }
+
     }
 }
 
-struct SignUpView_Previews: PreviewProvider {
+struct MockSignUpView_Previews: PreviewProvider {
     static var previews: some View {
-        SignUpView()
+        MockSignUpView()
             .environmentObject(AppStateManager())
     }
 }

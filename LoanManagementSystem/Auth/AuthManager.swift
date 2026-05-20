@@ -21,7 +21,7 @@ public final class AuthManager: ObservableObject {
     @Published public var isAuthenticated: Bool = false
     
     /// The currently signed-in Firebase user, if any.
-    @Published public var currentUser: User? = nil
+    @Published public var currentUser: FirebaseAuth.User? = nil
     
     /// Controls the loading overlay in auth views.
     @Published public var isLoading: Bool = false
