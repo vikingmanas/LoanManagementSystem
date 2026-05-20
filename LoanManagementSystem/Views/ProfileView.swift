@@ -7,6 +7,7 @@ enum ProfileEditSheet: Identifiable {
 
 struct ProfileView: View {
     @EnvironmentObject var appState: AppStateManager
+    @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel = BorrowerProfileViewModel()
     @State private var activeSheet: ProfileEditSheet?
     
@@ -103,6 +104,7 @@ struct ProfileView: View {
                             // Log Out Card
                             Button(action: {
                                 appState.logout()
+                                authManager.signOut()
                             }) {
                                 HStack(spacing: 12) {
                                     ZStack {
@@ -179,5 +181,6 @@ struct ProfileView_Previews: PreviewProvider {
     static var previews: some View {
         ProfileView()
             .environmentObject(AppStateManager())
+            .environmentObject(AuthManager())
     }
 }

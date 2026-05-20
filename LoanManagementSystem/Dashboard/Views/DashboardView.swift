@@ -28,6 +28,7 @@ public struct DashboardView: View {
     @State private var showingForeclosureSheet = false
     @State private var showingSupportSheet = false
     @State private var showingTopUpSheet = false
+    @State private var showingProfileSheet = false
     
     // Transaction Filter State
     @State private var transactionFilter: TransactionType? = nil
@@ -41,8 +42,10 @@ public struct DashboardView: View {
                 VStack(spacing: 20) {
                     
                     // 1. TOP NAVIGATION BAR
-                    TopNavigationBarSection(viewModel: viewModel, authManager: authManager)
-                        .padding(.top, 8)
+                    TopNavigationBarSection(viewModel: viewModel, authManager: authManager) {
+                        showingProfileSheet = true
+                    }
+                    .padding(.top, 8)
                     
                     // 2. PORTFOLIO CARDS
                     PortfolioCardsSection(viewModel: viewModel) { route in
@@ -121,6 +124,9 @@ public struct DashboardView: View {
             .sheet(isPresented: $showingTopUpSheet) {
                 TopUpSheet(viewModel: viewModel)
             }
+            .sheet(isPresented: $showingProfileSheet) {
+                ProfileView()
+            }
         }
     }
 }
@@ -128,7 +134,7 @@ public struct DashboardView: View {
 struct TopNavigationBarSection: View {
     @ObservedObject var viewModel: DashboardViewModel
     @ObservedObject var authManager: AuthManager
-    @State private var showLogoutAlert = false
+    let onProfileTap: () -> Void
     
     var body: some View {
         VStack(spacing: 0) {
@@ -162,9 +168,9 @@ struct TopNavigationBarSection: View {
                     .frame(width: 44, height: 44) // HIG Target
                     .buttonStyle(.plain)
                     
-                    // User Avatar — tap to show logout
+                    // User Avatar — tap to show profile
                     Button {
-                        showLogoutAlert = true
+                        onProfileTap()
                     } label: {
                         ZStack {
                             Circle()
@@ -178,18 +184,10 @@ struct TopNavigationBarSection: View {
                         }
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Profile. Tap to sign out.")
+                    .accessibilityLabel("Profile. Tap to view profile.")
                 }
             }
             .padding(.horizontal, 20)
-        }
-        .alert("Sign Out", isPresented: $showLogoutAlert) {
-            Button("Sign Out", role: .destructive) {
-                authManager.signOut()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Are you sure you want to sign out of your account?")
         }
     }
 }
