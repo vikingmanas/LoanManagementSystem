@@ -85,8 +85,7 @@ class BorrowerProfileViewModel: ObservableObject {
         emergencyContactName: String,
         emergencyContactNumber: String,
         nomineeName: String,
-        nomineeRelationship: String,
-        loanPurposeInterests: [String]
+        nomineeRelationship: String
     ) {
         guard var updatedProfile = profile else { return }
         updatedProfile.occupation = occupation
@@ -97,7 +96,6 @@ class BorrowerProfileViewModel: ObservableObject {
         updatedProfile.emergencyContactNumber = emergencyContactNumber
         updatedProfile.nomineeName = nomineeName
         updatedProfile.nomineeRelationship = nomineeRelationship
-        updatedProfile.loanPurposeInterests = loanPurposeInterests
         
         BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }

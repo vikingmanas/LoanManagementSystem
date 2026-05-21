@@ -31,14 +31,23 @@ struct BorrowerProfile: Codable {
     
     // New Onboarding Questionnaire Fields
     var occupation: String
+    var industry: String
+    var yearsOfExperience: Int
     var hasExistingBankAccount: Bool
     var existingCustomerId: String?
     var preferredBranch: String
+    var existingLoansCount: Int
+    var existingCreditCardsCount: Int
+    var bankingRelationshipDuration: String
+    var averageMonthlyBalance: Double
+    
     var emergencyContactName: String
     var emergencyContactNumber: String
+    var emergencyContactAlternateNumber: String
+    var emergencyContactAddress: String
+    var emergencyContactRelationship: String
     var nomineeName: String
     var nomineeRelationship: String
-    var loanPurposeInterests: [String]
     var isOnboardingCompleted: Bool
     
     var isKYCVerified: Bool {
@@ -144,11 +153,6 @@ struct BorrowerProfile: Codable {
         totalPossible += 5
         if !nomineeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
            !nomineeRelationship.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            completedScore += 5
-        }
-        
-        totalPossible += 5
-        if !loanPurposeInterests.isEmpty {
             completedScore += 5
         }
         

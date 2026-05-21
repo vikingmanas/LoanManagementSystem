@@ -24,7 +24,7 @@ struct SplashScreenView: View {
                         .frame(width: 100, height: 100)
                         .shadow(color: Color.AppTheme.primary.opacity(0.3), radius: 15, x: 0, y: 10)
                     
-                    Image(systemName: "shield.chevron.fill")
+                    Image(systemName: "shield.fill")
                         .foregroundColor(.white)
                         .font(.system(size: 45, weight: .bold))
                 }
