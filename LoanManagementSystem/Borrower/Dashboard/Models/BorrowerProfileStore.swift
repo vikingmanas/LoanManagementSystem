@@ -84,14 +84,22 @@ class BorrowerProfileStore: ObservableObject {
             loanOverview: LoanOverview(activeLoans: 1, loanHistoryCount: 2, nextEmiDueDate: Calendar.current.date(byAdding: .day, value: 15, to: Date()), remainingBalance: 450000.0, currentLoanStatus: "Active"),
             profileImageData: nil,
             occupation: "Senior Software Engineer",
+            industry: "Technology",
+            yearsOfExperience: 8,
             hasExistingBankAccount: true,
             existingCustomerId: "C-109482",
             preferredBranch: "Andheri East Branch",
+            existingLoansCount: 1,
+            existingCreditCardsCount: 1,
+            bankingRelationshipDuration: "2 Years",
+            averageMonthlyBalance: 85000,
             emergencyContactName: "Priya Sharma",
             emergencyContactNumber: "+91 98765 00000",
+            emergencyContactAlternateNumber: "",
+            emergencyContactAddress: "Mumbai",
+            emergencyContactRelationship: "Spouse",
             nomineeName: "Geeta Sharma",
             nomineeRelationship: "Mother",
-            loanPurposeInterests: ["Home", "Business"],
             isOnboardingCompleted: true
         )
 
@@ -175,6 +183,12 @@ class BorrowerProfileStore: ObservableObject {
         saveAccountsToDisk()
     }
 
+    func skipOnboarding() {
+        guard var activeProfile = profile else { return }
+        activeProfile.isOnboardingCompleted = true
+        updateProfile(activeProfile)
+    }
+
     func signOut() {
         self.profile = nil
         self.currentEmail = nil
@@ -205,14 +219,22 @@ class BorrowerProfileStore: ObservableObject {
             loanOverview: LoanOverview(activeLoans: 0, loanHistoryCount: 0, nextEmiDueDate: nil, remainingBalance: 0.0, currentLoanStatus: "Pending Onboarding"),
             profileImageData: nil,
             occupation: "",
+            industry: "",
+            yearsOfExperience: 0,
             hasExistingBankAccount: false,
             existingCustomerId: nil,
             preferredBranch: "",
+            existingLoansCount: 0,
+            existingCreditCardsCount: 0,
+            bankingRelationshipDuration: "",
+            averageMonthlyBalance: 0,
             emergencyContactName: "",
             emergencyContactNumber: "",
+            emergencyContactAlternateNumber: "",
+            emergencyContactAddress: "",
+            emergencyContactRelationship: "",
             nomineeName: "",
             nomineeRelationship: "",
-            loanPurposeInterests: [],
             isOnboardingCompleted: false
         )
     }
