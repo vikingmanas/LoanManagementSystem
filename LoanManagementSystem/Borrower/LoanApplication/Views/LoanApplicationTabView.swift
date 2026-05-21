@@ -16,7 +16,7 @@ struct LoanApplicationTabView: View {
         NavigationStack(path: $navigationPath) {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 20) {
-                    LoanDashboardMetricsSection(metrics: viewModel.dashboardMetrics)
+
 
                     Picker("Loan Hub", selection: $viewModel.selectedSegment) {
                         ForEach(LoanHubSegment.allCases) { segment in
@@ -24,6 +24,7 @@ struct LoanApplicationTabView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    LoanDashboardMetricsSection(metrics: viewModel.dashboardMetrics)
 
                     switch viewModel.selectedSegment {
                     case .discover:
@@ -72,6 +73,36 @@ struct LoanApplicationTabView: View {
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Loan Application")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button("Discover Products", systemImage: "sparkles") {
+                            viewModel.selectedSegment = .discover
+                        }
+                        Button("My Applications", systemImage: "list.bullet.rectangle.portrait") {
+                            viewModel.selectedSegment = .applications
+                        }
+
+                        if let draft = viewModel.draftApplications.first {
+                            Button("Resume Latest Draft", systemImage: "square.and.pencil") {
+                                viewModel.resumeDraft(draft)
+                                viewModel.selectedSegment = .discover
+                                navigationPath.append(LoanApplicationRoute.applicationForm)
+                            }
+                        }
+
+                        if let latest = viewModel.submittedApplications.first {
+                            Button("Track Latest Application", systemImage: "timeline.selection") {
+                                viewModel.selectedSegment = .applications
+                                navigationPath.append(LoanApplicationRoute.tracking(latest.id))
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .accessibilityLabel("Loan quick actions")
+                }
+            }
             .refreshable {
                 await viewModel.refreshDashboard()
             }
@@ -146,13 +177,10 @@ struct LoanApplicationTabView: View {
     }
 }
 
+
+
 private struct LoanDashboardMetricsSection: View {
     let metrics: BorrowerLoanDashboardMetrics
-
-    private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
-    ]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -166,43 +194,47 @@ private struct LoanDashboardMetricsSection: View {
                     .foregroundColor(.secondary)
             }
 
-            LazyVGrid(columns: columns, spacing: 12) {
-                MetricCard(
-                    title: "Active Applications",
-                    value: "\(metrics.activeApplications)",
-                    icon: "clock.badge.checkmark.fill",
-                    tint: .brandNavy
-                )
-                MetricCard(
-                    title: "Draft Applications",
-                    value: "\(metrics.draftApplications)",
-                    icon: "square.and.pencil",
-                    tint: .orange
-                )
-                MetricCard(
-                    title: "Approved Loans",
-                    value: "\(metrics.approvedLoans)",
-                    icon: "checkmark.seal.fill",
-                    tint: .brandEmerald
-                )
-                MetricCard(
-                    title: "Rejected Loans",
-                    value: "\(metrics.rejectedLoans)",
-                    icon: "xmark.octagon.fill",
-                    tint: .brandCoral
-                )
-                MetricCard(
-                    title: "Outstanding Balance",
-                    value: metrics.outstandingBalance.formattedAsINR(),
-                    icon: "wallet.bifold.fill",
-                    tint: .brandNavy
-                )
-                MetricCard(
-                    title: "Upcoming EMIs",
-                    value: metrics.upcomingEMIs.formattedAsINR(),
-                    icon: "calendar.badge.clock",
-                    tint: .orange
-                )
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    MetricCard(
+                        title: "Active Applications",
+                        value: "\(metrics.activeApplications)",
+                        icon: "clock.badge.checkmark.fill",
+                        tint: .brandNavy
+                    )
+                    MetricCard(
+                        title: "Draft Applications",
+                        value: "\(metrics.draftApplications)",
+                        icon: "square.and.pencil",
+                        tint: .orange
+                    )
+                    MetricCard(
+                        title: "Approved Loans",
+                        value: "\(metrics.approvedLoans)",
+                        icon: "checkmark.seal.fill",
+                        tint: .brandEmerald
+                    )
+                    MetricCard(
+                        title: "Rejected Loans",
+                        value: "\(metrics.rejectedLoans)",
+                        icon: "xmark.octagon.fill",
+                        tint: .brandCoral
+                    )
+                    MetricCard(
+                        title: "Outstanding Balance",
+                        value: metrics.outstandingBalance.formattedAsINR(),
+                        icon: "wallet.bifold.fill",
+                        tint: .brandNavy
+                    )
+                    MetricCard(
+                        title: "Upcoming EMIs",
+                        value: metrics.upcomingEMIs.formattedAsINR(),
+                        icon: "calendar.badge.clock",
+                        tint: .orange
+                    )
+                }
+                .padding(.horizontal, 2)
+                .padding(.vertical, 4)
             }
         }
     }
@@ -215,22 +247,32 @@ private struct MetricCard: View {
     let tint: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(tint)
-            Text(value)
-                .font(.system(.headline, design: .rounded))
-                .fontWeight(.bold)
-            Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(tint)
+                    .padding(8)
+                    .background(tint.opacity(0.12), in: Circle())
+                Spacer()
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(value)
+                    .font(.system(.title3, design: .rounded))
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
+        .frame(width: 140, alignment: .leading)
+        .padding(16)
         .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 3)
     }
 }
 
@@ -288,60 +330,56 @@ private struct LoanProductCatalogSection: View {
                 .font(.headline)
 
             ForEach(products) { product in
-                Button {
-                    onOpenOverview(product)
-                } label: {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(alignment: .center) {
-                            Label(product.type.title, systemImage: product.type.iconName)
-                                .font(.headline)
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Text(product.interestRateRange)
-                                .font(.caption.weight(.semibold))
-                                .foregroundColor(.brandNavy)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(Color.brandNavy.opacity(0.10), in: Capsule())
-                        }
-
-                        Text(product.shortDescription)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.leading)
-
-                        VStack(spacing: 8) {
-                            ProductDataPoint(label: "Max Loan", value: product.maximumAmount.formattedAsINR())
-                            ProductDataPoint(label: "Processing Time", value: product.estimatedProcessingTime)
-                            ProductDataPoint(label: "Eligibility", value: product.eligibilitySnapshot)
-                        }
-
-                        HStack {
-                            Text("Tap for full overview")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Button("Quick Apply") {
-                                onQuickStart(product)
-                            }
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .center) {
+                        Label(product.type.title, systemImage: product.type.iconName)
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Text(product.interestRateRange)
                             .font(.caption.weight(.semibold))
-                            .buttonStyle(.borderedProminent)
-                            .tint(.brandNavy)
+                            .foregroundColor(.brandNavy)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color.brandNavy.opacity(0.10), in: Capsule())
+                    }
+
+                    Text(product.shortDescription)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.leading)
+
+                    VStack(spacing: 8) {
+                        ProductDataPoint(label: "Max Loan", value: product.maximumAmount.formattedAsINR())
+                        ProductDataPoint(label: "Processing Time", value: product.estimatedProcessingTime)
+                        ProductDataPoint(label: "Eligibility", value: product.eligibilitySnapshot)
+                    }
+
+                    HStack(spacing: 10) {
+                        Button {
+                            onOpenOverview(product)
+                        } label: {
+                            Label("View Details", systemImage: "doc.text.magnifyingglass")
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 42)
                         }
+                        .buttonStyle(.bordered)
+                        .tint(.brandNavy)
+
+                        Button {
+                            onQuickStart(product)
+                        } label: {
+                            Label("Apply", systemImage: "paperplane.fill")
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 42)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.brandNavy)
                     }
-                    .padding(14)
-                    .background(Color(.secondarySystemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
-                .buttonStyle(.plain)
-                .contextMenu {
-                    Button("Start Application", systemImage: "paperplane.fill") {
-                        onQuickStart(product)
-                    }
-                    Button("View Details", systemImage: "doc.text.magnifyingglass") {
-                        onOpenOverview(product)
-                    }
-                }
+                .padding(14)
+                .background(Color(.secondarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
         }
     }
@@ -374,6 +412,9 @@ private struct ApplicationFilterSection: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Application Tracking")
                 .font(.headline)
+            Text("Filter by status to quickly find and manage your applications.")
+                .font(.caption)
+                .foregroundColor(.secondary)
             Picker("Filter", selection: $selectedFilter) {
                 ForEach(BorrowerApplicationFilter.allCases) { filter in
                     Text(filter.rawValue).tag(filter)
@@ -403,37 +444,58 @@ private struct BorrowerApplicationsSection: View {
                 .padding(.vertical, 30)
             } else {
                 ForEach(applications) { application in
-                    Button {
-                        onOpen(application)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack {
-                                Text(application.displayIdentifier)
-                                    .font(.caption.monospaced())
-                                    .foregroundColor(.secondary)
-                                Spacer()
-                                StageBadge(stage: application.currentStage)
-                            }
-
-                            Text(application.product.type.title)
-                                .font(.headline)
-                                .foregroundColor(.primary)
-
-                            HStack(spacing: 16) {
-                                Label(application.formData.requestedAmountValue.formattedAsINR(), systemImage: "indianrupeesign.circle")
-                                Label(application.submittedAt?.formattedAsDDMMMYYYY() ?? "-", systemImage: "calendar")
-                            }
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                            ProgressView(value: progressProvider(application))
-                                .tint(Color.brandNavy)
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text(application.displayIdentifier)
+                                .font(.caption.monospaced())
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            StageBadge(stage: application.currentStage)
                         }
-                        .padding(14)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                        Text(application.product.type.title)
+                            .font(.headline)
+                            .foregroundColor(.primary)
+
+                        HStack(spacing: 16) {
+                            Label(application.formData.requestedAmountValue.formattedAsINR(), systemImage: "indianrupeesign.circle")
+                            Label(application.submittedAt?.formattedAsDDMMMYYYY() ?? "-", systemImage: "calendar")
+                        }
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                        ProgressView(value: progressProvider(application))
+                            .tint(Color.brandNavy)
+
+                        HStack(spacing: 10) {
+                            Button {
+                                onOpen(application)
+                            } label: {
+                                Label("Track", systemImage: "timeline.selection")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.brandNavy)
+
+                            if !application.currentStage.isTerminal {
+                                Menu {
+                                    Button("Advance Status", systemImage: "arrow.right.circle.fill") {
+                                        onAdvance(application)
+                                    }
+                                    Button("Mark Rejected", systemImage: "xmark.circle.fill", role: .destructive) {
+                                        onReject(application)
+                                    }
+                                } label: {
+                                    Label("Update", systemImage: "ellipsis.circle")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
                     }
-                    .buttonStyle(.plain)
+                    .padding(14)
+                    .background(Color(.secondarySystemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .contextMenu {
                         if !application.currentStage.isTerminal {
                             Button("Advance Status", systemImage: "arrow.right.circle.fill") {
@@ -443,9 +505,7 @@ private struct BorrowerApplicationsSection: View {
                                 onReject(application)
                             }
                         }
-                        Button("Open Timeline", systemImage: "timeline.selection") {
-                            onOpen(application)
-                        }
+                        Button("Open Timeline", systemImage: "timeline.selection") { onOpen(application) }
                     }
                 }
             }
@@ -607,6 +667,8 @@ private struct LoanOverviewScreen: View {
 private struct LoanApplicationFormScreen: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let onContinue: () -> Void
+    
+    @FocusState private var isInputActive: Bool
 
     var body: some View {
         Form {
@@ -635,21 +697,25 @@ private struct LoanApplicationFormScreen: View {
 
             Section("Personal Information") {
                 TextField("Full Name", text: $viewModel.formData.fullName)
+                    .focused($isInputActive)
                     .textInputAutocapitalization(.words)
                 FieldErrorView(message: viewModel.validationMessage(for: .fullName))
 
                 DatePicker("Date of Birth", selection: $viewModel.formData.dateOfBirth, in: ...Date(), displayedComponents: .date)
 
                 TextField("Mobile Number", text: $viewModel.formData.mobileNumber)
+                    .focused($isInputActive)
                     .keyboardType(.phonePad)
                 FieldErrorView(message: viewModel.validationMessage(for: .mobileNumber))
 
                 TextField("Email Address", text: $viewModel.formData.emailAddress)
+                    .focused($isInputActive)
                     .keyboardType(.emailAddress)
                     .textInputAutocapitalization(.never)
                 FieldErrorView(message: viewModel.validationMessage(for: .emailAddress))
 
                 TextField("Current Address", text: $viewModel.formData.address, axis: .vertical)
+                    .focused($isInputActive)
                 FieldErrorView(message: viewModel.validationMessage(for: .address))
             }
 
@@ -663,9 +729,11 @@ private struct LoanApplicationFormScreen: View {
                 }
 
                 TextField("Occupation", text: $viewModel.formData.occupation)
+                    .focused($isInputActive)
                 FieldErrorView(message: viewModel.validationMessage(for: .occupation))
 
                 TextField("Employer Name", text: $viewModel.formData.employerName)
+                    .focused($isInputActive)
                 FieldErrorView(message: viewModel.validationMessage(for: .employerName))
 
                 Stepper("Work Experience: \(viewModel.formData.workExperienceYears) years", value: $viewModel.formData.workExperienceYears, in: 0...40)
@@ -675,11 +743,13 @@ private struct LoanApplicationFormScreen: View {
 
             Section {
                 TextField("Monthly Income", text: $viewModel.formData.monthlyIncome)
+                    .focused($isInputActive)
                     .keyboardType(.decimalPad)
                 FieldErrorView(message: viewModel.validationMessage(for: .monthlyIncome))
 
                 infoLabelRow("Annual Income", .annualIncome) {
                     TextField("Annual Income", text: $viewModel.formData.annualIncome)
+                        .focused($isInputActive)
                         .keyboardType(.decimalPad)
                 }
                 FieldErrorView(message: viewModel.validationMessage(for: .annualIncome))
@@ -687,16 +757,20 @@ private struct LoanApplicationFormScreen: View {
                 infoLabelRow("Existing Liabilities", .existingLiabilities) {
                     Group {
                         TextField("Existing Loans (count or amount)", text: $viewModel.formData.existingLoans)
+                            .focused($isInputActive)
                             .keyboardType(.decimalPad)
                         TextField("Existing EMIs", text: $viewModel.formData.existingEMIs)
+                            .focused($isInputActive)
                             .keyboardType(.decimalPad)
                         TextField("Credit Card Obligations", text: $viewModel.formData.creditCardObligations)
+                            .focused($isInputActive)
                             .keyboardType(.decimalPad)
                     }
                 }
 
                 infoLabelRow("Credit Score", .creditScore) {
                     TextField("Credit Score", text: $viewModel.formData.creditScore)
+                        .focused($isInputActive)
                         .keyboardType(.numberPad)
                 }
             } header: {
@@ -705,10 +779,12 @@ private struct LoanApplicationFormScreen: View {
 
             Section {
                 TextField("Loan Amount Requested", text: $viewModel.formData.loanAmountRequested)
+                    .focused($isInputActive)
                     .keyboardType(.decimalPad)
                 FieldErrorView(message: viewModel.validationMessage(for: .loanAmountRequested))
 
                 TextField("Loan Purpose", text: $viewModel.formData.loanPurpose, axis: .vertical)
+                    .focused($isInputActive)
                 FieldErrorView(message: viewModel.validationMessage(for: .loanPurpose))
 
                 Picker("Repayment Preference", selection: $viewModel.formData.repaymentPreference) {
@@ -743,6 +819,7 @@ private struct LoanApplicationFormScreen: View {
                 if viewModel.formData.hasCoApplicant {
                     infoLabelRow("Co-applicant Details", .coApplicant) {
                         TextField("Name, relationship, income summary", text: $viewModel.formData.coApplicantDetails, axis: .vertical)
+                            .focused($isInputActive)
                     }
                     FieldErrorView(message: viewModel.validationMessage(for: .coApplicantDetails))
                 }
@@ -750,6 +827,7 @@ private struct LoanApplicationFormScreen: View {
                 Toggle("Include Guarantor", isOn: $viewModel.formData.hasGuarantor)
                 if viewModel.formData.hasGuarantor {
                     TextField("Guarantor Details", text: $viewModel.formData.guarantorDetails, axis: .vertical)
+                        .focused($isInputActive)
                     FieldErrorView(message: viewModel.validationMessage(for: .guarantorDetails))
                 }
             }
@@ -778,6 +856,14 @@ private struct LoanApplicationFormScreen: View {
         }
         .navigationTitle("Application Form")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    isInputActive = false
+                }
+            }
+        }
         .onChange(of: viewModel.formData) { _ in
             viewModel.autosaveDraft()
         }

@@ -68,7 +68,10 @@ public final class DashboardViewModel: ObservableObject {
         // Simulate a 1.5s network latency delay
         do {
             try await Task.sleep(nanoseconds: 1_500_000_000)
-        } catch {}
+            try Task.checkCancellation()
+        } catch {
+            return
+        }
         
         // Prepopulate data
         self.loanAccounts = [

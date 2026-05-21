@@ -39,7 +39,7 @@ public struct DashboardView: View {
     public var body: some View {
         NavigationStack(path: $navigationPath) {
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 20) {
+                VStack(spacing: DashboardSpacing.sectionVertical) {
                     
                     // 1. TOP NAVIGATION BAR
                     TopNavigationBarSection(viewModel: viewModel, authManager: authManager) {
@@ -49,19 +49,20 @@ public struct DashboardView: View {
                     
                     // 1b. CUSTOMER INSIGHT & COMPLETION
                     if let profile = BorrowerProfileStore.shared.profile {
-                        VStack(spacing: 16) {
+                        VStack(spacing: 12) {
                             if profile.profileCompletionPercentage < 100 {
                                 ProfileCompletionBanner(percentage: profile.profileCompletionPercentage) {
                                     showingProfileSheet = true
                                 }
+                                .padding(.horizontal, DashboardSpacing.screenHorizontal)
                             }
                             
                             if profile.hasExistingBankAccount, profile.existingCustomerId != nil {
                                 CustomerInsightCardView(profile: profile)
-                                    .padding(.horizontal, 20)
+                                    .padding(.horizontal, DashboardSpacing.screenHorizontal)
                             }
                         }
-                        .padding(.bottom, 8)
+                        .padding(.bottom, 4)
                     }
                     
                     // 2. PORTFOLIO CARDS
@@ -71,7 +72,6 @@ public struct DashboardView: View {
                     
                     // 2b. ACCOUNT HEALTH BANNER (Moved here below Portfolio)
                     AccountHealthBanner(viewModel: viewModel)
-                        .padding(.vertical, 4)
                     
                     // 3. QUICK ACTION CHIPS
                     QuickActionChipsSection(
@@ -100,9 +100,10 @@ public struct DashboardView: View {
                     }
                     
                 }
-                .padding(.bottom, 32)
+                .padding(.top, 8)
+                .padding(.bottom, DashboardSpacing.sectionVertical)
             }
-            .background(Color(.systemBackground))
+            .background(Color(.systemGroupedBackground))
             .refreshable {
                 await viewModel.fetchDashboardData()
             }
@@ -182,49 +183,42 @@ struct TopNavigationBarSection: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header Row
             HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Hello, \(displayFirstName) 👋")
-                        .font(.system(.subheadline, design: .rounded))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Hello, \(displayFirstName)")
+                        .font(.subheadline.weight(.medium))
                         .foregroundColor(Color(.secondaryLabel))
                     
-                    HStack(spacing: 8) {
-                        Text("Dashboard")
-                            .font(.title)
-                            .fontWeight(.bold)
-                            .foregroundColor(Color(.label))
-                        
-                        if let cid = customerId {
-                            Text(cid)
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(Color.brandNavy.opacity(0.85))
-                                .cornerRadius(6)
-                        }
+                    Text("Loan Dashboard")
+                        .font(.title2.weight(.bold))
+                        .foregroundColor(Color(.label))
+                    
+                    if let cid = customerId {
+                        Text(cid)
+                            .font(.caption.monospaced())
+                            .fontWeight(.semibold)
+                            .foregroundColor(.brandNavy)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.brandNavy.opacity(0.11), in: Capsule())
                     }
                 }
                 
                 Spacer()
                 
                 HStack(spacing: 14) {
-                    // Notification Bell Button
                     Button {
                         // Action
                     } label: {
-                        ZStack {
-                            Image(systemName: "bell.badge.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(Color.brandNavy)
-                                .symbolRenderingMode(.multicolor)
-                        }
+                        Image(systemName: "bell.badge.fill")
+                            .font(.title3)
+                            .foregroundColor(Color.brandNavy)
+                            .symbolRenderingMode(.multicolor)
                     }
-                    .frame(width: 44, height: 44) // HIG Target
-                    .buttonStyle(.plain)
+                    .frame(width: 44, height: 44)
+                    .background(Color(.secondarySystemBackground), in: Circle())
+                    .buttonStyle(DashboardPressableStyle())
                     
-                    // User Avatar — tap to show profile
                     Button {
                         onProfileTap()
                     } label: {
@@ -239,11 +233,12 @@ struct TopNavigationBarSection: View {
                                 .foregroundColor(.white)
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(DashboardPressableStyle())
                     .accessibilityLabel("Profile. Tap to view profile.")
+                    .accessibilityAddTraits(.isButton)
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, DashboardSpacing.screenHorizontal)
         }
     }
 }
@@ -260,9 +255,9 @@ struct AccountHealthBanner: View {
         } label: {
             HStack {
                 if viewModel.isLoading {
-                    RoundedRectangle(cornerRadius: 14)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(Color(.secondarySystemBackground))
-                        .frame(height: 48)
+                        .frame(height: 56)
                         .shimmer(active: true)
                 } else if viewModel.isLowBalance {
                     HStack(spacing: 10) {
@@ -279,10 +274,10 @@ struct AccountHealthBanner: View {
                             .scaleEffect(pulseBanner ? 1.01 : 0.99)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 14)
                     .background(Color.brandCoral)
-                    .cornerRadius(14)
+                    .cornerRadius(18)
                     .shadow(color: Color.brandCoral.opacity(0.3), radius: 8, x: 0, y: 4)
                     .onAppear {
                         withAnimation(Animation.easeInOut(duration: 0.85).repeatForever(autoreverses: true)) {
@@ -305,14 +300,15 @@ struct AccountHealthBanner: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .background(Color.brandEmerald)
-                    .cornerRadius(14)
+                    .cornerRadius(18)
                     .shadow(color: Color.brandEmerald.opacity(0.2), radius: 6, x: 0, y: 3)
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, DashboardSpacing.screenHorizontal)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(DashboardPressableStyle())
         .accessibilityLabel("Account balance health notification banner. Tap to toggle mock balance state.")
+        .accessibilityAddTraits(.isButton)
     }
 }
 
@@ -365,27 +361,22 @@ struct ProfileCompletionBanner: View {
 struct PortfolioCardsSection: View {
     @ObservedObject var viewModel: DashboardViewModel
     let onNavigate: (DashboardRoute) -> Void
+    @State private var showingPlaceholderAlert = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("My Portfolio")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(Color(.label))
-                
-                Spacer()
-                
-                Button("See All") {
-                    // Action
-                }
-                .font(.title3)
-                .fontWeight(.bold)
-                .foregroundColor(.blue)
-                .frame(minWidth: 44, minHeight: 44) // HIG
+        SectionContainer(title: "My Portfolio", subtitle: "Loans, linked bank accounts, and protection cover") {
+            Button("See All") {
+                showingPlaceholderAlert = true
             }
-            .padding(.horizontal, 20)
-            
+            .font(.footnote.weight(.semibold))
+            .foregroundColor(.brandNavy)
+            .frame(minWidth: 44, minHeight: 44)
+            .alert("Coming Soon", isPresented: $showingPlaceholderAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("This feature is currently under development.")
+            }
+        } content: {
             PortfolioCarouselView(
                 viewModel: viewModel,
                 onNavigateToLoan: { loan in
@@ -414,15 +405,17 @@ struct QuickActionChipsSection: View {
     let onTopUp: () -> Void
     
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-                QuickActionChip(icon: "arrow.up.circle.fill", title: "Pay EMI", action: onPay)
-                QuickActionChip(icon: "doc.text.fill", title: "Statement", action: onStatement)
-                QuickActionChip(icon: "waveform.path.ecg", title: "Foreclosure", action: onForeclosure)
-                QuickActionChip(icon: "person.fill.questionmark", title: "Support", action: onSupport)
-                QuickActionChip(icon: "plus.circle.fill", title: "Top-Up", action: onTopUp)
+        SectionContainer(title: "Quick Actions", subtitle: "Most-used account actions") {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    QuickActionChip(icon: "arrow.up.circle.fill", title: "Pay EMI", action: onPay)
+                    QuickActionChip(icon: "doc.text.fill", title: "Statement", action: onStatement)
+                    QuickActionChip(icon: "waveform.path.ecg", title: "Foreclosure", action: onForeclosure)
+                    QuickActionChip(icon: "person.fill.questionmark", title: "Support", action: onSupport)
+                    QuickActionChip(icon: "plus.circle.fill", title: "Top-Up", action: onTopUp)
+                }
+                .padding(.horizontal, 1)
             }
-            .padding(.horizontal, 20)
         }
     }
 }
@@ -436,24 +429,22 @@ struct QuickActionChip: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.system(size: 16))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundColor(.brandNavy)
                 
                 Text(title)
-                    .font(.system(.callout, design: .rounded))
-                    .fontWeight(.semibold)
+                    .font(.subheadline.weight(.semibold))
                     .foregroundColor(Color(.label))
             }
-            .padding(.horizontal, 16)
-            .frame(height: 44) // Tap target compliance
-            .background(Color(.systemGray6).opacity(0.8))
-            .cornerRadius(22)
+            .padding(.horizontal, 14)
+            .frame(height: 42)
+            .background(Color(.secondarySystemBackground), in: Capsule())
             .overlay(
-                RoundedRectangle(cornerRadius: 22)
-                    .stroke(Color(.separator), lineWidth: 0.5)
+                Capsule()
+                    .stroke(Color(.separator).opacity(0.25), lineWidth: 0.5)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(DashboardPressableStyle())
     }
 }
 
@@ -464,86 +455,67 @@ struct TransactionsHistorySection: View {
     let onViewAll: () -> Void
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Recent Transactions")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(Color(.label))
-                
-                Spacer()
-                
-                // Filter dropdown
-                Menu {
-                    Button("All Transactions") { filter = nil }
-                    Divider()
-                    Button("EMI Payments") { filter = .emiPayment }
-                    Button("Credits") { filter = .credit }
-                    Button("Penalties") { filter = .penalty }
-                    Button("Refunds") { filter = .refund }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(filter == nil ? "Filter" : filter!.rawValue)
-                            .font(.system(.subheadline, design: .rounded))
-                            .fontWeight(.medium)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 8, weight: .bold))
-                    }
-                    .foregroundColor(.blue)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(10)
+        SectionContainer(title: "Recent Transactions", subtitle: "Repayments, penalties, credits and refunds") {
+            Menu {
+                Button("All Transactions") { filter = nil }
+                Divider()
+                Button("EMI Payments") { filter = .emiPayment }
+                Button("Credits") { filter = .credit }
+                Button("Penalties") { filter = .penalty }
+                Button("Refunds") { filter = .refund }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(filter == nil ? "Filter" : filter!.rawValue)
+                        .font(.subheadline.weight(.medium))
+                    Image(systemName: "chevron.down")
+                        .font(.caption2.weight(.bold))
                 }
+                .foregroundColor(.brandNavy)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(Color(.secondarySystemBackground), in: Capsule())
             }
-            .padding(.horizontal, 20)
-            
-            VStack(spacing: 0) {
-                if viewModel.isLoading {
-                    ForEach(0..<4) { _ in
-                        TransactionRowSkeleton()
-                        Divider().padding(.horizontal, 20)
-                    }
-                } else {
-                    let filtered = viewModel.transactions.filter { tx in
-                        guard let filter = filter else { return true }
-                        return tx.type == filter
-                    }
-                    
-                    if filtered.isEmpty {
-                        // iOS 17 Empty State
-                        ContentUnavailableView("No transactions found", systemImage: "list.bullet.rectangle.portrait", description: Text("Try changing your filter settings to view other transaction types."))
-                            .frame(height: 160)
+        } content: {
+            VStack(spacing: 12) {
+                VStack(spacing: 0) {
+                    if viewModel.isLoading {
+                        ForEach(0..<4) { _ in
+                            TransactionRowSkeleton()
+                            Divider().padding(.horizontal, 20)
+                        }
                     } else {
-                        ForEach(filtered.prefix(5)) { tx in
-                            TransactionRowView(transaction: tx)
-                            if tx.id != filtered.prefix(5).last?.id {
-                                Divider()
-                                    .padding(.horizontal, 20)
+                        let filtered = viewModel.transactions.filter { tx in
+                            guard let filter = filter else { return true }
+                            return tx.type == filter
+                        }
+                        
+                        if filtered.isEmpty {
+                            // iOS 17 Empty State
+                            ContentUnavailableView("No transactions found", systemImage: "list.bullet.rectangle.portrait", description: Text("Try changing your filter settings to view other transaction types."))
+                                .frame(height: 160)
+                        } else {
+                            ForEach(filtered.prefix(5)) { tx in
+                                TransactionRowView(transaction: tx)
+                                if tx.id != filtered.prefix(5).last?.id {
+                                    Divider()
+                                        .padding(.horizontal, 20)
+                                }
                             }
                         }
                     }
                 }
-            }
-            .background(Color(.secondarySystemBackground).opacity(0.4))
-            .cornerRadius(20)
-            .padding(.horizontal, 20)
-            
-            if !viewModel.isLoading && viewModel.transactions.count > 5 {
-                Button(action: onViewAll) {
-                    HStack(spacing: 6) {
-                        Spacer()
-                        Image(systemName: "list.bullet.rectangle")
-                            .font(.system(size: 14))
-                        Text("View All Transactions")
-                            .font(.system(.callout, design: .rounded))
-                            .fontWeight(.semibold)
-                        Spacer()
-                    }
-                    .foregroundColor(.blue)
-                    .frame(height: 44)
+                .padding(.horizontal, 1)
+                .dashboardCardStyle()
+                
+                if !viewModel.isLoading && viewModel.transactions.count > 5 {
+                    Button("View All Transactions", action: onViewAll)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundColor(.brandNavy)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 42)
+                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .buttonStyle(DashboardPressableStyle())
                 }
-                .buttonStyle(.plain)
             }
         }
     }
@@ -553,29 +525,24 @@ struct TransactionsHistorySection: View {
 struct GovernmentSchemesSection: View {
     @ObservedObject var viewModel: DashboardViewModel
     let onSchemeTap: (GovernmentScheme) -> Void
+    @State private var showingPlaceholderAlert = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Active Schemes & Offers")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(Color(.label))
-                
-                Spacer()
-                
-                Button("Explore All") {
-                    // Action
-                }
-                .font(.system(.subheadline, design: .rounded))
-                .fontWeight(.bold)
-                .foregroundColor(.blue)
-                .frame(minWidth: 44, minHeight: 44)
+        SectionContainer(title: "Active Schemes & Offers", subtitle: "Government + partner-backed opportunities") {
+            Button("Explore All") {
+                showingPlaceholderAlert = true
             }
-            .padding(.horizontal, 20)
-            
+            .font(.footnote.weight(.semibold))
+            .foregroundColor(.brandNavy)
+            .frame(minWidth: 44, minHeight: 44)
+            .alert("Coming Soon", isPresented: $showingPlaceholderAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("This feature is currently under development.")
+            }
+        } content: {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
+                HStack(spacing: 12) {
                     if viewModel.isLoading {
                         ForEach(0..<3) { _ in
                             SchemeCardSkeleton()
@@ -589,12 +556,11 @@ struct GovernmentSchemesSection: View {
                                     onSchemeTap(scheme)
                                 }
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(DashboardPressableStyle())
                         }
                     }
                 }
             }
-            .contentMargins(.horizontal, 20, for: .scrollContent)
         }
     }
 }
@@ -697,6 +663,7 @@ struct StatementSheet: View {
 
 struct ForeclosureSheet: View {
     @Environment(\.dismiss) var dismiss
+    @State private var showingToast = false
     
     var body: some View {
         NavigationStack {
@@ -715,7 +682,7 @@ struct ForeclosureSheet: View {
                     .padding()
                 
                 Button {
-                    dismiss()
+                    showingToast = true
                 } label: {
                     Text("Schedule Callback")
                         .foregroundColor(.white)
@@ -734,20 +701,35 @@ struct ForeclosureSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
+            .alert("Callback Scheduled", isPresented: $showingToast) {
+                Button("OK", role: .cancel) { dismiss() }
+            } message: {
+                Text("A credit advisor will call you within 24 hours.")
+            }
         }
     }
 }
 
 struct SupportSheet: View {
     @Environment(\.dismiss) var dismiss
+    @State private var showingToast = false
     
     var body: some View {
         NavigationStack {
             List {
                 Section(header: Text("Contact Channels")) {
-                    Label("Call Support: 1800-BANK-LOAN", systemImage: "phone.fill")
-                    Label("Email: support@brandbank.com", systemImage: "envelope.fill")
-                    Label("Live chat assistant", systemImage: "message.fill")
+                    Button(action: { showingToast = true }) {
+                        Label("Call Support: 1800-BANK-LOAN", systemImage: "phone.fill")
+                    }
+                    .foregroundColor(.primary)
+                    Button(action: { showingToast = true }) {
+                        Label("Email: support@brandbank.com", systemImage: "envelope.fill")
+                    }
+                    .foregroundColor(.primary)
+                    Button(action: { showingToast = true }) {
+                        Label("Live chat assistant", systemImage: "message.fill")
+                    }
+                    .foregroundColor(.primary)
                 }
                 Section(header: Text("FAQs")) {
                     Text("How to reschedule EMIs?")
@@ -761,6 +743,11 @@ struct SupportSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
                 }
+            }
+            .alert("Connecting...", isPresented: $showingToast) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Support services are currently offline in this mock environment.")
             }
         }
     }
@@ -823,7 +810,7 @@ struct LoanDetailsView: View {
             VStack(alignment: .leading, spacing: 20) {
                 // Header block
                 ZStack {
-                    LinearGradient(colors: [Color.brandNavy, Color(hex: "#2E3B84")], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    LinearGradient(colors: [Color.brandNavy, Color.brandNavyDark], startPoint: .topLeading, endPoint: .bottomTrailing)
                     
                     VStack(spacing: 12) {
                         Text(loan.loanType.uppercased())
@@ -881,7 +868,7 @@ struct BankDetailsView: View {
             VStack(spacing: 20) {
                 // Header Card
                 ZStack {
-                    LinearGradient(colors: [Color.brandEmerald, Color(hex: "#009E86")], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    LinearGradient(colors: [Color.brandEmerald, Color.brandEmeraldDark], startPoint: .topLeading, endPoint: .bottomTrailing)
                     
                     VStack(spacing: 12) {
                         Text(bank.accountType.rawValue.uppercased())
@@ -1061,3 +1048,4 @@ struct DetailMetricRow: View {
         .padding(.vertical, 4)
     }
 }
+

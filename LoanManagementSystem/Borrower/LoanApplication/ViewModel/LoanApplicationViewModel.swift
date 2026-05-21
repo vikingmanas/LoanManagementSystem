@@ -321,7 +321,20 @@ final class LoanApplicationViewModel: ObservableObject {
         lastDraftSavedAt = Date()
     }
 
+    private var autosaveTask: Task<Void, Never>?
+
     func autosaveDraft() {
+        autosaveTask?.cancel()
+        autosaveTask = Task { @MainActor in
+            do {
+                try await Task.sleep(nanoseconds: 500_000_000)
+                guard !Task.isCancelled else { return }
+                self.performAutosave()
+            } catch {}
+        }
+    }
+
+    private func performAutosave() {
         guard let currentDraftID,
               let draftIndex = applications.firstIndex(where: { $0.id == currentDraftID }) else {
             return
@@ -352,9 +365,9 @@ final class LoanApplicationViewModel: ObservableObject {
             return formData.monthlyIncomeValue > 0 ? nil : "Monthly income must be greater than 0."
         case .annualIncome:
             guard formData.annualIncomeValue > 0 else { return "Annual income must be greater than 0." }
-            return formData.annualIncomeValue >= formData.monthlyIncomeValue * 6
+            return formData.annualIncomeValue >= formData.monthlyIncomeValue * 2
                 ? nil
-                : "Annual income appears inconsistent with monthly income."
+                : "Annual income appears unusually low compared to monthly income."
         case .loanAmountRequested:
             guard formData.requestedAmountValue > 0 else { return "Requested amount must be greater than 0." }
             if let product = selectedProduct, formData.requestedAmountValue > product.maximumAmount {

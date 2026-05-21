@@ -11,6 +11,7 @@ struct UserAccount: Codable {
     var profile: BorrowerProfile?
 }
 
+@MainActor
 class BorrowerProfileStore: ObservableObject {
     static let shared = BorrowerProfileStore()
 

@@ -22,7 +22,7 @@ public struct TransactionRowView: View {
     }
     
     public var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 14) {
             // Icon
             ZStack {
                 Circle()
@@ -30,23 +30,23 @@ public struct TransactionRowView: View {
                     .frame(width: 44, height: 44)
                 
                 Image(systemName: iconName)
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.title3.weight(.semibold))
                     .foregroundColor(iconColor)
             }
             
             // Text Column
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(transaction.title)
-                    .font(.system(.callout, design: .rounded))
+                    .font(.subheadline.weight(.semibold))
                     .fontWeight(.semibold)
                     .foregroundColor(Color(.label))
                 
                 Text(formattedDateTime)
-                    .font(.system(.caption, design: .rounded))
+                    .font(.caption)
                     .foregroundColor(Color(.secondaryLabel))
                 
                 Text("Ref: \(transaction.referenceNo)")
-                    .font(.system(.caption2, design: .monospaced))
+                    .font(.caption2.monospaced())
                     .foregroundColor(Color(.tertiaryLabel))
             }
             
@@ -54,8 +54,8 @@ public struct TransactionRowView: View {
             
             // Amount
             Text(amountText)
-                .font(.system(.callout, design: .rounded))
-                .fontWeight(.bold)
+                .font(.subheadline.weight(.bold))
+                .monospacedDigit()
                 .foregroundColor(amountColor)
             
             // Chevron
@@ -63,8 +63,8 @@ public struct TransactionRowView: View {
                 .font(.system(size: 12, weight: .bold))
                 .foregroundColor(Color(.tertiaryLabel))
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
         .contentShape(Rectangle())
     }
     
