@@ -2,6 +2,8 @@ import SwiftUI
 
 struct LoanOfficerProfileView: View {
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var appState: AppStateManager
+    @EnvironmentObject var authManager: AuthManager
     
     var body: some View {
         NavigationStack {
@@ -155,6 +157,8 @@ struct LoanOfficerProfileView: View {
                     Button(action: {
                         HapticsManager.triggerImpact(style: .medium)
                         dismiss()
+                        appState.logout()
+                        authManager.signOut()
                     }) {
                         Text("Log Out Session")
                             .font(.system(.subheadline, design: .rounded).bold())

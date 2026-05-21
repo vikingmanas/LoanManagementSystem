@@ -1,6 +1,12 @@
 import Foundation
 
 struct LoanOfficerMockData {
+    typealias LoanApplication = OfficerLoanApplication
+    typealias LoanType = OfficerLoanType
+    typealias ApplicationStatus = OfficerApplicationStatus
+    typealias DocumentStatus = OfficerDocumentStatus
+    typealias DocumentType = OfficerDocumentType
+    
     static let branchName = "Bengaluru"
     static let officerName = "Arjun"
     

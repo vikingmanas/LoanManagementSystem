@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct LoanHistoryTabView: View {
+    typealias LoanApplication = OfficerLoanApplication
+    typealias LoanType = OfficerLoanType
+    typealias ApplicationStatus = OfficerApplicationStatus
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     
     @State private var isSearchExpanded = false
@@ -393,6 +396,7 @@ struct DropdownChip: View {
 
 // Mock detailed loan view
 struct LoanDetailMockView: View {
+    typealias LoanApplication = OfficerLoanApplication
     let app: LoanApplication
     @Environment(\.dismiss) var dismiss
     

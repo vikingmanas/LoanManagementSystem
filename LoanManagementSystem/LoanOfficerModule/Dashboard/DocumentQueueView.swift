@@ -68,6 +68,7 @@ struct DocumentQueueView: View {
 }
 
 struct DocumentStatusRow: View {
+    typealias DocumentStatus = OfficerDocumentStatus
     let item: DocumentQueueItem
     var onReview: () -> Void
     

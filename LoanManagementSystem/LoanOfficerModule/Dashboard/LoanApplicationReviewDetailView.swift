@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct LoanApplicationReviewDetailView: View {
+    typealias LoanApplication = OfficerLoanApplication
     let applicationId: String
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) var dismiss

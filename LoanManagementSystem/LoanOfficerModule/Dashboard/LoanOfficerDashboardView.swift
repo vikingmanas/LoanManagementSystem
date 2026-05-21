@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct LoanOfficerDashboardView: View {
+    typealias LoanApplication = OfficerLoanApplication
     @StateObject private var viewModel = LoanOfficerDashboardViewModel()
     @State private var scrollTargetID: String? = nil
     

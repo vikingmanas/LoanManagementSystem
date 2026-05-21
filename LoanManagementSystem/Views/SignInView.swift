@@ -111,6 +111,25 @@ struct SignInView: View {
                             }
                             Spacer()
                         }
+                        
+                        HStack {
+                            Spacer()
+                            Button(action: {
+                                HapticsManager.triggerImpact(style: .medium)
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                    appState.showRoleSelection = true
+                                }
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "arrow.left")
+                                    Text("Change User Role")
+                                }
+                                .font(Font.AppTheme.body)
+                                .fontWeight(.semibold)
+                                .foregroundColor(Color.AppTheme.primary)
+                            }
+                            Spacer()
+                        }
                         .padding(.bottom, 20)
                     }
                     .padding(.horizontal, 24)

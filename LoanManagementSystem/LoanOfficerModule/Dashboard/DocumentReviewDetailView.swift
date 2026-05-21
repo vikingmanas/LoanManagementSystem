@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct DocumentReviewDetailView: View {
+    typealias LoanApplication = OfficerLoanApplication
+    typealias DocumentType = OfficerDocumentType
+    typealias DocumentStatus = OfficerDocumentStatus
     let item: DocumentQueueItem
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) var dismiss
@@ -203,6 +206,7 @@ struct DocumentReviewDetailView: View {
 
 // Graphic preview mockups simulating scanner screenshots
 struct DocumentGraphicMockView: View {
+    typealias DocumentType = OfficerDocumentType
     let docType: DocumentType
     let borrowerName: String
     

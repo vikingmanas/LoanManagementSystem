@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct LoanHistoryRow: View {
+    typealias LoanApplication = OfficerLoanApplication
     let app: LoanApplication
     var onView: () -> Void
     var onCall: () -> Void

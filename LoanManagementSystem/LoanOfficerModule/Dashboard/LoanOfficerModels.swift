@@ -12,14 +12,14 @@ struct AppTheme {
 }
 
 // MARK: - Core Data Models
-struct LoanApplication: Identifiable, Hashable {
+struct OfficerLoanApplication: Identifiable, Hashable {
     let id: UUID
     var applicationId: String          // "APP-2024-XXXX"
     var borrowerName: String
     var borrowerId: UUID
-    var loanType: LoanType
+    var loanType: OfficerLoanType
     var requestedAmount: Double
-    var status: ApplicationStatus
+    var status: OfficerApplicationStatus
     var submittedDate: Date
     var lastUpdatedDate: Date
     var assignedOfficerId: UUID
@@ -31,7 +31,7 @@ struct LoanApplication: Identifiable, Hashable {
     var managerStatus: ManagerStatus?
 }
 
-enum LoanType: String, CaseIterable, Codable, Hashable {
+enum OfficerLoanType: String, CaseIterable, Codable, Hashable {
     case home = "Home Loan"
     case personal = "Personal Loan"
     case business = "Business Loan"
@@ -59,7 +59,7 @@ enum LoanType: String, CaseIterable, Codable, Hashable {
     }
 }
 
-enum ApplicationStatus: String, CaseIterable, Codable, Hashable {
+enum OfficerApplicationStatus: String, CaseIterable, Codable, Hashable {
     case pending = "Pending"
     case underReview = "Under Review"
     case approved = "Approved"
@@ -110,15 +110,15 @@ enum ManagerStatus: String, CaseIterable, Codable, Hashable {
 
 struct LoanDocument: Identifiable, Hashable {
     let id: UUID
-    var docType: DocumentType
-    var status: DocumentStatus
+    var docType: OfficerDocumentType
+    var status: OfficerDocumentStatus
     var uploadedDate: Date?
     var reviewedDate: Date?
     var rejectionReason: String?
     var fileURL: String?
 }
 
-enum DocumentStatus: String, CaseIterable, Codable, Hashable {
+enum OfficerDocumentStatus: String, CaseIterable, Codable, Hashable {
     case pending = "Awaiting Upload"
     case uploaded = "New Upload"
     case underReview = "In Review"
@@ -138,7 +138,7 @@ enum DocumentStatus: String, CaseIterable, Codable, Hashable {
     }
 }
 
-enum DocumentType: String, CaseIterable, Codable, Hashable {
+enum OfficerDocumentType: String, CaseIterable, Codable, Hashable {
     case aadhaar = "Aadhaar"
     case pan = "PAN Card"
     case salarySlip = "Salary Slip"

@@ -10,6 +10,11 @@ enum HistorySortOrder: String, CaseIterable {
 
 @MainActor
 class LoanOfficerDashboardViewModel: ObservableObject {
+    typealias LoanApplication = OfficerLoanApplication
+    typealias LoanType = OfficerLoanType
+    typealias ApplicationStatus = OfficerApplicationStatus
+    typealias DocumentStatus = OfficerDocumentStatus
+    typealias DocumentType = OfficerDocumentType
     @Published var applications: [LoanApplication] = []
     @Published var activityFeed: [ActivityFeedItem] = []
     @Published var isLoading: Bool = true
@@ -331,6 +336,8 @@ class LoanOfficerDashboardViewModel: ObservableObject {
 
 // Wrapper for UI list handling
 struct DocumentQueueItem: Identifiable, Hashable {
+    typealias DocumentType = OfficerDocumentType
+    typealias DocumentStatus = OfficerDocumentStatus
     let id: UUID
     var borrowerName: String
     var docType: DocumentType

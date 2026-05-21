@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct KPIGridView: View {
+    typealias ApplicationStatus = OfficerApplicationStatus
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onCardSelected: (ApplicationStatus?) -> Void
     

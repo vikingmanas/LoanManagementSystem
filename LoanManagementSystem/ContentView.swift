@@ -23,6 +23,15 @@ struct ContentView: View {
                 splashView
                     .transition(.opacity)
                 
+            } else if appState.showRoleSelection && !authManager.isAuthenticated && !appState.isAuthenticated {
+                
+                RoleSelectionView()
+                    .environmentObject(appState)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .trailing).combined(with: .opacity),
+                        removal: .move(edge: .leading).combined(with: .opacity)
+                    ))
+                
             } else {
                 
                 Group {
@@ -30,24 +39,61 @@ struct ContentView: View {
                     // MARK: - Authenticated Flow
                     if authManager.isAuthenticated || appState.isAuthenticated {
                         
-                        MainTabView()
-                            .environmentObject(authManager)
-                            .environmentObject(appState)
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .trailing).combined(with: .opacity),
-                                removal: .move(edge: .leading).combined(with: .opacity)
-                            ))
+                        switch appState.selectedRole {
+                        case .customer:
+                            MainTabView()
+                                .environmentObject(authManager)
+                                .environmentObject(appState)
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                                    removal: .move(edge: .leading).combined(with: .opacity)
+                                ))
+                        case .loanOfficer:
+                            LoanOfficerDashboardView()
+                                .environmentObject(authManager)
+                                .environmentObject(appState)
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                                    removal: .move(edge: .leading).combined(with: .opacity)
+                                ))
+                        case .bankManager:
+                            BankManagerDashboardView()
+                                .environmentObject(authManager)
+                                .environmentObject(appState)
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                                    removal: .move(edge: .leading).combined(with: .opacity)
+                                ))
+                        case .admin:
+                            AdminDashboardView()
+                                .environmentObject(authManager)
+                                .environmentObject(appState)
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                                    removal: .move(edge: .leading).combined(with: .opacity)
+                                ))
+                        }
                         
                     } else {
                         
                         // MARK: - Authentication Flow
-                        SignInView()
-                            .environmentObject(authManager)
-                            .environmentObject(appState)
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .leading).combined(with: .opacity),
-                                removal: .move(edge: .trailing).combined(with: .opacity)
-                            ))
+                        if appState.selectedRole == .customer {
+                            SignInView()
+                                .environmentObject(authManager)
+                                .environmentObject(appState)
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .leading).combined(with: .opacity),
+                                    removal: .move(edge: .trailing).combined(with: .opacity)
+                                ))
+                        } else {
+                            StaffLoginView()
+                                .environmentObject(authManager)
+                                .environmentObject(appState)
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .leading).combined(with: .opacity),
+                                    removal: .move(edge: .trailing).combined(with: .opacity)
+                                ))
+                        }
                     }
                 }
             }
@@ -55,6 +101,14 @@ struct ContentView: View {
         .animation(
             .spring(response: 0.5, dampingFraction: 0.85),
             value: authManager.isAuthenticated
+        )
+        .animation(
+            .spring(response: 0.5, dampingFraction: 0.85),
+            value: appState.isAuthenticated
+        )
+        .animation(
+            .spring(response: 0.5, dampingFraction: 0.85),
+            value: appState.showRoleSelection
         )
         .animation(
             .easeInOut(duration: 0.4),

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ProcessedLoansView: View {
+    typealias LoanApplication = OfficerLoanApplication
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onRespondTapped: (LoanApplication) -> Void
     
@@ -57,6 +58,7 @@ struct ProcessedLoansView: View {
 }
 
 struct ProcessedLoanRow: View {
+    typealias LoanApplication = OfficerLoanApplication
     let app: LoanApplication
     var onRespond: () -> Void
     
