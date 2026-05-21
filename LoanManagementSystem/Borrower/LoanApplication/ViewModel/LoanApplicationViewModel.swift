@@ -21,6 +21,9 @@ final class LoanApplicationViewModel: ObservableObject {
     @Published var showSubmissionAlert: Bool = false
     @Published var submissionAlertMessage: String = ""
 
+    @Published var verificationComplete: Bool = false
+    @Published var showVerificationResult: Bool = false
+
     let employmentTypes = ["Salaried", "Self-Employed", "Business Owner", "Professional", "Student", "Retired"]
     let repaymentPreferences = ["EMI Auto-Debit", "UPI Manual Payment", "Net Banking", "Branch Payment"]
     let tenureOptions = [12, 24, 36, 48, 60, 84, 120, 180, 240, 300, 360]
@@ -451,6 +454,16 @@ final class LoanApplicationViewModel: ObservableObject {
             }
         }
         autosaveDraft()
+    }
+
+    var rejectedDocuments: [BorrowerLoanDocumentItem] {
+        documents.filter { $0.status == .rejected || $0.status == .requiresResubmission }
+    }
+
+    func verifyAndShowResult() {
+        runBulkVerification()
+        verificationComplete = true
+        showVerificationResult = true
     }
 
     @discardableResult
