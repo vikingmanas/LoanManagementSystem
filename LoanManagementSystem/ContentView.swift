@@ -128,11 +128,15 @@ struct ContentView: View {
             value: authManager.isAuthStateResolved
         )
         .onAppear {
+            authManager.configure()
             syncBorrowerProfileIfNeeded()
 
             // MARK: - Splash Delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-
+            // Skip the splash delay inside SwiftUI Previews for instant canvas rendering.
+            let isPreview = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+            let delay = isPreview ? 3.0 : 5.0
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 withAnimation(.easeInOut(duration: 0.5)) {
                     showSplash = false
                 }
@@ -166,7 +170,7 @@ struct ContentView: View {
     // MARK: - Splash View
     private var splashView: some View {
         ZStack {
-
+            
             LinearGradient(
                 colors: [
                     Color.brandNavy,
@@ -176,18 +180,18 @@ struct ContentView: View {
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
-
+            
             VStack(spacing: 20) {
-
+                
                 Image(systemName: "indianrupeesign.circle.fill")
                     .font(.system(size: 60))
                     .foregroundColor(.white)
-
+                
                 Text("Loan Manager")
                     .font(.system(.title, design: .rounded))
                     .fontWeight(.bold)
                     .foregroundColor(.white)
-
+                
                 ProgressView()
                     .progressViewStyle(.circular)
                     .tint(.white.opacity(0.8))
