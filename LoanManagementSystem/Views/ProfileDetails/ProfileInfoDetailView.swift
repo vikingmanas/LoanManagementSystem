@@ -101,14 +101,6 @@ struct ProfileInfoDetailView: View {
                     DataRowView(label: "Existing Bank Customer", value: profile.hasExistingBankAccount ? "Yes (\(profile.existingCustomerId ?? "N/A"))" : "No")
                 }
                 
-                if !profile.loanPurposeInterests.isEmpty {
-                    Section(header: Text("Loan Purpose Interests")) {
-                        Text(profile.loanPurposeInterests.joined(separator: ", "))
-                            .font(Font.AppTheme.body)
-                            .foregroundColor(Color.AppTheme.textPrimary)
-                            .padding(.vertical, 4)
-                    }
-                }
             } else {
                 Text("Loading profile...")
             }

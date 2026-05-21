@@ -4,44 +4,44 @@ import SwiftUI
 /// Root view that switches between authentication and dashboard flows
 /// based on the current Firebase auth state.
 struct ContentView: View {
-    
+
     // Firebase/Auth Manager
     @EnvironmentObject private var authManager: AuthManager
-    
+
     // App State Manager
     @StateObject private var appState = AppStateManager()
-    
+
     // Observed Profile Store
     @ObservedObject private var profileStore = BorrowerProfileStore.shared
-    
+
     // Splash control
     @State private var showSplash = true
-    
+
     var body: some View {
         ZStack {
-            
+
             // MARK: - Splash Screen
             if showSplash || !authManager.isAuthStateResolved {
-                
+
                 splashView
                     .transition(.opacity)
-                
+
             } else if appState.showRoleSelection && !authManager.isAuthenticated && !appState.isAuthenticated {
-                
+
                 RoleSelectionView()
                     .environmentObject(appState)
                     .transition(.asymmetric(
                         insertion: .move(edge: .trailing).combined(with: .opacity),
                         removal: .move(edge: .leading).combined(with: .opacity)
                     ))
-                
+
             } else {
-                
+
                 Group {
-                    
+
                     // MARK: - Authenticated Flow
-                    if authManager.isAuthenticated || appState.isAuthenticated {
-                        
+                    if isCurrentRoleAuthenticated {
+
                         switch appState.selectedRole {
                         case .customer:
                             if profileStore.profile?.isOnboardingCompleted == true {
@@ -86,9 +86,9 @@ struct ContentView: View {
                                     removal: .move(edge: .leading).combined(with: .opacity)
                                 ))
                         }
-                        
+
                     } else {
-                        
+
                         // MARK: - Authentication Flow
                         if appState.selectedRole == .customer {
                             SignInView()
@@ -128,17 +128,45 @@ struct ContentView: View {
             value: authManager.isAuthStateResolved
         )
         .onAppear {
-            
+            authManager.configure()
+            syncBorrowerProfileIfNeeded()
+
             // MARK: - Splash Delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                
+            // Skip the splash delay inside SwiftUI Previews for instant canvas rendering.
+            let isPreview = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+            let delay = isPreview ? 3.0 : 5.0
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 withAnimation(.easeInOut(duration: 0.5)) {
                     showSplash = false
                 }
             }
         }
+        .onChange(of: authManager.userEmail) {
+            syncBorrowerProfileIfNeeded()
+        }
     }
-    
+
+    private var isCurrentRoleAuthenticated: Bool {
+        if appState.selectedRole == .customer {
+            return authManager.isAuthenticated
+        }
+        return appState.isAuthenticated
+    }
+
+    private func syncBorrowerProfileIfNeeded() {
+        guard appState.selectedRole == .customer,
+              authManager.isAuthenticated,
+              let email = authManager.userEmail else {
+            return
+        }
+
+        profileStore.ensureProfile(
+            email: email,
+            name: authManager.userDisplayName
+        )
+    }
+
     // MARK: - Splash View
     private var splashView: some View {
         ZStack {

@@ -3,7 +3,7 @@ import Combine
 
 struct UserAccount: Codable {
     var email: String
-    var passwordHash: String // Plaintext for simulation
+    var passwordHash: String
     var customerId: String
     var fullName: String
     var mobile: String
@@ -11,23 +11,24 @@ struct UserAccount: Codable {
     var profile: BorrowerProfile?
 }
 
+@MainActor
 class BorrowerProfileStore: ObservableObject {
     static let shared = BorrowerProfileStore()
-    
+
     @Published var profile: BorrowerProfile?
     @Published var accounts: [UserAccount] = []
     @Published var currentEmail: String?
-    
+
     private let accountsKey = "lms_persisted_accounts"
     private let activeSessionKey = "lms_active_session_email"
-    
+
     private init() {
         loadAccountsFromDisk()
         loadActiveSession()
     }
-    
+
     // MARK: - Local Disk Operations
-    
+
     func loadAccountsFromDisk() {
         if let data = UserDefaults.standard.data(forKey: accountsKey),
            let decoded = try? JSONDecoder().decode([UserAccount].self, from: data) {
@@ -37,13 +38,13 @@ class BorrowerProfileStore: ObservableObject {
             setupDefaultAccount()
         }
     }
-    
+
     func saveAccountsToDisk() {
         if let encoded = try? JSONEncoder().encode(accounts) {
             UserDefaults.standard.set(encoded, forKey: accountsKey)
         }
     }
-    
+
     private func loadActiveSession() {
         if let activeEmail = UserDefaults.standard.string(forKey: activeSessionKey),
            let account = accounts.first(where: { $0.email == activeEmail }) {
@@ -51,7 +52,7 @@ class BorrowerProfileStore: ObservableObject {
             self.profile = account.profile
         }
     }
-    
+
     private func saveActiveSession(_ email: String?) {
         if let email = email {
             UserDefaults.standard.set(email, forKey: activeSessionKey)
@@ -59,7 +60,7 @@ class BorrowerProfileStore: ObservableObject {
             UserDefaults.standard.removeObject(forKey: activeSessionKey)
         }
     }
-    
+
     private func setupDefaultAccount() {
         let rahulProfile = BorrowerProfile(
             id: "C-109482",
@@ -84,17 +85,25 @@ class BorrowerProfileStore: ObservableObject {
             loanOverview: LoanOverview(activeLoans: 1, loanHistoryCount: 2, nextEmiDueDate: Calendar.current.date(byAdding: .day, value: 15, to: Date()), remainingBalance: 450000.0, currentLoanStatus: "Active"),
             profileImageData: nil,
             occupation: "Senior Software Engineer",
+            industry: "Technology",
+            yearsOfExperience: 8,
             hasExistingBankAccount: true,
             existingCustomerId: "C-109482",
             preferredBranch: "Andheri East Branch",
+            existingLoansCount: 1,
+            existingCreditCardsCount: 1,
+            bankingRelationshipDuration: "2 Years",
+            averageMonthlyBalance: 85000,
             emergencyContactName: "Priya Sharma",
             emergencyContactNumber: "+91 98765 00000",
+            emergencyContactAlternateNumber: "",
+            emergencyContactAddress: "Mumbai",
+            emergencyContactRelationship: "Spouse",
             nomineeName: "Geeta Sharma",
             nomineeRelationship: "Mother",
-            loanPurposeInterests: ["Home", "Business"],
             isOnboardingCompleted: true
         )
-        
+
         let rahulAccount = UserAccount(
             email: "rahul.sharma@example.com",
             passwordHash: "password",
@@ -104,32 +113,95 @@ class BorrowerProfileStore: ObservableObject {
             isOnboardingCompleted: true,
             profile: rahulProfile
         )
-        
+
         self.accounts = [rahulAccount]
         saveAccountsToDisk()
     }
-    
+
     // MARK: - Actions
-    
-    func signUp(name: String, email: String, phone: String, password: String) -> String? {
+
+    @discardableResult
+    func ensureProfile(email: String, name: String? = nil, phone: String? = nil) -> BorrowerProfile {
         let cleanedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let cleanedPhone = phone.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // 1. Check uniqueness
-        if accounts.contains(where: { $0.email == cleanedEmail }) {
-            return nil
+        let cleanedPhone = phone?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        if let index = accounts.firstIndex(where: { $0.email == cleanedEmail }) {
+            currentEmail = accounts[index].email
+            profile = accounts[index].profile
+            saveActiveSession(accounts[index].email)
+
+            if let existingProfile = accounts[index].profile {
+                return existingProfile
+            }
+
+            let recoveredProfile = makeEmptyProfile(
+                name: accounts[index].fullName,
+                email: accounts[index].email,
+                phone: accounts[index].mobile,
+                customerId: accounts[index].customerId
+            )
+            accounts[index].profile = recoveredProfile
+            profile = recoveredProfile
+            saveAccountsToDisk()
+            return recoveredProfile
         }
-        
-        // 2. Generate Customer ID
-        let randId = String(Int.random(in: 100000...999999))
-        let customerId = "C-\(randId)"
-        
-        // 3. Initialize Empty Profile
-        let freshProfile = BorrowerProfile(
+
+        let customerId = "C-\(Int.random(in: 100000...999999))"
+        let displayName = name?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let profile = makeEmptyProfile(
+            name: displayName?.isEmpty == false ? displayName! : cleanedEmail,
+            email: cleanedEmail,
+            phone: cleanedPhone,
+            customerId: customerId
+        )
+
+        let newAccount = UserAccount(
+            email: cleanedEmail,
+            passwordHash: "",
+            customerId: customerId,
+            fullName: profile.fullName,
+            mobile: cleanedPhone,
+            isOnboardingCompleted: false,
+            profile: profile
+        )
+
+        accounts.append(newAccount)
+        saveAccountsToDisk()
+        currentEmail = cleanedEmail
+        self.profile = profile
+        saveActiveSession(cleanedEmail)
+        return profile
+    }
+
+    func updateProfile(_ updatedProfile: BorrowerProfile) {
+        self.profile = updatedProfile
+
+        guard let activeEmail = currentEmail,
+              let index = accounts.firstIndex(where: { $0.email == activeEmail }) else { return }
+
+        accounts[index].profile = updatedProfile
+        accounts[index].isOnboardingCompleted = updatedProfile.isOnboardingCompleted
+        saveAccountsToDisk()
+    }
+
+    func skipOnboarding() {
+        guard var activeProfile = profile else { return }
+        activeProfile.isOnboardingCompleted = true
+        updateProfile(activeProfile)
+    }
+
+    func signOut() {
+        self.profile = nil
+        self.currentEmail = nil
+        saveActiveSession(nil)
+    }
+
+    private func makeEmptyProfile(name: String, email: String, phone: String, customerId: String) -> BorrowerProfile {
+        BorrowerProfile(
             id: customerId,
             fullName: name,
-            email: cleanedEmail,
-            mobileNumber: cleanedPhone,
+            email: email,
+            mobileNumber: phone,
             alternateNumber: nil,
             dateOfBirth: Date(),
             gender: "",
@@ -138,7 +210,7 @@ class BorrowerProfileStore: ObservableObject {
             aadhaarNumber: "",
             panNumber: "",
             isEmailVerified: true,
-            isPhoneVerified: true,
+            isPhoneVerified: !phone.isEmpty,
             currentAddress: AddressInfo(streetAddress: "", city: "", state: "", zipCode: "", country: "India", isSameAsCurrent: true),
             permanentAddress: AddressInfo(streetAddress: "", city: "", state: "", zipCode: "", country: "India", isSameAsCurrent: true),
             employment: EmploymentInfo(employmentType: "", companyName: "", designation: "", workExperienceYears: 0, employerAddress: ""),
@@ -148,67 +220,23 @@ class BorrowerProfileStore: ObservableObject {
             loanOverview: LoanOverview(activeLoans: 0, loanHistoryCount: 0, nextEmiDueDate: nil, remainingBalance: 0.0, currentLoanStatus: "Pending Onboarding"),
             profileImageData: nil,
             occupation: "",
+            industry: "",
+            yearsOfExperience: 0,
             hasExistingBankAccount: false,
             existingCustomerId: nil,
             preferredBranch: "",
+            existingLoansCount: 0,
+            existingCreditCardsCount: 0,
+            bankingRelationshipDuration: "",
+            averageMonthlyBalance: 0,
             emergencyContactName: "",
             emergencyContactNumber: "",
+            emergencyContactAlternateNumber: "",
+            emergencyContactAddress: "",
+            emergencyContactRelationship: "",
             nomineeName: "",
             nomineeRelationship: "",
-            loanPurposeInterests: [],
             isOnboardingCompleted: false
         )
-        
-        let newAccount = UserAccount(
-            email: cleanedEmail,
-            passwordHash: password,
-            customerId: customerId,
-            fullName: name,
-            mobile: cleanedPhone,
-            isOnboardingCompleted: false,
-            profile: freshProfile
-        )
-        
-        accounts.append(newAccount)
-        saveAccountsToDisk()
-        
-        self.currentEmail = cleanedEmail
-        self.profile = freshProfile
-        saveActiveSession(cleanedEmail)
-        
-        return customerId
-    }
-    
-    func signIn(emailOrPhone: String, password: String) -> Bool {
-        let cleanedInput = emailOrPhone.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        
-        if let index = accounts.firstIndex(where: {
-            ($0.email.lowercased() == cleanedInput || $0.mobile == cleanedInput) && $0.passwordHash == password
-        }) {
-            let account = accounts[index]
-            self.currentEmail = account.email
-            self.profile = account.profile
-            saveActiveSession(account.email)
-            return true
-        }
-        
-        return false
-    }
-    
-    func updateProfile(_ updatedProfile: BorrowerProfile) {
-        self.profile = updatedProfile
-        
-        guard let activeEmail = currentEmail,
-              let index = accounts.firstIndex(where: { $0.email == activeEmail }) else { return }
-        
-        accounts[index].profile = updatedProfile
-        accounts[index].isOnboardingCompleted = updatedProfile.isOnboardingCompleted
-        saveAccountsToDisk()
-    }
-    
-    func signOut() {
-        self.profile = nil
-        self.currentEmail = nil
-        saveActiveSession(nil)
     }
 }

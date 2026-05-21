@@ -2,6 +2,7 @@ import SwiftUI
 
 struct BorrowerForgotPasswordView: View {
     @Environment(\.presentationMode) var presentationMode
+    @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel = ForgotPasswordViewModel()
     
     var body: some View {
@@ -17,7 +18,7 @@ struct BorrowerForgotPasswordView: View {
                             .font(Font.AppTheme.title)
                             .foregroundColor(Color.AppTheme.textPrimary)
                         
-                        Text("Choose how you would like to recover your password.")
+                        Text("Recover your account with a secure email reset link.")
                             .font(Font.AppTheme.subtitle)
                             .foregroundColor(Color.AppTheme.textSecondary)
                     }
@@ -51,7 +52,7 @@ struct BorrowerForgotPasswordView: View {
                     // Input Field
                     CustomTextField(
                         icon: "envelope",
-                        placeholder: "Email or Mobile Number",
+                        placeholder: "Email Address",
                         text: $viewModel.emailOrPhone
                     )
                     .padding(.top, 8)
@@ -64,7 +65,9 @@ struct BorrowerForgotPasswordView: View {
                         isLoading: viewModel.isLoading,
                         isDisabled: !viewModel.isFormValid || viewModel.showSuccessMessage,
                         action: {
-                            viewModel.sendResetLink()
+                            Task {
+                                await viewModel.sendResetLink(authManager: authManager)
+                            }
                         }
                     )
                     .padding(.bottom, 20)
@@ -93,4 +96,5 @@ struct BorrowerForgotPasswordView: View {
 
 #Preview {
     BorrowerForgotPasswordView()
+        .environmentObject(AuthManager())
 }
