@@ -84,14 +84,22 @@ class BorrowerProfileStore: ObservableObject {
             loanOverview: LoanOverview(activeLoans: 1, loanHistoryCount: 2, nextEmiDueDate: Calendar.current.date(byAdding: .day, value: 15, to: Date()), remainingBalance: 450000.0, currentLoanStatus: "Active"),
             profileImageData: nil,
             occupation: "Senior Software Engineer",
+            industry: "Information Technology",
+            yearsOfExperience: 8,
             hasExistingBankAccount: true,
             existingCustomerId: "C-109482",
             preferredBranch: "Andheri East Branch",
+            existingLoansCount: 1,
+            existingCreditCardsCount: 2,
+            bankingRelationshipDuration: "5 Years",
+            averageMonthlyBalance: 85000.0,
             emergencyContactName: "Priya Sharma",
             emergencyContactNumber: "+91 98765 00000",
+            emergencyContactAlternateNumber: "",
+            emergencyContactAddress: "",
+            emergencyContactRelationship: "Friend",
             nomineeName: "Geeta Sharma",
             nomineeRelationship: "Mother",
-            loanPurposeInterests: ["Home", "Business"],
             isOnboardingCompleted: true
         )
         
@@ -148,14 +156,22 @@ class BorrowerProfileStore: ObservableObject {
             loanOverview: LoanOverview(activeLoans: 0, loanHistoryCount: 0, nextEmiDueDate: nil, remainingBalance: 0.0, currentLoanStatus: "Pending Onboarding"),
             profileImageData: nil,
             occupation: "",
+            industry: "",
+            yearsOfExperience: 0,
             hasExistingBankAccount: false,
             existingCustomerId: nil,
             preferredBranch: "",
+            existingLoansCount: 0,
+            existingCreditCardsCount: 0,
+            bankingRelationshipDuration: "",
+            averageMonthlyBalance: 0.0,
             emergencyContactName: "",
             emergencyContactNumber: "",
+            emergencyContactAlternateNumber: "",
+            emergencyContactAddress: "",
+            emergencyContactRelationship: "",
             nomineeName: "",
             nomineeRelationship: "",
-            loanPurposeInterests: [],
             isOnboardingCompleted: false
         )
         
@@ -204,6 +220,12 @@ class BorrowerProfileStore: ObservableObject {
         accounts[index].profile = updatedProfile
         accounts[index].isOnboardingCompleted = updatedProfile.isOnboardingCompleted
         saveAccountsToDisk()
+    }
+    
+    func skipOnboarding() {
+        guard var currentProfile = profile else { return }
+        currentProfile.isOnboardingCompleted = true
+        updateProfile(currentProfile)
     }
     
     func signOut() {

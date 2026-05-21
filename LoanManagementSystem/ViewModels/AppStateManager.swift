@@ -15,7 +15,7 @@ public enum PortalRole: String, CaseIterable, Identifiable {
         case .customer: return "person.fill"
         case .loanOfficer: return "person.badge.shield.checkmark.fill"
         case .bankManager: return "building.columns.fill"
-        case .admin: return "shield.chevron.fill"
+        case .admin: return "shield.fill"
         }
     }
     

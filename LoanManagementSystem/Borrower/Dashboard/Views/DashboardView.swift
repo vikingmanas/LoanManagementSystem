@@ -47,6 +47,23 @@ public struct DashboardView: View {
                     }
                     .padding(.top, 8)
                     
+                    // 1b. CUSTOMER INSIGHT & COMPLETION
+                    if let profile = BorrowerProfileStore.shared.profile {
+                        VStack(spacing: 16) {
+                            if profile.profileCompletionPercentage < 100 {
+                                ProfileCompletionBanner(percentage: profile.profileCompletionPercentage) {
+                                    showingProfileSheet = true
+                                }
+                            }
+                            
+                            if profile.hasExistingBankAccount, profile.existingCustomerId != nil {
+                                CustomerInsightCardView(profile: profile)
+                                    .padding(.horizontal, 20)
+                            }
+                        }
+                        .padding(.bottom, 8)
+                    }
+                    
                     // 2. PORTFOLIO CARDS
                     PortfolioCardsSection(viewModel: viewModel) { route in
                         navigationPath.append(route)
@@ -296,6 +313,51 @@ struct AccountHealthBanner: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Account balance health notification banner. Tap to toggle mock balance state.")
+    }
+}
+
+// MARK: - Section 1c: Profile Completion Banner
+struct ProfileCompletionBanner: View {
+    let percentage: Int
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .stroke(Color.white.opacity(0.3), lineWidth: 4)
+                    Circle()
+                        .trim(from: 0, to: CGFloat(percentage) / 100.0)
+                        .stroke(Color.brandEmerald, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    
+                    Text("\(percentage)%")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .frame(width: 40, height: 40)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Complete Your Profile")
+                        .font(.system(.subheadline, weight: .bold))
+                        .foregroundColor(.white)
+                    Text("Unlock all features by finishing setup")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.8))
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.white.opacity(0.6))
+            }
+            .padding()
+            .background(Color.brandNavy)
+            .cornerRadius(16)
+            .padding(.horizontal, 20)
+        }
+        .buttonStyle(.plain)
     }
 }
 
