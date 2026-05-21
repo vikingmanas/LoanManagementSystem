@@ -170,7 +170,6 @@ struct ContentView: View {
                     .scaleEffect(1.1)
             }
             
-            //working
         }
     }
 }
