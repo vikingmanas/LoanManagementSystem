@@ -9,7 +9,7 @@ import SwiftUI
 
 // MARK: - Navigation Destinations
 public enum DashboardRoute: Hashable {
-    case loanDetails(LoanAccount)
+    case loanDetails(DashboardLoanAccount)
     case bankDetails(BankAccount)
     case insuranceDetails
     case allTransactions
@@ -18,6 +18,7 @@ public enum DashboardRoute: Hashable {
 }
 
 public struct DashboardView: View {
+    @EnvironmentObject private var authManager: AuthManager
     @StateObject private var viewModel = DashboardViewModel()
     @State private var navigationPath = NavigationPath()
     
@@ -27,6 +28,7 @@ public struct DashboardView: View {
     @State private var showingForeclosureSheet = false
     @State private var showingSupportSheet = false
     @State private var showingTopUpSheet = false
+    @State private var showingProfileSheet = false
     
     // Transaction Filter State
     @State private var transactionFilter: TransactionType? = nil
@@ -40,8 +42,10 @@ public struct DashboardView: View {
                 VStack(spacing: 20) {
                     
                     // 1. TOP NAVIGATION BAR
-                    TopNavigationBarSection(viewModel: viewModel)
-                        .padding(.top, 8)
+                    TopNavigationBarSection(viewModel: viewModel, authManager: authManager) {
+                        showingProfileSheet = true
+                    }
+                    .padding(.top, 8)
                     
                     // 2. PORTFOLIO CARDS
                     PortfolioCardsSection(viewModel: viewModel) { route in
@@ -120,23 +124,31 @@ public struct DashboardView: View {
             .sheet(isPresented: $showingTopUpSheet) {
                 TopUpSheet(viewModel: viewModel)
             }
+            .sheet(isPresented: $showingProfileSheet) {
+                ProfileView()
+            }
         }
     }
 }
 
 struct TopNavigationBarSection: View {
     @ObservedObject var viewModel: DashboardViewModel
+    @ObservedObject var authManager: AuthManager
+    let onProfileTap: () -> Void
     
     var body: some View {
         VStack(spacing: 0) {
             // Header Row
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Borrower")
+                    Text("Hello, \(authManager.userDisplayName.components(separatedBy: " ").first ?? "User") 👋")
+                        .font(.system(.subheadline, design: .rounded))
+                        .foregroundColor(Color(.secondaryLabel))
+                    
+                    Text("Dashboard")
                         .font(.title)
                         .fontWeight(.bold)
                         .foregroundColor(Color(.label))
-                    
                 }
                 
                 Spacer()
@@ -156,22 +168,23 @@ struct TopNavigationBarSection: View {
                     .frame(width: 44, height: 44) // HIG Target
                     .buttonStyle(.plain)
                     
-                    // User Avatar placeholder
+                    // User Avatar — tap to show profile
                     Button {
-                        // Profile Action
+                        onProfileTap()
                     } label: {
                         ZStack {
                             Circle()
                                 .fill(Color.brandNavy)
                                 .frame(width: 40, height: 40)
                             
-                            Text("RK")
+                            Text(authManager.userInitials)
                                 .font(.system(.body, design: .rounded))
                                 .fontWeight(.bold)
                                 .foregroundColor(.white)
                         }
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Profile. Tap to view profile.")
                 }
             }
             .padding(.horizontal, 20)
@@ -702,7 +715,7 @@ struct TopUpSheet: View {
 // MARK: - Premium Detail Views
 
 struct LoanDetailsView: View {
-    let loan: LoanAccount
+    let loan: DashboardLoanAccount
     
     var body: some View {
         ScrollView {
