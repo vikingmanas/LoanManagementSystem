@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SignInView: View {
     @EnvironmentObject var appState: AppStateManager
+    @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel = SignInViewModel()
     
     var body: some View {
@@ -43,7 +44,7 @@ struct SignInView: View {
                         VStack(spacing: 16) {
                             CustomTextField(
                                 icon: "envelope",
-                                placeholder: "Email or Mobile Number",
+                                placeholder: "Email Address",
                                 text: $viewModel.emailOrPhone,
                                 isError: !viewModel.emailError.isEmpty,
                                 errorMessage: viewModel.emailError
@@ -78,7 +79,9 @@ struct SignInView: View {
                             isLoading: viewModel.isLoading,
                             isDisabled: !viewModel.isFormValid,
                             action: {
-                                viewModel.signIn()
+                                Task {
+                                    await viewModel.signIn(authManager: authManager)
+                                }
                             }
                         )
                         .padding(.top, 8)
@@ -136,7 +139,7 @@ struct SignInView: View {
                 }
             }
             .hideNavigationBar()
-            .onChange(of: viewModel.showSuccess) { success in
+            .onChange(of: viewModel.showSuccess) { _, success in
                 if success {
                     appState.login()
                 }
@@ -150,5 +153,6 @@ struct SignInView_Previews: PreviewProvider {
     static var previews: some View {
         SignInView()
             .environmentObject(AppStateManager())
+            .environmentObject(AuthManager())
     }
 }

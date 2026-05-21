@@ -103,6 +103,7 @@ struct ProfileView: View {
                             
                             // Log Out Card
                             Button(action: {
+                                BorrowerProfileStore.shared.signOut()
                                 appState.logout()
                                 authManager.signOut()
                             }) {
