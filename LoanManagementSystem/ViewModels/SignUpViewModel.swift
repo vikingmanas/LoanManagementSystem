@@ -52,12 +52,22 @@ class SignUpViewModel: ObservableObject {
             return
         }
         
-        // Mock API Call
         isLoading = true
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            let customerId = BorrowerProfileStore.shared.signUp(
+                name: self.fullName,
+                email: self.email,
+                phone: self.phone,
+                password: self.password
+            )
+            
             self.isLoading = false
-            self.showSuccess = true
+            if customerId != nil {
+                self.showSuccess = true
+            } else {
+                self.generalError = "This email is already registered. Try logging in instead."
+            }
         }
     }
 }

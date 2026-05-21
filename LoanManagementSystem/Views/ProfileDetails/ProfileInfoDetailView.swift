@@ -82,6 +82,33 @@ struct ProfileInfoDetailView: View {
                     DataRowView(label: "Designation", value: profile.employment.designation)
                     DataRowView(label: "Monthly Income", value: viewModel.formatCurrency(profile.income.monthlyIncome))
                 }
+                
+                // 5. Emergency & Nominee
+                Section(header: Text("Emergency Reference Contact")) {
+                    DataRowView(label: "Contact Name", value: profile.emergencyContactName)
+                    DataRowView(label: "Mobile Number", value: profile.emergencyContactNumber)
+                }
+                
+                Section(header: Text("Nominee Details")) {
+                    DataRowView(label: "Nominee Name", value: profile.nomineeName)
+                    DataRowView(label: "Relationship", value: profile.nomineeRelationship)
+                }
+                
+                // 6. Preferences & Branch
+                Section(header: Text("Bank Preferences")) {
+                    DataRowView(label: "Preferred Branch", value: profile.preferredBranch)
+                    DataRowView(label: "Occupation", value: profile.occupation)
+                    DataRowView(label: "Existing Bank Customer", value: profile.hasExistingBankAccount ? "Yes (\(profile.existingCustomerId ?? "N/A"))" : "No")
+                }
+                
+                if !profile.loanPurposeInterests.isEmpty {
+                    Section(header: Text("Loan Purpose Interests")) {
+                        Text(profile.loanPurposeInterests.joined(separator: ", "))
+                            .font(Font.AppTheme.body)
+                            .foregroundColor(Color.AppTheme.textPrimary)
+                            .padding(.vertical, 4)
+                    }
+                }
             } else {
                 Text("Loading profile...")
             }
@@ -95,6 +122,7 @@ struct ProfileInfoDetailView: View {
                     Button("Contact Info") { activeSheet = .contact }
                     Button("Address Info") { activeSheet = .address }
                     Button("Employment") { activeSheet = .employment }
+                    Button("References & Prefs") { activeSheet = .additional }
                 } label: {
                     Text("Edit")
                         .foregroundColor(Color.AppTheme.primary)
@@ -117,6 +145,8 @@ struct ProfileInfoDetailView: View {
                 EditKYCView(viewModel: viewModel)
             case .loan:
                 EditLoanOverviewView(viewModel: viewModel)
+            case .additional:
+                EditAdditionalInfoView(viewModel: viewModel)
             }
         }
     }

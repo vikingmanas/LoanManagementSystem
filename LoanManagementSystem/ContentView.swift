@@ -11,6 +11,9 @@ struct ContentView: View {
     // App State Manager
     @StateObject private var appState = AppStateManager()
     
+    // Observed Profile Store
+    @ObservedObject private var profileStore = BorrowerProfileStore.shared
+    
     // Splash control
     @State private var showSplash = true
     
@@ -41,13 +44,23 @@ struct ContentView: View {
                         
                         switch appState.selectedRole {
                         case .customer:
-                            MainTabView()
-                                .environmentObject(authManager)
-                                .environmentObject(appState)
-                                .transition(.asymmetric(
-                                    insertion: .move(edge: .trailing).combined(with: .opacity),
-                                    removal: .move(edge: .leading).combined(with: .opacity)
-                                ))
+                            if profileStore.profile?.isOnboardingCompleted == true {
+                                MainTabView()
+                                    .environmentObject(authManager)
+                                    .environmentObject(appState)
+                                    .transition(.asymmetric(
+                                        insertion: .move(edge: .trailing).combined(with: .opacity),
+                                        removal: .move(edge: .leading).combined(with: .opacity)
+                                    ))
+                            } else {
+                                OnboardingQuestionnaireView()
+                                    .environmentObject(authManager)
+                                    .environmentObject(appState)
+                                    .transition(.asymmetric(
+                                        insertion: .move(edge: .trailing).combined(with: .opacity),
+                                        removal: .move(edge: .leading).combined(with: .opacity)
+                                    ))
+                            }
                         case .loanOfficer:
                             LoanOfficerDashboardView()
                                 .environmentObject(authManager)

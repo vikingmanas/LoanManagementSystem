@@ -36,12 +36,20 @@ class SignInViewModel: ObservableObject {
             return
         }
         
-        // Mock API Call
         isLoading = true
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            let success = BorrowerProfileStore.shared.signIn(
+                emailOrPhone: self.emailOrPhone,
+                password: self.password
+            )
+            
             self.isLoading = false
-            self.showSuccess = true
+            if success {
+                self.showSuccess = true
+            } else {
+                self.generalError = "Incorrect email/mobile or password. Please try again."
+            }
         }
     }
 

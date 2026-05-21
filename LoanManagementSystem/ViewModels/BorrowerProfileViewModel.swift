@@ -77,6 +77,31 @@ class BorrowerProfileViewModel: ObservableObject {
         BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
     
+    func updateAdditionalInfo(
+        occupation: String,
+        hasExistingBankAccount: Bool,
+        existingCustomerId: String?,
+        preferredBranch: String,
+        emergencyContactName: String,
+        emergencyContactNumber: String,
+        nomineeName: String,
+        nomineeRelationship: String,
+        loanPurposeInterests: [String]
+    ) {
+        guard var updatedProfile = profile else { return }
+        updatedProfile.occupation = occupation
+        updatedProfile.hasExistingBankAccount = hasExistingBankAccount
+        updatedProfile.existingCustomerId = existingCustomerId
+        updatedProfile.preferredBranch = preferredBranch
+        updatedProfile.emergencyContactName = emergencyContactName
+        updatedProfile.emergencyContactNumber = emergencyContactNumber
+        updatedProfile.nomineeName = nomineeName
+        updatedProfile.nomineeRelationship = nomineeRelationship
+        updatedProfile.loanPurposeInterests = loanPurposeInterests
+        
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
+    }
+    
     func updateBankDetails(bank: String, holder: String, account: String, ifsc: String, upi: String) {
         guard var updatedProfile = profile else { return }
         updatedProfile.bankDetails = BankDetails(

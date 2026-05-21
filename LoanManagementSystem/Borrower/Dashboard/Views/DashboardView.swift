@@ -134,21 +134,60 @@ public struct DashboardView: View {
 struct TopNavigationBarSection: View {
     @ObservedObject var viewModel: DashboardViewModel
     @ObservedObject var authManager: AuthManager
+    @ObservedObject var profileStore: BorrowerProfileStore = .shared
     let onProfileTap: () -> Void
+    
+    /// Prefer the profile store's name (from local DB) over the auth manager's display name
+    private var displayFirstName: String {
+        if let profileName = profileStore.profile?.fullName,
+           !profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return profileName.components(separatedBy: " ").first ?? "User"
+        }
+        return authManager.userDisplayName.components(separatedBy: " ").first ?? "User"
+    }
+    
+    private var displayInitials: String {
+        if let profileName = profileStore.profile?.fullName,
+           !profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let parts = profileName.components(separatedBy: " ").filter { !$0.isEmpty }
+            if parts.count >= 2 {
+                return String(parts[0].prefix(1) + parts[1].prefix(1)).uppercased()
+            } else if let first = parts.first {
+                return String(first.prefix(2)).uppercased()
+            }
+        }
+        return authManager.userInitials
+    }
+    
+    private var customerId: String? {
+        profileStore.profile?.id
+    }
     
     var body: some View {
         VStack(spacing: 0) {
             // Header Row
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Hello, \(authManager.userDisplayName.components(separatedBy: " ").first ?? "User") 👋")
+                    Text("Hello, \(displayFirstName) 👋")
                         .font(.system(.subheadline, design: .rounded))
                         .foregroundColor(Color(.secondaryLabel))
                     
-                    Text("Dashboard")
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .foregroundColor(Color(.label))
+                    HStack(spacing: 8) {
+                        Text("Dashboard")
+                            .font(.title)
+                            .fontWeight(.bold)
+                            .foregroundColor(Color(.label))
+                        
+                        if let cid = customerId {
+                            Text(cid)
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Color.brandNavy.opacity(0.85))
+                                .cornerRadius(6)
+                        }
+                    }
                 }
                 
                 Spacer()
@@ -177,7 +216,7 @@ struct TopNavigationBarSection: View {
                                 .fill(Color.brandNavy)
                                 .frame(width: 40, height: 40)
                             
-                            Text(authManager.userInitials)
+                            Text(displayInitials)
                                 .font(.system(.body, design: .rounded))
                                 .fontWeight(.bold)
                                 .foregroundColor(.white)

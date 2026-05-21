@@ -1,6 +1,6 @@
 import Foundation
 
-struct BorrowerProfile {
+struct BorrowerProfile: Codable {
     var id: String
     var fullName: String
     var email: String
@@ -28,6 +28,18 @@ struct BorrowerProfile {
     var loanOverview: LoanOverview
     
     var profileImageData: Data? = nil
+    
+    // New Onboarding Questionnaire Fields
+    var occupation: String
+    var hasExistingBankAccount: Bool
+    var existingCustomerId: String?
+    var preferredBranch: String
+    var emergencyContactName: String
+    var emergencyContactNumber: String
+    var nomineeName: String
+    var nomineeRelationship: String
+    var loanPurposeInterests: [String]
+    var isOnboardingCompleted: Bool
     
     var isKYCVerified: Bool {
         return kycVerification.aadhaarStatus == .verified && kycVerification.panStatus == .verified
@@ -99,20 +111,48 @@ struct BorrowerProfile {
             completedScore += 10
         }
         
+        totalPossible += 5
+        if !occupation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            completedScore += 5
+        }
+        
         totalPossible += 10
         if income.monthlyIncome > 0 {
             completedScore += 10
         }
         
         // 5. Bank Account
-        totalPossible += 10
+        totalPossible += 5
         if !bankDetails.bankName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
            !bankDetails.accountNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
            !bankDetails.ifscCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            completedScore += 10
+            completedScore += 5
         }
         
-        // 6. KYC Uploads
+        // 6. Onboarding Questionnaire Details
+        totalPossible += 5
+        if !preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            completedScore += 5
+        }
+        
+        totalPossible += 5
+        if !emergencyContactName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+           !emergencyContactNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            completedScore += 5
+        }
+        
+        totalPossible += 5
+        if !nomineeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+           !nomineeRelationship.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            completedScore += 5
+        }
+        
+        totalPossible += 5
+        if !loanPurposeInterests.isEmpty {
+            completedScore += 5
+        }
+        
+        // 7. KYC Uploads
         totalPossible += 5
         if kycVerification.aadhaarFileName != nil {
             completedScore += 5
@@ -126,10 +166,10 @@ struct BorrowerProfile {
             completedScore += 5
         }
         
-        // 7. Profile Picture
-        totalPossible += 10
+        // 8. Profile Picture
+        totalPossible += 5
         if profileImageData != nil {
-            completedScore += 10
+            completedScore += 5
         }
         
         guard totalPossible > 0 else { return 0 }
@@ -140,7 +180,7 @@ struct BorrowerProfile {
     }
 }
 
-struct AddressInfo {
+struct AddressInfo: Codable {
     let streetAddress: String
     let city: String
     let state: String
@@ -149,7 +189,7 @@ struct AddressInfo {
     let isSameAsCurrent: Bool
 }
 
-struct EmploymentInfo {
+struct EmploymentInfo: Codable {
     let employmentType: String // e.g. Salaried, Self-employed
     let companyName: String
     let designation: String
@@ -157,7 +197,7 @@ struct EmploymentInfo {
     let employerAddress: String
 }
 
-struct IncomeInfo {
+struct IncomeInfo: Codable {
     let monthlyIncome: Double
     let annualIncome: Double
     let existingEMIs: Double
@@ -169,7 +209,7 @@ struct IncomeInfo {
     }
 }
 
-struct BankDetails {
+struct BankDetails: Codable {
     let bankName: String
     let accountHolderName: String
     let accountNumber: String 
@@ -178,7 +218,7 @@ struct BankDetails {
     let isVerified: Bool
 }
 
-struct KYCVerification {
+struct KYCVerification: Codable {
     var aadhaarStatus: VerificationStatus
     var panStatus: VerificationStatus
     var addressProofStatus: VerificationStatus
@@ -199,7 +239,7 @@ struct KYCVerification {
     }
 }
 
-struct LoanOverview {
+struct LoanOverview: Codable {
     let activeLoans: Int
     let loanHistoryCount: Int
     let nextEmiDueDate: Date?
@@ -207,7 +247,7 @@ struct LoanOverview {
     let currentLoanStatus: String
 }
 
-enum VerificationStatus: String {
+enum VerificationStatus: String, Codable {
     case pending = "Pending"
     case underReview = "Under Review"
     case verified = "Verified"
