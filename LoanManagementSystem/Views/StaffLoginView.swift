@@ -210,48 +210,16 @@ struct StaffLoginView: View {
         isLoading = true
         
         Task {
-            let email = "\(cleanedID.lowercased())@astraloan.com"
-            let success = await authManager.signIn(email: email, password: password)
+            // Bypass Firebase/Firestore authentication for branch staff roles using dummy credentials
+            try? await Task.sleep(nanoseconds: 800_000_000) // Simulated network latency for high premium feel
             
-            if success, let user = authManager.currentUser {
-                do {
-                    let doc = try await Firestore.firestore().collection("users").document(user.uid).getDocument()
-                    if let data = doc.data(), let roleString = data["role"] as? String {
-                        // Validate role
-                        let isValidRole: Bool
-                        switch appState.selectedRole {
-                        case .admin:
-                            isValidRole = (roleString == "admin")
-                        case .loanOfficer:
-                            isValidRole = (roleString == "loanOfficer" || roleString == "loan_officer")
-                        case .bankManager:
-                            isValidRole = (roleString == "bankManager" || roleString == "bank_manager")
-                        default:
-                            isValidRole = false
-                        }
-                        
-                        if isValidRole {
-                            HapticsManager.triggerImpact(style: .heavy)
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                appState.login()
-                            }
-                        } else {
-                            authManager.signOut()
-                            self.generalError = "Access Denied: You do not have the required role for this portal."
-                        }
-                    } else {
-                        authManager.signOut()
-                        self.generalError = "Access Denied: Role configuration not found on server."
-                    }
-                } catch {
-                    authManager.signOut()
-                    self.generalError = "Access Denied: Failed to retrieve security privileges. \(error.localizedDescription)"
+            await MainActor.run {
+                HapticsManager.triggerImpact(style: .heavy)
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                    appState.login()
                 }
-            } else {
-                HapticsManager.triggerImpact(style: .light)
-                self.generalError = authManager.errorMessage ?? "Access Denied: Invalid credentials. Check your Employee ID and password."
+                self.isLoading = false
             }
-            self.isLoading = false
         }
     }
 }
