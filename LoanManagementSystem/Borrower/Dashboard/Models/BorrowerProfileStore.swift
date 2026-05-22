@@ -124,6 +124,8 @@ class BorrowerProfileStore: ObservableObject {
             if let decodedProfile = try await DatabaseService.shared.fetchProfile(userId: uid) {
                 self.profile = decodedProfile
             } else {
+                // If it successfully returns nil, it means the query executed successfully but no profile exists.
+                // In this case, we create a new blank profile and upsert it.
                 let customerId = "C-\(Int.random(in: 100000...999999))"
                 var newProfile = makeEmptyProfile(
                     name: name ?? email,
@@ -139,10 +141,16 @@ class BorrowerProfileStore: ObservableObject {
             self.currentEmail = email
         } catch {
             print("Error fetching profile from Supabase: \(error.localizedDescription)")
-            let customerId = "C-\(Int.random(in: 100000...999999))"
-            var fallbackProfile = makeEmptyProfile(name: name ?? email, email: email, phone: phone ?? "", alternatePhone: alternatePhone, customerId: customerId)
-            fallbackProfile.id = uid
-            self.profile = fallbackProfile
+            // On connection/auth/other query failures, fallback to local cache if available,
+            // otherwise set a local fallback profile, but DO NOT upsert back to Supabase!
+            if let cachedProfile = DatabaseService.shared.loadProfileLocally(userId: uid) {
+                self.profile = cachedProfile
+            } else {
+                let customerId = "C-\(Int.random(in: 100000...999999))"
+                var fallbackProfile = makeEmptyProfile(name: name ?? email, email: email, phone: phone ?? "", alternatePhone: alternatePhone, customerId: customerId)
+                fallbackProfile.id = uid
+                self.profile = fallbackProfile
+            }
             self.currentEmail = email
         }
     }

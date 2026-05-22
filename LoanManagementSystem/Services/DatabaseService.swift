@@ -19,22 +19,21 @@ final class DatabaseService {
     
     /// Fetches borrower profile from "profiles" table.
     func fetchProfile(userId: String) async throws -> BorrowerProfile? {
-        do {
-            let profile: BorrowerProfile = try await client
-                .from("profiles")
-                .select()
-                .eq("id", value: userId)
-                .single()
-                .execute()
-                .value
-            
+        // Query as an array to distinguish "no rows" (empty array) from "error" (thrown exception)
+        let profiles: [BorrowerProfile] = try await client
+            .from("profiles")
+            .select()
+            .eq("id", value: userId)
+            .execute()
+            .value
+        
+        if let profile = profiles.first {
             // Cache it locally on successful fetch
             saveProfileLocally(profile, userId: userId)
             return profile
-        } catch {
-            print("[DatabaseService] Failed to fetch profile from Supabase: \(error.localizedDescription)")
-            // Fallback to local cache
-            return loadProfileLocally(userId: userId)
+        } else {
+            // Nil indicates that the profile record does not exist on Supabase
+            return nil
         }
     }
     
@@ -68,7 +67,7 @@ final class DatabaseService {
         }
     }
     
-    private func loadProfileLocally(userId: String) -> BorrowerProfile? {
+    func loadProfileLocally(userId: String) -> BorrowerProfile? {
         let fileURL = getLocalProfileURL(userId: userId)
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             return nil
