@@ -70,7 +70,7 @@ struct ContentView: View {
                                     removal: .move(edge: .leading).combined(with: .opacity)
                                 ))
                         case .bankManager:
-                            BankManagerDashboardView()
+                            ManagerDashboardView()
                                 .environmentObject(authManager)
                                 .environmentObject(appState)
                                 .transition(.asymmetric(

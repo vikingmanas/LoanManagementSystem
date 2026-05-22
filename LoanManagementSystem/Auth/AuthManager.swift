@@ -87,6 +87,25 @@ final class AuthManager: ObservableObject {
         clearError()
         isLoading = true
 
+        #if DEBUG
+        // Development bypass for staff testing without requiring Supabase seeded users
+        if email == "bm1234@lms.com" || email == "lo1234@lms.com" || email == "ad1234@lms.com" {
+            let role: String
+            if email.starts(with: "bm") { role = "loan_manager" }
+            else if email.starts(with: "lo") { role = "loan_officer" }
+            else { role = "admin" }
+            
+            self.currentUser = AuthSessionUser(
+                uid: UUID().uuidString,
+                email: email,
+                displayName: "Test Staff"
+            )
+            self.isAuthenticated = true
+            self.isLoading = false
+            return (true, role)
+        }
+        #endif
+
         do {
             let session = try await AuthService.shared.signIn(email: email, password: password)
             let user = session.user
