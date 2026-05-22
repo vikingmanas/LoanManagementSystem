@@ -7,49 +7,85 @@ struct ActivityFeedRow: View {
     var onActionTapped: (ActivityActionType) -> Void
     
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            // Native Unread Dot (Blue)
-            Circle()
-                .fill(item.isRead ? Color.clear : .blue)
-                .frame(width: 10, height: 10)
-            
-            // Native Avatar
-            ZStack {
-                Circle()
-                    .fill(Color(.systemGray5))
-                    .frame(width: 50, height: 50)
-                Text(String(item.borrowerName.prefix(2)).uppercased())
-                    .font(.system(size: 18, weight: .semibold, design: .rounded))
-                    .foregroundColor(Color(.darkGray))
+        HStack(alignment: .top, spacing: 12) {
+            // Icon + Unread Badge Stack
+            ZStack(alignment: .topTrailing) {
+                ZStack {
+                    Circle()
+                        .fill(item.eventType.themeColor.opacity(0.12))
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: item.eventType.symbol)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(item.eventType.themeColor)
+                }
+                
+                if !item.isRead {
+                    Circle()
+                        .fill(Color.blue)
+                        .frame(width: 10, height: 10)
+                        .overlay(
+                            Circle()
+                                .stroke(Color(.systemBackground), lineWidth: 2)
+                        )
+                        .offset(x: 2, y: -2)
+                }
             }
             
             // Text Details Stack
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .top) {
                     Text(item.borrowerName)
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                        .lineLimit(1)
+                        .font(.system(.callout, design: .rounded).bold())
+                        .foregroundStyle(LMSColors.textPrimary)
+                    
+                    Text("·")
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(LMSColors.textSecondary)
+                    
+                    Text(item.loanType)
+                        .font(.system(.caption, design: .rounded).weight(.semibold))
+                        .foregroundStyle(LMSColors.textSecondary)
                     
                     Spacer()
                     
-                    HStack(spacing: 4) {
-                        Text(RelativeDateFormatter.shared.relativeString(from: item.timestamp))
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(Color(.tertiaryLabel))
-                    }
+                    Text(RelativeDateFormatter.shared.relativeString(from: item.timestamp))
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(Color(.placeholderText))
                 }
                 
-                HStack(alignment: .top) {
-                    Text(item.eventDescription)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                Text(item.eventDescription)
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(LMSColors.textSecondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                
+                HStack(spacing: 6) {
+                    Text(item.applicationId)
+                        .font(.system(.caption2, design: .rounded).weight(.semibold))
+                        .foregroundStyle(Color(.placeholderText))
                 }
+                .padding(.top, 2)
+            }
+            
+            Spacer()
+            
+            // Optional CTA Button
+            if item.requiresAction, let actionType = item.actionType {
+                Button(action: {
+                    HapticsManager.triggerImpact(style: .medium)
+                    onActionTapped(actionType)
+                }) {
+                    Text(actionType.label)
+                        .font(.system(.caption, design: .rounded).bold())
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(actionType.color.opacity(0.15))
+                        .foregroundStyle(actionType.color)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .accessibilityLabel("Action: \(actionType.label) for \(item.borrowerName)")
             }
         }
         .padding(.vertical, 6)

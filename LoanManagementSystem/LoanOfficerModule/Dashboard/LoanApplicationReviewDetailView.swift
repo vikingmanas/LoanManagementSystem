@@ -88,7 +88,7 @@ struct LoanApplicationReviewDetailView: View {
                                         .font(.system(.title3, design: .rounded).bold())
                                     Text("Application ID: \(currentApp.applicationId)")
                                         .font(.system(.caption, design: .rounded).weight(.semibold))
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(LMSColors.textSecondary)
                                 }
                                 
                                 Spacer()
@@ -96,11 +96,11 @@ struct LoanApplicationReviewDetailView: View {
                                 // Status Indicator Pill
                                 Text(currentApp.status.rawValue)
                                     .font(.system(.caption, design: .rounded).bold())
-                                    .foregroundColor(.white)
+                                    .foregroundStyle(.white)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
                                     .background(currentApp.status.themeColor)
-                                    .cornerRadius(12)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
                             
                             // Progress bar
@@ -112,17 +112,17 @@ struct LoanApplicationReviewDetailView: View {
                                 HStack {
                                     Text("Verification Progress")
                                         .font(.system(.caption2, design: .rounded).bold())
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(LMSColors.textSecondary)
                                     Spacer()
                                     Text("\(completionPct)% Completed (\(verifiedCount)/\(totalDocs) Docs)")
                                         .font(.system(.caption2, design: .rounded).bold())
-                                        .foregroundColor(AppTheme.actionBlue)
+                                        .foregroundStyle(AppTheme.actionBlue)
                                 }
                                 
                                 GeometryReader { geo in
                                     ZStack(alignment: .leading) {
                                         RoundedRectangle(cornerRadius: 3)
-                                            .fill(Color.primary.opacity(0.06))
+                                            .fill(LMSColors.textPrimary.opacity(0.06))
                                             .frame(height: 6)
                                         
                                         RoundedRectangle(cornerRadius: 3)
@@ -136,14 +136,14 @@ struct LoanApplicationReviewDetailView: View {
                         }
                         .padding(16)
                         .background(AppTheme.neutralSurface)
-                        .cornerRadius(16)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .padding(.horizontal, 16)
                         
                         // 2. BORROWER DETAILS GRID
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Borrower Information")
                                 .font(.system(.subheadline, design: .rounded).bold())
-                                .foregroundColor(.primary)
+                                .foregroundStyle(LMSColors.textPrimary)
                                 .padding(.horizontal, 16)
                             
                             VStack(spacing: 12) {
@@ -189,7 +189,7 @@ struct LoanApplicationReviewDetailView: View {
                             }
                             .padding(16)
                             .background(AppTheme.neutralSurface)
-                            .cornerRadius(16)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             .padding(.horizontal, 16)
                         }
                         
@@ -197,7 +197,7 @@ struct LoanApplicationReviewDetailView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("AI/OCR Auto-Validation Audit")
                                 .font(.system(.subheadline, design: .rounded).bold())
-                                .foregroundColor(.primary)
+                                .foregroundStyle(LMSColors.textPrimary)
                                 .padding(.horizontal, 16)
                             
                             VStack(spacing: 12) {
@@ -207,7 +207,7 @@ struct LoanApplicationReviewDetailView: View {
                                             .tint(AppTheme.actionBlue)
                                         Text(aiStatusText)
                                             .font(.system(.caption, design: .rounded).bold())
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(LMSColors.textSecondary)
                                     }
                                     .padding(.vertical, 8)
                                 } else if aiAuditRun {
@@ -215,10 +215,10 @@ struct LoanApplicationReviewDetailView: View {
                                     VStack(alignment: .leading, spacing: 8) {
                                         HStack {
                                             Image(systemName: "cpu.fill")
-                                                .foregroundColor(AppTheme.successGreen)
+                                                .foregroundStyle(AppTheme.successGreen)
                                             Text("OCR Audit Completed")
                                                 .font(.system(.caption, design: .rounded).bold())
-                                                .foregroundColor(AppTheme.successGreen)
+                                                .foregroundStyle(AppTheme.successGreen)
                                             Spacer()
                                         }
                                         
@@ -260,7 +260,7 @@ struct LoanApplicationReviewDetailView: View {
                                                 .font(.system(.caption, design: .rounded).bold())
                                             Text("Scans files for blur, mismatches, and date validity.")
                                                 .font(.system(.caption2, design: .rounded))
-                                                .foregroundColor(.secondary)
+                                                .foregroundStyle(LMSColors.textSecondary)
                                         }
                                         Spacer()
                                         
@@ -270,18 +270,18 @@ struct LoanApplicationReviewDetailView: View {
                                                 Text("Run Audit")
                                             }
                                             .font(.system(.caption, design: .rounded).bold())
-                                            .foregroundColor(.white)
+                                            .foregroundStyle(.white)
                                             .padding(.horizontal, 14)
                                             .padding(.vertical, 8)
                                             .background(AppTheme.actionBlue)
-                                            .cornerRadius(8)
+                                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                                         }
                                     }
                                 }
                             }
                             .padding(14)
                             .background(AppTheme.neutralSurface)
-                            .cornerRadius(16)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             .padding(.horizontal, 16)
                         }
                         
@@ -289,7 +289,7 @@ struct LoanApplicationReviewDetailView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Document Checklist")
                                 .font(.system(.subheadline, design: .rounded).bold())
-                                .foregroundColor(.primary)
+                                .foregroundStyle(LMSColors.textPrimary)
                                 .padding(.horizontal, 16)
                             
                             VStack(spacing: 0) {
@@ -308,7 +308,7 @@ struct LoanApplicationReviewDetailView: View {
                                 }
                             }
                             .background(AppTheme.neutralSurface)
-                            .cornerRadius(16)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             .shadow(color: .black.opacity(0.02), radius: 5, x: 0, y: 3)
                             .padding(.horizontal, 16)
                         }
@@ -319,7 +319,7 @@ struct LoanApplicationReviewDetailView: View {
                             VStack(alignment: .leading, spacing: 10) {
                                 Text("Verification Activity Timeline")
                                     .font(.system(.subheadline, design: .rounded).bold())
-                                    .foregroundColor(.primary)
+                                    .foregroundStyle(LMSColors.textPrimary)
                                     .padding(.horizontal, 16)
                                 
                                 VStack(alignment: .leading, spacing: 16) {
@@ -332,24 +332,24 @@ struct LoanApplicationReviewDetailView: View {
                                                     .frame(width: 28, height: 28)
                                                 Image(systemName: item.eventType.symbol)
                                                     .font(.system(size: 10, weight: .bold))
-                                                    .foregroundColor(item.eventType.themeColor)
+                                                    .foregroundStyle(item.eventType.themeColor)
                                             }
                                             
                                             VStack(alignment: .leading, spacing: 3) {
                                                 Text(item.eventDescription)
                                                     .font(.system(.caption, design: .rounded).bold())
-                                                    .foregroundColor(.primary)
+                                                    .foregroundStyle(LMSColors.textPrimary)
                                                 
                                                 Text(RelativeDateFormatter.shared.relativeString(from: item.timestamp))
                                                     .font(.system(.caption2, design: .rounded))
-                                                    .foregroundColor(.secondary)
+                                                    .foregroundStyle(LMSColors.textSecondary)
                                             }
                                         }
                                     }
                                 }
                                 .padding(16)
                                 .background(AppTheme.neutralSurface)
-                                .cornerRadius(16)
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                                 .padding(.horizontal, 16)
                             }
                         }
@@ -367,20 +367,20 @@ struct LoanApplicationReviewDetailView: View {
                                         Text("Send for Final Approval")
                                             .font(.system(.subheadline, design: .rounded).bold())
                                     }
-                                    .foregroundColor(.white)
+                                    .foregroundStyle(.white)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 14)
                                     .background(AppTheme.successGreen)
-                                    .cornerRadius(12)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 }
                             } else {
                                 VStack(spacing: 8) {
                                     HStack(spacing: 6) {
                                         Image(systemName: "exclamationmark.circle.fill")
-                                            .foregroundColor(AppTheme.criticalRed)
+                                            .foregroundStyle(AppTheme.criticalRed)
                                         Text("Verification Incomplete: Resolve missing or rejected documents.")
                                             .font(.system(.caption2, design: .rounded).bold())
-                                            .foregroundColor(AppTheme.criticalRed)
+                                            .foregroundStyle(AppTheme.criticalRed)
                                     }
                                     
                                     Button(action: {}) {
@@ -389,11 +389,11 @@ struct LoanApplicationReviewDetailView: View {
                                             Text("Send for Final Approval")
                                                 .font(.system(.subheadline, design: .rounded).bold())
                                         }
-                                        .foregroundColor(.white.opacity(0.6))
+                                        .foregroundStyle(.white.opacity(0.6))
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 14)
-                                        .background(Color.secondary.opacity(0.3))
-                                        .cornerRadius(12)
+                                        .background(LMSColors.textSecondary.opacity(0.3))
+                                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                                     }
                                     .disabled(true)
                                 }
@@ -521,10 +521,10 @@ struct InfoCell: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
                 .font(.system(size: 8, weight: .bold, design: .rounded))
-                .foregroundColor(.secondary)
+                .foregroundStyle(LMSColors.textSecondary)
             Text(val)
                 .font(.system(.footnote, design: .rounded).bold())
-                .foregroundColor(color)
+                .foregroundStyle(color)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -560,17 +560,17 @@ struct AIFindingRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: type.icon)
-                .font(.caption)
-                .foregroundColor(type.color)
+                .font(LMSFont.caption)
+                .foregroundStyle(type.color)
                 .padding(.top, 2)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(docName)
                     .font(.system(.caption, design: .rounded).bold())
-                    .foregroundColor(.primary)
+                    .foregroundStyle(LMSColors.textPrimary)
                 Text(desc)
                     .font(.system(size: 9))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(LMSColors.textSecondary)
             }
         }
     }
@@ -596,15 +596,15 @@ struct DocumentChecklistItemRow: View {
                             .frame(width: 14, height: 14)
                         Image(systemName: "checkmark")
                             .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                     } else if doc.status == .rejectFlag {
                         Image(systemName: "xmark")
                             .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(AppTheme.criticalRed)
+                            .foregroundStyle(AppTheme.criticalRed)
                     } else if doc.status == .pending {
                         Image(systemName: "questionmark")
                             .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(AppTheme.warningAmber)
+                            .foregroundStyle(AppTheme.warningAmber)
                     }
                 }
             }
@@ -614,17 +614,17 @@ struct DocumentChecklistItemRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(doc.docType.rawValue)
                     .font(.system(.footnote, design: .rounded).bold())
-                    .foregroundColor(.primary)
+                    .foregroundStyle(LMSColors.textPrimary)
                 
                 if let reason = doc.rejectionReason {
                     Text("Correction: \(reason)")
                         .font(.system(size: 9))
-                        .foregroundColor(AppTheme.criticalRed)
+                        .foregroundStyle(AppTheme.criticalRed)
                         .lineLimit(1)
                 } else {
                     Text(doc.status.rawValue)
                         .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                 }
             }
             
@@ -634,23 +634,23 @@ struct DocumentChecklistItemRow: View {
             Button(action: onPreview) {
                 HStack(spacing: 4) {
                     Image(systemName: doc.docType.symbol)
-                        .font(.caption)
+                        .font(LMSFont.caption)
                     Text("Preview")
                         .font(.system(.caption2, design: .rounded).bold())
                 }
-                .foregroundColor(AppTheme.actionBlue)
+                .foregroundStyle(AppTheme.actionBlue)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(AppTheme.actionBlue.opacity(0.08))
-                .cornerRadius(8)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(PlainButtonStyle())
             
             // Edit status actions button
             Button(action: onAction) {
                 Image(systemName: "ellipsis.circle.fill")
-                    .font(.title3)
-                    .foregroundColor(.secondary.opacity(0.7))
+                    .font(LMSFont.title3)
+                    .foregroundStyle(.secondary.opacity(0.7))
             }
             .buttonStyle(PlainButtonStyle())
         }

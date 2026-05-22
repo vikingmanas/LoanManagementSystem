@@ -12,15 +12,15 @@ struct ProcessedLoansView: View {
                 HStack(spacing: 8) {
                     Text("Sent to Manager")
                         .font(.system(.subheadline, design: .rounded).bold())
-                        .foregroundColor(.primary)
+                        .foregroundStyle(LMSColors.textPrimary)
                     
                     Text("This Week")
                         .font(.system(.caption2, design: .rounded).bold())
-                        .foregroundColor(AppTheme.actionBlue)
+                        .foregroundStyle(AppTheme.actionBlue)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(AppTheme.actionBlue.opacity(0.12))
-                        .cornerRadius(8)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 
                 Spacer()
@@ -51,7 +51,7 @@ struct ProcessedLoansView: View {
                 }
             }
             .background(AppTheme.neutralSurface)
-            .cornerRadius(16)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 3)
         }
     }
@@ -72,23 +72,23 @@ struct ProcessedLoanRow: View {
                 
                 Image(systemName: app.loanType.symbol)
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(app.loanType.themeColor)
+                    .foregroundStyle(app.loanType.themeColor)
             }
             
             // Center Details
             VStack(alignment: .leading, spacing: 3) {
                 Text("\(app.borrowerName) · \(app.loanType.rawValue)")
                     .font(.system(.callout, design: .rounded).bold())
-                    .foregroundColor(.primary)
+                    .foregroundStyle(LMSColors.textPrimary)
                 
                 Text("\(app.applicationId) · \(CurrencyFormatter.shared.format(app.requestedAmount))")
                     .font(.system(.caption, design: .rounded))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(LMSColors.textSecondary)
                 
                 if let sentDate = app.sentToManagerDate {
                     Text("Sent on \(RelativeDateFormatter.shared.absoluteString(from: sentDate))")
                         .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(Color(.placeholderText))
+                        .foregroundStyle(Color(.placeholderText))
                 }
             }
             
@@ -99,11 +99,11 @@ struct ProcessedLoanRow: View {
                 VStack(alignment: .trailing, spacing: 6) {
                     Text(status.rawValue)
                         .font(.system(.caption2, design: .rounded).bold())
-                        .foregroundColor(status == .underReview ? AppTheme.warningAmber : .white)
+                        .foregroundStyle(status == .underReview ? AppTheme.warningAmber : .white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(status == .underReview ? AppTheme.warningAmber.opacity(0.15) : status.themeColor)
-                        .cornerRadius(8)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     
                     if status == .needsClarification {
                         Button(action: {
@@ -112,11 +112,11 @@ struct ProcessedLoanRow: View {
                         }) {
                             Text("Respond")
                                 .font(.system(.caption2, design: .rounded).bold())
-                                .foregroundColor(AppTheme.criticalRed)
+                                .foregroundStyle(AppTheme.criticalRed)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 5)
                                 .background(AppTheme.criticalRed.opacity(0.12))
-                                .cornerRadius(6)
+                                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                         }
                         .buttonStyle(PlainButtonStyle())
                         .accessibilityLabel("Respond to manager query for \(app.borrowerName)")

@@ -7,6 +7,7 @@ struct DashboardTabView: View {
     // Callbacks to bubble up user actions to the main dashboard container
     var onDocumentSeeAllTapped: () -> Void
     var onManagerRespondTapped: (LoanApplication) -> Void
+    var onQuickActionTapped: (String) -> Void
     
     // Local Sheet presentation states
     @State private var showingPortfolioMetrics = false
@@ -21,12 +22,12 @@ struct DashboardTabView: View {
                     VStack(spacing: 20) {
                         // Portfolio Card Placeholder
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(Color.secondary.opacity(0.15))
+                            .fill(LMSColors.textSecondary.opacity(0.15))
                             .frame(height: 180)
                         
                         // Document Queue Placeholder
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(Color.secondary.opacity(0.15))
+                            .fill(LMSColors.textSecondary.opacity(0.15))
                             .frame(height: 250)
                     }
                     .padding(.horizontal, 16)
@@ -57,11 +58,19 @@ struct DashboardTabView: View {
                         .id("doc_queue")
                         .padding(.horizontal, 16)
                         
-                        // SECTION E — LOANS PROCESSED TO MANAGER
-                        ProcessedLoansView(viewModel: viewModel) { app in
-                            onManagerRespondTapped(app)
-                        }
-                        .id("manager_loans")
+                        // SECTION E — QUICK OPERATIONAL ACTIONS
+                        OfficerQuickActionsView(
+                            onVerifyDocs: {
+                                onQuickActionTapped("verify_docs")
+                            },
+                            onReports: {
+                                onQuickActionTapped("reports")
+                            },
+                            onEscalate: {
+                                onQuickActionTapped("escalate")
+                            }
+                        )
+                        .id("quick_actions")
                         .padding(.horizontal, 16)
                     }
                     .padding(.top, 16)

@@ -11,7 +11,7 @@ struct SettingsDetailView: View {
                 Toggle(isOn: $isDarkMode) {
                     HStack {
                         Image(systemName: isDarkMode ? "moon.fill" : "sun.max.fill")
-                            .foregroundColor(isDarkMode ? .indigo : .orange)
+                            .foregroundStyle(isDarkMode ? .indigo : .orange)
                         Text("Dark Mode")
                     }
                 }
@@ -20,7 +20,7 @@ struct SettingsDetailView: View {
             Section(header: Text("Localization")) {
                 Picker(selection: $selectedLanguage, label: HStack {
                     Image(systemName: "globe")
-                        .foregroundColor(.blue)
+                        .foregroundStyle(.blue)
                     Text("Language")
                 }) {
                     ForEach(languages, id: \.self) { lang in
@@ -34,7 +34,7 @@ struct SettingsDetailView: View {
                     Text("Version")
                     Spacer()
                     Text("1.0.0 (Build 42)")
-                        .foregroundColor(Color.AppTheme.textSecondary)
+                        .foregroundStyle(Color.AppTheme.textSecondary)
                 }
             }
         }

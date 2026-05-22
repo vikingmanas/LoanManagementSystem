@@ -1,48 +1,46 @@
 import SwiftUI
 
+/// Reusable section card for profile and settings screens.
+/// Uses the unified LMS card modifier for consistent surface + shadow.
 struct SectionCardView<Content: View>: View {
     var title: String
     var icon: String
     var showEdit: Bool = true
     var onEdit: (() -> Void)? = nil
     @ViewBuilder var content: () -> Content
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: LMSSpacing.lg) {
             // Header
-            HStack {
+            HStack(spacing: LMSSpacing.md) {
                 Image(systemName: icon)
-                    .foregroundColor(Color.AppTheme.primary)
-                    .frame(width: 20)
-                
+                    .font(.system(.callout, design: .rounded).weight(.semibold))
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .frame(width: 22)
+
                 Text(title)
-                    .font(Font.AppTheme.subtitle)
-                    .fontWeight(.bold)
-                    .foregroundColor(Color.AppTheme.textPrimary)
-                
+                    .font(LMSFont.headline)
+                    .foregroundStyle(LMSColors.textPrimary)
+
                 Spacer()
-                
+
                 if showEdit {
                     Button(action: {
                         onEdit?()
                     }) {
                         Text("Edit")
-                            .font(Font.AppTheme.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(Color.AppTheme.primary)
+                            .font(LMSFont.caption.weight(.semibold))
+                            .foregroundStyle(LMSColors.brandNavy)
                     }
                 }
             }
-            
+
             Divider()
-                .background(Color.gray.opacity(0.2))
-            
+
             // Custom Content
             content()
         }
-        .padding(20)
-        .background(Color.AppTheme.secondary)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 4)
+        .padding(LMSSpacing.xl)
+        .lmsCard(radius: LMSRadius.lg)
     }
 }

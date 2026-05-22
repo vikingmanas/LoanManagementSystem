@@ -3,28 +3,28 @@ import SwiftUI
 struct RoleSelectionView: View {
     @EnvironmentObject var appState: AppStateManager
     @State private var tempSelectedRole: PortalRole = .customer
-    
+
     var body: some View {
         ZStack {
-            // Elegant background gradient matching Splash Screen branding
+            // Premium gradient background
             LinearGradient(
                 colors: [
-                    Color(hex: "#0A2540"), // Deep Brand Navy
-                    Color(hex: "#162E5C"),
-                    Color(hex: "#203A70")
+                    LMSColors.brandNavy,
+                    LMSColors.brandNavyLight,
+                    Color(hex: "203A70")
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
-            
-            // Subtle backdrop glowing circles for high-end visual depth
+
+            // Ambient glow orbs for depth
             VStack {
                 HStack {
                     Circle()
-                        .fill(Color(hex: "#1A73E8").opacity(0.12))
-                        .frame(width: 250, height: 250)
-                        .blur(radius: 50)
+                        .fill(LMSColors.actionBlue.opacity(0.10))
+                        .frame(width: 240, height: 240)
+                        .blur(radius: 60)
                         .offset(x: -80, y: -50)
                     Spacer()
                 }
@@ -32,38 +32,38 @@ struct RoleSelectionView: View {
                 HStack {
                     Spacer()
                     Circle()
-                        .fill(Color(hex: "#00C48C").opacity(0.08))
-                        .frame(width: 300, height: 300)
-                        .blur(radius: 60)
-                        .offset(x: 100, y: 100)
+                        .fill(LMSColors.emerald.opacity(0.07))
+                        .frame(width: 280, height: 280)
+                        .blur(radius: 70)
+                        .offset(x: 100, y: 80)
                 }
             }
             .ignoresSafeArea()
-            
-            VStack(spacing: 20) {
-                // Header Logo and Subtitle
-                VStack(spacing: 12) {
+
+            VStack(spacing: LMSSpacing.xl) {
+                // Header
+                VStack(spacing: LMSSpacing.md) {
                     Image(systemName: "indianrupeesign.circle.fill")
-                        .font(.system(size: 52))
-                        .foregroundColor(.white)
-                        .shadow(color: Color(hex: "#1A73E8").opacity(0.4), radius: 10, x: 0, y: 4)
-                    
-                    Text("Astra Loan Portal")
-                        .font(.system(.title2, design: .rounded).bold())
-                        .foregroundColor(.white)
-                    
-                    Text("Select your role to access your personalized workspace")
-                        .font(.system(.subheadline, design: .rounded))
-                        .foregroundColor(.white.opacity(0.7))
+                        .font(.system(size: 52, weight: .light))
+                        .foregroundStyle(.white.opacity(0.95))
+                        .shadow(color: LMSColors.actionBlue.opacity(0.35), radius: 12, x: 0, y: 4)
+
+                    Text("Loan Manager")
+                        .font(LMSFont.title)
+                        .foregroundStyle(.white)
+
+                    Text("Select your role to access your workspace")
+                        .font(LMSFont.subheadline)
+                        .foregroundStyle(.white.opacity(0.65))
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
+                        .padding(.horizontal, LMSSpacing.xxxl)
                 }
-                .padding(.top, 30)
-                .padding(.bottom, 10)
-                
-                // Roles Cards Container
+                .padding(.top, LMSSpacing.xxxl)
+                .padding(.bottom, LMSSpacing.sm)
+
+                // Role cards
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 14) {
+                    VStack(spacing: LMSSpacing.md) {
                         ForEach(PortalRole.allCases) { role in
                             RoleCardView(
                                 role: role,
@@ -77,12 +77,12 @@ struct RoleSelectionView: View {
                             )
                         }
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, LMSSpacing.xxl)
+                    .padding(.vertical, LMSSpacing.sm)
                 }
-                
-                // Bottom Button Action Space
-                VStack(spacing: 16) {
+
+                // Continue button
+                VStack(spacing: LMSSpacing.lg) {
                     Button(action: {
                         HapticsManager.triggerImpact(style: .heavy)
                         withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
@@ -90,32 +90,29 @@ struct RoleSelectionView: View {
                             appState.showRoleSelection = false
                         }
                     }) {
-                        HStack {
+                        HStack(spacing: LMSSpacing.sm) {
                             Text("Continue as \(tempSelectedRole.rawValue)")
-                                .font(.system(.body, design: .rounded).weight(.bold))
-                            
+                                .font(LMSFont.button)
+
                             Image(systemName: "arrow.right")
                                 .font(.system(.body, design: .rounded).weight(.bold))
                         }
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 54)
+                        .frame(height: 52)
                         .background(
                             LinearGradient(
-                                colors: [
-                                    Color(hex: "#1A73E8"),
-                                    Color(hex: "#1557B0")
-                                ],
+                                colors: [LMSColors.actionBlue, Color(hex: "1557B0")],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
                         )
-                        .cornerRadius(16)
-                        .shadow(color: Color(hex: "#1A73E8").opacity(0.3), radius: 8, x: 0, y: 4)
+                        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+                        .shadow(color: LMSColors.actionBlue.opacity(0.3), radius: 8, x: 0, y: 4)
                     }
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, LMSSpacing.xxl)
                 }
-                .padding(.bottom, 24)
+                .padding(.bottom, LMSSpacing.xxxl)
             }
         }
     }
@@ -126,71 +123,69 @@ struct RoleCardView: View {
     let role: PortalRole
     let isSelected: Bool
     var onTap: () -> Void
-    
+
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 16) {
-                // Icon Frame
+            HStack(spacing: LMSSpacing.lg) {
+                // Icon
                 ZStack {
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
                         .fill(isSelected ? Color.white.opacity(0.16) : Color.white.opacity(0.06))
                         .frame(width: 48, height: 48)
-                    
+
                     Image(systemName: role.icon)
                         .font(.system(size: 20))
-                        .foregroundColor(isSelected ? .white : .white.opacity(0.7))
+                        .foregroundStyle(isSelected ? .white : .white.opacity(0.7))
                 }
-                
-                // Info block
-                VStack(alignment: .leading, spacing: 4) {
+
+                // Label
+                VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                     Text(role.rawValue)
-                        .font(.system(.callout, design: .rounded).bold())
-                        .foregroundColor(.white)
-                    
+                        .font(LMSFont.callout.weight(.bold))
+                        .foregroundStyle(.white)
+
                     Text(role.description)
-                        .font(.system(.caption, design: .rounded))
-                        .foregroundColor(.white.opacity(0.6))
+                        .font(LMSFont.caption)
+                        .foregroundStyle(.white.opacity(0.55))
                         .multilineTextAlignment(.leading)
                         .lineLimit(2)
                 }
-                
+
                 Spacer()
-                
-                // Checkmark Selector
+
+                // Radio indicator
                 ZStack {
                     Circle()
-                        .stroke(isSelected ? Color(hex: "#1A73E8") : Color.white.opacity(0.2), lineWidth: 2)
+                        .stroke(isSelected ? LMSColors.actionBlue : Color.white.opacity(0.2), lineWidth: 2)
                         .frame(width: 22, height: 22)
-                    
+
                     if isSelected {
                         Circle()
-                            .fill(Color(hex: "#1A73E8"))
-                            .frame(width: 12, height: 12)
-                        
+                            .fill(LMSColors.actionBlue)
+                            .frame(width: 22, height: 22)
+
                         Image(systemName: "checkmark")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(.white)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.white)
                     }
                 }
             }
-            .padding(.all, 16)
+            .padding(LMSSpacing.lg)
             .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(isSelected ? Color.white.opacity(0.12) : Color.white.opacity(0.04))
+                RoundedRectangle(cornerRadius: LMSRadius.xl, style: .continuous)
+                    .fill(isSelected ? Color.white.opacity(0.11) : Color.white.opacity(0.04))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(isSelected ? Color(hex: "#1A73E8").opacity(0.5) : Color.white.opacity(0.1), lineWidth: 1.5)
+                RoundedRectangle(cornerRadius: LMSRadius.xl, style: .continuous)
+                    .stroke(isSelected ? LMSColors.actionBlue.opacity(0.5) : Color.white.opacity(0.08), lineWidth: 1.5)
             )
             .scaleEffect(isSelected ? 1.02 : 1.0)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
     }
 }
 
-struct RoleSelectionView_Previews: PreviewProvider {
-    static var previews: some View {
-        RoleSelectionView()
-            .environmentObject(AppStateManager())
-    }
+#Preview {
+    RoleSelectionView()
+        .environmentObject(AppStateManager())
 }

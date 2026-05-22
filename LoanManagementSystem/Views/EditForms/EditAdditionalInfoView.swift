@@ -12,9 +12,6 @@ struct EditAdditionalInfoView: View {
     @State private var emergencyContactNumber: String
     @State private var nomineeName: String
     @State private var nomineeRelationship: String
-    @State private var selectedInterests: Set<String> = []
-    
-    // Lists of Options
     private let relationships = ["Spouse", "Mother", "Father", "Brother", "Sister", "Child"]
     private let branches = [
         "Mumbai Main Branch",
@@ -24,7 +21,6 @@ struct EditAdditionalInfoView: View {
         "Delhi Connaught Place Branch",
         "Bengaluru Whitefield Branch"
     ]
-    private let loanInterests = ["Home", "Personal", "Education", "Vehicle", "Business"]
     
     @State private var showAlert = false
     @State private var alertMessage = ""
@@ -42,10 +38,6 @@ struct EditAdditionalInfoView: View {
         _emergencyContactNumber = State(initialValue: p?.emergencyContactNumber ?? "")
         _nomineeName = State(initialValue: p?.nomineeName ?? "")
         _nomineeRelationship = State(initialValue: p?.nomineeRelationship ?? "Spouse")
-        
-        if let interests = p?.loanPurposeInterests {
-            _selectedInterests = State(initialValue: Set(interests))
-        }
     }
     
     var body: some View {
@@ -55,7 +47,7 @@ struct EditAdditionalInfoView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Emergency Contact Name")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Enter Contact Full Name", text: $emergencyContactName)
                             .font(Font.AppTheme.input)
                     }
@@ -63,7 +55,7 @@ struct EditAdditionalInfoView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Emergency Contact Mobile Number")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Enter 10-digit number", text: $emergencyContactNumber)
                             .keyboardType(.phonePad)
                             .font(Font.AppTheme.input)
@@ -74,7 +66,7 @@ struct EditAdditionalInfoView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Nominee Full Name")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Enter Nominee Full Name", text: $nomineeName)
                             .font(Font.AppTheme.input)
                     }
@@ -91,7 +83,7 @@ struct EditAdditionalInfoView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Occupation / Designation")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Occupation", text: $occupation)
                             .font(Font.AppTheme.input)
                     }
@@ -103,7 +95,7 @@ struct EditAdditionalInfoView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Existing Bank Customer ID")
                                 .font(Font.AppTheme.caption)
-                                .foregroundColor(Color.AppTheme.textSecondary)
+                                .foregroundStyle(Color.AppTheme.textSecondary)
                             TextField("Customer ID", text: $existingCustomerId)
                                 .font(Font.AppTheme.input)
                         }
@@ -115,32 +107,7 @@ struct EditAdditionalInfoView: View {
                         }
                     }
                     .font(Font.AppTheme.body)
-                }
-                
-                Section(header: Text("Loan Purpose Interests")) {
-                    ForEach(loanInterests, id: \.self) { interest in
-                        let isSelected = selectedInterests.contains(interest)
-                        Button {
-                            if isSelected {
-                                selectedInterests.remove(interest)
-                            } else {
-                                selectedInterests.insert(interest)
-                            }
-                        } label: {
-                            HStack {
-                                Text(interest)
-                                    .foregroundColor(Color.AppTheme.textPrimary)
-                                Spacer()
-                                if isSelected {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(Color.brandEmerald)
-                                } else {
-                                    Image(systemName: "circle")
-                                        .foregroundColor(Color.AppTheme.textSecondary.opacity(0.5))
-                                }
-                            }
-                        }
-                    }
+                    .font(Font.AppTheme.body)
                 }
             }
             .navigationTitle("Edit Preferences & Refs")
@@ -151,7 +118,7 @@ struct EditAdditionalInfoView: View {
                         presentationMode.wrappedValue.dismiss()
                     }) {
                         Image(systemName: "xmark")
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -160,7 +127,7 @@ struct EditAdditionalInfoView: View {
                     }) {
                         Image(systemName: "checkmark")
                             .fontWeight(.bold)
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                     }
                 }
             }
@@ -204,8 +171,7 @@ struct EditAdditionalInfoView: View {
             emergencyContactName: emergencyContactName,
             emergencyContactNumber: emergencyContactNumber,
             nomineeName: nomineeName,
-            nomineeRelationship: nomineeRelationship,
-            loanPurposeInterests: Array(selectedInterests)
+            nomineeRelationship: nomineeRelationship
         )
         
         presentationMode.wrappedValue.dismiss()

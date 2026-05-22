@@ -31,7 +31,7 @@ struct ProfileInfoDetailView: View {
                                 Text("Verify")
                                     .font(Font.AppTheme.caption)
                                     .fontWeight(.bold)
-                                    .foregroundColor(Color.AppTheme.primary)
+                                    .foregroundStyle(Color.AppTheme.primary)
                             }
                         }
                     }
@@ -48,7 +48,7 @@ struct ProfileInfoDetailView: View {
                                 Text("Verify")
                                     .font(Font.AppTheme.caption)
                                     .fontWeight(.bold)
-                                    .foregroundColor(Color.AppTheme.primary)
+                                    .foregroundStyle(Color.AppTheme.primary)
                             }
                         }
                     }
@@ -101,14 +101,6 @@ struct ProfileInfoDetailView: View {
                     DataRowView(label: "Existing Bank Customer", value: profile.hasExistingBankAccount ? "Yes (\(profile.existingCustomerId ?? "N/A"))" : "No")
                 }
                 
-                if !profile.loanPurposeInterests.isEmpty {
-                    Section(header: Text("Loan Purpose Interests")) {
-                        Text(profile.loanPurposeInterests.joined(separator: ", "))
-                            .font(Font.AppTheme.body)
-                            .foregroundColor(Color.AppTheme.textPrimary)
-                            .padding(.vertical, 4)
-                    }
-                }
             } else {
                 Text("Loading profile...")
             }
@@ -125,7 +117,7 @@ struct ProfileInfoDetailView: View {
                     Button("References & Prefs") { activeSheet = .additional }
                 } label: {
                     Text("Edit")
-                        .foregroundColor(Color.AppTheme.primary)
+                        .foregroundStyle(Color.AppTheme.primary)
                 }
             }
         }

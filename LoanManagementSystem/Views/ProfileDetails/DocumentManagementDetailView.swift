@@ -28,7 +28,7 @@ struct DocumentManagementDetailView: View {
     private func documentRow(title: String, fileName: String?) -> some View {
         HStack {
             Image(systemName: "doc.text.fill")
-                .foregroundColor(fileName != nil ? Color.AppTheme.primary : Color.gray)
+                .foregroundStyle(fileName != nil ? Color.AppTheme.primary : Color.gray)
                 .font(.system(size: 24))
                 .frame(width: 32)
             
@@ -39,11 +39,11 @@ struct DocumentManagementDetailView: View {
                 if let fileName = fileName {
                     Text(fileName)
                         .font(Font.AppTheme.caption)
-                        .foregroundColor(Color.AppTheme.textSecondary)
+                        .foregroundStyle(Color.AppTheme.textSecondary)
                 } else {
                     Text("No file uploaded")
                         .font(Font.AppTheme.caption)
-                        .foregroundColor(Color.AppTheme.error)
+                        .foregroundStyle(Color.AppTheme.error)
                 }
             }
             
@@ -55,7 +55,7 @@ struct DocumentManagementDetailView: View {
                     showingAlert = true
                 }) {
                     Image(systemName: "eye.fill")
-                        .foregroundColor(Color.AppTheme.primary)
+                        .foregroundStyle(Color.AppTheme.primary)
                 }
                 .buttonStyle(BorderlessButtonStyle())
                 
@@ -68,7 +68,7 @@ struct DocumentManagementDetailView: View {
                     showingAlert = true
                 }) {
                     Image(systemName: "square.and.arrow.down")
-                        .foregroundColor(Color.AppTheme.primary)
+                        .foregroundStyle(Color.AppTheme.primary)
                 }
                 .buttonStyle(BorderlessButtonStyle())
             }

@@ -15,86 +15,94 @@ struct LoanOfficerDashboardView: View {
     var body: some View {
         VStack(spacing: 0) {
             
-            // 1. CUSTOM TOP NAVIGATION BAR (Fixed)
-            CustomTopNavigationBar(
-                viewModel: viewModel,
-                onNotificationPressed: {
-                    showNotificationSheet = true
-                },
-                onProfilePressed: {
-                    showProfileSheet = true
-                }
-            )
-            
-            // 2. PRIORITY ALERT STRIP (Horizontal Chips)
-            if !viewModel.isLoading {
-                PriorityAlertStrip(viewModel: viewModel) { alertType in
-                    handleAlertDeepLink(alertType)
-                }
-                .transition(.move(edge: .top).combined(with: .opacity))
+            // 1. CUSTOM TOP NAVIGATION BAR (Fixed) - Hidden for Tab 3 (Registry) to allow its own native collapsible header
+            if viewModel.selectedTab != 3 {
+                CustomTopNavigationBar(
+                    viewModel: viewModel,
+                    onNotificationPressed: {
+                        showNotificationSheet = true
+                    },
+                    onProfilePressed: {
+                        showProfileSheet = true
+                    }
+                )
+                
+                
+                Divider()
             }
             
-            Divider()
-            
-            // 3. NATIVE TABVIEW CONTAINER
-            TabView(selection: $viewModel.selectedTab) {
-                
-                // TAB 1: OVERVIEW WORKSPACE
-                ScrollViewReader { proxy in
-                    DashboardTabView(
-                        viewModel: viewModel,
-                        onDocumentSeeAllTapped: {
-                            handleAlertDeepLink(.pendingDocuments)
-                        },
-                        onManagerRespondTapped: { app in
-                            HapticsManager.triggerImpact(style: .medium)
-                            selectedAppForReview = app
-                        }
-                    )
-                    .onChange(of: scrollTargetID) { _, newID in
-                        if let newID = newID {
-                            withAnimation(.spring()) {
-                                proxy.scrollTo(newID, anchor: .top)
+            // 3. CUSTOM TRANS-TAB CONTAINER WITH FLOATING TAB BAR
+            ZStack(alignment: .bottom) {
+                // Tab Content Switcher
+                ZStack {
+                    switch viewModel.selectedTab {
+                    case 0:
+                        ScrollViewReader { proxy in
+                            DashboardTabView(
+                                viewModel: viewModel,
+                                onDocumentSeeAllTapped: {
+                                    handleAlertDeepLink(.pendingDocuments)
+                                },
+                                onManagerRespondTapped: { app in
+                                    HapticsManager.triggerImpact(style: .medium)
+                                    selectedAppForReview = app
+                                },
+                                onQuickActionTapped: { actionIdentifier in
+                                    if actionIdentifier == "verify_docs" {
+                                        handleAlertDeepLink(.pendingDocuments)
+                                    } else if actionIdentifier == "reports" {
+                                        HapticsManager.triggerNotification(type: .success)
+                                        selectedAlertMessage = "Generating and downloading the Branch Monthly Performance Report..."
+                                        showingAlert = true
+                                    } else if actionIdentifier == "escalate" {
+                                        HapticsManager.triggerNotification(type: .warning)
+                                        selectedAlertMessage = "Operational Escalation submitted successfully to Branch Manager."
+                                        showingAlert = true
+                                    }
+                                }
+                            )
+                            .onChange(of: scrollTargetID) { _, newID in
+                                if let newID = newID {
+                                    withAnimation(.spring()) {
+                                        proxy.scrollTo(newID, anchor: .top)
+                                    }
+                                    scrollTargetID = nil
+                                }
                             }
-                            scrollTargetID = nil
                         }
+                        .background(AppTheme.background)
+                        
+                    case 1:
+                        ChatsFeedTabView(viewModel: viewModel)
+                            .background(AppTheme.background)
+                            
+                    case 2:
+                        QuickConsoleTabView(viewModel: viewModel) { actionIdentifier in
+                            viewModel.performQuickAction(actionIdentifier)
+                            selectedAlertMessage = "Routing to module utility: \(actionIdentifier.replacingOccurrences(of: "_", with: " ").capitalized)..."
+                            showingAlert = true
+                        }
+                        .background(AppTheme.background)
+                        
+                    case 3:
+                        LoanHistoryTabView(viewModel: viewModel)
+                            .background(AppTheme.background)
+                            
+                    default:
+                        EmptyView()
                     }
                 }
-                .background(AppTheme.background)
-                .tabItem {
-                    Label("Overview", systemImage: "house.fill")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .safeAreaInset(edge: .bottom) {
+                    Spacer().frame(height: 80) // Prevents active scrolling content from being clipped by tab bar
                 }
-                .tag(0)
                 
-                // TAB 2: CHATS & ACTIVITY
-                ChatsFeedTabView(viewModel: viewModel)
-                    .background(AppTheme.background)
-                    .tabItem {
-                        Label("Chats & Feed", systemImage: "bubble.left.and.bubble.right.fill")
-                    }
-                    .tag(1)
-                
-                // TAB 3: QUICK CONSOLE
-                QuickConsoleTabView(viewModel: viewModel) { actionIdentifier in
-                    viewModel.performQuickAction(actionIdentifier)
-                    selectedAlertMessage = "Routing to module utility: \(actionIdentifier.replacingOccurrences(of: "_", with: " ").capitalized)..."
-                    showingAlert = true
-                }
-                .background(AppTheme.background)
-                .tabItem {
-                    Label("Quick Console", systemImage: "bolt.fill")
-                }
-                .tag(2)
-                
-                // TAB 4: LOAN REGISTRY / HISTORY
-                LoanHistoryTabView(viewModel: viewModel)
-                    .background(AppTheme.background)
-                    .tabItem {
-                        Label("Registry", systemImage: "doc.text.magnifyingglass")
-                    }
-                    .tag(3)
+                // Floating iOS translucent tab bar capsule
+                CustomFloatingTabBar(selectedTab: $viewModel.selectedTab)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 12)
             }
-            .tint(AppTheme.actionBlue) // Tint active bottom icons blue
+            .edgesIgnoringSafeArea(.bottom)
         }
         .task {
             // Simulated pull on load
@@ -172,11 +180,11 @@ struct CustomTopNavigationBar: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Good Morning, \(LoanOfficerMockData.officerName) 👋")
                     .font(.system(.title3, design: .rounded).bold())
-                    .foregroundColor(.primary)
+                    .foregroundStyle(LMSColors.textPrimary)
                 
                 Text("Loan Officer · Branch: \(LoanOfficerMockData.branchName)")
                     .font(.system(.caption, design: .rounded))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(LMSColors.textSecondary)
             }
             
             Spacer()
@@ -191,13 +199,13 @@ struct CustomTopNavigationBar: View {
                     ZStack(alignment: .topTrailing) {
                         Image(systemName: "bell.badge.fill")
                             .font(.system(size: 18))
-                            .foregroundColor(.primary)
+                            .foregroundStyle(LMSColors.textPrimary)
                             .symbolRenderingMode(.multicolor)
                         
                         if viewModel.unreadActivityCount > 0 {
                             Text("\(viewModel.unreadActivityCount)")
                                 .font(.system(size: 8, design: .rounded).bold())
-                                .foregroundColor(.white)
+                                .foregroundStyle(.white)
                                 .frame(width: 12, height: 12)
                                 .background(AppTheme.criticalRed)
                                 .clipShape(Circle())
@@ -219,7 +227,7 @@ struct CustomTopNavigationBar: View {
                         
                         Text("AK")
                             .font(.system(.caption, design: .rounded).bold())
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                     }
                 }
                 .accessibilityLabel("Profile: Arjun Kashyap.")
@@ -228,7 +236,7 @@ struct CustomTopNavigationBar: View {
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 12)
-        .background(Color(.systemBackground))
+        .background(LMSColors.surface)
     }
 }
 
@@ -307,7 +315,7 @@ struct PriorityAlertStrip: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
-        .background(Color(.systemBackground))
+        .background(LMSColors.surface)
     }
 }
 
@@ -322,16 +330,16 @@ struct AlertChip: View {
             HStack(spacing: 6) {
                 Image(systemName: type.symbol)
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(type.color)
+                    .foregroundStyle(type.color)
                 
                 Text(title)
                     .font(.system(.caption, design: .rounded).bold())
-                    .foregroundColor(.primary)
+                    .foregroundStyle(LMSColors.textPrimary)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(.ultraThinMaterial)
-            .cornerRadius(16)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(type.color.opacity(0.3), lineWidth: 1)
@@ -358,15 +366,15 @@ struct NotificationsFeedSheet: View {
                     ForEach(viewModel.activityFeed) { item in
                         HStack(alignment: .top, spacing: 12) {
                             Image(systemName: item.eventType.symbol)
-                                .foregroundColor(item.eventType.themeColor)
-                                .font(.title3)
+                                .foregroundStyle(item.eventType.themeColor)
+                                .font(LMSFont.title3)
                             
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(item.borrowerName)
                                     .font(.system(.callout, design: .rounded).bold())
                                 Text(item.eventDescription)
                                     .font(.system(.caption, design: .rounded))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(LMSColors.textSecondary)
                             }
                         }
                         .padding(.vertical, 4)
@@ -383,3 +391,68 @@ struct NotificationsFeedSheet: View {
         }
     }
 }
+
+// MARK: - Premium Custom Floating iOS Tab Bar
+struct CustomFloatingTabBar: View {
+    @Binding var selectedTab: Int
+    
+    var body: some View {
+        HStack {
+            TabBarButton(iconName: "house", activeIconName: "house.fill", title: "Overview", isSelected: selectedTab == 0) {
+                selectedTab = 0
+            }
+            Spacer()
+            TabBarButton(iconName: "bubble.left", activeIconName: "bubble.left.fill", title: "Chats", isSelected: selectedTab == 1) {
+                selectedTab = 1
+            }
+            Spacer()
+            TabBarButton(iconName: "bolt", activeIconName: "bolt.fill", title: "Console", isSelected: selectedTab == 2) {
+                selectedTab = 2
+            }
+            Spacer()
+            TabBarButton(iconName: "doc.text.magnifyingglass", activeIconName: "doc.text.magnifyingglass", title: "Registry", isSelected: selectedTab == 3) {
+                selectedTab = 3
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 8)
+        .background(
+            VisualEffectView(effect: UIBlurEffect(style: .systemChromeMaterial))
+                .clipShape(Capsule())
+                .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 5)
+        )
+        .overlay(
+            Capsule()
+                .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+        )
+    }
+}
+
+struct TabBarButton: View {
+    let iconName: String
+    let activeIconName: String
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: {
+            HapticsManager.triggerImpact(style: .light)
+            action()
+        }) {
+            VStack(spacing: 4) {
+                Image(systemName: isSelected ? activeIconName : iconName)
+                    .font(.system(size: 20, weight: isSelected ? .bold : .medium))
+                    .foregroundColor(isSelected ? AppTheme.actionBlue : .secondary)
+                    .frame(height: 24)
+                
+                Text(title)
+                    .font(.system(size: 10, weight: isSelected ? .bold : .semibold, design: .rounded))
+                    .foregroundColor(isSelected ? AppTheme.actionBlue : .secondary)
+            }
+            .frame(width: 60)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+

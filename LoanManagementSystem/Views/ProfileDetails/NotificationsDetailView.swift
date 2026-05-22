@@ -12,12 +12,12 @@ struct NotificationsDetailView: View {
                 Toggle(isOn: $loanUpdates) {
                     HStack {
                         Image(systemName: "banknote.fill")
-                            .foregroundColor(Color.AppTheme.success)
+                            .foregroundStyle(Color.AppTheme.success)
                         VStack(alignment: .leading) {
                             Text("Loan Status Updates")
                             Text("Disbursals, approvals, and EMI receipts")
                                 .font(Font.AppTheme.caption)
-                                .foregroundColor(Color.AppTheme.textSecondary)
+                                .foregroundStyle(Color.AppTheme.textSecondary)
                         }
                     }
                 }
@@ -25,12 +25,12 @@ struct NotificationsDetailView: View {
                 Toggle(isOn: $paymentReminders) {
                     HStack {
                         Image(systemName: "calendar.badge.clock")
-                            .foregroundColor(.orange)
+                            .foregroundStyle(.orange)
                         VStack(alignment: .leading) {
                             Text("Payment Reminders")
                             Text("Receive alerts 3 days before your EMI is due")
                                 .font(Font.AppTheme.caption)
-                                .foregroundColor(Color.AppTheme.textSecondary)
+                                .foregroundStyle(Color.AppTheme.textSecondary)
                         }
                     }
                 }
@@ -40,12 +40,12 @@ struct NotificationsDetailView: View {
                 Toggle(isOn: $securityAlerts) {
                     HStack {
                         Image(systemName: "shield.fill")
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                         VStack(alignment: .leading) {
                             Text("Security Alerts")
                             Text("Notifications on password change or new login")
                                 .font(Font.AppTheme.caption)
-                                .foregroundColor(Color.AppTheme.textSecondary)
+                                .foregroundStyle(Color.AppTheme.textSecondary)
                         }
                     }
                 }
@@ -55,12 +55,12 @@ struct NotificationsDetailView: View {
                 Toggle(isOn: $promoOffers) {
                     HStack {
                         Image(systemName: "percent")
-                            .foregroundColor(.purple)
+                            .foregroundStyle(.purple)
                         VStack(alignment: .leading) {
                             Text("Promotional Offers")
                             Text("Rate cuts, top-ups, and special credit offers")
                                 .font(Font.AppTheme.caption)
-                                .foregroundColor(Color.AppTheme.textSecondary)
+                                .foregroundStyle(Color.AppTheme.textSecondary)
                         }
                     }
                 }

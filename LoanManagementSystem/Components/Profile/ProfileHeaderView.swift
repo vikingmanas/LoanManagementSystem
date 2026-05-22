@@ -42,7 +42,7 @@ struct ProfileHeaderView: View {
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 32, height: 32)
-                                .foregroundColor(Color.AppTheme.primary)
+                                .foregroundStyle(Color.AppTheme.primary)
                         }
                     }
                     .frame(width: 70, height: 70)
@@ -52,7 +52,7 @@ struct ProfileHeaderView: View {
                     // Plus sign badge for photo addition (bottom right)
                     Image(systemName: "plus")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .frame(width: 22, height: 22)
                         .background(Circle().fill(Color.AppTheme.primary))
                         .overlay(Circle().stroke(Color.white, lineWidth: 2))
@@ -63,18 +63,18 @@ struct ProfileHeaderView: View {
                     if isVerified {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.system(size: 16))
-                            .foregroundColor(Color.AppTheme.success)
+                            .foregroundStyle(Color.AppTheme.success)
                             .background(Circle().fill(Color.white))
                             .offset(x: 26, y: -26)
                     }
                 }
             }
-            .buttonStyle(PlainButtonStyle())
-            .onChange(of: selectedItem) { newItem in
-                if let newItem = newItem {
+            .buttonStyle(.plain)
+            .onChange(of: selectedItem) { _, newItem in
+                if let newItem {
                     Task {
                         if let data = try? await newItem.loadTransferable(type: Data.self) {
-                            DispatchQueue.main.async {
+                            await MainActor.run {
                                 onPhotoSelected(data)
                             }
                         }
@@ -87,11 +87,11 @@ struct ProfileHeaderView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(name)
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(Color.AppTheme.textPrimary)
+                    .foregroundStyle(Color.AppTheme.textPrimary)
                 
                 Text("Borrower ID: \(id)")
                     .font(Font.AppTheme.caption)
-                    .foregroundColor(Color.AppTheme.textSecondary)
+                    .foregroundStyle(Color.AppTheme.textSecondary)
                 
                 // Completion Tag
                 HStack(spacing: 4) {
@@ -101,7 +101,7 @@ struct ProfileHeaderView: View {
                     
                     Text("\(completionPercentage)% Setup")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(completionPercentage == 100 ? Color.AppTheme.success : Color.AppTheme.primary)
+                        .foregroundStyle(completionPercentage == 100 ? Color.AppTheme.success : Color.AppTheme.primary)
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)

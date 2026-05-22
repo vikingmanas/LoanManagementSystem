@@ -7,8 +7,9 @@ struct BorrowerSignUpView: View {
 }
 
 struct MockSignUpView: View {
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var appState: AppStateManager
+    @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel = SignUpViewModel()
     
     var body: some View {
@@ -22,11 +23,11 @@ struct MockSignUpView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Create Account")
                             .font(Font.AppTheme.title)
-                            .foregroundColor(Color.AppTheme.textPrimary)
+                            .foregroundStyle(Color.AppTheme.textPrimary)
                         
                         Text("Create your borrower account securely.")
                             .font(Font.AppTheme.subtitle)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                     }
                     .padding(.top, 20)
                     .padding(.bottom, 10)
@@ -41,8 +42,8 @@ struct MockSignUpView: View {
                         }
                         .padding()
                         .background(Color.AppTheme.error.opacity(0.1))
-                        .foregroundColor(Color.AppTheme.error)
-                        .cornerRadius(8)
+                        .foregroundStyle(Color.AppTheme.error)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                     
                     // Input Fields
@@ -77,7 +78,7 @@ struct MockSignUpView: View {
                             placeholder: "Referral Code (Optional)",
                             text: $viewModel.referralCode
                         )
-                        .autocapitalization(.allCharacters)
+                        .textInputAutocapitalization(.characters)
                         
                         VStack(alignment: .leading, spacing: 12) {
                             SecureInputField(
@@ -116,7 +117,9 @@ struct MockSignUpView: View {
                         isLoading: viewModel.isLoading,
                         isDisabled: !viewModel.isFormValid,
                         action: {
-                            viewModel.signUp()
+                            Task {
+                                await viewModel.signUp(authManager: authManager)
+                            }
                         }
                     )
                     .padding(.top, 16)
@@ -128,15 +131,15 @@ struct MockSignUpView: View {
                         Spacer()
                         Text("Already have an account?")
                             .font(Font.AppTheme.body)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         
                         Button(action: {
-                            presentationMode.wrappedValue.dismiss()
+                            dismiss()
                         }) {
                             Text("Sign In")
                                 .font(Font.AppTheme.body)
                                 .fontWeight(.bold)
-                                .foregroundColor(Color.AppTheme.primary)
+                                .foregroundStyle(Color.AppTheme.primary)
                         }
                         Spacer()
                     }
@@ -146,24 +149,21 @@ struct MockSignUpView: View {
             }
         }
         .hideNavigationBar()
-        .onChange(of: viewModel.showSuccess) { success in
+        .onChange(of: viewModel.showSuccess) { _, success in
             if success {
                 appState.login()
             }
         }
     }
 }
-struct BorrowerSignUpView_Previews: PreviewProvider {
-    static var previews: some View {
-        BorrowerSignUpView()
-            .environmentObject(AppStateManager())
-    }
+#Preview("BorrowerSignUpView") {
+    BorrowerSignUpView()
+        .environmentObject(AppStateManager())
+        .environmentObject(AuthManager())
 }
 
-struct MockSignUpView_Previews: PreviewProvider {
-    static var previews: some View {
-        MockSignUpView()
-            .environmentObject(AppStateManager())
-    }
+#Preview("MockSignUpView") {
+    MockSignUpView()
+        .environmentObject(AppStateManager())
+        .environmentObject(AuthManager())
 }
-

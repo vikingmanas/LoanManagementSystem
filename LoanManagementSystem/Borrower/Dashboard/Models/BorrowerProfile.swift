@@ -1,6 +1,6 @@
 import Foundation
 
-struct BorrowerProfile: Codable {
+struct BorrowerProfile: Codable, Equatable {
     var id: String
     var fullName: String
     var email: String
@@ -31,14 +31,23 @@ struct BorrowerProfile: Codable {
     
     // New Onboarding Questionnaire Fields
     var occupation: String
+    var industry: String
+    var yearsOfExperience: Int
     var hasExistingBankAccount: Bool
     var existingCustomerId: String?
     var preferredBranch: String
+    var existingLoansCount: Int
+    var existingCreditCardsCount: Int
+    var bankingRelationshipDuration: String
+    var averageMonthlyBalance: Double
+    
     var emergencyContactName: String
     var emergencyContactNumber: String
+    var emergencyContactAlternateNumber: String
+    var emergencyContactAddress: String
+    var emergencyContactRelationship: String
     var nomineeName: String
     var nomineeRelationship: String
-    var loanPurposeInterests: [String]
     var isOnboardingCompleted: Bool
     
     var isKYCVerified: Bool {
@@ -47,140 +56,58 @@ struct BorrowerProfile: Codable {
     
     var profileCompletionPercentage: Int {
         var completedScore = 0
-        var totalPossible = 0
+        let totalPossible = 130
         
         // 1. Personal Info
-        totalPossible += 10
-        if !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            completedScore += 10
-        }
-        
-        totalPossible += 5
-        if !gender.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            completedScore += 5
-        }
-        
-        totalPossible += 5
-        if !maritalStatus.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            completedScore += 5
-        }
-        
-        totalPossible += 5
-        if !nationality.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            completedScore += 5
-        }
-        
-        totalPossible += 5
+        if !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 10 }
+        if !gender.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
+        if !maritalStatus.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
+        if !nationality.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         completedScore += 5 // DOB is always populated from setup
         
         // 2. Contact Info
-        totalPossible += 5
-        if !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            completedScore += 5
-        }
-        totalPossible += 5
-        if isEmailVerified {
-            completedScore += 5
-        }
-        
-        totalPossible += 5
-        if !mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            completedScore += 5
-        }
-        totalPossible += 5
-        if isPhoneVerified {
-            completedScore += 5
-        }
-        
-        totalPossible += 5
-        if let alt = alternateNumber, !alt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            completedScore += 5
-        }
+        if !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
+        if isEmailVerified { completedScore += 5 }
+        if !mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
+        if isPhoneVerified { completedScore += 5 }
+        if let alt = alternateNumber, !alt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         
         // 3. Address
-        totalPossible += 10
         if !currentAddress.streetAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-           !currentAddress.city.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            completedScore += 10
-        }
+           !currentAddress.city.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 10 }
         
         // 4. Employment & Income
-        totalPossible += 10
         if !employment.companyName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-           !employment.designation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            completedScore += 10
-        }
-        
-        totalPossible += 5
-        if !occupation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            completedScore += 5
-        }
-        
-        totalPossible += 10
-        if income.monthlyIncome > 0 {
-            completedScore += 10
-        }
+           !employment.designation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 10 }
+        if !occupation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
+        if income.monthlyIncome > 0 { completedScore += 10 }
         
         // 5. Bank Account
-        totalPossible += 5
         if !bankDetails.bankName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
            !bankDetails.accountNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-           !bankDetails.ifscCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            completedScore += 5
-        }
+           !bankDetails.ifscCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         
         // 6. Onboarding Questionnaire Details
-        totalPossible += 5
-        if !preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            completedScore += 5
-        }
-        
-        totalPossible += 5
+        if !preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         if !emergencyContactName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-           !emergencyContactNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            completedScore += 5
-        }
-        
-        totalPossible += 5
+           !emergencyContactNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         if !nomineeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-           !nomineeRelationship.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            completedScore += 5
-        }
-        
-        totalPossible += 5
-        if !loanPurposeInterests.isEmpty {
-            completedScore += 5
-        }
+           !nomineeRelationship.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         
         // 7. KYC Uploads
-        totalPossible += 5
-        if kycVerification.aadhaarFileName != nil {
-            completedScore += 5
-        }
-        totalPossible += 5
-        if kycVerification.panFileName != nil {
-            completedScore += 5
-        }
-        totalPossible += 5
-        if kycVerification.addressProofFileName != nil {
-            completedScore += 5
-        }
+        if kycVerification.aadhaarFileName != nil { completedScore += 5 }
+        if kycVerification.panFileName != nil { completedScore += 5 }
+        if kycVerification.addressProofFileName != nil { completedScore += 5 }
         
         // 8. Profile Picture
-        totalPossible += 5
-        if profileImageData != nil {
-            completedScore += 5
-        }
+        if profileImageData != nil { completedScore += 5 }
         
-        guard totalPossible > 0 else { return 0 }
         let percentage = (Double(completedScore) / Double(totalPossible)) * 100
-        let finalPercent = min(100, max(0, Int(percentage)))
-        print("DEBUG COMPLETION: completedScore = \(completedScore), totalPossible = \(totalPossible), percentage = \(finalPercent)%")
-        return finalPercent
+        return min(100, max(0, Int(percentage)))
     }
 }
 
-struct AddressInfo: Codable {
+struct AddressInfo: Codable, Equatable {
     let streetAddress: String
     let city: String
     let state: String
@@ -189,7 +116,7 @@ struct AddressInfo: Codable {
     let isSameAsCurrent: Bool
 }
 
-struct EmploymentInfo: Codable {
+struct EmploymentInfo: Codable, Equatable {
     let employmentType: String // e.g. Salaried, Self-employed
     let companyName: String
     let designation: String
@@ -197,7 +124,7 @@ struct EmploymentInfo: Codable {
     let employerAddress: String
 }
 
-struct IncomeInfo: Codable {
+struct IncomeInfo: Codable, Equatable {
     let monthlyIncome: Double
     let annualIncome: Double
     let existingEMIs: Double
@@ -209,7 +136,7 @@ struct IncomeInfo: Codable {
     }
 }
 
-struct BankDetails: Codable {
+struct BankDetails: Codable, Equatable {
     let bankName: String
     let accountHolderName: String
     let accountNumber: String 
@@ -218,7 +145,7 @@ struct BankDetails: Codable {
     let isVerified: Bool
 }
 
-struct KYCVerification: Codable {
+struct KYCVerification: Codable, Equatable {
     var aadhaarStatus: VerificationStatus
     var panStatus: VerificationStatus
     var addressProofStatus: VerificationStatus
@@ -239,7 +166,7 @@ struct KYCVerification: Codable {
     }
 }
 
-struct LoanOverview: Codable {
+struct LoanOverview: Codable, Equatable {
     let activeLoans: Int
     let loanHistoryCount: Int
     let nextEmiDueDate: Date?
@@ -247,7 +174,7 @@ struct LoanOverview: Codable {
     let currentLoanStatus: String
 }
 
-enum VerificationStatus: String, Codable {
+enum VerificationStatus: String, Codable, Equatable {
     case pending = "Pending"
     case underReview = "Under Review"
     case verified = "Verified"

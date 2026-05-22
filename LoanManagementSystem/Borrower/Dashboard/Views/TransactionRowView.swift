@@ -1,10 +1,3 @@
-//
-//  TransactionRowView.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 19/05/26.
-//
-
 import SwiftUI
 
 public struct TransactionRowView: View {
@@ -22,49 +15,43 @@ public struct TransactionRowView: View {
     }
     
     public var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: LMSSpacing.md) {
             // Icon
             ZStack {
-                Circle()
+                RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
                     .fill(iconBackgroundColor.opacity(0.12))
                     .frame(width: 44, height: 44)
-                
                 Image(systemName: iconName)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(iconColor)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(iconColor)
+                    .symbolRenderingMode(.hierarchical)
             }
             
             // Text Column
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(transaction.title)
-                    .font(.system(.callout, design: .rounded))
-                    .fontWeight(.semibold)
-                    .foregroundColor(Color(.label))
+                    .font(LMSFont.subheadline.weight(.semibold))
+                    .foregroundStyle(LMSColors.textPrimary)
                 
                 Text(formattedDateTime)
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundColor(Color(.secondaryLabel))
+                    .font(LMSFont.caption)
+                    .foregroundStyle(LMSColors.textSecondary)
                 
                 Text("Ref: \(transaction.referenceNo)")
                     .font(.system(.caption2, design: .monospaced))
-                    .foregroundColor(Color(.tertiaryLabel))
+                    .foregroundStyle(LMSColors.textTertiary)
             }
             
             Spacer()
             
             // Amount
             Text(amountText)
-                .font(.system(.callout, design: .rounded))
-                .fontWeight(.bold)
-                .foregroundColor(amountColor)
-            
-            // Chevron
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundColor(Color(.tertiaryLabel))
+                .font(LMSFont.subheadline.weight(.bold))
+                .monospacedDigit()
+                .foregroundStyle(amountColor)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.horizontal, LMSSpacing.lg)
+        .padding(.vertical, LMSSpacing.md)
         .contentShape(Rectangle())
     }
     
@@ -80,10 +67,10 @@ public struct TransactionRowView: View {
     
     private var iconColor: Color {
         switch transaction.type {
-        case .emiPayment: return .brandNavy
-        case .credit: return .brandEmerald
-        case .penalty: return .brandCoral
-        case .refund: return Color(hex: "#00A2C4") // Teal-blue
+        case .emiPayment: return LMSColors.brandNavy
+        case .credit: return LMSColors.emerald
+        case .penalty: return LMSColors.coral
+        case .refund: return LMSColors.actionBlue
         }
     }
     
@@ -106,7 +93,7 @@ public struct TransactionRowView: View {
     }
     
     private var amountColor: Color {
-        isDebit ? Color.brandCoral : Color.brandEmerald
+        isDebit ? LMSColors.coral : LMSColors.emerald
     }
 }
 
@@ -115,29 +102,29 @@ public struct TransactionRowSkeleton: View {
     public init() {}
     
     public var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: LMSSpacing.md) {
             Circle()
-                .fill(Color(.secondarySystemBackground))
+                .fill(LMSColors.surfaceElevated)
                 .frame(width: 44, height: 44)
             
             VStack(alignment: .leading, spacing: 6) {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color(.secondarySystemBackground))
+                RoundedRectangle(cornerRadius: LMSRadius.sm)
+                    .fill(LMSColors.surfaceElevated)
                     .frame(width: 140, height: 14)
                 
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color(.secondarySystemBackground))
+                RoundedRectangle(cornerRadius: LMSRadius.sm)
+                    .fill(LMSColors.surfaceElevated)
                     .frame(width: 100, height: 10)
             }
             
             Spacer()
             
-            RoundedRectangle(cornerRadius: 4)
-                .fill(Color(.secondarySystemBackground))
+            RoundedRectangle(cornerRadius: LMSRadius.sm)
+                .fill(LMSColors.surfaceElevated)
                 .frame(width: 60, height: 14)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.horizontal, LMSSpacing.screenHorizontal)
+        .padding(.vertical, LMSSpacing.sm)
         .shimmer(active: true)
     }
 }

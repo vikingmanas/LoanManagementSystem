@@ -7,12 +7,14 @@
 
 import SwiftUI
 
-// MARK: - Color Extensions
+// MARK: - Color Aliases (Canonical definitions are in DesignSystem.swift)
 extension Color {
-    public static let brandNavy = Color(hex: "#0A2540")
-    public static let brandEmerald = Color(hex: "#00C48C")
-    public static let brandAmber = Color(hex: "#FFB300")
-    public static let brandCoral = Color(hex: "#FF4D4F")
+    public static let brandNavy        = LMSColors.brandNavy
+    public static let brandNavyDark    = LMSColors.brandNavyLight
+    public static let brandEmerald     = LMSColors.emerald
+    public static let brandEmeraldDark = LMSColors.emeraldDark
+    public static let brandAmber       = LMSColors.amber
+    public static let brandCoral       = LMSColors.coral
 }
 
 // MARK: - Formatters
@@ -146,11 +148,22 @@ public struct MockData {
     ]
     
     public static let sampleTransactions: [Transaction] = [
-        Transaction(title: "EMI - Home Loan", date: makeDate(year: 2025, month: 5, day: 5, hour: 11, minute: 30), amount: 18500.0, type: .emiPayment, referenceNo: "TXN9847291"),
-        Transaction(title: "Salary Credited", date: makeDate(year: 2025, month: 5, day: 1, hour: 9, minute: 15), amount: 75000.0, type: .credit, referenceNo: "TXN1028392"),
-        Transaction(title: "Auto-debit Penalty", date: makeDate(year: 2025, month: 4, day: 10, hour: 18, minute: 0), amount: 450.0, type: .penalty, referenceNo: "TXN4728193"),
-        Transaction(title: "Processing Fee Refund", date: makeDate(year: 2025, month: 4, day: 5, hour: 14, minute: 20), amount: 2500.0, type: .refund, referenceNo: "TXN7783921"),
-        Transaction(title: "EMI - Personal Loan", date: makeDate(year: 2025, month: 4, day: 5, hour: 10, minute: 0), amount: 8500.0, type: .emiPayment, referenceNo: "TXN3384918")
+        // State Bank of India (uuid1)
+        Transaction(title: "EMI - Home Loan", date: makeDate(year: 2025, month: 5, day: 5, hour: 11, minute: 30), amount: 18500.0, type: .emiPayment, referenceNo: "TXN9847291", bankAccountId: uuid1),
+        Transaction(title: "Salary Credited", date: makeDate(year: 2025, month: 5, day: 1, hour: 9, minute: 15), amount: 75000.0, type: .credit, referenceNo: "TXN1028392", bankAccountId: uuid1),
+        Transaction(title: "Quarterly Interest Credit", date: makeDate(year: 2025, month: 4, day: 25, hour: 16, minute: 45), amount: 1450.0, type: .credit, referenceNo: "TXN5528190", bankAccountId: uuid1),
+        
+        // HDFC Bank (uuid2)
+        Transaction(title: "Auto-debit Penalty", date: makeDate(year: 2025, month: 4, day: 10, hour: 18, minute: 0), amount: 450.0, type: .penalty, referenceNo: "TXN4728193", bankAccountId: uuid2),
+        Transaction(title: "Processing Fee Refund", date: makeDate(year: 2025, month: 4, day: 5, hour: 14, minute: 20), amount: 2500.0, type: .refund, referenceNo: "TXN7783921", bankAccountId: uuid2),
+        Transaction(title: "Cashback Reward", date: makeDate(year: 2025, month: 3, day: 28, hour: 12, minute: 10), amount: 800.0, type: .credit, referenceNo: "TXN8829304", bankAccountId: uuid2),
+        Transaction(title: "EMI - Business Loan", date: makeDate(year: 2025, month: 3, day: 5, hour: 11, minute: 0), amount: 12000.0, type: .emiPayment, referenceNo: "TXN1092834", bankAccountId: uuid2),
+        
+        // Axis Bank (uuid3)
+        Transaction(title: "EMI - Personal Loan", date: makeDate(year: 2025, month: 4, day: 5, hour: 10, minute: 0), amount: 8500.0, type: .emiPayment, referenceNo: "TXN3384918", bankAccountId: uuid3),
+        Transaction(title: "Amazon Refund", date: makeDate(year: 2025, month: 3, day: 22, hour: 15, minute: 30), amount: 4890.0, type: .refund, referenceNo: "TXN6549281", bankAccountId: uuid3),
+        Transaction(title: "Account Penalty Charge", date: makeDate(year: 2025, month: 3, day: 15, hour: 9, minute: 0), amount: 350.0, type: .penalty, referenceNo: "TXN2840192", bankAccountId: uuid3),
+        Transaction(title: "EMI - Car Loan", date: makeDate(year: 2025, month: 3, day: 5, hour: 11, minute: 15), amount: 9200.0, type: .emiPayment, referenceNo: "TXN4492810", bankAccountId: uuid3)
     ]
     
     public static let sampleSchemes: [GovernmentScheme] = [

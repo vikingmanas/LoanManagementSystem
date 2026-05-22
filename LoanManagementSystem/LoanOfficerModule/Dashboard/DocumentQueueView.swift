@@ -12,15 +12,15 @@ struct DocumentQueueView: View {
                 HStack(spacing: 8) {
                     Text("Document Queue")
                         .font(.system(.subheadline, design: .rounded).bold())
-                        .foregroundColor(.primary)
+                        .foregroundStyle(LMSColors.textPrimary)
                     
                     Text("\(viewModel.pendingDocumentCount) Pending")
                         .font(.system(.caption2, design: .rounded).bold())
-                        .foregroundColor(AppTheme.warningAmber)
+                        .foregroundStyle(AppTheme.warningAmber)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(AppTheme.warningAmber.opacity(0.12))
-                        .cornerRadius(8)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 
                 Spacer()
@@ -31,7 +31,7 @@ struct DocumentQueueView: View {
                 }) {
                     Text("See All")
                         .font(.system(.caption, design: .rounded).weight(.bold))
-                        .foregroundColor(AppTheme.actionBlue)
+                        .foregroundStyle(AppTheme.actionBlue)
                 }
                 .accessibilityLabel("View all documents in the verification queue")
             }
@@ -61,7 +61,7 @@ struct DocumentQueueView: View {
                 }
             }
             .background(AppTheme.neutralSurface)
-            .cornerRadius(16)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 3)
         }
     }
@@ -82,18 +82,18 @@ struct DocumentStatusRow: View {
                 
                 Image(systemName: item.docType.symbol)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(item.status.themeColor)
+                    .foregroundStyle(item.status.themeColor)
             }
             
             // Borrower details
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.borrowerName)
                     .font(.system(.caption, design: .rounded).bold())
-                    .foregroundColor(.primary)
+                    .foregroundStyle(LMSColors.textPrimary)
                 
                 Text(item.docType.rawValue)
                     .font(.system(.caption2, design: .rounded).weight(.semibold))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(LMSColors.textSecondary)
             }
             
             Spacer()
@@ -101,11 +101,11 @@ struct DocumentStatusRow: View {
             // Status Badge
             Text(statusLabel(for: item.status))
                 .font(.system(.caption2, design: .rounded).bold())
-                .foregroundColor(item.status == .pending ? AppTheme.warningAmber : .white)
+                .foregroundStyle(item.status == .pending ? AppTheme.warningAmber : .white)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(item.status == .pending ? AppTheme.warningAmber.opacity(0.15) : item.status.themeColor)
-                .cornerRadius(8)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             
             // Action review CTA
             if item.status == .uploaded || item.status == .reUploaded {
@@ -119,11 +119,11 @@ struct DocumentStatusRow: View {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 8, weight: .bold))
                     }
-                    .foregroundColor(AppTheme.actionBlue)
+                    .foregroundStyle(AppTheme.actionBlue)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(AppTheme.actionBlue.opacity(0.1))
-                    .cornerRadius(8)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(PlainButtonStyle())
                 .accessibilityLabel("Review \(item.docType.rawValue) uploaded by \(item.borrowerName)")

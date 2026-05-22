@@ -28,11 +28,11 @@ struct DocumentReviewDetailView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(app.borrowerName)
                                         .font(.system(.title3, design: .rounded).bold())
-                                        .foregroundColor(.primary)
+                                        .foregroundStyle(LMSColors.textPrimary)
                                     
                                     Text("Application ID: \(app.applicationId)")
                                         .font(.system(.caption, design: .rounded).weight(.semibold))
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(LMSColors.textSecondary)
                                 }
                                 
                                 Spacer()
@@ -42,15 +42,15 @@ struct DocumentReviewDetailView: View {
                                     VStack(alignment: .trailing, spacing: 2) {
                                         Text("CIBIL Score")
                                             .font(.system(.caption2, design: .rounded).bold())
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(LMSColors.textSecondary)
                                         
                                         Text("\(cibil)")
                                             .font(.system(.subheadline, design: .rounded).bold())
-                                            .foregroundColor(cibilColor(for: cibil))
+                                            .foregroundStyle(cibilColor(for: cibil))
                                             .padding(.horizontal, 10)
                                             .padding(.vertical, 4)
                                             .background(cibilColor(for: cibil).opacity(0.12))
-                                            .cornerRadius(8)
+                                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                                     }
                                 }
                             }
@@ -63,19 +63,19 @@ struct DocumentReviewDetailView: View {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("LOAN TYPE REQUESTED")
                                             .font(.system(.caption2, design: .rounded).bold())
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(LMSColors.textSecondary)
                                         Text(app.loanType.rawValue)
                                             .font(.system(.footnote, design: .rounded).bold())
-                                            .foregroundColor(app.loanType.themeColor)
+                                            .foregroundStyle(app.loanType.themeColor)
                                     }
                                     
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("REQUESTED AMOUNT")
                                             .font(.system(.caption2, design: .rounded).bold())
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(LMSColors.textSecondary)
                                         Text(CurrencyFormatter.shared.format(app.requestedAmount))
                                             .font(.system(.footnote, design: .rounded).bold())
-                                            .foregroundColor(.primary)
+                                            .foregroundStyle(LMSColors.textPrimary)
                                     }
                                 }
                                 
@@ -83,26 +83,26 @@ struct DocumentReviewDetailView: View {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("ASSIGNED BRANCH")
                                             .font(.system(.caption2, design: .rounded).bold())
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(LMSColors.textSecondary)
                                         Text(app.branch)
                                             .font(.system(.footnote, design: .rounded))
-                                            .foregroundColor(.primary)
+                                            .foregroundStyle(LMSColors.textPrimary)
                                     }
                                     
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("DOCUMENT STAGE")
                                             .font(.system(.caption2, design: .rounded).bold())
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(LMSColors.textSecondary)
                                         Text(item.status.rawValue)
                                             .font(.system(.footnote, design: .rounded).bold())
-                                            .foregroundColor(item.status.themeColor)
+                                            .foregroundStyle(item.status.themeColor)
                                     }
                                 }
                             }
                         }
                         .padding(16)
                         .background(AppTheme.neutralSurface)
-                        .cornerRadius(16)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .shadow(color: .black.opacity(0.02), radius: 3, x: 0, y: 2)
                         .padding(.horizontal, 16)
                     }
@@ -111,7 +111,7 @@ struct DocumentReviewDetailView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Uploaded File Preview")
                             .font(.system(.subheadline, design: .rounded).bold())
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                             .padding(.horizontal, 16)
                         
                         ZStack {
@@ -120,7 +120,7 @@ struct DocumentReviewDetailView: View {
                                 .frame(height: 280)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 20)
-                                        .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                                        .stroke(LMSColors.textPrimary.opacity(0.08), lineWidth: 1)
                                 )
                             
                             // Render specific graphic mockup according to doc type
@@ -143,11 +143,11 @@ struct DocumentReviewDetailView: View {
                                 Text("Verify & Approve Document")
                                     .font(.system(.subheadline, design: .rounded).bold())
                             }
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(AppTheme.successGreen)
-                            .cornerRadius(12)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         }
                         
                         // Critical Action: Flag for reupload
@@ -160,11 +160,11 @@ struct DocumentReviewDetailView: View {
                                 Text("Flag for Re-upload")
                                     .font(.system(.subheadline, design: .rounded).bold())
                             }
-                            .foregroundColor(AppTheme.criticalRed)
+                            .foregroundStyle(AppTheme.criticalRed)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(AppTheme.criticalRed.opacity(0.12))
-                            .cornerRadius(12)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         }
                     }
                     .padding(.horizontal, 16)
@@ -217,10 +217,10 @@ struct DocumentGraphicMockView: View {
             VStack(spacing: 12) {
                 HStack(spacing: 8) {
                     Image(systemName: "building.columns.fill")
-                        .foregroundColor(.orange)
+                        .foregroundStyle(.orange)
                     Text("GOVERNMENT OF INDIA")
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundColor(.primary)
+                        .foregroundStyle(LMSColors.textPrimary)
                     Spacer()
                 }
                 
@@ -228,11 +228,11 @@ struct DocumentGraphicMockView: View {
                     // Profile silhouette placeholder
                     ZStack {
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.primary.opacity(0.08))
+                            .fill(LMSColors.textPrimary.opacity(0.08))
                             .frame(width: 60, height: 75)
                         Image(systemName: "person.fill")
                             .font(.system(size: 30))
-                            .foregroundColor(Color.secondary.opacity(0.5))
+                            .foregroundStyle(LMSColors.textSecondary.opacity(0.5))
                     }
                     
                     VStack(alignment: .leading, spacing: 6) {
@@ -240,13 +240,13 @@ struct DocumentGraphicMockView: View {
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                         Text("DOB/Year: 1994")
                             .font(.system(size: 9))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                         Text("Gender: M/F")
                             .font(.system(size: 9))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                         Text("Address: Verified Resident")
                             .font(.system(size: 9))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                     }
                     Spacer()
                 }
@@ -256,16 +256,16 @@ struct DocumentGraphicMockView: View {
                 // Aadhaar Secure UID number
                 Text("XXXX XXXX 9847")
                     .font(.system(size: 16, weight: .bold, design: .monospaced))
-                    .foregroundColor(.primary)
+                    .foregroundStyle(LMSColors.textPrimary)
                     .padding(8)
                     .frame(maxWidth: .infinity)
-                    .background(Color.primary.opacity(0.04))
-                    .cornerRadius(8)
+                    .background(LMSColors.textPrimary.opacity(0.04))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemBackground))
+                    .fill(LMSColors.surface)
                     .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 3)
             )
             .frame(height: 200)
@@ -277,7 +277,7 @@ struct DocumentGraphicMockView: View {
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                 Text("SALARY SLIP · MONTH: MAY 2026")
                     .font(.system(size: 8))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(LMSColors.textSecondary)
                 
                 Divider()
                 
@@ -294,10 +294,10 @@ struct DocumentGraphicMockView: View {
                     }
                     HStack {
                         Text("PF Deductions")
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                         Spacer()
                         Text("- ₹ 5,500.00")
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                     }
                     Divider()
                     HStack {
@@ -306,7 +306,7 @@ struct DocumentGraphicMockView: View {
                         Spacer()
                         Text("₹ 94,500.00")
                             .bold()
-                            .foregroundColor(AppTheme.successGreen)
+                            .foregroundStyle(AppTheme.successGreen)
                     }
                 }
                 .font(.system(size: 9, design: .monospaced))
@@ -314,7 +314,7 @@ struct DocumentGraphicMockView: View {
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemBackground))
+                    .fill(LMSColors.surface)
                     .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 3)
             )
             .frame(height: 200)
@@ -324,7 +324,7 @@ struct DocumentGraphicMockView: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Image(systemName: "building.columns.fill")
-                        .foregroundColor(AppTheme.actionBlue)
+                        .foregroundStyle(AppTheme.actionBlue)
                     Text("SECURE HDFC BANK STATEMENT")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                     Spacer()
@@ -332,7 +332,7 @@ struct DocumentGraphicMockView: View {
                 
                 Text("Statement Period: 01 Apr to 30 Apr")
                     .font(.system(size: 8))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(LMSColors.textSecondary)
                 
                 Divider()
                 
@@ -341,19 +341,19 @@ struct DocumentGraphicMockView: View {
                         Text("12 Apr · UPI Credit")
                         Spacer()
                         Text("+ ₹ 12,000")
-                            .foregroundColor(AppTheme.successGreen)
+                            .foregroundStyle(AppTheme.successGreen)
                     }
                     HStack {
                         Text("15 Apr · AutoDebit EMI")
                         Spacer()
                         Text("- ₹ 8,500")
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                     }
                     HStack {
                         Text("28 Apr · Salary Credited")
                         Spacer()
                         Text("+ ₹ 94,500")
-                            .foregroundColor(AppTheme.successGreen)
+                            .foregroundStyle(AppTheme.successGreen)
                     }
                     Divider()
                     HStack {
@@ -369,7 +369,7 @@ struct DocumentGraphicMockView: View {
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemBackground))
+                    .fill(LMSColors.surface)
                     .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 3)
             )
             .frame(height: 200)
@@ -379,13 +379,13 @@ struct DocumentGraphicMockView: View {
             VStack(spacing: 8) {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 26))
-                    .foregroundColor(AppTheme.successGreen)
+                    .foregroundStyle(AppTheme.successGreen)
                 
                 Text("FORM GST REG-06")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                 Text("GOVERNMENT OF INDIA FINANCE DEPT")
                     .font(.system(size: 8))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(LMSColors.textSecondary)
                 
                 Divider()
                 
@@ -408,7 +408,7 @@ struct DocumentGraphicMockView: View {
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemBackground))
+                    .fill(LMSColors.surface)
                     .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 3)
             )
             .frame(height: 200)
@@ -418,18 +418,18 @@ struct DocumentGraphicMockView: View {
             VStack(spacing: 12) {
                 Image(systemName: "doc.text.fill")
                     .font(.system(size: 40))
-                    .foregroundColor(AppTheme.actionBlue)
+                    .foregroundStyle(AppTheme.actionBlue)
                 
                 Text("Uploaded Document Scan")
                     .font(.system(.subheadline, design: .rounded).bold())
                 Text("File Name: \(docType.rawValue.lowercased())_signed.pdf")
                     .font(.system(.caption, design: .rounded))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(LMSColors.textSecondary)
             }
             .padding(20)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemBackground))
+                    .fill(LMSColors.surface)
                     .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 3)
             )
             .frame(height: 200)

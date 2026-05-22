@@ -1,7 +1,8 @@
 import SwiftUI
 
 struct BorrowerForgotPasswordView: View {
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel = ForgotPasswordViewModel()
     
     var body: some View {
@@ -15,11 +16,11 @@ struct BorrowerForgotPasswordView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Forgot Password")
                             .font(Font.AppTheme.title)
-                            .foregroundColor(Color.AppTheme.textPrimary)
+                            .foregroundStyle(Color.AppTheme.textPrimary)
                         
-                        Text("Choose how you would like to recover your password.")
+                        Text("Recover your account with a secure email reset link.")
                             .font(Font.AppTheme.subtitle)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                     }
                     .padding(.top, 20)
                     
@@ -33,8 +34,8 @@ struct BorrowerForgotPasswordView: View {
                         }
                         .padding()
                         .background(Color.AppTheme.error.opacity(0.1))
-                        .foregroundColor(Color.AppTheme.error)
-                        .cornerRadius(8)
+                        .foregroundStyle(Color.AppTheme.error)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     } else if viewModel.showSuccessMessage {
                         HStack {
                             Image(systemName: "checkmark.seal.fill")
@@ -44,14 +45,14 @@ struct BorrowerForgotPasswordView: View {
                         }
                         .padding()
                         .background(Color.AppTheme.success.opacity(0.1))
-                        .foregroundColor(Color.AppTheme.success)
-                        .cornerRadius(8)
+                        .foregroundStyle(Color.AppTheme.success)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                     
                     // Input Field
                     CustomTextField(
                         icon: "envelope",
-                        placeholder: "Email or Mobile Number",
+                        placeholder: "Email Address",
                         text: $viewModel.emailOrPhone
                     )
                     .padding(.top, 8)
@@ -64,7 +65,9 @@ struct BorrowerForgotPasswordView: View {
                         isLoading: viewModel.isLoading,
                         isDisabled: !viewModel.isFormValid || viewModel.showSuccessMessage,
                         action: {
-                            viewModel.sendResetLink()
+                            Task {
+                                await viewModel.sendResetLink(authManager: authManager)
+                            }
                         }
                     )
                     .padding(.bottom, 20)
@@ -75,7 +78,7 @@ struct BorrowerForgotPasswordView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
-                        presentationMode.wrappedValue.dismiss()
+                        dismiss()
                     }) {
                         HStack(spacing: 4) {
                             Image(systemName: "chevron.left")
@@ -83,7 +86,7 @@ struct BorrowerForgotPasswordView: View {
                             Text("Back")
                                 .font(Font.AppTheme.body)
                         }
-                        .foregroundColor(Color.AppTheme.primary)
+                        .foregroundStyle(Color.AppTheme.primary)
                     }
                 }
             }
@@ -93,4 +96,5 @@ struct BorrowerForgotPasswordView: View {
 
 #Preview {
     BorrowerForgotPasswordView()
+        .environmentObject(AuthManager())
 }

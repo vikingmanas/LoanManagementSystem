@@ -1,33 +1,37 @@
 import SwiftUI
 
+/// iOS-native checkbox with animated SF Symbol toggle and brand styling.
 struct CheckboxView: View {
     @Binding var isChecked: Bool
     var label: String
-    
+
     var body: some View {
         Button(action: {
-            withAnimation {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 isChecked.toggle()
             }
+            HapticsManager.triggerImpact(style: .light)
         }) {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: LMSSpacing.md) {
                 Image(systemName: isChecked ? "checkmark.square.fill" : "square")
-                    .foregroundColor(isChecked ? Color.AppTheme.primary : Color.AppTheme.textSecondary)
-                    .font(.system(size: 20))
-                
+                    .font(.system(size: 22, weight: .medium, design: .rounded))
+                    .foregroundStyle(isChecked ? LMSColors.brandNavy : LMSColors.textTertiary)
+                    .contentTransition(.symbolEffect(.replace))
+
                 Text(label)
-                    .font(Font.AppTheme.body)
-                    .foregroundColor(Color.AppTheme.textSecondary)
+                    .font(LMSFont.footnote)
+                    .foregroundStyle(LMSColors.textSecondary)
                     .multilineTextAlignment(.leading)
             }
+            .contentShape(Rectangle())
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityValue(isChecked ? "Checked" : "Unchecked")
     }
 }
 
-struct CheckboxView_Previews: PreviewProvider {
-    static var previews: some View {
-        CheckboxView(isChecked: .constant(true), label: "I agree to the Terms and Conditions")
-            .padding()
-    }
+#Preview {
+    CheckboxView(isChecked: .constant(true), label: "I agree to the Terms and Conditions")
+        .padding()
 }

@@ -57,61 +57,83 @@ struct ChatsFeedTabView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
+                .background(LMSColors.surface)
+                .shadow(color: .black.opacity(0.03), radius: 3, x: 0, y: 3)
                 
                 // Timeline Content
-            let items = viewModel.activityFeed.filter { item in
-                switch selectedFilter {
-                case .all: return true
-                case .unread: return !item.isRead
-                case .queries: return item.eventType == .queryRaised
-                }
-            }
-            
-            if items.isEmpty {
-                Spacer()
-                ContentUnavailableView(
-                    selectedFilter == .queries ? "No Active Queries" : (selectedFilter == .unread ? "No Unread Messages" : "No Activities"),
-                    systemImage: selectedFilter == .queries ? "bubble.left.and.bubble.right.fill" : "bell.slash",
-                    description: Text(selectedFilter == .queries ? "Borrowers have not raised any clarification queries." : "Timeline is clean! All alerts processed.")
-                )
-                Spacer()
-            } else {
-                List {
-                    ForEach(items) { item in
-                        NavigationLink(destination: ChatDetailResolverView(item: item)
-                            .onAppear {
-                                viewModel.markActivityRead(item.id)
-                            }
-                        ) {
-                            ActivityFeedRow(
-                                item: item,
-                                onMarkRead: {
-                                    viewModel.markActivityRead(item.id)
-                                },
-                                onDismiss: {
-                                    viewModel.dismissActivity(item.id)
-                                },
-                                onActionTapped: { _ in
-                                    HapticsManager.triggerImpact(style: .medium)
-                                    viewModel.markActivityRead(item.id)
-                                }
-                            )
-                        }
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color(.systemBackground))
-                        .listRowSeparator(.visible)
+                let items = viewModel.activityFeed.filter { item in
+                    switch selectedFilter {
+                    case .all: return true
+                    case .unread: return !item.isRead
+                    case .queries: return item.eventType == .queryRaised
                     }
                 }
-                .listStyle(.plain)
-                .refreshable {
-                    await viewModel.fetchDashboardData()
+                
+                if items.isEmpty {
+                    Spacer()
+                    ContentUnavailableView(
+                        selectedFilter == .queries ? "No Active Queries" : (selectedFilter == .unread ? "No Unread Messages" : "No Activities"),
+                        systemImage: selectedFilter == .queries ? "bubble.left.and.bubble.right.fill" : "bell.slash",
+                        description: Text(selectedFilter == .queries ? "Borrowers have not raised any clarification queries." : "Timeline is clean! All alerts processed.")
+                    )
+                    Spacer()
+                } else {
+                    List {
+                        // Quick Action: Mark all read
+                        if viewModel.unreadActivityCount > 0 && selectedFilter != .queries {
+                            Button(action: {
+                                HapticsManager.triggerImpact(style: .medium)
+                                viewModel.markAllActivityRead()
+                            }) {
+                                HStack {
+                                    Spacer()
+                                    Image(systemName: "checkmark.circle.fill")
+                                    Text("Mark All Read")
+                                        .font(.system(.caption, design: .rounded).bold())
+                                    Spacer()
+                                }
+                                .foregroundStyle(AppTheme.actionBlue)
+                                .padding(.vertical, 4)
+                            }
+                            .listRowBackground(Color.clear)
+                        }
+                        
+                        ForEach(items) { item in
+                            NavigationLink(destination: ChatDetailResolverView(item: item)
+                                .onAppear {
+                                    viewModel.markActivityRead(item.id)
+                                }
+                            ) {
+                                ActivityFeedRow(
+                                    item: item,
+                                    onMarkRead: {
+                                        viewModel.markActivityRead(item.id)
+                                    },
+                                    onDismiss: {
+                                        viewModel.dismissActivity(item.id)
+                                    },
+                                    onActionTapped: { _ in
+                                        HapticsManager.triggerImpact(style: .medium)
+                                        viewModel.markActivityRead(item.id)
+                                    }
+                                )
+                            }
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color(.systemBackground))
+                            .listRowSeparator(.visible)
+                        }
+                    }
+                    .listStyle(.plain)
+                    .refreshable {
+                        await viewModel.fetchDashboardData()
+                    }
                 }
             }
         }
         .toolbar(.hidden, for: .navigationBar)
     }
-}
 }
 
 // Chat helper types
@@ -134,87 +156,110 @@ struct ChatDetailResolverView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-                // Messages List
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(spacing: 14) {
-                            ForEach(messages) { msg in
-                                ChatMessageBubble(msg: msg)
-                                    .id(msg.id)
-                            }
-                        }
-                        .padding()
-                    }
-                    .onChange(of: messages.count) { _, _ in
-                        if let lastId = messages.last?.id {
-                            withAnimation {
-                                proxy.scrollTo(lastId, anchor: .bottom)
-                            }
-                        }
-                    }
-                }
-                
-                Divider()
-                
-                // Native Typing Row
-                HStack(spacing: 12) {
-                    Button(action: {}) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 20))
-                            .foregroundColor(Color(.systemGray))
-                            .padding(8)
-                            .background(Color(.systemGray5))
-                            .clipShape(Circle())
-                    }
-                    
-                    HStack {
-                        TextField("Message", text: $chatText)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                        
-                        if !chatText.trimmingCharacters(in: .whitespaces).isEmpty {
-                            Button(action: sendChatMessage) {
-                                Image(systemName: "arrow.up.circle.fill")
-                                    .font(.system(size: 28))
-                                    .foregroundColor(.blue)
-                            }
-                            .padding(.trailing, 4)
-                        } else {
-                            Image(systemName: "mic")
-                                .font(.system(size: 20))
-                                .foregroundColor(.gray)
-                                .padding(.trailing, 12)
-                        }
-                    }
-                    .background(
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(Color(.systemGray4), lineWidth: 1)
+            // Header details
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(AppTheme.brandNavy.opacity(0.1))
+                    .frame(width: 44, height: 44)
+                    .overlay(
+                        Text(String(item.borrowerName.prefix(2)))
+                            .font(.system(.subheadline, design: .rounded).bold())
+                            .foregroundStyle(AppTheme.brandNavy)
                     )
-                    .background(Color(.systemBackground).clipShape(RoundedRectangle(cornerRadius: 20)))
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.borrowerName)
+                        .font(.system(.subheadline, design: .rounded).bold())
+                    Text("\(item.loanType) · \(item.applicationId)")
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(LMSColors.textSecondary)
                 }
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                .background(Color(.systemGroupedBackground))
+                Spacer()
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    VStack(spacing: 2) {
-                        ZStack {
-                            Circle().fill(Color(.systemGray5)).frame(width: 32, height: 32)
-                            Text(String(item.borrowerName.prefix(2)).uppercased())
-                                .font(.system(size: 12, weight: .bold, design: .rounded))
-                                .foregroundColor(Color(.darkGray))
+            .padding()
+            .background(AppTheme.neutralSurface)
+            
+            // Messages List
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 14) {
+                        ForEach(messages) { msg in
+                            ChatMessageBubble(msg: msg)
+                                .id(msg.id)
                         }
-                        Text(item.borrowerName)
-                            .font(.caption)
-                            .bold()
+                    }
+                    .padding()
+                }
+                .onChange(of: messages.count) { _, _ in
+                    if let lastId = messages.last?.id {
+                        withAnimation {
+                            proxy.scrollTo(lastId, anchor: .bottom)
+                        }
                     }
                 }
             }
-            .onAppear {
-                loadSimulatedChat()
+            
+            Divider()
+            
+            // Native Typing Row
+            HStack(spacing: 12) {
+                Button(action: {}) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 20))
+                        .foregroundColor(Color(.systemGray))
+                        .padding(8)
+                        .background(Color(.systemGray5))
+                        .clipShape(Circle())
+                }
+                
+                HStack {
+                    TextField("Message", text: $chatText)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                    
+                    if !chatText.trimmingCharacters(in: .whitespaces).isEmpty {
+                        Button(action: sendChatMessage) {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.system(size: 28))
+                                .foregroundColor(.blue)
+                        }
+                        .padding(.trailing, 4)
+                    } else {
+                        Image(systemName: "mic")
+                            .font(.system(size: 20))
+                            .foregroundColor(.gray)
+                            .padding(.trailing, 12)
+                    }
+                }
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(Color(.systemGray4), lineWidth: 1)
+                )
+                .background(Color(.systemBackground).clipShape(RoundedRectangle(cornerRadius: 20)))
             }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .background(Color(.systemGroupedBackground))
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                VStack(spacing: 2) {
+                    ZStack {
+                        Circle().fill(Color(.systemGray5)).frame(width: 32, height: 32)
+                        Text(String(item.borrowerName.prefix(2)).uppercased())
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundColor(Color(.darkGray))
+                    }
+                    Text(item.borrowerName)
+                        .font(.caption)
+                        .bold()
+                }
+            }
+        }
+        .onAppear {
+            loadSimulatedChat()
+        }
     }
     
     // Simulate interactive chatting
@@ -276,27 +321,34 @@ struct ChatMessageBubble: View {
                 Spacer()
                 Text(msg.text)
                     .font(.system(.caption2, design: .rounded).bold())
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(LMSColors.textSecondary)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Color(.systemGray6))
-                    .clipShape(Capsule())
+                    .background(LMSColors.textPrimary.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 Spacer()
             } else {
-                Text(msg.text)
-                    .font(.body)
-                    .foregroundColor(msg.sender == .officer ? .white : .primary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(msg.sender == .officer ? Color.blue : Color(.systemGray5))
-                    .clipShape(
-                        UnevenRoundedRectangle(
-                            topLeadingRadius: 18,
-                            bottomLeadingRadius: msg.sender == .officer ? 18 : 4,
-                            bottomTrailingRadius: msg.sender == .officer ? 4 : 18,
-                            topTrailingRadius: 18
+                VStack(alignment: msg.sender == .officer ? .trailing : .leading, spacing: 3) {
+                    Text(msg.text)
+                        .font(.system(.subheadline, design: .rounded))
+                        .foregroundStyle(msg.sender == .officer ? .white : .primary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(msg.sender == .officer ? AppTheme.actionBlue : AppTheme.neutralSurface)
+                        .clipShape(
+                            UnevenRoundedRectangle(
+                                topLeadingRadius: 18,
+                                bottomLeadingRadius: msg.sender == .officer ? 18 : 4,
+                                bottomTrailingRadius: msg.sender == .officer ? 4 : 18,
+                                topTrailingRadius: 18
+                            )
                         )
-                    )
+                    
+                    Text(msg.time)
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .padding(.horizontal, 4)
+                }
             }
             
             if msg.sender == .borrower {
