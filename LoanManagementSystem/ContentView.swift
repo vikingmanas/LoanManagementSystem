@@ -1,8 +1,5 @@
 import SwiftUI
 
-// MARK: - ContentView (Auth Router)
-/// Root view that switches between authentication and dashboard flows
-/// based on the current Firebase auth state.
 struct ContentView: View {
 
     // Firebase/Auth Manager

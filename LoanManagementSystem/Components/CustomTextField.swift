@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// Premium iOS-native text field with icon, error state, and refined styling.
-/// Uses LMS design tokens for consistent spacing, radius, and colors.
 struct CustomTextField: View {
     var icon: String
     var placeholder: String
@@ -65,8 +63,6 @@ struct CustomTextField: View {
             }
         }
     }
-
-    // MARK: - Computed Styling
 
     private var iconColor: Color {
         if isError { return LMSColors.coral }

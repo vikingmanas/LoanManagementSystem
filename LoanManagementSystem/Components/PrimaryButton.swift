@@ -1,6 +1,5 @@
 import SwiftUI
 
-// MARK: - Button Variant
 public enum LMSButtonVariant {
     case primary      // Filled navy / gradient
     case secondary    // Outlined navy
@@ -8,9 +7,6 @@ public enum LMSButtonVariant {
     case ghost        // Text-only navy
 }
 
-// MARK: - Primary Button
-/// Premium fintech button with multiple variants, haptic feedback,
-/// and smooth press animation. Meets HIG 44pt minimum tap target.
 struct PrimaryButton: View {
     var title: String
     var icon: String? = nil
@@ -58,8 +54,6 @@ struct PrimaryButton: View {
         .accessibilityLabel(title)
         .accessibilityAddTraits(.isButton)
     }
-
-    // MARK: - Computed Styling
 
     private var foregroundColor: Color {
         switch variant {

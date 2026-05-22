@@ -1,16 +1,5 @@
-//
-//  LMSNativeComponents.swift
-//  LoanManagementSystem
-//
-//  Reusable SwiftUI building blocks that follow Apple HIG patterns:
-//  grouped lists, large titles, inset cards, SF Symbols, and 44pt tap targets.
-//
-
 import SwiftUI
 
-// MARK: - App Chrome
-
-/// Configures UIKit appearance for tab bar and navigation bar to match LMS tokens.
 public enum LMSAppearance {
     public static func configure() {
         let nav = UINavigationBarAppearance()
@@ -42,7 +31,6 @@ public enum LMSAppearance {
 }
 
 extension View {
-    /// Shows a tab badge only when count is greater than zero.
     @ViewBuilder
     public func lmsTabBadge(_ count: Int) -> some View {
         if count > 0 {
@@ -52,12 +40,10 @@ extension View {
         }
     }
 
-    /// Standard grouped screen background used across borrower flows.
     public func lmsScreenBackground() -> some View {
         background(LMSColors.background.ignoresSafeArea())
     }
 
-    /// Inset grouped card container (iOS Settings-style block).
     public func lmsInsetGroupedCard() -> some View {
         background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
             .overlay(
@@ -67,9 +53,6 @@ extension View {
     }
 }
 
-// MARK: - Grouped List
-
-/// Section header matching iOS grouped list typography.
 public struct LMSGroupedSectionHeader: View {
     let title: LocalizedStringKey
     var subtitle: String? = nil
@@ -90,7 +73,6 @@ public struct LMSGroupedSectionHeader: View {
     }
 }
 
-/// Native-style settings row with icon tile, title, optional value, and chevron.
 public struct LMSListRow: View {
     let title: String
     var subtitle: String? = nil
@@ -152,9 +134,6 @@ public struct LMSGroupedDivider: View {
     }
 }
 
-// MARK: - Dashboard Chrome
-
-/// Collapsible-style greeting used under a large navigation title.
 public struct LMSDashboardGreeting: View {
     let firstName: String
     var customerID: String? = nil
@@ -207,8 +186,6 @@ public struct LMSDashboardGreeting: View {
     }
 }
 
-// MARK: - Status & Metrics
-
 public struct LMSStatusPill: View {
     public enum Style { case success, warning, error, info, neutral }
 
@@ -220,8 +197,8 @@ public struct LMSStatusPill: View {
         switch style {
         case .success: return LMSColors.emerald
         case .warning: return LMSColors.amber
-        case .error:   return LMSColors.coral
-        case .info:    return LMSColors.actionBlue
+        case .error: return LMSColors.coral
+        case .info: return LMSColors.actionBlue
         case .neutral: return LMSColors.textSecondary
         }
     }
@@ -270,7 +247,6 @@ public struct LMSMetricTile: View {
     }
 }
 
-/// Full-width banner for account health and alerts.
 public struct LMSBanner: View {
     public enum Style { case success, warning, error }
 
@@ -282,7 +258,7 @@ public struct LMSBanner: View {
         switch style {
         case .success: return LMSColors.emerald
         case .warning: return LMSColors.amber
-        case .error:   return LMSColors.coral
+        case .error: return LMSColors.coral
         }
     }
 
@@ -302,8 +278,6 @@ public struct LMSBanner: View {
         .background(background, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
     }
 }
-
-// MARK: - Notifications
 
 public struct LMSNotification: Identifiable, Hashable {
     public let id: UUID

@@ -1,10 +1,3 @@
-//
-//  DashboardView.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 19/05/26.
-//
-
 import SwiftUI
 
 // MARK: - Navigation Destinations
