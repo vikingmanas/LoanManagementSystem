@@ -11,12 +11,12 @@ struct PrivacyControlsDetailView: View {
                 Toggle(isOn: $shareWithBureaus) {
                     HStack {
                         Image(systemName: "chart.line.uptrend.xyaxis")
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                         VStack(alignment: .leading) {
                             Text("Share Credit Activity")
                             Text("Report loan repayments to major credit bureaus")
                                 .font(Font.AppTheme.caption)
-                                .foregroundColor(Color.AppTheme.textSecondary)
+                                .foregroundStyle(Color.AppTheme.textSecondary)
                         }
                     }
                 }
@@ -26,12 +26,12 @@ struct PrivacyControlsDetailView: View {
                 Toggle(isOn: $trackingEnabled) {
                     HStack {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.orange)
+                            .foregroundStyle(.orange)
                         VStack(alignment: .leading) {
                             Text("Diagnostics and Usage")
                             Text("Share anonymous diagnostic data with developers")
                                 .font(Font.AppTheme.caption)
-                                .foregroundColor(Color.AppTheme.textSecondary)
+                                .foregroundStyle(Color.AppTheme.textSecondary)
                         }
                     }
                 }
@@ -41,12 +41,12 @@ struct PrivacyControlsDetailView: View {
                 Toggle(isOn: $personalizedAds) {
                     HStack {
                         Image(systemName: "sparkles")
-                            .foregroundColor(.purple)
+                            .foregroundStyle(.purple)
                         VStack(alignment: .leading) {
                             Text("Personalized Loan Offers")
                             Text("Enable matching based on credit profile")
                                 .font(Font.AppTheme.caption)
-                                .foregroundColor(Color.AppTheme.textSecondary)
+                                .foregroundStyle(Color.AppTheme.textSecondary)
                         }
                     }
                 }

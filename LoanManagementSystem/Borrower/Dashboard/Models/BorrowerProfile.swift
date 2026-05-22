@@ -1,6 +1,6 @@
 import Foundation
 
-struct BorrowerProfile: Codable {
+struct BorrowerProfile: Codable, Equatable {
     var id: String
     var fullName: String
     var email: String
@@ -107,7 +107,7 @@ struct BorrowerProfile: Codable {
     }
 }
 
-struct AddressInfo: Codable {
+struct AddressInfo: Codable, Equatable {
     let streetAddress: String
     let city: String
     let state: String
@@ -116,7 +116,7 @@ struct AddressInfo: Codable {
     let isSameAsCurrent: Bool
 }
 
-struct EmploymentInfo: Codable {
+struct EmploymentInfo: Codable, Equatable {
     let employmentType: String // e.g. Salaried, Self-employed
     let companyName: String
     let designation: String
@@ -124,7 +124,7 @@ struct EmploymentInfo: Codable {
     let employerAddress: String
 }
 
-struct IncomeInfo: Codable {
+struct IncomeInfo: Codable, Equatable {
     let monthlyIncome: Double
     let annualIncome: Double
     let existingEMIs: Double
@@ -136,7 +136,7 @@ struct IncomeInfo: Codable {
     }
 }
 
-struct BankDetails: Codable {
+struct BankDetails: Codable, Equatable {
     let bankName: String
     let accountHolderName: String
     let accountNumber: String 
@@ -145,7 +145,7 @@ struct BankDetails: Codable {
     let isVerified: Bool
 }
 
-struct KYCVerification: Codable {
+struct KYCVerification: Codable, Equatable {
     var aadhaarStatus: VerificationStatus
     var panStatus: VerificationStatus
     var addressProofStatus: VerificationStatus
@@ -166,7 +166,7 @@ struct KYCVerification: Codable {
     }
 }
 
-struct LoanOverview: Codable {
+struct LoanOverview: Codable, Equatable {
     let activeLoans: Int
     let loanHistoryCount: Int
     let nextEmiDueDate: Date?
@@ -174,7 +174,7 @@ struct LoanOverview: Codable {
     let currentLoanStatus: String
 }
 
-enum VerificationStatus: String, Codable {
+enum VerificationStatus: String, Codable, Equatable {
     case pending = "Pending"
     case underReview = "Under Review"
     case verified = "Verified"

@@ -38,14 +38,14 @@ struct EditContactInfoView: View {
                         
                         Text("This verified mobile number is locked. To modify it, please request an official update.")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                     }
                 } else {
                     Section(header: Text("Mobile Number")) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Mobile Number")
                                 .font(Font.AppTheme.caption)
-                                .foregroundColor(Color.AppTheme.textSecondary)
+                                .foregroundStyle(Color.AppTheme.textSecondary)
                             TextField("Enter Mobile Number", text: $mobileNumber)
                                 .keyboardType(.phonePad)
                                 .font(Font.AppTheme.input)
@@ -57,7 +57,7 @@ struct EditContactInfoView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Alternate Mobile Number")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Enter Alternate Number (Optional)", text: $alternateNumber)
                             .keyboardType(.phonePad)
                             .font(Font.AppTheme.input)
@@ -66,7 +66,7 @@ struct EditContactInfoView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Email Address")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Enter Email Address", text: $email)
                             .keyboardType(.emailAddress)
                             .font(Font.AppTheme.input)
@@ -81,7 +81,7 @@ struct EditContactInfoView: View {
                         presentationMode.wrappedValue.dismiss()
                     }) {
                         Image(systemName: "xmark")
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -91,7 +91,7 @@ struct EditContactInfoView: View {
                     }) {
                         Image(systemName: "checkmark")
                             .fontWeight(.bold)
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                     }
                 }
             }

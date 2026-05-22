@@ -1,14 +1,14 @@
 import SwiftUI
 
-// MARK: - App Colors Styling
+// MARK: - App Colors Styling (Aliases → unified DesignSystem.swift)
 struct AppTheme {
-    static let brandNavy = Color(hex: "0A2540")
-    static let actionBlue = Color(hex: "1A73E8")
-    static let successGreen = Color(hex: "00C48C")
-    static let warningAmber = Color(hex: "FFB300")
-    static let criticalRed = Color(hex: "FF4D4F")
-    static let neutralSurface = Color(.secondarySystemBackground)
-    static let background = Color(.systemBackground)
+    static let brandNavy      = LMSColors.brandNavy
+    static let actionBlue     = LMSColors.actionBlue
+    static let successGreen   = LMSColors.emerald
+    static let warningAmber   = LMSColors.amber
+    static let criticalRed    = LMSColors.coral
+    static let neutralSurface = LMSColors.surface
+    static let background     = LMSColors.surfaceElevated
 }
 
 // MARK: - Core Data Models

@@ -21,7 +21,7 @@ struct ChatsFeedTabView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 8)
             }
-            .background(Color(.systemBackground))
+            .background(LMSColors.surface)
             .shadow(color: .black.opacity(0.03), radius: 3, x: 0, y: 3)
             
             // Timeline Content
@@ -52,7 +52,7 @@ struct ChatsFeedTabView: View {
                                     .font(.system(.caption, design: .rounded).bold())
                                 Spacer()
                             }
-                            .foregroundColor(AppTheme.actionBlue)
+                            .foregroundStyle(AppTheme.actionBlue)
                             .padding(.vertical, 4)
                         }
                         .listRowBackground(Color.clear)
@@ -178,7 +178,7 @@ struct ChatDetailResolverView: View {
                         .overlay(
                             Text(String(item.borrowerName.prefix(2)))
                                 .font(.system(.subheadline, design: .rounded).bold())
-                                .foregroundColor(AppTheme.brandNavy)
+                                .foregroundStyle(AppTheme.brandNavy)
                         )
                     
                     VStack(alignment: .leading, spacing: 2) {
@@ -186,7 +186,7 @@ struct ChatDetailResolverView: View {
                             .font(.system(.subheadline, design: .rounded).bold())
                         Text("\(item.loanType) · \(item.applicationId)")
                             .font(.system(.caption, design: .rounded))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                     }
                     Spacer()
                 }
@@ -221,13 +221,13 @@ struct ChatDetailResolverView: View {
                         .font(.system(.subheadline, design: .rounded))
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
-                        .background(Color.primary.opacity(0.06))
-                        .cornerRadius(20)
+                        .background(LMSColors.textPrimary.opacity(0.06))
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     
                     Button(action: onSend) {
                         Image(systemName: "paperplane.fill")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .frame(width: 38, height: 38)
                             .background(AppTheme.actionBlue)
                             .clipShape(Circle())
@@ -235,7 +235,7 @@ struct ChatDetailResolverView: View {
                     .disabled(chatText.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
                 .padding()
-                .background(Color(.systemBackground))
+                .background(LMSColors.surface)
             }
             .navigationTitle("Borrower Chat Console")
             .navigationBarTitleDisplayMode(.inline)
@@ -261,25 +261,25 @@ struct ChatMessageBubble: View {
                 Spacer()
                 Text(msg.text)
                     .font(.system(.caption2, design: .rounded).bold())
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(LMSColors.textSecondary)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Color.primary.opacity(0.05))
-                    .cornerRadius(8)
+                    .background(LMSColors.textPrimary.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 Spacer()
             } else {
                 VStack(alignment: msg.sender == .officer ? .trailing : .leading, spacing: 3) {
                     Text(msg.text)
                         .font(.system(.subheadline, design: .rounded))
-                        .foregroundColor(msg.sender == .officer ? .white : .primary)
+                        .foregroundStyle(msg.sender == .officer ? .white : .primary)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
                         .background(msg.sender == .officer ? AppTheme.actionBlue : AppTheme.neutralSurface)
-                        .cornerRadius(16)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     
                     Text(msg.time)
                         .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                         .padding(.horizontal, 4)
                 }
             }

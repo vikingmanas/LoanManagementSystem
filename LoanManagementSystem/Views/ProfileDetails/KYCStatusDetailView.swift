@@ -11,7 +11,7 @@ struct KYCStatusDetailView: View {
                     HStack {
                         Text("KYC Verification")
                             .font(Font.AppTheme.body)
-                            .foregroundColor(Color.AppTheme.textPrimary)
+                            .foregroundStyle(Color.AppTheme.textPrimary)
                         Spacer()
                         StatusBadgeView(status: kyc.overallStatus.rawValue)
                     }
@@ -26,7 +26,7 @@ struct KYCStatusDetailView: View {
                             if let fileName = kyc.aadhaarFileName {
                                 Text(fileName)
                                     .font(Font.AppTheme.caption)
-                                    .foregroundColor(Color.AppTheme.primary)
+                                    .foregroundStyle(Color.AppTheme.primary)
                             }
                         }
                         Spacer()
@@ -41,7 +41,7 @@ struct KYCStatusDetailView: View {
                             if let fileName = kyc.panFileName {
                                 Text(fileName)
                                     .font(Font.AppTheme.caption)
-                                    .foregroundColor(Color.AppTheme.primary)
+                                    .foregroundStyle(Color.AppTheme.primary)
                             }
                         }
                         Spacer()
@@ -56,7 +56,7 @@ struct KYCStatusDetailView: View {
                             if let fileName = kyc.addressProofFileName {
                                 Text(fileName)
                                     .font(Font.AppTheme.caption)
-                                    .foregroundColor(Color.AppTheme.primary)
+                                    .foregroundStyle(Color.AppTheme.primary)
                             }
                         }
                         Spacer()
@@ -72,7 +72,7 @@ struct KYCStatusDetailView: View {
                 Button("Edit") {
                     showingEditSheet = true
                 }
-                .foregroundColor(Color.AppTheme.primary)
+                .foregroundStyle(Color.AppTheme.primary)
             }
         }
         .sheet(isPresented: $showingEditSheet) {

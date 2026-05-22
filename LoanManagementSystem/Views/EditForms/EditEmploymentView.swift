@@ -42,7 +42,7 @@ struct EditEmploymentView: View {
                         presentationMode.wrappedValue.dismiss()
                     }) {
                         Image(systemName: "xmark")
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -58,7 +58,7 @@ struct EditEmploymentView: View {
                     }) {
                         Image(systemName: "checkmark")
                             .fontWeight(.bold)
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                     }
                 }
             }

@@ -67,12 +67,12 @@ struct AdminDashboardView: View {
                         
                         Text("SYSTEM ONLINE")
                             .font(.system(size: 10, weight: .bold, design: .monospaced))
-                            .foregroundColor(Color(hex: "#FF4D4F"))
+                            .foregroundStyle(Color(hex: "#FF4D4F"))
                     }
                     
                     Text("Astra Portal Admin 🛡️")
                         .font(.system(.title3, design: .rounded).bold())
-                        .foregroundColor(.primary)
+                        .foregroundStyle(LMSColors.textPrimary)
                 }
                 
                 Spacer()
@@ -88,7 +88,7 @@ struct AdminDashboardView: View {
                         
                         Text("AD")
                             .font(.system(.footnote, design: .rounded).bold())
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                     }
                     .shadow(color: Color(hex: "#0A2540").opacity(0.3), radius: 6, x: 0, y: 3)
                 }
@@ -96,7 +96,7 @@ struct AdminDashboardView: View {
             .padding(.horizontal, 16)
             .padding(.top, 12)
             .padding(.bottom, 12)
-            .background(Color(.systemBackground))
+            .background(LMSColors.surface)
             
             Divider()
             
@@ -107,7 +107,7 @@ struct AdminDashboardView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("System Operations")
                             .font(.system(.footnote, design: .rounded).bold())
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                             .padding(.leading, 4)
                         
                         HStack(spacing: 12) {
@@ -122,7 +122,7 @@ struct AdminDashboardView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Systemic Loan Rules (Global Config)")
                             .font(.system(.footnote, design: .rounded).bold())
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                             .padding(.leading, 4)
                         
                         VStack(spacing: 16) {
@@ -134,7 +134,7 @@ struct AdminDashboardView: View {
                                     Spacer()
                                     Text(String(format: "%.2f%%", homeLoanRate))
                                         .font(.system(.footnote, design: .monospaced).bold())
-                                        .foregroundColor(Color.AppTheme.primary)
+                                        .foregroundStyle(Color.AppTheme.primary)
                                 }
                                 Slider(value: $homeLoanRate, in: 5.0...15.0, step: 0.05)
                                     .tint(Color.AppTheme.primary)
@@ -148,7 +148,7 @@ struct AdminDashboardView: View {
                                     Spacer()
                                     Text(String(format: "%.2f%%", personalLoanRate))
                                         .font(.system(.footnote, design: .monospaced).bold())
-                                        .foregroundColor(Color.AppTheme.primary)
+                                        .foregroundStyle(Color.AppTheme.primary)
                                 }
                                 Slider(value: $personalLoanRate, in: 8.0...20.0, step: 0.05)
                                     .tint(Color.AppTheme.primary)
@@ -162,7 +162,7 @@ struct AdminDashboardView: View {
                                     Spacer()
                                     Text(String(format: "%.2f%%", businessLoanRate))
                                         .font(.system(.footnote, design: .monospaced).bold())
-                                        .foregroundColor(Color.AppTheme.primary)
+                                        .foregroundStyle(Color.AppTheme.primary)
                                 }
                                 Slider(value: $businessLoanRate, in: 10.0...25.0, step: 0.05)
                                     .tint(Color.AppTheme.primary)
@@ -178,7 +178,7 @@ struct AdminDashboardView: View {
                                     Spacer()
                                     Text("\(Int(minCIBILThreshold)) Score")
                                         .font(.system(.footnote, design: .monospaced).bold())
-                                        .foregroundColor(Color(hex: "#FFB300"))
+                                        .foregroundStyle(Color(hex: "#FFB300"))
                                 }
                                 Slider(value: $minCIBILThreshold, in: 300...900, step: 5)
                                     .tint(Color(hex: "#FFB300"))
@@ -202,16 +202,16 @@ struct AdminDashboardView: View {
                             }) {
                                 Text("Apply Global Configuration")
                                     .font(.system(.footnote, design: .rounded).weight(.bold))
-                                    .foregroundColor(.white)
+                                    .foregroundStyle(.white)
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 44)
                                     .background(Color.AppTheme.primary)
-                                    .cornerRadius(12)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
                         }
                         .padding(.all, 16)
-                        .background(Color(.secondarySystemBackground))
-                        .cornerRadius(16)
+                        .background(LMSColors.surfaceElevated)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
                     .padding(.horizontal, 16)
                     
@@ -219,14 +219,14 @@ struct AdminDashboardView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Live System Audit Logs")
                             .font(.system(.footnote, design: .rounded).bold())
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                             .padding(.leading, 4)
                         
                         VStack(spacing: 0) {
                             // Search bar inside console
                             HStack {
                                 Image(systemName: "magnifyingglass")
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(LMSColors.textSecondary)
                                 
                                 TextField("Filter system logs...", text: $logSearch)
                                     .font(.system(.caption, design: .monospaced))
@@ -234,14 +234,14 @@ struct AdminDashboardView: View {
                                 if !logSearch.isEmpty {
                                     Button(action: { logSearch = "" }) {
                                         Image(systemName: "xmark.circle.fill")
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(LMSColors.textSecondary)
                                     }
                                 }
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
-                            .background(Color(.systemBackground).opacity(0.6))
-                            .cornerRadius(8)
+                            .background(LMSColors.surface.opacity(0.6))
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                             .padding(.all, 10)
                             
                             // Audit list
@@ -249,46 +249,46 @@ struct AdminDashboardView: View {
                                 ForEach(filteredLogs) { log in
                                     HStack(alignment: .top, spacing: 10) {
                                         Image(systemName: log.type.symbol)
-                                            .foregroundColor(log.type.color)
-                                            .font(.caption2)
+                                            .foregroundStyle(log.type.color)
+                                            .font(LMSFont.caption2)
                                             .padding(.top, 2)
                                         
                                         VStack(alignment: .leading, spacing: 2) {
                                             HStack {
                                                 Text(log.actor)
                                                     .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                                    .foregroundColor(log.type.color)
+                                                    .foregroundStyle(log.type.color)
                                                 
                                                 Spacer()
                                                 
                                                 Text(log.timestamp)
                                                     .font(.system(size: 8, design: .monospaced))
-                                                    .foregroundColor(.secondary)
+                                                    .foregroundStyle(LMSColors.textSecondary)
                                             }
                                             
                                             Text(log.action)
                                                 .font(.system(size: 10, design: .monospaced))
-                                                .foregroundColor(.primary)
+                                                .foregroundStyle(LMSColors.textPrimary)
                                                 .lineSpacing(2)
                                         }
                                     }
                                     .padding(.all, 8)
-                                    .background(Color(.systemBackground).opacity(0.4))
-                                    .cornerRadius(8)
+                                    .background(LMSColors.surface.opacity(0.4))
+                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                                 }
                             }
                             .padding(.horizontal, 10)
                             .padding(.bottom, 12)
                         }
-                        .background(Color(.secondarySystemBackground))
-                        .cornerRadius(16)
+                        .background(LMSColors.surfaceElevated)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
                     .padding(.horizontal, 16)
                     
                 }
                 .padding(.bottom, 24)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(LMSColors.background)
         }
         .sheet(isPresented: $showProfileSheet) {
             AdminProfileView()
@@ -325,24 +325,24 @@ struct AdminStatusCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: symbol)
-                    .font(.footnote)
-                    .foregroundColor(color)
+                    .font(LMSFont.footnote)
+                    .foregroundStyle(color)
                 
                 Spacer()
                 
                 Text(title)
                     .font(.system(size: 8, weight: .bold, design: .rounded))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(LMSColors.textSecondary)
             }
             
             Text(value)
                 .font(.system(.headline, design: .rounded).bold())
-                .foregroundColor(.primary)
+                .foregroundStyle(LMSColors.textPrimary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .background(LMSColors.surfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -370,7 +370,7 @@ struct AdminProfileView: View {
                             
                             Text("AD")
                                 .font(.system(size: 32, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
+                                .foregroundStyle(.white)
                         }
                         
                         VStack(spacing: 4) {
@@ -379,24 +379,24 @@ struct AdminProfileView: View {
                             
                             Text("Securities Operations Principal")
                                 .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                                .foregroundColor(Color(hex: "#0A2540"))
+                                .foregroundStyle(Color(hex: "#0A2540"))
                             
                             Text("National HQ · (Node ID: ADM-01)")
                                 .font(.system(.caption, design: .rounded))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                         }
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 20)
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(20)
+                    .background(LMSColors.surfaceElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .padding(.horizontal, 16)
                     
                     // Detail list
                     VStack(alignment: .leading, spacing: 12) {
                         Text("National System Node")
                             .font(.system(.caption, design: .rounded).bold())
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                             .padding(.leading, 20)
                         
                         VStack(spacing: 0) {
@@ -406,8 +406,8 @@ struct AdminProfileView: View {
                             Divider().padding(.leading, 16)
                             ProfileDetailRow(label: "ENCRYPTION STATUS", value: "AES-256 Active")
                         }
-                        .background(Color(.secondarySystemBackground))
-                        .cornerRadius(16)
+                        .background(LMSColors.surfaceElevated)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .padding(.horizontal, 16)
                     }
                     
@@ -420,18 +420,18 @@ struct AdminProfileView: View {
                     }) {
                         Text("Sign Out Admin Console")
                             .font(.system(.subheadline, design: .rounded).bold())
-                            .foregroundColor(Color.AppTheme.error)
+                            .foregroundStyle(Color.AppTheme.error)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(Color.AppTheme.error.opacity(0.08))
-                            .cornerRadius(16)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
                     .padding(.horizontal, 16)
                     
                 }
                 .padding(.vertical, 16)
             }
-            .background(Color(.systemBackground))
+            .background(LMSColors.surface)
             .navigationTitle("Admin Profile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

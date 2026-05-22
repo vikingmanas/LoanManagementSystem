@@ -15,7 +15,7 @@ struct DocumentUploadCardView: View {
                     .frame(width: 40, height: 40)
                 
                 Image(systemName: iconForStatus)
-                    .foregroundColor(colorForStatus)
+                    .foregroundStyle(colorForStatus)
                     .font(.system(size: 18))
             }
             
@@ -23,7 +23,7 @@ struct DocumentUploadCardView: View {
                 Text(documentName)
                     .font(Font.AppTheme.body)
                     .fontWeight(.medium)
-                    .foregroundColor(Color.AppTheme.textPrimary)
+                    .foregroundStyle(Color.AppTheme.textPrimary)
                 
                 if let fileName = fileName {
                     HStack(spacing: 4) {
@@ -32,11 +32,11 @@ struct DocumentUploadCardView: View {
                         Text(fileName)
                     }
                     .font(Font.AppTheme.caption)
-                    .foregroundColor(Color.AppTheme.primary)
+                    .foregroundStyle(Color.AppTheme.primary)
                 } else {
                     Text(status.rawValue)
                         .font(Font.AppTheme.caption)
-                        .foregroundColor(colorForStatus)
+                        .foregroundStyle(colorForStatus)
                 }
             }
             
@@ -50,20 +50,20 @@ struct DocumentUploadCardView: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(Color.AppTheme.primary)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
             } else {
                 Button(action: onDelete) {
                     Image(systemName: "trash")
                         .font(.system(size: 16))
-                        .foregroundColor(Color.AppTheme.error)
+                        .foregroundStyle(Color.AppTheme.error)
                 }
             }
         }
         .padding(16)
         .background(Color.AppTheme.secondary)
-        .cornerRadius(12)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color.gray.opacity(0.2), lineWidth: 1)

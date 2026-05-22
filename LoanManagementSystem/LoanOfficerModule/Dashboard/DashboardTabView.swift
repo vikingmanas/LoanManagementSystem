@@ -21,12 +21,12 @@ struct DashboardTabView: View {
                     VStack(spacing: 20) {
                         // Portfolio Card Placeholder
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(Color.secondary.opacity(0.15))
+                            .fill(LMSColors.textSecondary.opacity(0.15))
                             .frame(height: 180)
                         
                         // Document Queue Placeholder
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(Color.secondary.opacity(0.15))
+                            .fill(LMSColors.textSecondary.opacity(0.15))
                             .frame(height: 250)
                     }
                     .padding(.horizontal, 16)

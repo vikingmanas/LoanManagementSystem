@@ -10,7 +10,7 @@ struct DataRowView: View {
         HStack(alignment: .top) {
             Text(label)
                 .font(Font.AppTheme.body)
-                .foregroundColor(Color.AppTheme.textSecondary)
+                .foregroundStyle(Color.AppTheme.textSecondary)
             
             Spacer()
             
@@ -18,12 +18,12 @@ struct DataRowView: View {
                 Text(value)
                     .font(Font.AppTheme.body)
                     .fontWeight(.medium)
-                    .foregroundColor(valueColor)
+                    .foregroundStyle(valueColor)
                     .multilineTextAlignment(.trailing)
                 
                 if isVerified {
                     Image(systemName: "checkmark.seal.fill")
-                        .foregroundColor(Color.AppTheme.success)
+                        .foregroundStyle(Color.AppTheme.success)
                         .font(.system(size: 14))
                 }
             }

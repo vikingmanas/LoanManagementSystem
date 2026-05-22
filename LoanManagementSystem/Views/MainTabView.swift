@@ -1,33 +1,40 @@
 import SwiftUI
 
 struct MainTabView: View {
-    var body: some View {
-        TabView {
-            DashboardView()
-                .tabItem {
-                    Image(systemName: "house.fill")
-                    Text("Dashboard")
-                }
+    @EnvironmentObject private var authManager: AuthManager
+    @EnvironmentObject private var appState: AppStateManager
+    @StateObject private var tabRouter = BorrowerTabRouter()
+    @StateObject private var dashboardViewModel = DashboardViewModel()
 
-            LoanApplicationTabView()
+    var body: some View {
+        TabView(selection: $tabRouter.selectedTab) {
+            DashboardView(viewModel: dashboardViewModel)
                 .tabItem {
-                    Image(systemName: "doc.text.magnifyingglass")
-                    Text("Loans")
+                    Label("Dashboard", systemImage: "house.fill")
                 }
-            
-            ProfileView()
+                .tag(BorrowerTab.dashboard)
+
+            LoanApplicationTabView(viewModel: LoanApplicationViewModel())
                 .tabItem {
-                    Image(systemName: "person.crop.circle.fill")
-                    Text("Profile")
+                    Label("Loans", systemImage: "doc.text.magnifyingglass")
                 }
+                .tag(BorrowerTab.loans)
+
+            HistoryTabView(viewModel: dashboardViewModel)
+                .tabItem {
+                    Label("History", systemImage: "clock.fill")
+                }
+                .tag(BorrowerTab.history)
         }
-        .accentColor(Color.AppTheme.primary)
+        .tint(LMSColors.brandNavy)
+        .toolbarBackground(LMSColors.surfaceElevated, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+        .environmentObject(tabRouter)
     }
 }
 
-struct MainTabView_Previews: PreviewProvider {
-    static var previews: some View {
-        MainTabView()
-            .environmentObject(AppStateManager())
-    }
+#Preview {
+    MainTabView()
+        .environmentObject(AppStateManager())
+        .environmentObject(AuthManager())
 }

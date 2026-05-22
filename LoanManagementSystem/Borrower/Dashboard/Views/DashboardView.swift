@@ -1,10 +1,3 @@
-//
-//  DashboardView.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 19/05/26.
-//
-
 import SwiftUI
 
 // MARK: - Navigation Destinations
@@ -12,14 +5,15 @@ public enum DashboardRoute: Hashable {
     case loanDetails(DashboardLoanAccount)
     case bankDetails(BankAccount)
     case insuranceDetails
-    case allTransactions
     case allPendingEMIs
     case schemeDetails(GovernmentScheme)
 }
 
 public struct DashboardView: View {
     @EnvironmentObject private var authManager: AuthManager
-    @StateObject private var viewModel = DashboardViewModel()
+    @EnvironmentObject private var appState: AppStateManager
+    @EnvironmentObject private var tabRouter: BorrowerTabRouter
+    @ObservedObject var viewModel: DashboardViewModel
     @State private var navigationPath = NavigationPath()
     
     // Quick Actions Sheets
@@ -30,36 +24,32 @@ public struct DashboardView: View {
     @State private var showingTopUpSheet = false
     @State private var showingProfileSheet = false
     
-    // Transaction Filter State
-    @State private var transactionFilter: TransactionType? = nil
-    @State private var showingFilterMenu = false
-    
-    public init() {}
+    private var greetingTitle: String {
+        guard let profile = BorrowerProfileStore.shared.profile else {
+            return "Dashboard"
+        }
+        let firstName = profile.fullName.components(separatedBy: " ").first ?? profile.fullName
+        return "Hi, \(firstName)"
+    }
     
     public var body: some View {
         NavigationStack(path: $navigationPath) {
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: DashboardSpacing.sectionVertical) {
-                    
-                    // 1. TOP NAVIGATION BAR
-                    TopNavigationBarSection(viewModel: viewModel, authManager: authManager) {
-                        showingProfileSheet = true
-                    }
-                    .padding(.top, 8)
-                    
-                    // 1b. CUSTOMER INSIGHT & COMPLETION
+                VStack(spacing: LMSSpacing.sectionGap) {
+
+                    // 1. CUSTOMER INSIGHT & COMPLETION
                     if let profile = BorrowerProfileStore.shared.profile {
                         VStack(spacing: 12) {
                             if profile.profileCompletionPercentage < 100 {
                                 ProfileCompletionBanner(percentage: profile.profileCompletionPercentage) {
                                     showingProfileSheet = true
                                 }
-                                .padding(.horizontal, DashboardSpacing.screenHorizontal)
+                                .padding(.horizontal, LMSSpacing.screenHorizontal)
                             }
                             
                             if profile.hasExistingBankAccount, profile.existingCustomerId != nil {
                                 CustomerInsightCardView(profile: profile)
-                                    .padding(.horizontal, DashboardSpacing.screenHorizontal)
+                                    .padding(.horizontal, LMSSpacing.screenHorizontal)
                             }
                         }
                         .padding(.bottom, 4)
@@ -89,21 +79,42 @@ public struct DashboardView: View {
                         navigationPath.append(DashboardRoute.allPendingEMIs)
                     }
                     
-                    // 5. TRANSACTION HISTORY SECTION
-                    TransactionsHistorySection(viewModel: viewModel, filter: $transactionFilter) {
-                        navigationPath.append(DashboardRoute.allTransactions)
-                    }
-                    
                     // 6. GOVERNMENT SCHEMES SECTION
                     GovernmentSchemesSection(viewModel: viewModel) { scheme in
                         navigationPath.append(DashboardRoute.schemeDetails(scheme))
                     }
                     
                 }
-                .padding(.top, 8)
-                .padding(.bottom, DashboardSpacing.sectionVertical)
+                .padding(.top, LMSSpacing.sm)
+                .padding(.bottom, LMSSpacing.xxl)
             }
-            .background(Color(.systemGroupedBackground))
+            .lmsScreenBackground()
+            .navigationTitle(greetingTitle)
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    FintechToolbarButton(
+                        systemName: "bell.fill",
+                        showsBadge: false
+                    ) {
+                        tabRouter.select(.history)
+                    }
+                    .accessibilityLabel("Notifications")
+
+                    Button {
+                        showingProfileSheet = true
+                    } label: {
+                        DashboardAvatar(
+                            initials: dashboardInitials(
+                                viewModel: viewModel,
+                                authManager: authManager
+                            )
+                        )
+                    }
+                    .buttonStyle(LMSPressableStyle())
+                    .accessibilityLabel("Profile")
+                }
+            }
             .refreshable {
                 await viewModel.fetchDashboardData()
             }
@@ -118,8 +129,6 @@ public struct DashboardView: View {
                     BankDetailsView(bank: bank, viewModel: viewModel)
                 case .insuranceDetails:
                     InsuranceDetailsView()
-                case .allTransactions:
-                    AllTransactionsView(viewModel: viewModel)
                 case .allPendingEMIs:
                     AllPendingEMIsView(viewModel: viewModel)
                 case .schemeDetails(let scheme):
@@ -144,170 +153,113 @@ public struct DashboardView: View {
             }
             .sheet(isPresented: $showingProfileSheet) {
                 ProfileView()
+                    .environmentObject(authManager)
+                    .environmentObject(appState)
             }
         }
     }
 }
 
-struct TopNavigationBarSection: View {
-    @ObservedObject var viewModel: DashboardViewModel
-    @ObservedObject var authManager: AuthManager
-    @ObservedObject var profileStore: BorrowerProfileStore = .shared
-    let onProfileTap: () -> Void
-    
-    /// Prefer the profile store's name (from local DB) over the auth manager's display name
-    private var displayFirstName: String {
-        if let profileName = profileStore.profile?.fullName,
-           !profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return profileName.components(separatedBy: " ").first ?? "User"
+// MARK: - Greeting
+
+private func dashboardFirstName(profileStore: BorrowerProfileStore, authManager: AuthManager) -> String {
+    if let profileName = profileStore.profile?.fullName,
+       !profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        return profileName.components(separatedBy: " ").first ?? "User"
+    }
+    return authManager.userDisplayName.components(separatedBy: " ").first ?? "User"
+}
+
+private func dashboardInitials(viewModel: DashboardViewModel, authManager: AuthManager) -> String {
+    let profileStore = BorrowerProfileStore.shared
+    if let profileName = profileStore.profile?.fullName,
+       !profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        let parts = profileName.components(separatedBy: " ").filter { !$0.isEmpty }
+        if parts.count >= 2 {
+            return String(parts[0].prefix(1) + parts[1].prefix(1)).uppercased()
+        } else if let first = parts.first {
+            return String(first.prefix(2)).uppercased()
         }
-        return authManager.userDisplayName.components(separatedBy: " ").first ?? "User"
     }
-    
-    private var displayInitials: String {
-        if let profileName = profileStore.profile?.fullName,
-           !profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let parts = profileName.components(separatedBy: " ").filter { !$0.isEmpty }
-            if parts.count >= 2 {
-                return String(parts[0].prefix(1) + parts[1].prefix(1)).uppercased()
-            } else if let first = parts.first {
-                return String(first.prefix(2)).uppercased()
-            }
-        }
-        return authManager.userInitials
-    }
-    
-    private var customerId: String? {
-        profileStore.profile?.id
-    }
-    
+    return authManager.userInitials
+}
+
+struct DashboardToolbarTitle: View {
+    let firstName: String
+    var customerID: String?
+
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Hello, \(displayFirstName)")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundColor(Color(.secondaryLabel))
-                    
-                    Text("Loan Dashboard")
-                        .font(.title2.weight(.bold))
-                        .foregroundColor(Color(.label))
-                    
-                    if let cid = customerId {
-                        Text(cid)
-                            .font(.caption.monospaced())
-                            .fontWeight(.semibold)
-                            .foregroundColor(.brandNavy)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Color.brandNavy.opacity(0.11), in: Capsule())
-                    }
-                }
-                
-                Spacer()
-                
-                HStack(spacing: 14) {
-                    Button {
-                        // Action
-                    } label: {
-                        Image(systemName: "bell.badge.fill")
-                            .font(.title3)
-                            .foregroundColor(Color.brandNavy)
-                            .symbolRenderingMode(.multicolor)
-                    }
-                    .frame(width: 44, height: 44)
-                    .background(Color(.secondarySystemBackground), in: Circle())
-                    .buttonStyle(DashboardPressableStyle())
-                    
-                    Button {
-                        onProfileTap()
-                    } label: {
-                        ZStack {
-                            Circle()
-                                .fill(Color.brandNavy)
-                                .frame(width: 40, height: 40)
-                            
-                            Text(displayInitials)
-                                .font(.system(.body, design: .rounded))
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                        }
-                    }
-                    .buttonStyle(DashboardPressableStyle())
-                    .accessibilityLabel("Profile. Tap to view profile.")
-                    .accessibilityAddTraits(.isButton)
-                }
+        VStack(alignment: .leading, spacing: LMSSpacing.xs) {
+            Text("Hello, \(firstName)")
+                .font(LMSFont.subheadline.weight(.semibold))
+                .foregroundStyle(LMSColors.textPrimary)
+            if let customerID {
+                Label(customerID, systemImage: "number")
+                    .font(LMSFont.caption.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .padding(.horizontal, LMSSpacing.sm)
+                    .padding(.vertical, 3)
+                    .background(LMSColors.brandNavy.opacity(0.10), in: Capsule())
             }
-            .padding(.horizontal, DashboardSpacing.screenHorizontal)
         }
+    }
+}
+
+struct DashboardAvatar: View {
+    let initials: String
+
+    var body: some View {
+        Text(initials)
+            .font(LMSFont.caption.weight(.bold))
+            .foregroundStyle(.white)
+            .frame(width: 36, height: 36)
+            .background(
+                LinearGradient(
+                    colors: [LMSColors.brandNavy, LMSColors.brandNavyLight],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                in: Circle()
+            )
+            .overlay(
+                Circle()
+                    .stroke(Color.white.opacity(0.25), lineWidth: 1)
+            )
     }
 }
 
 // MARK: - Section 1b: Health Banner Component (Positioned below Portfolio)
 struct AccountHealthBanner: View {
     @ObservedObject var viewModel: DashboardViewModel
-    @State private var pulseBanner = false
-    
+
     var body: some View {
         Button {
-            // Interactive demonstration toggle
             viewModel.toggleBalanceMockMode()
         } label: {
-            HStack {
+            Group {
                 if viewModel.isLoading {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color(.secondarySystemBackground))
+                    RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                        .fill(LMSColors.surfaceElevated)
                         .frame(height: 56)
                         .shimmer(active: true)
                 } else if viewModel.isLowBalance {
-                    HStack(spacing: 10) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
-                        
-                        Text("Low Balance! Top up ₹\(Int(viewModel.balanceDeficit)) before 5 Jun to avoid penalty")
-                            .font(.system(.callout, design: .rounded))
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.leading)
-                            .minimumScaleFactor(0.9)
-                            .scaleEffect(pulseBanner ? 1.01 : 0.99)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 14)
-                    .background(Color.brandCoral)
-                    .cornerRadius(18)
-                    .shadow(color: Color.brandCoral.opacity(0.3), radius: 8, x: 0, y: 4)
-                    .onAppear {
-                        withAnimation(Animation.easeInOut(duration: 0.85).repeatForever(autoreverses: true)) {
-                            pulseBanner = true
-                        }
-                    }
+                    LMSBanner(
+                        message: "Low balance — top up ₹\(Int(viewModel.balanceDeficit)) before 5 Jun to avoid penalty",
+                        style: .error,
+                        icon: "exclamationmark.triangle.fill"
+                    )
                 } else {
-                    HStack(spacing: 10) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
-                        
-                        Text("Account balance is sufficient for your next EMI")
-                            .font(.system(.callout, design: .rounded))
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .minimumScaleFactor(0.9)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(Color.brandEmerald)
-                    .cornerRadius(18)
-                    .shadow(color: Color.brandEmerald.opacity(0.2), radius: 6, x: 0, y: 3)
+                    LMSBanner(
+                        message: "Account balance is sufficient for your next EMI",
+                        style: .success,
+                        icon: "checkmark.circle.fill"
+                    )
                 }
             }
-            .padding(.horizontal, DashboardSpacing.screenHorizontal)
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
         }
         .buttonStyle(DashboardPressableStyle())
-        .accessibilityLabel("Account balance health notification banner. Tap to toggle mock balance state.")
+        .accessibilityLabel("Account balance health. Tap to toggle demo state.")
         .accessibilityAddTraits(.isButton)
     }
 }
@@ -316,44 +268,50 @@ struct AccountHealthBanner: View {
 struct ProfileCompletionBanner: View {
     let percentage: Int
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 16) {
+            HStack(spacing: LMSSpacing.lg) {
                 ZStack {
                     Circle()
-                        .stroke(Color.white.opacity(0.3), lineWidth: 4)
+                        .stroke(Color.white.opacity(0.25), lineWidth: 4)
                     Circle()
                         .trim(from: 0, to: CGFloat(percentage) / 100.0)
-                        .stroke(Color.brandEmerald, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .stroke(LMSColors.emerald, style: StrokeStyle(lineWidth: 4, lineCap: .round))
                         .rotationEffect(.degrees(-90))
-                    
                     Text("\(percentage)%")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.white)
+                        .font(LMSFont.caption2.weight(.bold))
+                        .foregroundStyle(.white)
                 }
-                .frame(width: 40, height: 40)
-                
-                VStack(alignment: .leading, spacing: 4) {
+                .frame(width: 44, height: 44)
+
+                VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                     Text("Complete Your Profile")
-                        .font(.system(.subheadline, weight: .bold))
-                        .foregroundColor(.white)
+                        .font(LMSFont.callout.weight(.bold))
+                        .foregroundStyle(.white)
                     Text("Unlock all features by finishing setup")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.8))
+                        .font(LMSFont.caption)
+                        .foregroundStyle(.white.opacity(0.8))
                 }
-                
-                Spacer()
-                
+
+                Spacer(minLength: 0)
+
                 Image(systemName: "chevron.right")
-                    .foregroundColor(.white.opacity(0.6))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.7))
             }
-            .padding()
-            .background(Color.brandNavy)
-            .cornerRadius(16)
-            .padding(.horizontal, 20)
+            .padding(LMSSpacing.lg)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                LinearGradient(
+                    colors: [LMSColors.brandNavy, LMSColors.brandNavyLight],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+            )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(DashboardPressableStyle())
     }
 }
 
@@ -365,12 +323,9 @@ struct PortfolioCardsSection: View {
     
     var body: some View {
         SectionContainer(title: "My Portfolio", subtitle: "Loans, linked bank accounts, and protection cover") {
-            Button("See All") {
+            FintechSectionLink(title: "See All") {
                 showingPlaceholderAlert = true
             }
-            .font(.footnote.weight(.semibold))
-            .foregroundColor(.brandNavy)
-            .frame(minWidth: 44, minHeight: 44)
             .alert("Coming Soon", isPresented: $showingPlaceholderAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
@@ -403,123 +358,21 @@ struct QuickActionChipsSection: View {
     let onForeclosure: () -> Void
     let onSupport: () -> Void
     let onTopUp: () -> Void
-    
+
     var body: some View {
-        SectionContainer(title: "Quick Actions", subtitle: "Most-used account actions") {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    QuickActionChip(icon: "arrow.up.circle.fill", title: "Pay EMI", action: onPay)
-                    QuickActionChip(icon: "doc.text.fill", title: "Statement", action: onStatement)
-                    QuickActionChip(icon: "waveform.path.ecg", title: "Foreclosure", action: onForeclosure)
-                    QuickActionChip(icon: "person.fill.questionmark", title: "Support", action: onSupport)
-                    QuickActionChip(icon: "plus.circle.fill", title: "Top-Up", action: onTopUp)
-                }
-                .padding(.horizontal, 1)
-            }
+        SectionContainer(title: "Quick Actions", subtitle: "Pay, transfer, and manage your loan") {
+            FintechQuickActionGrid(items: [
+                FintechQuickActionItem(icon: "indianrupeesign.circle.fill", title: "Pay EMI", tint: LMSColors.brandNavy, action: onPay),
+                FintechQuickActionItem(icon: "doc.text.fill", title: "Statement", tint: LMSColors.actionBlue, action: onStatement),
+                FintechQuickActionItem(icon: "chart.line.downtrend.xyaxis", title: "Foreclose", tint: LMSColors.teal, action: onForeclosure),
+                FintechQuickActionItem(icon: "headphones", title: "Support", tint: LMSColors.amber, action: onSupport),
+                FintechQuickActionItem(icon: "plus.circle.fill", title: "Top-Up", tint: LMSColors.emerald, action: onTopUp)
+            ])
         }
     }
 }
 
-struct QuickActionChip: View {
-    let icon: String
-    let title: String
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(.brandNavy)
-                
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(Color(.label))
-            }
-            .padding(.horizontal, 14)
-            .frame(height: 42)
-            .background(Color(.secondarySystemBackground), in: Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(Color(.separator).opacity(0.25), lineWidth: 0.5)
-            )
-        }
-        .buttonStyle(DashboardPressableStyle())
-    }
-}
 
-// MARK: - Section 5: Transactions
-struct TransactionsHistorySection: View {
-    @ObservedObject var viewModel: DashboardViewModel
-    @Binding var filter: TransactionType?
-    let onViewAll: () -> Void
-    
-    var body: some View {
-        SectionContainer(title: "Recent Transactions", subtitle: "Repayments, penalties, credits and refunds") {
-            Menu {
-                Button("All Transactions") { filter = nil }
-                Divider()
-                Button("EMI Payments") { filter = .emiPayment }
-                Button("Credits") { filter = .credit }
-                Button("Penalties") { filter = .penalty }
-                Button("Refunds") { filter = .refund }
-            } label: {
-                HStack(spacing: 4) {
-                    Text(filter == nil ? "Filter" : filter!.rawValue)
-                        .font(.subheadline.weight(.medium))
-                    Image(systemName: "chevron.down")
-                        .font(.caption2.weight(.bold))
-                }
-                .foregroundColor(.brandNavy)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(Color(.secondarySystemBackground), in: Capsule())
-            }
-        } content: {
-            VStack(spacing: 12) {
-                VStack(spacing: 0) {
-                    if viewModel.isLoading {
-                        ForEach(0..<4) { _ in
-                            TransactionRowSkeleton()
-                            Divider().padding(.horizontal, 20)
-                        }
-                    } else {
-                        let filtered = viewModel.transactions.filter { tx in
-                            guard let filter = filter else { return true }
-                            return tx.type == filter
-                        }
-                        
-                        if filtered.isEmpty {
-                            // iOS 17 Empty State
-                            ContentUnavailableView("No transactions found", systemImage: "list.bullet.rectangle.portrait", description: Text("Try changing your filter settings to view other transaction types."))
-                                .frame(height: 160)
-                        } else {
-                            ForEach(filtered.prefix(5)) { tx in
-                                TransactionRowView(transaction: tx)
-                                if tx.id != filtered.prefix(5).last?.id {
-                                    Divider()
-                                        .padding(.horizontal, 20)
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding(.horizontal, 1)
-                .dashboardCardStyle()
-                
-                if !viewModel.isLoading && viewModel.transactions.count > 5 {
-                    Button("View All Transactions", action: onViewAll)
-                        .font(.footnote.weight(.semibold))
-                        .foregroundColor(.brandNavy)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 42)
-                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .buttonStyle(DashboardPressableStyle())
-                }
-            }
-        }
-    }
-}
 
 // MARK: - Section 6: Govt Schemes
 struct GovernmentSchemesSection: View {
@@ -529,12 +382,9 @@ struct GovernmentSchemesSection: View {
     
     var body: some View {
         SectionContainer(title: "Active Schemes & Offers", subtitle: "Government + partner-backed opportunities") {
-            Button("Explore All") {
+            FintechSectionLink(title: "Explore All") {
                 showingPlaceholderAlert = true
             }
-            .font(.footnote.weight(.semibold))
-            .foregroundColor(.brandNavy)
-            .frame(minWidth: 44, minHeight: 44)
             .alert("Coming Soon", isPresented: $showingPlaceholderAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
@@ -577,7 +427,7 @@ struct QuickPaySheet: View {
                 if let nextEMI = viewModel.nextEMI {
                     Image(systemName: "indianrupeesign.circle.fill")
                         .font(.system(size: 60))
-                        .foregroundColor(.brandNavy)
+                        .foregroundStyle(LMSColors.brandNavy)
                     
                     Text("Confirm EMI Payment")
                         .font(.title2)
@@ -601,8 +451,8 @@ struct QuickPaySheet: View {
                         }
                     }
                     .padding()
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(16)
+                    .background(LMSColors.surfaceElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     
                     Button {
                         viewModel.payNextEMI()
@@ -610,11 +460,11 @@ struct QuickPaySheet: View {
                     } label: {
                         Text("Pay Now")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
-                            .background(Color.brandNavy)
-                            .cornerRadius(14)
+                            .background(LMSColors.brandNavy)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     .disabled(viewModel.bankAccount.availableBalance < nextEMI.amount)
                     
@@ -644,7 +494,7 @@ struct StatementSheet: View {
                 HStack {
                     VStack(alignment: .leading) {
                         Text(tx.title).font(.headline)
-                        Text(tx.date.formattedAsDDMMMYYYY()).font(.subheadline).foregroundColor(.secondary)
+                        Text(tx.date.formattedAsDDMMMYYYY()).font(.subheadline).foregroundStyle(LMSColors.textSecondary)
                     }
                     Spacer()
                     Text(tx.amount.formattedAsINR()).fontWeight(.bold)
@@ -670,7 +520,7 @@ struct ForeclosureSheet: View {
             VStack(spacing: 20) {
                 Image(systemName: "exclamationmark.shield.fill")
                     .font(.system(size: 60))
-                    .foregroundColor(.brandCoral)
+                    .foregroundStyle(LMSColors.coral)
                 
                 Text("Request Foreclosure")
                     .font(.title2)
@@ -678,19 +528,19 @@ struct ForeclosureSheet: View {
                 
                 Text("Foreclosing your home loan will trigger a 1% processing fee of the remaining outstanding amount. Do you wish to schedule a callback with our credit advisor?")
                     .multilineTextAlignment(.center)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(LMSColors.textSecondary)
                     .padding()
                 
                 Button {
                     showingToast = true
                 } label: {
                     Text("Schedule Callback")
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
-                        .background(Color.brandNavy)
-                        .cornerRadius(14)
+                        .background(LMSColors.brandNavy)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
             }
             .padding(24)
@@ -721,15 +571,15 @@ struct SupportSheet: View {
                     Button(action: { showingToast = true }) {
                         Label("Call Support: 1800-BANK-LOAN", systemImage: "phone.fill")
                     }
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                     Button(action: { showingToast = true }) {
                         Label("Email: support@brandbank.com", systemImage: "envelope.fill")
                     }
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                     Button(action: { showingToast = true }) {
                         Label("Live chat assistant", systemImage: "message.fill")
                     }
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                 }
                 Section(header: Text("FAQs")) {
                     Text("How to reschedule EMIs?")
@@ -763,7 +613,7 @@ struct TopUpSheet: View {
             VStack(spacing: 24) {
                 Image(systemName: "plus.circle.fill")
                     .font(.system(size: 60))
-                    .foregroundColor(.brandEmerald)
+                    .foregroundStyle(LMSColors.emerald)
                 
                 Text("Top-Up Account Balance")
                     .font(.title2)
@@ -773,19 +623,19 @@ struct TopUpSheet: View {
                 
                 Text("Amount to Add: \(topUpAmount.formattedAsINR())")
                     .font(.headline)
-                    .foregroundColor(.brandEmerald)
+                    .foregroundStyle(LMSColors.emerald)
                 
                 Button {
                     viewModel.topUpAccount(amount: topUpAmount)
                     dismiss()
                 } label: {
                     Text("Confirm Deposit")
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
-                        .background(Color.brandEmerald)
-                        .cornerRadius(14)
+                        .background(LMSColors.emerald)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
             }
             .padding(24)
@@ -810,25 +660,25 @@ struct LoanDetailsView: View {
             VStack(alignment: .leading, spacing: 20) {
                 // Header block
                 ZStack {
-                    LinearGradient(colors: [Color.brandNavy, Color.brandNavyDark], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    LinearGradient(colors: [LMSColors.brandNavy, LMSColors.brandNavy], startPoint: .topLeading, endPoint: .bottomTrailing)
                     
                     VStack(spacing: 12) {
                         Text(loan.loanType.uppercased())
                             .font(.caption)
                             .fontWeight(.bold)
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundStyle(.white.opacity(0.8))
                         
                         Text(loan.principalOutstanding.formattedAsINR())
                             .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                         
                         Text("Outstanding Principal")
                             .font(.caption)
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundStyle(.white.opacity(0.7))
                     }
                     .padding(.vertical, 32)
                 }
-                .cornerRadius(20)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .padding(.horizontal, 20)
                 
                 // Detailed Stats Grid
@@ -836,7 +686,7 @@ struct LoanDetailsView: View {
                     Text("LOAN METRICS")
                         .font(.caption)
                         .fontWeight(.bold)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                     
                     Group {
                         DetailMetricRow(label: "Account Number", value: loan.accountNumber)
@@ -848,8 +698,8 @@ struct LoanDetailsView: View {
                     }
                 }
                 .padding(20)
-                .background(Color(.secondarySystemBackground))
-                .cornerRadius(20)
+                .background(LMSColors.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .padding(.horizontal, 20)
             }
         }
@@ -868,25 +718,25 @@ struct BankDetailsView: View {
             VStack(spacing: 20) {
                 // Header Card
                 ZStack {
-                    LinearGradient(colors: [Color.brandEmerald, Color.brandEmeraldDark], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    LinearGradient(colors: [LMSColors.emerald, LMSColors.emeraldDark], startPoint: .topLeading, endPoint: .bottomTrailing)
                     
                     VStack(spacing: 12) {
                         Text(bank.accountType.rawValue.uppercased())
                             .font(.caption)
                             .fontWeight(.bold)
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundStyle(.white.opacity(0.8))
                         
                         Text(bank.availableBalance.formattedAsINR())
                             .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                         
                         Text("Available balance")
                             .font(.caption)
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundStyle(.white.opacity(0.7))
                     }
                     .padding(.vertical, 32)
                 }
-                .cornerRadius(20)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .padding(.horizontal, 20)
                 
                 // Top-up Section inside details
@@ -894,25 +744,25 @@ struct BankDetailsView: View {
                     Text("ADD FUNDS")
                         .font(.caption)
                         .fontWeight(.bold)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                     
                     HStack(spacing: 12) {
                         Button("+ ₹5,000") { viewModel.topUpAccount(amount: 5000) }
                             .buttonStyle(.borderedProminent)
-                            .tint(.brandEmerald)
+                            .tint(LMSColors.emerald)
                         
                         Button("+ ₹10,000") { viewModel.topUpAccount(amount: 10000) }
                             .buttonStyle(.borderedProminent)
-                            .tint(.brandEmerald)
+                            .tint(LMSColors.emerald)
                         
                         Button("+ ₹20,000") { viewModel.topUpAccount(amount: 20000) }
                             .buttonStyle(.borderedProminent)
-                            .tint(.brandEmerald)
+                            .tint(LMSColors.emerald)
                     }
                 }
                 .padding(20)
-                .background(Color(.secondarySystemBackground))
-                .cornerRadius(20)
+                .background(LMSColors.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .padding(.horizontal, 20)
             }
         }
@@ -939,26 +789,6 @@ struct InsuranceDetailsView: View {
     }
 }
 
-struct AllTransactionsView: View {
-    @ObservedObject var viewModel: DashboardViewModel
-    
-    var body: some View {
-        List(viewModel.transactions) { tx in
-            HStack {
-                VStack(alignment: .leading) {
-                    Text(tx.title).font(.headline)
-                    Text(tx.date.formattedAsDDMMMYYYY()).font(.caption).foregroundColor(.secondary)
-                }
-                Spacer()
-                Text(tx.amount.formattedAsINR())
-                    .fontWeight(.bold)
-                    .foregroundColor(tx.type == .credit || tx.type == .refund ? .brandEmerald : .brandCoral)
-            }
-        }
-        .navigationTitle("All Transactions")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
 
 struct AllPendingEMIsView: View {
     @ObservedObject var viewModel: DashboardViewModel
@@ -968,7 +798,7 @@ struct AllPendingEMIsView: View {
             HStack {
                 VStack(alignment: .leading) {
                     Text(emi.loanType).font(.headline)
-                    Text("Due Date: \(emi.dueDate.formattedAsDDMMMYYYY())").font(.caption).foregroundColor(.secondary)
+                    Text("Due Date: \(emi.dueDate.formattedAsDDMMMYYYY())").font(.caption).foregroundStyle(LMSColors.textSecondary)
                 }
                 Spacer()
                 Text(emi.amount.formattedAsINR()).fontWeight(.bold)
@@ -991,21 +821,21 @@ struct SchemeDetailsView: View {
                     .fontWeight(.bold)
                 
                 Text("Category: \(scheme.category.rawValue)")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(LMSColors.textSecondary)
                 
                 Text(scheme.description)
                     .font(.body)
                 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Benefit Summary").font(.headline)
-                    Text(scheme.benefitSummary).foregroundColor(.brandEmerald).fontWeight(.bold)
+                    Text(scheme.benefitSummary).foregroundStyle(LMSColors.emerald).fontWeight(.bold)
                 }
                 
                 Divider()
                 
                 if appSubmitted {
                     Text("🎉 Application Submitted Successfully! Our relationship manager will contact you in 24 hours.")
-                        .foregroundColor(.brandEmerald)
+                        .foregroundStyle(LMSColors.emerald)
                         .fontWeight(.bold)
                         .multilineTextAlignment(.center)
                         .padding()
@@ -1015,11 +845,11 @@ struct SchemeDetailsView: View {
                     } label: {
                         Text("Apply Now")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
-                            .background(Color.brandNavy)
-                            .cornerRadius(14)
+                            .background(LMSColors.brandNavy)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                 }
             }
@@ -1038,12 +868,12 @@ struct DetailMetricRow: View {
         HStack {
             Text(label)
                 .font(.system(.body, design: .rounded))
-                .foregroundColor(Color(.secondaryLabel))
+                .foregroundStyle(LMSColors.textSecondary)
             Spacer()
             Text(value)
                 .font(.system(.body, design: .rounded))
                 .fontWeight(.bold)
-                .foregroundColor(Color(.label))
+                .foregroundStyle(LMSColors.textPrimary)
         }
         .padding(.vertical, 4)
     }

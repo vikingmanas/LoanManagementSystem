@@ -11,7 +11,7 @@ struct ActivityFeedView: View {
             HStack {
                 Text("Borrower Activity")
                     .font(.system(.subheadline, design: .rounded).bold())
-                    .foregroundColor(.primary)
+                    .foregroundStyle(LMSColors.textPrimary)
                 
                 Spacer()
                 
@@ -22,7 +22,7 @@ struct ActivityFeedView: View {
                     }) {
                         Text("Mark All Read")
                             .font(.system(.caption, design: .rounded).weight(.bold))
-                            .foregroundColor(AppTheme.actionBlue)
+                            .foregroundStyle(AppTheme.actionBlue)
                     }
                     .accessibilityLabel("Mark all notifications as read")
                 }
@@ -39,7 +39,7 @@ struct ActivityFeedView: View {
                     )
                     .frame(height: 180)
                     .background(AppTheme.neutralSurface)
-                    .cornerRadius(16)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 } else {
                     // We render a standard list with scroll disabled, giving it the card layout.
                     // This enables SwiftUI native swipeActions to run beautifully!
@@ -80,18 +80,18 @@ struct ActivityFeedView: View {
                             Spacer()
                             Text("View All Activity (\(viewModel.activityFeed.count))")
                                 .font(.system(.callout, design: .rounded).weight(.bold))
-                                .foregroundColor(AppTheme.actionBlue)
+                                .foregroundStyle(AppTheme.actionBlue)
                             Spacer()
                         }
                         .padding(.vertical, 14)
-                        .background(Color.primary.opacity(0.02))
+                        .background(LMSColors.textPrimary.opacity(0.02))
                     }
                     .buttonStyle(PlainButtonStyle())
                     .accessibilityLabel("View all activity feeds")
                 }
             }
             .background(AppTheme.neutralSurface)
-            .cornerRadius(16)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 3)
         }
     }

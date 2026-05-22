@@ -26,7 +26,7 @@ struct EditBankDetailsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Bank Name")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Enter Bank Name", text: $bankName)
                             .font(Font.AppTheme.input)
                     }
@@ -34,7 +34,7 @@ struct EditBankDetailsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Account Holder Name")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Enter Account Holder Name", text: $accountHolder)
                             .font(Font.AppTheme.input)
                     }
@@ -42,7 +42,7 @@ struct EditBankDetailsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Account Number")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Enter Account Number", text: $accountNumber)
                             .keyboardType(.numberPad)
                             .font(Font.AppTheme.input)
@@ -51,7 +51,7 @@ struct EditBankDetailsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("IFSC Code")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Enter IFSC Code", text: $ifscCode)
                             .autocapitalization(.allCharacters)
                             .font(Font.AppTheme.input)
@@ -60,7 +60,7 @@ struct EditBankDetailsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("UPI ID (Optional)")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Enter UPI ID (e.g. username@bank)", text: $upiID)
                             .autocapitalization(.none)
                             .font(Font.AppTheme.input)
@@ -75,7 +75,7 @@ struct EditBankDetailsView: View {
                         presentationMode.wrappedValue.dismiss()
                     }) {
                         Image(systemName: "xmark")
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -91,7 +91,7 @@ struct EditBankDetailsView: View {
                     }) {
                         Image(systemName: "checkmark")
                             .fontWeight(.bold)
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                     }
                 }
             }

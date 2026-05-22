@@ -17,22 +17,22 @@ struct LoanHistoryRow: View {
                 
                 Image(systemName: app.loanType.symbol)
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(app.loanType.themeColor)
+                    .foregroundStyle(app.loanType.themeColor)
             }
             
             // Center Details
             VStack(alignment: .leading, spacing: 4) {
                 Text(app.borrowerName)
                     .font(.system(.callout, design: .rounded).bold())
-                    .foregroundColor(.primary)
+                    .foregroundStyle(LMSColors.textPrimary)
                 
                 Text("\(app.loanType.rawValue) · \(CurrencyFormatter.shared.format(app.requestedAmount))")
                     .font(.system(.caption, design: .rounded).weight(.medium))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(LMSColors.textSecondary)
                 
                 Text("\(app.applicationId) · Branch: \(app.branch)")
                     .font(.system(.caption2, design: .rounded))
-                    .foregroundColor(Color(.placeholderText))
+                    .foregroundStyle(Color(.placeholderText))
             }
             
             Spacer()
@@ -41,19 +41,19 @@ struct LoanHistoryRow: View {
             VStack(alignment: .trailing, spacing: 6) {
                 Text(app.status.displayName)
                     .font(.system(.caption2, design: .rounded).bold())
-                    .foregroundColor(app.status == .pending ? AppTheme.warningAmber : .white)
+                    .foregroundStyle(app.status == .pending ? AppTheme.warningAmber : .white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(app.status == .pending ? AppTheme.warningAmber.opacity(0.15) : app.status.themeColor)
-                    .cornerRadius(8)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 
                 Text(RelativeDateFormatter.shared.absoluteString(from: app.submittedDate))
                     .font(.system(.caption2, design: .rounded))
-                    .foregroundColor(Color(.placeholderText))
+                    .foregroundStyle(Color(.placeholderText))
                 
                 Text(CurrencyFormatter.shared.format(app.requestedAmount))
                     .font(.system(.subheadline, design: .rounded).bold())
-                    .foregroundColor(app.loanType.themeColor)
+                    .foregroundStyle(app.loanType.themeColor)
             }
         }
         .padding(.vertical, 12)

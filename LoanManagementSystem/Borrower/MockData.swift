@@ -7,43 +7,14 @@
 
 import SwiftUI
 
-// MARK: - Color Extensions
+// MARK: - Color Aliases (Canonical definitions are in DesignSystem.swift)
 extension Color {
-    public static let brandNavy = Color(UIColor { traitCollection in
-        traitCollection.userInterfaceStyle == .dark
-            ? UIColor(red: 26/255, green: 54/255, blue: 93/255, alpha: 1) // #1A365D
-            : UIColor(red: 10/255, green: 37/255, blue: 64/255, alpha: 1) // #0A2540
-    })
-    
-    public static let brandNavyDark = Color(UIColor { traitCollection in
-        traitCollection.userInterfaceStyle == .dark
-            ? UIColor(red: 16/255, green: 34/255, blue: 63/255, alpha: 1) // #10223F
-            : UIColor(red: 46/255, green: 59/255, blue: 132/255, alpha: 1) // #2E3B84
-    })
-    
-    public static let brandEmerald = Color(UIColor { traitCollection in
-        traitCollection.userInterfaceStyle == .dark
-            ? UIColor(red: 5/255, green: 224/255, blue: 165/255, alpha: 1) // #05E0A5
-            : UIColor(red: 0/255, green: 196/255, blue: 140/255, alpha: 1) // #00C48C
-    })
-    
-    public static let brandEmeraldDark = Color(UIColor { traitCollection in
-        traitCollection.userInterfaceStyle == .dark
-            ? UIColor(red: 0/255, green: 120/255, blue: 90/255, alpha: 1) // #00785A
-            : UIColor(red: 0/255, green: 158/255, blue: 134/255, alpha: 1) // #009E86
-    })
-    
-    public static let brandAmber = Color(UIColor { traitCollection in
-        traitCollection.userInterfaceStyle == .dark
-            ? UIColor(red: 255/255, green: 196/255, blue: 54/255, alpha: 1) // #FFC436
-            : UIColor(red: 255/255, green: 179/255, blue: 0/255, alpha: 1) // #FFB300
-    })
-    
-    public static let brandCoral = Color(UIColor { traitCollection in
-        traitCollection.userInterfaceStyle == .dark
-            ? UIColor(red: 255/255, green: 115/255, blue: 117/255, alpha: 1) // #FF7375
-            : UIColor(red: 255/255, green: 77/255, blue: 79/255, alpha: 1) // #FF4D4F
-    })
+    public static let brandNavy        = LMSColors.brandNavy
+    public static let brandNavyDark    = LMSColors.brandNavyLight
+    public static let brandEmerald     = LMSColors.emerald
+    public static let brandEmeraldDark = LMSColors.emeraldDark
+    public static let brandAmber       = LMSColors.amber
+    public static let brandCoral       = LMSColors.coral
 }
 
 // MARK: - Formatters

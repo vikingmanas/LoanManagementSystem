@@ -9,13 +9,12 @@ struct CustomerInsightCardView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(profile.fullName)
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .font(LMSFont.headline)
+                        .foregroundStyle(.white)
                     
                     Text("Customer ID: \(profile.id)")
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.8))
+                        .font(LMSFont.subheadline)
+                        .foregroundStyle(.white.opacity(0.8))
                         .fontDesign(.monospaced)
                 }
                 
@@ -23,64 +22,64 @@ struct CustomerInsightCardView: View {
                 
                 Image(systemName: "checkmark.seal.fill")
                     .font(.title2)
-                    .foregroundColor(Color(hex: "34C759")) // Success Green
+                    .foregroundStyle(LMSColors.emerald)
                     .opacity(profile.isKYCVerified ? 1 : 0)
             }
-            .padding(20)
+            .padding(LMSSpacing.xl)
             
             Divider()
                 .background(Color.white.opacity(0.15))
             
             // Middle Section: Account Info
-            VStack(spacing: 16) {
+            VStack(spacing: LMSSpacing.lg) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Account Number")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.6))
+                            .font(LMSFont.caption)
+                            .foregroundStyle(.white.opacity(0.65))
                         Text(maskedAccount(profile.bankDetails.accountNumber))
                             .font(.system(.body, design: .monospaced, weight: .medium))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 4) {
                         Text("Branch")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.6))
+                            .font(LMSFont.caption)
+                            .foregroundStyle(.white.opacity(0.65))
                         Text(profile.preferredBranch.isEmpty ? "Not Set" : profile.preferredBranch)
-                            .font(.system(.body, weight: .medium))
-                            .foregroundColor(.white)
+                            .font(LMSFont.body.weight(.medium))
+                            .foregroundStyle(.white)
                     }
                 }
                 
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Relationship Since")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.6))
+                            .font(LMSFont.caption)
+                            .foregroundStyle(.white.opacity(0.65))
                         Text(profile.bankingRelationshipDuration.isEmpty ? "New" : profile.bankingRelationshipDuration)
-                            .font(.system(.body, weight: .medium))
-                            .foregroundColor(.white)
+                            .font(LMSFont.body.weight(.medium))
+                            .foregroundStyle(.white)
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 4) {
                         Text("Account Status")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.6))
+                            .font(LMSFont.caption)
+                            .foregroundStyle(.white.opacity(0.65))
                         Text("Active")
-                            .font(.system(.body, weight: .bold))
-                            .foregroundColor(Color(hex: "34C759"))
+                            .font(LMSFont.body.weight(.bold))
+                            .foregroundStyle(LMSColors.emerald)
                     }
                 }
             }
-            .padding(20)
+            .padding(LMSSpacing.xl)
             .background(Color.white.opacity(0.05))
             
             Divider()
                 .background(Color.white.opacity(0.15))
             
             // Bottom Section: Summary
-            HStack(spacing: 20) {
+            HStack(spacing: LMSSpacing.xl) {
                 InsightSummaryItem(
                     title: "Active Loans",
                     value: "\(profile.existingLoansCount)",
@@ -107,28 +106,25 @@ struct CustomerInsightCardView: View {
                     icon: "person.text.rectangle"
                 )
             }
-            .padding(.vertical, 16)
+            .padding(.vertical, LMSSpacing.lg)
         }
         .background(
-            RoundedRectangle(cornerRadius: 24)
-                .fill(
+            LinearGradient(
+                colors: [LMSColors.brandNavy, LMSColors.brandNavyLight],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous)
+                .stroke(
                     LinearGradient(
-                        colors: [Color(hex: "1A3A8F"), Color(hex: "4B67D6")],
+                        colors: [Color.white.opacity(0.3), Color.clear],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
-                    )
-                )
-                .cornerRadius(24)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24)
-                        .stroke(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.3), Color.clear],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
+                    ),
+                    lineWidth: 1
                 )
         )
         .shadow(color: Color.black.opacity(0.12), radius: 14, x: 0, y: 8)
@@ -150,15 +146,15 @@ struct InsightSummaryItem: View {
         VStack(spacing: 6) {
             Image(systemName: icon)
                 .font(.system(size: 14))
-                .foregroundColor(Color(hex: "0A84FF")) // Deep Blue Primary
+                .foregroundStyle(.white.opacity(0.9))
             
             Text(value)
-                .font(.system(.body, weight: .bold))
-                .foregroundColor(.white)
+                .font(LMSFont.body.weight(.bold))
+                .foregroundStyle(.white)
             
             Text(title)
-                .font(.system(size: 10))
-                .foregroundColor(.white.opacity(0.6))
+                .font(LMSFont.caption2)
+                .foregroundStyle(.white.opacity(0.65))
         }
         .frame(maxWidth: .infinity)
     }

@@ -37,11 +37,11 @@ struct QuickConsoleTabView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Operations Console")
                         .font(.system(.title3, design: .rounded).bold())
-                        .foregroundColor(.primary)
+                        .foregroundStyle(LMSColors.textPrimary)
                     
                     Text("Select branch workspace utilities and financial simulation tools.")
                         .font(.system(.caption, design: .rounded))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16)
@@ -51,7 +51,7 @@ struct QuickConsoleTabView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Workspace Utilities")
                         .font(.system(.subheadline, design: .rounded).bold())
-                        .foregroundColor(.primary)
+                        .foregroundStyle(LMSColors.textPrimary)
                         .padding(.horizontal, 16)
                     
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
@@ -116,7 +116,7 @@ struct QuickConsoleTabView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Quick Financial Calculator")
                         .font(.system(.subheadline, design: .rounded).bold())
-                        .foregroundColor(.primary)
+                        .foregroundStyle(LMSColors.textPrimary)
                         .padding(.horizontal, 16)
                     
                     VStack(spacing: 16) {
@@ -125,11 +125,11 @@ struct QuickConsoleTabView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Monthly EMI")
                                     .font(.system(.caption, design: .rounded).bold())
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(LMSColors.textSecondary)
                                 
                                 Text(CurrencyFormatter.shared.format(calculatedEMI))
                                     .font(.system(.title, design: .rounded).bold())
-                                    .foregroundColor(AppTheme.actionBlue)
+                                    .foregroundStyle(AppTheme.actionBlue)
                             }
                             
                             Spacer()
@@ -137,16 +137,16 @@ struct QuickConsoleTabView: View {
                             VStack(alignment: .trailing, spacing: 4) {
                                 Text("Total Interest Payable")
                                     .font(.system(.caption, design: .rounded).bold())
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(LMSColors.textSecondary)
                                 
                                 Text(CurrencyFormatter.shared.format(totalInterest))
                                     .font(.system(.body, design: .rounded).bold())
-                                    .foregroundColor(.primary)
+                                    .foregroundStyle(LMSColors.textPrimary)
                             }
                         }
                         .padding()
                         .background(AppTheme.actionBlue.opacity(0.06))
-                        .cornerRadius(12)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         
                         // Sliders Form
                         VStack(spacing: 12) {
@@ -158,7 +158,7 @@ struct QuickConsoleTabView: View {
                                     Spacer()
                                     Text(CurrencyFormatter.shared.format(principalAmount))
                                         .font(.system(.caption, design: .rounded).bold())
-                                        .foregroundColor(AppTheme.actionBlue)
+                                        .foregroundStyle(AppTheme.actionBlue)
                                 }
                                 
                                 Slider(value: $principalAmount, in: 500000...10000000, step: 100000)
@@ -173,7 +173,7 @@ struct QuickConsoleTabView: View {
                                     Spacer()
                                     Text(String(format: "%.2f %%", interestRate))
                                         .font(.system(.caption, design: .rounded).bold())
-                                        .foregroundColor(AppTheme.actionBlue)
+                                        .foregroundStyle(AppTheme.actionBlue)
                                 }
                                 
                                 Slider(value: $interestRate, in: 5.0...15.0, step: 0.05)
@@ -188,7 +188,7 @@ struct QuickConsoleTabView: View {
                                     Spacer()
                                     Text("\(Int(tenureYears)) Years")
                                         .font(.system(.caption, design: .rounded).bold())
-                                        .foregroundColor(AppTheme.actionBlue)
+                                        .foregroundStyle(AppTheme.actionBlue)
                                 }
                                 
                                 Slider(value: $tenureYears, in: 1...30, step: 1)
@@ -198,7 +198,7 @@ struct QuickConsoleTabView: View {
                     }
                     .padding(16)
                     .background(AppTheme.neutralSurface)
-                    .cornerRadius(16)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 3)
                     .padding(.horizontal, 16)
                 }
@@ -232,19 +232,19 @@ struct ConsoleGridCard: View {
                     
                     Image(systemName: symbol)
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(color)
+                        .foregroundStyle(color)
                 }
                 
                 // Title and description
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
                         .font(.system(.callout, design: .rounded).bold())
-                        .foregroundColor(.primary)
+                        .foregroundStyle(LMSColors.textPrimary)
                         .multilineTextAlignment(.leading)
                     
                     Text(desc)
                         .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                         .multilineTextAlignment(.leading)
                         .lineLimit(2)
                 }
@@ -252,11 +252,11 @@ struct ConsoleGridCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
             .background(AppTheme.neutralSurface)
-            .cornerRadius(16)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .shadow(color: .black.opacity(0.02), radius: 3, x: 0, y: 2)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.primary.opacity(0.04), lineWidth: 1)
+                    .stroke(LMSColors.textPrimary.opacity(0.04), lineWidth: 1)
             )
         }
         .buttonStyle(PlainButtonStyle())

@@ -54,14 +54,14 @@ struct EditPersonalInfoView: View {
                         
                         Text("These identity fields are locked because your KYC verification has been completed. To update this information, tap 'Request Change' to notify support.")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                     }
                 } else {
                     Section(header: Text("Identity Details")) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Full Name")
                                 .font(Font.AppTheme.caption)
-                                .foregroundColor(Color.AppTheme.textSecondary)
+                                .foregroundStyle(Color.AppTheme.textSecondary)
                             TextField("Enter Full Name", text: $fullName)
                                 .font(Font.AppTheme.input)
                         }
@@ -72,7 +72,7 @@ struct EditPersonalInfoView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Aadhaar Number")
                                 .font(Font.AppTheme.caption)
-                                .foregroundColor(Color.AppTheme.textSecondary)
+                                .foregroundStyle(Color.AppTheme.textSecondary)
                             TextField("Enter Aadhaar Number", text: $aadhaarNumber)
                                 .keyboardType(.numberPad)
                                 .font(Font.AppTheme.input)
@@ -81,7 +81,7 @@ struct EditPersonalInfoView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("PAN Number")
                                 .font(Font.AppTheme.caption)
-                                .foregroundColor(Color.AppTheme.textSecondary)
+                                .foregroundStyle(Color.AppTheme.textSecondary)
                             TextField("Enter PAN Number", text: $panNumber)
                                 .autocapitalization(.allCharacters)
                                 .font(Font.AppTheme.input)
@@ -93,7 +93,7 @@ struct EditPersonalInfoView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Gender")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Enter Gender", text: $gender)
                             .font(Font.AppTheme.input)
                     }
@@ -101,7 +101,7 @@ struct EditPersonalInfoView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Marital Status")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Enter Marital Status", text: $maritalStatus)
                             .font(Font.AppTheme.input)
                     }
@@ -109,7 +109,7 @@ struct EditPersonalInfoView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Nationality")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Enter Nationality", text: $nationality)
                             .font(Font.AppTheme.input)
                     }
@@ -123,7 +123,7 @@ struct EditPersonalInfoView: View {
                         presentationMode.wrappedValue.dismiss()
                     }) {
                         Image(systemName: "xmark")
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -141,7 +141,7 @@ struct EditPersonalInfoView: View {
                     }) {
                         Image(systemName: "checkmark")
                             .fontWeight(.bold)
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                     }
                 }
             }

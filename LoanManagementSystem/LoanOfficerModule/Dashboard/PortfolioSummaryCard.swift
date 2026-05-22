@@ -18,7 +18,7 @@ struct PortfolioSummaryCard: View {
             HStack {
                 Text("My Loan Portfolio")
                     .font(.system(.subheadline, design: .rounded).bold())
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                 
                 Spacer()
                 
@@ -32,7 +32,7 @@ struct PortfolioSummaryCard: View {
                         Image(systemName: "arrow.right")
                             .font(.system(size: 10, weight: .bold))
                     }
-                    .foregroundColor(Color(hex: "5CA4FF"))
+                    .foregroundStyle(Color(hex: "5CA4FF"))
                 }
                 .accessibilityLabel("View entire loan portfolio list")
             }
@@ -43,15 +43,15 @@ struct PortfolioSummaryCard: View {
                 VStack(alignment: .center, spacing: 4) {
                     Text(CurrencyFormatter.shared.format(viewModel.totalPortfolioValue))
                         .font(.system(.title3, design: .rounded).bold())
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .minimumScaleFactor(0.8)
                         .lineLimit(1)
                     Text("\(viewModel.totalApplications) Loans")
                         .font(.system(.caption2, design: .rounded).weight(.semibold))
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundStyle(.white.opacity(0.7))
                     Text("Total Value")
                         .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(.white.opacity(0.55))
+                        .foregroundStyle(.white.opacity(0.55))
                 }
                 .frame(maxWidth: .infinity)
                 .accessibilityElement(children: .combine)
@@ -66,15 +66,15 @@ struct PortfolioSummaryCard: View {
                 VStack(alignment: .center, spacing: 4) {
                     Text(CurrencyFormatter.shared.format(viewModel.underProcessValue))
                         .font(.system(.title3, design: .rounded).bold())
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .minimumScaleFactor(0.8)
                         .lineLimit(1)
                     Text("\(viewModel.underProcessCount) Loans")
                         .font(.system(.caption2, design: .rounded).weight(.semibold))
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundStyle(.white.opacity(0.7))
                     Text("Under Process")
                         .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(.white.opacity(0.55))
+                        .foregroundStyle(.white.opacity(0.55))
                 }
                 .frame(maxWidth: .infinity)
                 .accessibilityElement(children: .combine)
@@ -89,15 +89,15 @@ struct PortfolioSummaryCard: View {
                 VStack(alignment: .center, spacing: 4) {
                     Text(CurrencyFormatter.shared.format(viewModel.closedThisMonthValue))
                         .font(.system(.title3, design: .rounded).bold())
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .minimumScaleFactor(0.8)
                         .lineLimit(1)
                     Text("\(viewModel.closedThisMonthCount) Loans")
                         .font(.system(.caption2, design: .rounded).weight(.semibold))
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundStyle(.white.opacity(0.7))
                     Text("Closed This Mo")
                         .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(.white.opacity(0.55))
+                        .foregroundStyle(.white.opacity(0.55))
                 }
                 .frame(maxWidth: .infinity)
                 .accessibilityElement(children: .combine)
@@ -109,13 +109,13 @@ struct PortfolioSummaryCard: View {
                 HStack {
                     Text("Monthly Target: ₹ 15 Cr")
                         .font(.system(.caption2, design: .rounded).weight(.medium))
-                        .foregroundColor(.white.opacity(0.75))
+                        .foregroundStyle(.white.opacity(0.75))
                     
                     Spacer()
                     
                     Text("\(progressPercentage)%")
                         .font(.system(.caption2, design: .rounded).bold())
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                 }
                 
                 // ZStack Custom Bar
@@ -139,17 +139,17 @@ struct PortfolioSummaryCard: View {
                     HStack(spacing: 4) {
                         if progressPercentage >= 80 {
                             Text("🎯 On Track")
-                                .foregroundColor(AppTheme.successGreen)
+                                .foregroundStyle(AppTheme.successGreen)
                         } else {
                             Text("⚠️ Behind Target")
-                                .foregroundColor(AppTheme.warningAmber)
+                                .foregroundStyle(AppTheme.warningAmber)
                         }
                     }
                     .font(.system(.caption2, design: .rounded).bold())
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(Color.white.opacity(0.12))
-                    .cornerRadius(8)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .padding(.top, 4)
             }
@@ -162,7 +162,7 @@ struct PortfolioSummaryCard: View {
                 endPoint: .bottomTrailing
             )
         )
-        .cornerRadius(16)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: Color(hex: "0A2540").opacity(0.15), radius: 10, x: 0, y: 5)
     }
 }

@@ -1,10 +1,3 @@
-//
-//  SchemeCardView.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 19/05/26.
-//
-
 import SwiftUI
 
 public struct SchemeCardView: View {
@@ -31,31 +24,30 @@ public struct SchemeCardView: View {
                     // Category Badge
                     Text(categoryBadgeText)
                         .font(.system(size: 8, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(categoryBadgeBgColor)
-                        .cornerRadius(8)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     
                     Spacer()
                     
                     // Category Icon
                     Image(systemName: iconName)
                         .font(.system(size: 16))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                 }
                 
                 // Title
                 Text(scheme.title)
-                    .font(.system(.callout, design: .rounded))
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
+                    .font(LMSFont.callout.weight(.bold))
+                    .foregroundStyle(.white)
                     .lineLimit(1)
                 
                 // Description (2-line limit)
                 Text(scheme.description)
-                    .font(.system(.caption2, design: .rounded))
-                    .foregroundColor(.white.opacity(0.85))
+                    .font(LMSFont.caption2)
+                    .foregroundStyle(.white.opacity(0.85))
                     .lineLimit(2)
                     .frame(height: 30, alignment: .topLeading)
                 
@@ -65,7 +57,7 @@ public struct SchemeCardView: View {
                 HStack {
                     Text("Valid: \(scheme.validTill.formattedAsDDMMMYYYY())")
                         .font(.system(size: 9, weight: .medium, design: .rounded))
-                        .foregroundColor(.white.opacity(0.75))
+                        .foregroundStyle(.white.opacity(0.75))
                     
                     Spacer()
                     
@@ -75,11 +67,11 @@ public struct SchemeCardView: View {
                     } label: {
                         Text("Apply →")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .background(Color.white.opacity(0.2))
-                            .cornerRadius(6)
+                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -87,7 +79,7 @@ public struct SchemeCardView: View {
             .padding(14)
         }
         .frame(width: 240, height: 140)
-        .cornerRadius(20)
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
         .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
     
@@ -125,7 +117,7 @@ public struct SchemeCardView: View {
             return Color(hex: "#E05A00").opacity(0.85)
         case .homeLoan, .education:
             // Deep blue shade
-            return Color(hex: "#0A2540").opacity(0.8)
+            return LMSColors.brandNavy.opacity(0.8)
         }
     }
     
@@ -144,8 +136,8 @@ public struct SchemeCardSkeleton: View {
     public init() {}
     
     public var body: some View {
-        RoundedRectangle(cornerRadius: 20)
-            .fill(Color(.secondarySystemBackground))
+        RoundedRectangle(cornerRadius: LMSRadius.card)
+            .fill(LMSColors.surfaceElevated)
             .frame(width: 240, height: 140)
             .shimmer(active: true)
     }

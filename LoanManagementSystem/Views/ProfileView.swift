@@ -8,20 +8,21 @@ enum ProfileEditSheet: Identifiable {
 struct ProfileView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = BorrowerProfileViewModel()
     @State private var activeSheet: ProfileEditSheet?
-    
+
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.AppTheme.background.ignoresSafeArea()
-                
+                Color.clear
+
                 if viewModel.isLoading {
                     ProgressView("Loading Profile...")
-                        .progressViewStyle(CircularProgressViewStyle(tint: Color.AppTheme.primary))
+                        .progressViewStyle(CircularProgressViewStyle(tint: LMSColors.brandNavy))
                 } else if let profile = viewModel.profile {
                     ScrollView {
-                        VStack(spacing: 16) {
+                        VStack(spacing: LMSSpacing.lg) {
                             ProfileHeaderView(
                                 name: profile.fullName,
                                 id: profile.id,
@@ -32,105 +33,108 @@ struct ProfileView: View {
                                     viewModel.updateProfileImage(data: data)
                                 }
                             )
-                            .padding(.horizontal, 20)
-                            .padding(.top, 10)
-                            .padding(.bottom, 4)
-                            
+                            .padding(.horizontal, LMSSpacing.xl)
+                            .padding(.top, LMSSpacing.md)
+                            .padding(.bottom, LMSSpacing.xs)
+
                             // Menu Card Group
                             VStack(spacing: 0) {
                                 NavigationLink(destination: ProfileInfoDetailView(viewModel: viewModel)) {
-                                    rowView(title: "Profile Information", icon: "person.fill", iconColor: .blue)
+                                    profileRow(title: "Profile Information", icon: "person.fill", iconColor: LMSColors.actionBlue)
                                 }
                                 .buttonStyle(PlainButtonStyle())
                                 cardDivider()
-                                
+
                                 NavigationLink(destination: SettingsDetailView()) {
-                                    rowView(title: "Settings", icon: "gearshape.fill", iconColor: .gray)
+                                    profileRow(title: "Settings", icon: "gearshape.fill", iconColor: LMSColors.textSecondary)
                                 }
                                 .buttonStyle(PlainButtonStyle())
                                 cardDivider()
-                                
+
                                 NavigationLink(destination: SecurityDetailView()) {
-                                    rowView(title: "Security", icon: "lock.shield.fill", iconColor: .green)
+                                    profileRow(title: "Security", icon: "lock.shield.fill", iconColor: LMSColors.emerald)
                                 }
                                 .buttonStyle(PlainButtonStyle())
                                 cardDivider()
-                                
+
                                 NavigationLink(destination: ResetPasswordDetailView()) {
-                                    rowView(title: "Reset/Change Password", icon: "key.fill", iconColor: .orange)
+                                    profileRow(title: "Reset/Change Password", icon: "key.fill", iconColor: LMSColors.amber)
                                 }
                                 .buttonStyle(PlainButtonStyle())
                                 cardDivider()
-                                
+
                                 NavigationLink(destination: NotificationsDetailView()) {
-                                    rowView(title: "Notifications", icon: "bell.fill", iconColor: .red)
+                                    profileRow(title: "Notifications", icon: "bell.fill", iconColor: LMSColors.coral)
                                 }
                                 .buttonStyle(PlainButtonStyle())
                                 cardDivider()
-                                
+
                                 NavigationLink(destination: PrivacyControlsDetailView()) {
-                                    rowView(title: "Privacy Controls", icon: "hand.raised.fill", iconColor: .purple)
+                                    profileRow(title: "Privacy Controls", icon: "hand.raised.fill", iconColor: .purple)
                                 }
                                 .buttonStyle(PlainButtonStyle())
                                 cardDivider()
-                                
+
                                 NavigationLink(destination: LinkedBankAccountsDetailView(viewModel: viewModel)) {
-                                    rowView(title: "Linked Bank Accounts", icon: "creditcard.fill", iconColor: .blue)
+                                    profileRow(title: "Linked Bank Accounts", icon: "creditcard.fill", iconColor: LMSColors.actionBlue)
                                 }
                                 .buttonStyle(PlainButtonStyle())
                                 cardDivider()
-                                
+
                                 NavigationLink(destination: KYCStatusDetailView(viewModel: viewModel)) {
-                                    rowView(title: "KYC Status", icon: "checkmark.seal.fill", iconColor: .green)
+                                    profileRow(title: "KYC Status", icon: "checkmark.seal.fill", iconColor: LMSColors.emerald)
                                 }
                                 .buttonStyle(PlainButtonStyle())
                                 cardDivider()
-                                
+
                                 NavigationLink(destination: DocumentManagementDetailView(viewModel: viewModel)) {
-                                    rowView(title: "Document Management", icon: "doc.on.doc.fill", iconColor: .indigo)
+                                    profileRow(title: "Document Management", icon: "doc.on.doc.fill", iconColor: .indigo)
                                 }
                                 .buttonStyle(PlainButtonStyle())
                                 cardDivider()
-                                
+
                                 NavigationLink(destination: HelpSupportDetailView()) {
-                                    rowView(title: "Help & Support", icon: "questionmark.circle.fill", iconColor: .teal)
+                                    profileRow(title: "Help & Support", icon: "questionmark.circle.fill", iconColor: LMSColors.teal)
                                 }
                                 .buttonStyle(PlainButtonStyle())
                             }
-                            .background(Color.AppTheme.secondary)
-                            .cornerRadius(12)
-                            .padding(.horizontal, 16)
-                            
-                            // Log Out Card
+                            .background(LMSColors.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
+                            .padding(.horizontal, LMSSpacing.lg)
+
+                            // Log Out
                             Button(action: {
+                                HapticsManager.triggerImpact(style: .medium)
                                 BorrowerProfileStore.shared.signOut()
                                 appState.logout()
                                 authManager.signOut()
                             }) {
-                                HStack(spacing: 12) {
+                                HStack(spacing: LMSSpacing.md) {
                                     ZStack {
-                                        RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                            .fill(Color.AppTheme.error.opacity(0.12))
-                                            .frame(width: 30, height: 30)
-                                        
+                                        RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous)
+                                            .fill(LMSColors.coral.opacity(0.10))
+                                            .frame(width: 32, height: 32)
+
                                         Image(systemName: "arrow.left.square.fill")
-                                            .foregroundColor(Color.AppTheme.error)
+                                            .foregroundStyle(LMSColors.coral)
                                             .font(.system(size: 15, weight: .semibold))
                                     }
-                                    
+
                                     Text("Log Out")
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(Color.AppTheme.error)
-                                    
+                                        .font(LMSFont.callout.weight(.semibold))
+                                        .foregroundStyle(LMSColors.coral)
+
                                     Spacer()
                                 }
-                                .padding(.vertical, 13)
-                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .padding(.horizontal, LMSSpacing.lg)
                             }
-                            .background(Color.AppTheme.secondary)
-                            .cornerRadius(12)
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 24)
+                            .background(LMSColors.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
+                            .padding(.horizontal, LMSSpacing.lg)
+                            .padding(.bottom, LMSSpacing.xxl)
                         }
                     }
                     .onAppear {
@@ -140,48 +144,31 @@ struct ProfileView: View {
                     }
                 }
             }
+            .lmsScreenBackground()
             .navigationTitle("Profile")
-            .navigationBarTitleDisplayMode(.inline)
-        }
-    }
-    
-    private func cardDivider() -> some View {
-        Divider()
-            .padding(.leading, 58)
-    }
-    
-    private func rowView(title: String, icon: String, iconColor: Color) -> some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(iconColor.opacity(0.12))
-                    .frame(width: 30, height: 30)
-                
-                Image(systemName: icon)
-                    .foregroundColor(iconColor)
-                    .font(.system(size: 15, weight: .semibold))
+            .navigationBarTitleDisplayMode(.large)
+            .toolbarBackground(LMSColors.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .font(LMSFont.callout.weight(.semibold))
+                }
             }
-            
-            Text(title)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(Color.AppTheme.textPrimary)
-            
-            Spacer()
-            
-            Image(systemName: "chevron.right")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(Color.AppTheme.textSecondary.opacity(0.4))
         }
-        .padding(.vertical, 13)
-        .padding(.horizontal, 16)
-        .contentShape(Rectangle())
+    }
+
+    private func cardDivider() -> some View {
+        LMSGroupedDivider()
+    }
+
+    private func profileRow(title: String, icon: String, iconColor: Color) -> some View {
+        LMSListRow(title: title, icon: icon, iconColor: iconColor)
     }
 }
 
-struct ProfileView_Previews: PreviewProvider {
-    static var previews: some View {
-        ProfileView()
-            .environmentObject(AppStateManager())
-            .environmentObject(AuthManager())
-    }
+#Preview {
+    ProfileView()
+        .environmentObject(AppStateManager())
+        .environmentObject(AuthManager())
 }

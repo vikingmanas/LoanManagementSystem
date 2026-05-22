@@ -13,11 +13,11 @@ struct PortfolioMetricsSheet: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Portfolio Distribution")
                             .font(.system(.title3, design: .rounded).bold())
-                            .foregroundColor(.primary)
+                            .foregroundStyle(LMSColors.textPrimary)
                         
                         Text("Overall status distribution of your assigned borrower loan applications.")
                             .font(.system(.caption, design: .rounded))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 16)
@@ -37,27 +37,27 @@ struct PortfolioMetricsSheet: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Active Action Guidelines")
                             .font(.system(.subheadline, design: .rounded).bold())
-                            .foregroundColor(.primary)
+                            .foregroundStyle(LMSColors.textPrimary)
                         
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: "exclamationmark.circle.fill")
-                                .foregroundColor(AppTheme.warningAmber)
+                                .foregroundStyle(AppTheme.warningAmber)
                             Text("Pending Review items require KYC verification and document checks before forwarding to the manager.")
                                 .font(.system(.caption, design: .rounded))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                         }
                         
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: "checkmark.seal.fill")
-                                .foregroundColor(AppTheme.successGreen)
+                                .foregroundStyle(AppTheme.successGreen)
                             Text("Approved items are cleared and sent to management for final disbursement approval.")
                                 .font(.system(.caption, design: .rounded))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                         }
                     }
                     .padding(16)
                     .background(AppTheme.neutralSurface)
-                    .cornerRadius(16)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .padding(.horizontal, 16)
                     .padding(.top, 10)
                 }

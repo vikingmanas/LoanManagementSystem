@@ -172,11 +172,11 @@ struct CustomTopNavigationBar: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Good Morning, \(LoanOfficerMockData.officerName) 👋")
                     .font(.system(.title3, design: .rounded).bold())
-                    .foregroundColor(.primary)
+                    .foregroundStyle(LMSColors.textPrimary)
                 
                 Text("Loan Officer · Branch: \(LoanOfficerMockData.branchName)")
                     .font(.system(.caption, design: .rounded))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(LMSColors.textSecondary)
             }
             
             Spacer()
@@ -191,13 +191,13 @@ struct CustomTopNavigationBar: View {
                     ZStack(alignment: .topTrailing) {
                         Image(systemName: "bell.badge.fill")
                             .font(.system(size: 18))
-                            .foregroundColor(.primary)
+                            .foregroundStyle(LMSColors.textPrimary)
                             .symbolRenderingMode(.multicolor)
                         
                         if viewModel.unreadActivityCount > 0 {
                             Text("\(viewModel.unreadActivityCount)")
                                 .font(.system(size: 8, design: .rounded).bold())
-                                .foregroundColor(.white)
+                                .foregroundStyle(.white)
                                 .frame(width: 12, height: 12)
                                 .background(AppTheme.criticalRed)
                                 .clipShape(Circle())
@@ -219,7 +219,7 @@ struct CustomTopNavigationBar: View {
                         
                         Text("AK")
                             .font(.system(.caption, design: .rounded).bold())
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                     }
                 }
                 .accessibilityLabel("Profile: Arjun Kashyap.")
@@ -228,7 +228,7 @@ struct CustomTopNavigationBar: View {
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 12)
-        .background(Color(.systemBackground))
+        .background(LMSColors.surface)
     }
 }
 
@@ -307,7 +307,7 @@ struct PriorityAlertStrip: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
-        .background(Color(.systemBackground))
+        .background(LMSColors.surface)
     }
 }
 
@@ -322,16 +322,16 @@ struct AlertChip: View {
             HStack(spacing: 6) {
                 Image(systemName: type.symbol)
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(type.color)
+                    .foregroundStyle(type.color)
                 
                 Text(title)
                     .font(.system(.caption, design: .rounded).bold())
-                    .foregroundColor(.primary)
+                    .foregroundStyle(LMSColors.textPrimary)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(.ultraThinMaterial)
-            .cornerRadius(16)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(type.color.opacity(0.3), lineWidth: 1)
@@ -358,15 +358,15 @@ struct NotificationsFeedSheet: View {
                     ForEach(viewModel.activityFeed) { item in
                         HStack(alignment: .top, spacing: 12) {
                             Image(systemName: item.eventType.symbol)
-                                .foregroundColor(item.eventType.themeColor)
-                                .font(.title3)
+                                .foregroundStyle(item.eventType.themeColor)
+                                .font(LMSFont.title3)
                             
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(item.borrowerName)
                                     .font(.system(.callout, design: .rounded).bold())
                                 Text(item.eventDescription)
                                     .font(.system(.caption, design: .rounded))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(LMSColors.textSecondary)
                             }
                         }
                         .padding(.vertical, 4)

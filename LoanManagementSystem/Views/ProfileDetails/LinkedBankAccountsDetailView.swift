@@ -21,7 +21,7 @@ struct LinkedBankAccountsDetailView: View {
                     HStack {
                         Text("Status")
                             .font(Font.AppTheme.body)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         Spacer()
                         if bank.isVerified {
                             StatusBadgeView(status: "Verified")
@@ -41,7 +41,7 @@ struct LinkedBankAccountsDetailView: View {
                 Button("Edit") {
                     showingEditSheet = true
                 }
-                .foregroundColor(Color.AppTheme.primary)
+                .foregroundStyle(Color.AppTheme.primary)
             }
         }
         .sheet(isPresented: $showingEditSheet) {
