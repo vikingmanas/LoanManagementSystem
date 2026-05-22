@@ -1,3 +1,10 @@
+//
+//  SignInViewModel.swift
+//  LoanManagementSystem
+//
+//  Created by Antigravity on 22/05/26.
+//
+
 import Foundation
 import Combine
 
@@ -14,12 +21,11 @@ class SignInViewModel: ObservableObject {
     @Published var showSuccess: Bool = false
     @Published var generalError: String = ""
 
-
     var isFormValid: Bool {
         return !emailOrPhone.isEmpty && !password.isEmpty
     }
 
-    func signIn(authManager: AuthManager) async {
+    func signIn(authManager: AuthManager, appState: AppStateManager) async {
         emailError = ""
         passwordError = ""
         generalError = ""
@@ -43,14 +49,32 @@ class SignInViewModel: ObservableObject {
         }
 
         isLoading = true
-        let success = await authManager.signIn(email: cleanedEmail, password: password)
+        let result = await authManager.signIn(email: cleanedEmail, password: password)
         isLoading = false
 
-        if success {
-            BorrowerProfileStore.shared.ensureProfile(
-                email: cleanedEmail,
-                name: authManager.userDisplayName
-            )
+        if result.success {
+            // Map Supabase fetched DB role to PortalRole
+            if let role = result.role {
+                switch role {
+                case "admin":
+                    appState.selectedRole = .admin
+                case "loan_manager":
+                    appState.selectedRole = .bankManager
+                case "loan_officer":
+                    appState.selectedRole = .loanOfficer
+                default:
+                    appState.selectedRole = .customer
+                }
+            }
+            
+            // Initialize borrower profile local state
+            if appState.selectedRole == .customer {
+                BorrowerProfileStore.shared.ensureProfile(
+                    email: cleanedEmail,
+                    name: authManager.userDisplayName
+                )
+            }
+            
             showSuccess = true
         } else {
             generalError = authManager.errorMessage ?? "Incorrect email or password. Please try again."

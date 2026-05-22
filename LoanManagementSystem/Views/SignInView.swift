@@ -95,7 +95,7 @@ struct SignInView: View {
                             isDisabled: !viewModel.isFormValid,
                             action: {
                                 Task {
-                                    await viewModel.signIn(authManager: authManager)
+                                    await viewModel.signIn(authManager: authManager, appState: appState)
                                 }
                             }
                         )

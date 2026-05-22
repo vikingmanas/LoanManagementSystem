@@ -7,194 +7,184 @@
 
 import SwiftUI
 import Combine
-import FirebaseAuth
-import FirebaseCore
-import FirebaseFirestore
+import Supabase
+
+// MARK: - AuthSessionUser
+/// Custom User representation replacing FirebaseAuth.User to prepare for Supabase.
+struct AuthSessionUser: Codable {
+    let uid: String
+    let email: String?
+    let displayName: String?
+    
+    init(uid: String, email: String?, displayName: String?) {
+        self.uid = uid
+        self.email = email
+        self.displayName = displayName
+    }
+}
 
 // MARK: - AuthManager
-/// Centralized authentication service wrapping Firebase Auth.
-/// Observes auth state changes for automatic session persistence and auto-login.
+/// Centralized authentication service wrapping Supabase Auth.
 @MainActor
-public final class AuthManager: ObservableObject {
+final class AuthManager: ObservableObject {
 
     // MARK: - Published State
 
     /// Whether a user is currently authenticated.
-    @Published public var isAuthenticated: Bool = false
+    @Published var isAuthenticated: Bool = false
 
-    /// The currently signed-in Firebase user, if any.
-    @Published public var currentUser: FirebaseAuth.User? = nil
+    /// The currently signed-in user, if any.
+    @Published var currentUser: AuthSessionUser? = nil
 
     /// Controls the loading overlay in auth views.
-    @Published public var isLoading: Bool = false
+    @Published var isLoading: Bool = false
 
     /// User-friendly error message shown in alerts/banners.
-    @Published public var errorMessage: String? = nil
+    @Published var errorMessage: String? = nil
 
-    /// Indicates the auth state listener has resolved at least once (used for splash screen).
-    @Published public var isAuthStateResolved: Bool = false
+    /// Indicates the auth state listener has resolved at least once.
+    @Published var isAuthStateResolved: Bool = false
 
-    // MARK: - Private
+    // MARK: - Init
 
-    /// Handle for the Firebase auth state listener.
-    /// Marked nonisolated(unsafe) so deinit (which is nonisolated) can access it to remove the listener.
-    private nonisolated(unsafe) var authStateListenerHandle: AuthStateDidChangeListenerHandle?
+    init() {}
 
-    // MARK: - Init / Deinit
-
-    public init() {
-        // Listener setup is deferred to configure() which must be called
-        // after FirebaseApp.configure() in the App's init().
-    }
-
-    public func configure() {
-        guard authStateListenerHandle == nil else { return }
-        
-        // If Firebase is not configured (e.g. running in Xcode Previews),
-        // we avoid calling Auth.auth() to prevent a crash, and mark it resolved.
-        guard FirebaseApp.app() != nil else {
-            isAuthStateResolved = true
-            return
-        }
-        
-        listenToAuthState()
-        
-        // Fallback timeout: If Firebase Auth takes too long to resolve (e.g. due to
-        // offline state, simulator keychain issues, or configuration delay), force
-        // resolve it after 5.5 seconds so the app doesn't hang on the splash screen.
+    /// Restores the Supabase session on app launch if one exists.
+    func configure() {
         Task {
-            try? await Task.sleep(nanoseconds: 5_500_000_000) // 5.5 seconds
-            if !self.isAuthStateResolved {
-                self.isAuthStateResolved = true
+            do {
+                let client = SupabaseManager.shared.client
+                if let currentSession = try? await client.auth.session {
+                    let user = currentSession.user
+                    let role = try await AuthService.shared.fetchUserRole(uid: user.id)
+                    
+                    self.currentUser = AuthSessionUser(
+                        uid: user.id.uuidString,
+                        email: user.email,
+                        displayName: user.userMetadata["display_name"]?.description ?? "User"
+                    )
+                    self.isAuthenticated = true
+                    
+                    // Sync up the role to BorrowerProfileStore and local cached structures
+                    if role == "borrower" {
+                        BorrowerProfileStore.shared.ensureProfile(
+                            email: user.email ?? "",
+                            name: user.userMetadata["display_name"]?.description ?? "User"
+                        )
+                    }
+                }
+            } catch {
+                print("Supabase Session Restore failed or timed out: \(error.localizedDescription)")
             }
-        }
-    }
-
-    nonisolated deinit {
-        if let handle = authStateListenerHandle {
-            Auth.auth().removeStateDidChangeListener(handle)
-        }
-    }
-
-    // MARK: - Auth State Listener
-    /// Listens for Firebase auth state changes (login, logout, token refresh).
-    /// This automatically handles session persistence — if the user was previously
-    /// logged in, Firebase restores the session and fires this listener on app launch.
-    private func listenToAuthState() {
-        authStateListenerHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
-            Task { @MainActor in
-                guard let self = self else { return }
-                self.currentUser = user
-                self.isAuthenticated = (user != nil)
-                self.isAuthStateResolved = true
-            }
+            self.isAuthStateResolved = true
         }
     }
 
     // MARK: - Sign In
-    /// Signs in an existing user with email and password.
-    /// - Parameters:
-    ///   - email: The user's email address.
-    ///   - password: The user's password.
+    /// Signs in an existing user with email and password, returning their assigned role.
     @discardableResult
-    public func signIn(email: String, password: String) async -> Bool {
+    func signIn(email: String, password: String) async -> (success: Bool, role: String?) {
         clearError()
         isLoading = true
 
-        do {
-            let result = try await Auth.auth().signIn(withEmail: email, password: password)
-            self.currentUser = result.user
+        #if DEBUG
+        // Development bypass for staff testing without requiring Supabase seeded users
+        if email == "bm1234@lms.com" || email == "lo1234@lms.com" || email == "ad1234@lms.com" {
+            let role: String
+            if email.starts(with: "bm") { role = "loan_manager" }
+            else if email.starts(with: "lo") { role = "loan_officer" }
+            else { role = "admin" }
+            
+            self.currentUser = AuthSessionUser(
+                uid: UUID().uuidString,
+                email: email,
+                displayName: "Test Staff"
+            )
             self.isAuthenticated = true
-            isLoading = false
-            return true
+            self.isLoading = false
+            return (true, role)
+        }
+        #endif
+
+        do {
+            let session = try await AuthService.shared.signIn(email: email, password: password)
+            let user = session.user
+            
+            // Fetch role from users database table
+            let role = try await AuthService.shared.fetchUserRole(uid: user.id)
+            
+            self.currentUser = AuthSessionUser(
+                uid: user.id.uuidString,
+                email: user.email,
+                displayName: user.userMetadata["display_name"]?.description ?? "User"
+            )
+            self.isAuthenticated = true
+            self.isLoading = false
+            
+            return (true, role)
         } catch {
-            self.errorMessage = mapFirebaseError(error)
-            isLoading = false
-            return false
+            self.errorMessage = mapSupabaseError(error)
+            self.isLoading = false
+            return (false, nil)
         }
     }
 
     // MARK: - Sign Up
-    /// Creates a new user account with email and password, then sets the display name.
-    /// - Parameters:
-    ///   - name: The user's display name (optional but recommended).
-    ///   - email: The user's email address.
-    ///   - password: The user's chosen password (min 6 characters, enforced by Firebase).
+    /// Creates a new borrower account with email and password, then inserts them in the users table.
     @discardableResult
-    public func signUp(
-        name: String,
-        email: String,
-        password: String,
-        phone: String = "",
-        alternatePhone: String = "",
-        referralCode: String = ""
-    ) async -> Bool {
+    func signUp(name: String, email: String, password: String) async -> Bool {
         clearError()
         isLoading = true
 
         do {
-            let result = try await Auth.auth().createUser(withEmail: email, password: password)
-
-            // Update the user's display name profile
-            let changeRequest = result.user.createProfileChangeRequest()
-            changeRequest.displayName = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : name.trimmingCharacters(in: .whitespacesAndNewlines)
-            try await changeRequest.commitChanges()
-
-            // Save user profile data to Firestore
-            let db = Firestore.firestore()
-            let userDoc: [String: Any] = [
-                "fullName": name,
-                "email": email.lowercased(),
-                "mobileNumber": phone,
-                "alternateMobileNumber": alternatePhone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : alternatePhone,
-                "referralCode": referralCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : referralCode,
-                "role": "borrower",
-                "createdAt": FieldValue.serverTimestamp(),
-                "updatedAt": FieldValue.serverTimestamp()
-            ]
-            try await db.collection("users").document(result.user.uid).setData(userDoc)
-
-            // Refresh the local user reference to pick up the display name
-            try await result.user.reload()
-            self.currentUser = Auth.auth().currentUser
-            self.isAuthenticated = true
-            isLoading = false
+            if let session = try await AuthService.shared.signUp(email: email, password: password, name: name) {
+                let user = session.user
+                self.currentUser = AuthSessionUser(
+                    uid: user.id.uuidString,
+                    email: user.email,
+                    displayName: name
+                )
+                self.isAuthenticated = true
+            } else {
+                // Sign up succeeded but session is nil because email confirmation is enabled
+                self.errorMessage = "Account created! Please check your email inbox to confirm your email before signing in."
+                self.isLoading = false
+                return false
+            }
+            self.isLoading = false
             return true
         } catch {
-            self.errorMessage = mapFirebaseError(error)
-            isLoading = false
+            self.errorMessage = mapSupabaseError(error)
+            self.isLoading = false
             return false
         }
     }
 
     // MARK: - Sign Out
     /// Signs out the current user and resets state.
-    public func signOut() {
-        do {
-            try Auth.auth().signOut()
+    func signOut() {
+        Task {
+            try? await AuthService.shared.signOut()
             self.currentUser = nil
             self.isAuthenticated = false
-        } catch {
-            self.errorMessage = mapFirebaseError(error)
+            BorrowerProfileStore.shared.signOut()
         }
     }
 
     // MARK: - Password Reset
-    /// Sends a password reset email via Firebase.
-    /// - Parameter email: The email address to send the reset link to.
-    /// - Returns: `true` if the email was sent successfully.
+    /// Sends a password reset email via Supabase.
     @discardableResult
-    public func resetPassword(email: String) async -> Bool {
+    func resetPassword(email: String) async -> Bool {
         clearError()
         isLoading = true
 
         do {
-            try await Auth.auth().sendPasswordReset(withEmail: email)
-            isLoading = false
+            try await SupabaseManager.shared.client.auth.resetPasswordForEmail(email)
+            self.isLoading = false
             return true
         } catch {
-            self.errorMessage = mapFirebaseError(error)
-            isLoading = false
+            self.errorMessage = mapSupabaseError(error)
+            self.isLoading = false
             return false
         }
     }
@@ -202,13 +192,12 @@ public final class AuthManager: ObservableObject {
     // MARK: - Helpers
 
     /// Clears any existing error message.
-    public func clearError() {
+    func clearError() {
         errorMessage = nil
     }
 
     /// Returns the user's display name initials (e.g., "Raj Kumar" → "RK").
-    /// Falls back to the first character of the email, or "U" if nothing is available.
-    public var userInitials: String {
+    var userInitials: String {
         if let displayName = currentUser?.displayName,
            !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let parts = displayName.split(separator: " ")
@@ -224,7 +213,7 @@ public final class AuthManager: ObservableObject {
     }
 
     /// Returns the user's display name, or email, or "User" as fallback.
-    public var userDisplayName: String {
+    var userDisplayName: String {
         if let name = currentUser?.displayName,
            !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return name
@@ -232,39 +221,32 @@ public final class AuthManager: ObservableObject {
         return currentUser?.email ?? "User"
     }
 
-    /// Returns the signed-in user's email without leaking Firebase types into views.
-    public var userEmail: String? {
+    /// Returns the signed-in user's email.
+    var userEmail: String? {
         currentUser?.email
     }
 
-    // MARK: - Firebase Error Mapping
-    /// Converts Firebase Auth errors into user-friendly messages.
-    private func mapFirebaseError(_ error: Error) -> String {
-        guard let authError = AuthErrorCode(_bridgedNSError: error as NSError) else {
-            return error.localizedDescription
-        }
-
-        switch authError.code {
-        case .invalidEmail:
-            return "Please enter a valid email address."
-        case .emailAlreadyInUse:
-            return "This email is already registered. Try logging in instead."
-        case .weakPassword:
-            return "Password is too weak. Use at least 6 characters."
-        case .wrongPassword, .invalidCredential:
+    // MARK: - Error Mapping
+    /// Converts Supabase Auth/DB errors into user-friendly messages.
+    private func mapSupabaseError(_ error: Error) -> String {
+        let errDesc = error.localizedDescription
+        
+        // Handle common auth/network string matches
+        if errDesc.localizedCaseInsensitiveContains("invalid login credentials") ||
+           errDesc.localizedCaseInsensitiveContains("invalid credentials") {
             return "Incorrect email or password. Please try again."
-        case .userNotFound:
-            return "No account found with this email. Please sign up first."
-        case .userDisabled:
-            return "This account has been disabled. Contact support for help."
-        case .tooManyRequests:
-            return "Too many attempts. Please wait a moment and try again."
-        case .networkError:
-            return "Network error. Please check your internet connection."
-        case .operationNotAllowed:
-            return "Email/Password sign-in is not enabled. Contact the administrator."
-        default:
-            return error.localizedDescription
+        } else if errDesc.localizedCaseInsensitiveContains("email already in use") ||
+                  errDesc.localizedCaseInsensitiveContains("user already exists") {
+            return "This email is already registered. Try logging in instead."
+        } else if errDesc.localizedCaseInsensitiveContains("password is too weak") ||
+                  errDesc.localizedCaseInsensitiveContains("password should be") {
+            return "Password is too weak. Ensure it is at least 6 characters and strong."
+        } else if errDesc.localizedCaseInsensitiveContains("network") ||
+                  errDesc.localizedCaseInsensitiveContains("connection") ||
+                  errDesc.localizedCaseInsensitiveContains("timed out") {
+            return "Network connection issue. Please check your internet connection."
         }
+        
+        return errDesc
     }
 }

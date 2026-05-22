@@ -1,6 +1,4 @@
 import SwiftUI
-import FirebaseAuth
-import FirebaseFirestore
 
 struct StaffLoginView: View {
     @EnvironmentObject var appState: AppStateManager
@@ -173,11 +171,11 @@ struct StaffLoginView: View {
         passwordError = ""
         generalError = ""
         
-        let cleanedID = employeeID.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        let cleanedID = employeeID.trimmingCharacters(in: .whitespacesAndNewlines)
         
         // 1. Basic Format Validations
         if cleanedID.isEmpty {
-            employeeIDError = "Employee ID cannot be empty"
+            employeeIDError = "Employee ID or Email cannot be empty"
             return
         }
         
@@ -186,39 +184,63 @@ struct StaffLoginView: View {
             return
         }
         
-        // 2. Validate prefix based on selected role
-        switch appState.selectedRole {
-        case .loanOfficer:
-            if !cleanedID.hasPrefix("LO") {
-                employeeIDError = "Loan Officer Employee ID must start with 'LO'"
-                return
+        // 2. Resolve email address
+        let emailToAuthenticate: String
+        if cleanedID.contains("@") {
+            emailToAuthenticate = cleanedID.lowercased()
+        } else {
+            // Check prefix matches selected role
+            let upperID = cleanedID.uppercased()
+            switch appState.selectedRole {
+            case .loanOfficer:
+                if !upperID.hasPrefix("LO") {
+                    employeeIDError = "Loan Officer Employee ID must start with 'LO'"
+                    return
+                }
+            case .bankManager:
+                if !upperID.hasPrefix("BM") {
+                    employeeIDError = "Bank Manager Employee ID must start with 'BM'"
+                    return
+                }
+            case .admin:
+                if !upperID.hasPrefix("AD") {
+                    employeeIDError = "Admin Employee ID must start with 'AD'"
+                    return
+                }
+            default:
+                break
             }
-        case .bankManager:
-            if !cleanedID.hasPrefix("BM") {
-                employeeIDError = "Bank Manager Employee ID must start with 'BM'"
-                return
-            }
-        case .admin:
-            if !cleanedID.hasPrefix("AD") {
-                employeeIDError = "Admin Employee ID must start with 'AD'"
-                return
-            }
-        default:
-            break
+            emailToAuthenticate = "\(upperID.lowercased())@lms.com"
         }
         
         isLoading = true
         
         Task {
-            // Bypass Firebase/Firestore authentication for branch staff roles using dummy credentials
-            try? await Task.sleep(nanoseconds: 800_000_000) // Simulated network latency for high premium feel
+            let result = await authManager.signIn(email: emailToAuthenticate, password: password)
+            self.isLoading = false
             
-            await MainActor.run {
+            if result.success {
+                // Map DB role to PortalRole & route
+                if let role = result.role {
+                    switch role {
+                    case "admin":
+                        appState.selectedRole = .admin
+                    case "loan_manager":
+                        appState.selectedRole = .bankManager
+                    case "loan_officer":
+                        appState.selectedRole = .loanOfficer
+                    default:
+                        appState.selectedRole = .customer
+                    }
+                }
+                
                 HapticsManager.triggerImpact(style: .heavy)
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                     appState.login()
                 }
-                self.isLoading = false
+            } else {
+                HapticsManager.triggerImpact(style: .light)
+                self.generalError = authManager.errorMessage ?? "Access Denied: Invalid credentials. Check your employee credentials."
             }
         }
     }
