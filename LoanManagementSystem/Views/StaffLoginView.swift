@@ -1,4 +1,6 @@
 import SwiftUI
+import FirebaseAuth
+import FirebaseFirestore
 
 struct StaffLoginView: View {
     @EnvironmentObject var appState: AppStateManager
@@ -207,19 +209,16 @@ struct StaffLoginView: View {
         
         isLoading = true
         
-        // Simulate secure API/LDAP authorization ping
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-            self.isLoading = false
+        Task {
+            // Bypass Firebase/Firestore authentication for branch staff roles using dummy credentials
+            try? await Task.sleep(nanoseconds: 800_000_000) // Simulated network latency for high premium feel
             
-            // Check mock passwords (universal 'password' for testing)
-            if self.password == "password" {
+            await MainActor.run {
                 HapticsManager.triggerImpact(style: .heavy)
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                     appState.login()
                 }
-            } else {
-                HapticsManager.triggerImpact(style: .light)
-                self.generalError = "Access Denied: Invalid credentials. Check your Employee ID and password."
+                self.isLoading = false
             }
         }
     }

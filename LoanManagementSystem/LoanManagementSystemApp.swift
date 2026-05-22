@@ -33,10 +33,6 @@ struct LoanManagementSystemApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(authManager)
-                .onAppear {
-                    // Start the auth state listener now that Firebase is configured.
-                    authManager.configure()
-                }
         }
     }
 }

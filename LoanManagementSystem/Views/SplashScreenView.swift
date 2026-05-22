@@ -41,6 +41,8 @@ struct SplashScreenView: View {
                         .foregroundColor(Color.AppTheme.textSecondary)
                 }
                 .opacity(opacity)
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isHeader)
                 
                 Spacer()
                 

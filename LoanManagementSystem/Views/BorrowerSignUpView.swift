@@ -9,6 +9,7 @@ struct BorrowerSignUpView: View {
 struct MockSignUpView: View {
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var appState: AppStateManager
+    @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel = SignUpViewModel()
     
     var body: some View {
@@ -116,7 +117,9 @@ struct MockSignUpView: View {
                         isLoading: viewModel.isLoading,
                         isDisabled: !viewModel.isFormValid,
                         action: {
-                            viewModel.signUp()
+                            Task {
+                                await viewModel.signUp(authManager: authManager)
+                            }
                         }
                     )
                     .padding(.top, 16)
@@ -146,7 +149,7 @@ struct MockSignUpView: View {
             }
         }
         .hideNavigationBar()
-        .onChange(of: viewModel.showSuccess) { success in
+        .onChange(of: viewModel.showSuccess) { _, success in
             if success {
                 appState.login()
             }
@@ -157,6 +160,7 @@ struct BorrowerSignUpView_Previews: PreviewProvider {
     static var previews: some View {
         BorrowerSignUpView()
             .environmentObject(AppStateManager())
+            .environmentObject(AuthManager())
     }
 }
 
@@ -164,6 +168,6 @@ struct MockSignUpView_Previews: PreviewProvider {
     static var previews: some View {
         MockSignUpView()
             .environmentObject(AppStateManager())
+            .environmentObject(AuthManager())
     }
 }
-

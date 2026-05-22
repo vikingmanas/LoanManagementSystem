@@ -164,126 +164,18 @@ public struct PortfolioCarouselView: View {
 // MARK: - Card 1: Total Loan Outstanding Card
 struct TotalLoanOutstandingCard: View {
     @ObservedObject var viewModel: DashboardViewModel
-    @State private var animatedFraction = 0.0
     
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Color(hex: "0A2540"), Color(hex: "3B3799")],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            
-            HStack(alignment: .center, spacing: 12) {
-                // Left Panel (Spacious layout)
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "indianrupeesign.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.white)
-                        
-                        Text("TOTAL LOAN OUTSTANDING")
-                            .font(.system(.caption2, design: .rounded))
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white.opacity(0.85))
-                    }
-                    
-                    Spacer()
-                    
-                    Text(viewModel.totalOutstanding.formattedAsINR())
-                        .font(.system(.title, design: .rounded))
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                    
-                    Text("across \(viewModel.loanAccounts.count) active loans")
-                        .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(.white.opacity(0.60))
-                    
-                    Spacer()
-                    
-                    // Approved & Repaid stats laid out side-by-side to prevent vertical squeezing
-                    HStack(spacing: 14) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Total Approved")
-                                .font(.system(.caption2, design: .rounded))
-                                .foregroundColor(.white.opacity(0.65))
-                            Text(viewModel.totalSanctioned.formattedAsINR())
-                                .font(.system(.caption2, design: .rounded))
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Amount Repaid")
-                                .font(.system(.caption2, design: .rounded))
-                                .foregroundColor(.white.opacity(0.65))
-                            Text(viewModel.totalRepaid.formattedAsINR())
-                                .font(.system(.caption2, design: .rounded))
-                                .fontWeight(.bold)
-                                .foregroundColor(Color(hex: "00C48C"))
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    // Repaid Percentage Pill
-                    Text("\(String(format: "%.1f", viewModel.repaidFraction * 100))% Repaid")
-                        .font(.system(.caption2, design: .rounded))
-                        .fontWeight(.bold)
-                        .foregroundColor(Color.brandNavy)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.white)
-                        .cornerRadius(6)
-                }
-                
-                Spacer()
-                
-                // Right Panel (40% width)
-                VStack(spacing: 8) {
-                    ZStack {
-                        // Track ring
-                        Circle()
-                            .stroke(Color.white.opacity(0.15), lineWidth: 10)
-                        
-                        // Progress arc
-                        Circle()
-                            .trim(from: 0, to: animatedFraction)
-                            .stroke(
-                                Color(hex: "00C48C"),
-                                style: StrokeStyle(lineWidth: 10, lineCap: .round)
-                            )
-                            .rotationEffect(.degrees(-90))
-                        
-                        // Center label
-                        VStack(spacing: 2) {
-                            Text("\(Int(viewModel.repaidFraction * 100))%")
-                                .font(.system(.title3, design: .rounded).bold())
-                                .foregroundColor(.white)
-                            Text("Repaid")
-                                .font(.system(.caption2, design: .rounded))
-                                .foregroundColor(.white.opacity(0.7))
-                        }
-                    }
-                    .frame(width: 90, height: 90)
-                    .onAppear {
-                        withAnimation(.easeOut(duration: 1.2)) {
-                            animatedFraction = viewModel.repaidFraction
-                        }
-                    }
-                    
-                    Text("₹\(Int(viewModel.totalOutstanding)) left")
-                        .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(.white.opacity(0.7))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
-            }
-            .padding(16)
-        }
+        LoanCard(
+            title: "Total Loan Outstanding",
+            subtitle: "Across \(viewModel.loanAccounts.count) active loans",
+            outstandingAmount: viewModel.totalOutstanding,
+            repaidFraction: viewModel.repaidFraction,
+            monthlyEMI: viewModel.loanAccounts.map(\.totalEMI).reduce(0, +),
+            nextEMIDateText: (viewModel.loanAccounts.map(\.nextEMIDate).sorted().first ?? Date()).formattedAsDDMMMYYYY(),
+            accent: Color(hex: "00C48C")
+        )
         .frame(width: UIScreen.main.bounds.width - 32, height: 190)
-        .cornerRadius(20)
-        .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 6)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Total loan outstanding \(viewModel.totalOutstanding.formattedAsINR()). \(Int(viewModel.repaidFraction*100)) percent repaid out of total approved \(viewModel.totalSanctioned.formattedAsINR()).")
     }

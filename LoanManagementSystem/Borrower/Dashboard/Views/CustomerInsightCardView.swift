@@ -9,7 +9,7 @@ struct CustomerInsightCardView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(profile.fullName)
-                        .font(.title3)
+                        .font(.headline)
                         .fontWeight(.bold)
                         .foregroundColor(.white)
                     
@@ -111,8 +111,13 @@ struct CustomerInsightCardView: View {
         }
         .background(
             RoundedRectangle(cornerRadius: 24)
-                .fill(Color(hex: "1C1C1E").opacity(0.8)) // Navy Background
-                .background(Material.ultraThinMaterial)
+                .fill(
+                    LinearGradient(
+                        colors: [Color(hex: "1A3A8F"), Color(hex: "4B67D6")],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .cornerRadius(24)
                 .overlay(
                     RoundedRectangle(cornerRadius: 24)
@@ -126,7 +131,7 @@ struct CustomerInsightCardView: View {
                         )
                 )
         )
-        .shadow(color: Color.black.opacity(0.2), radius: 15, x: 0, y: 10)
+        .shadow(color: Color.black.opacity(0.12), radius: 14, x: 0, y: 8)
     }
     
     private func maskedAccount(_ account: String) -> String {

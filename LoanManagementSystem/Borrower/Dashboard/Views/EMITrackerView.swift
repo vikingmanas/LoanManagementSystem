@@ -22,40 +22,26 @@ public struct EMITrackerView: View {
     }
     
     public var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header
-            HStack {
-                Text("EMI Tracker")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(Color(.label))
-                
-                Spacer()
-                
-                // Month Picker Button
-                Menu {
-                    Picker("Select Month", selection: $selectedMonth) {
-                        ForEach(months, id: \.self) { month in
-                            Text(month).tag(month)
-                        }
+        SectionContainer(title: "EMI Tracker", subtitle: "Upcoming dues and payment status") {
+            Menu {
+                Picker("Select Month", selection: $selectedMonth) {
+                    ForEach(months, id: \.self) { month in
+                        Text(month).tag(month)
                     }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(selectedMonth)
-                            .font(.system(.subheadline, design: .rounded))
-                            .fontWeight(.medium)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 8, weight: .bold))
-                    }
-                    .foregroundColor(.blue)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(10)
                 }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(selectedMonth)
+                        .font(.subheadline.weight(.medium))
+                    Image(systemName: "chevron.down")
+                        .font(.caption2.weight(.bold))
+                }
+                .foregroundColor(.brandNavy)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(Color(.secondarySystemBackground), in: Capsule())
             }
-            .padding(.horizontal, 20)
-            
+        } content: {
             if viewModel.isLoading {
                 // Skeleton loading state
                 LoadingTrackerSkeleton()
@@ -73,17 +59,15 @@ public struct EMITrackerView: View {
                         
                         KPITile(title: "Pending", value: "\(pendingCount)", icon: "clock.fill", color: .brandAmber, bg: .brandAmber.opacity(0.08))
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 1)
                     
                     // 4b. Highlighted Upcoming EMI Card
                     if let nextEMI = viewModel.nextEMI {
                         UpcomingEMICard(nextEMI: nextEMI, balance: viewModel.bankAccount.availableBalance, onPayTap: onPayTap)
-                            .padding(.horizontal, 20)
                             .transition(.scale.combined(with: .opacity))
                     } else {
                         // All Caught Up state!
                         AllCaughtUpCard()
-                            .padding(.horizontal, 20)
                             .transition(.scale.combined(with: .opacity))
                     }
                     
@@ -95,7 +79,7 @@ public struct EMITrackerView: View {
                                 .font(.system(.caption, design: .rounded))
                                 .fontWeight(.bold)
                                 .foregroundColor(Color(.secondaryLabel))
-                                .padding(.horizontal, 20)
+                                .padding(.horizontal, 1)
                             
                             VStack(spacing: 0) {
                                 ForEach(unpaidEMIs.prefix(3)) { emi in
@@ -113,7 +97,7 @@ public struct EMITrackerView: View {
                             }
                             .background(Color(.secondarySystemBackground))
                             .cornerRadius(16)
-                            .padding(.horizontal, 20)
+                            .padding(.horizontal, 1)
                             
                             if unpaidEMIs.count > 3 {
                                 Button {
@@ -206,6 +190,8 @@ struct UpcomingEMICard: View {
                     Text(nextEMI.amount.formattedAsINR())
                         .font(.system(.title2, design: .rounded))
                         .fontWeight(.bold)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
                         .foregroundColor(Color(.label))
                 }
                 
@@ -256,7 +242,7 @@ struct UpcomingEMICard: View {
                                 .stroke(Color.brandNavy, lineWidth: 1.5)
                         )
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(DashboardPressableStyle())
                 .alert("Reminder Scheduled", isPresented: $showingReminderAlert) {
                     Button("OK", role: .cancel) {}
                 } message: {
@@ -283,7 +269,7 @@ struct UpcomingEMICard: View {
                     .background(isSufficient ? Color.brandNavy : Color.gray)
                     .cornerRadius(14)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(DashboardPressableStyle())
                 .disabled(!isSufficient)
             }
         }

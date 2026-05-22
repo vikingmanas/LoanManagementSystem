@@ -8,55 +8,74 @@
 import SwiftUI
 import Combine
 import FirebaseAuth
+import FirebaseCore
+import FirebaseFirestore
 
 // MARK: - AuthManager
 /// Centralized authentication service wrapping Firebase Auth.
 /// Observes auth state changes for automatic session persistence and auto-login.
 @MainActor
 public final class AuthManager: ObservableObject {
-    
+
     // MARK: - Published State
-    
+
     /// Whether a user is currently authenticated.
     @Published public var isAuthenticated: Bool = false
-    
+
     /// The currently signed-in Firebase user, if any.
     @Published public var currentUser: FirebaseAuth.User? = nil
-    
+
     /// Controls the loading overlay in auth views.
     @Published public var isLoading: Bool = false
-    
+
     /// User-friendly error message shown in alerts/banners.
     @Published public var errorMessage: String? = nil
-    
+
     /// Indicates the auth state listener has resolved at least once (used for splash screen).
     @Published public var isAuthStateResolved: Bool = false
-    
+
     // MARK: - Private
-    
+
     /// Handle for the Firebase auth state listener.
     /// Marked nonisolated(unsafe) so deinit (which is nonisolated) can access it to remove the listener.
     private nonisolated(unsafe) var authStateListenerHandle: AuthStateDidChangeListenerHandle?
-    
+
     // MARK: - Init / Deinit
-    
+
     public init() {
         // Listener setup is deferred to configure() which must be called
         // after FirebaseApp.configure() in the App's init().
     }
-    
-    /// Call this once after FirebaseApp.configure() to start listening for auth state changes.
+
     public func configure() {
         guard authStateListenerHandle == nil else { return }
+        
+        // If Firebase is not configured (e.g. running in Xcode Previews),
+        // we avoid calling Auth.auth() to prevent a crash, and mark it resolved.
+        guard FirebaseApp.app() != nil else {
+            isAuthStateResolved = true
+            return
+        }
+        
         listenToAuthState()
+        
+        // Fallback timeout: If Firebase Auth takes too long to resolve (e.g. due to
+        // offline state, simulator keychain issues, or configuration delay), force
+        // resolve it after 5.5 seconds so the app doesn't hang on the splash screen.
+        Task {
+            try? await Task.sleep(nanoseconds: 5_500_000_000) // 5.5 seconds
+            if !self.isAuthStateResolved {
+                self.isAuthStateResolved = true
+            }
+        }
     }
-    
+
     nonisolated deinit {
         if let handle = authStateListenerHandle {
             Auth.auth().removeStateDidChangeListener(handle)
         }
     }
-    
+
     // MARK: - Auth State Listener
     /// Listens for Firebase auth state changes (login, logout, token refresh).
     /// This automatically handles session persistence — if the user was previously
@@ -71,56 +90,83 @@ public final class AuthManager: ObservableObject {
             }
         }
     }
-    
+
     // MARK: - Sign In
     /// Signs in an existing user with email and password.
     /// - Parameters:
     ///   - email: The user's email address.
     ///   - password: The user's password.
-    public func signIn(email: String, password: String) async {
+    @discardableResult
+    public func signIn(email: String, password: String) async -> Bool {
         clearError()
         isLoading = true
-        
+
         do {
             let result = try await Auth.auth().signIn(withEmail: email, password: password)
             self.currentUser = result.user
             self.isAuthenticated = true
+            isLoading = false
+            return true
         } catch {
             self.errorMessage = mapFirebaseError(error)
+            isLoading = false
+            return false
         }
-        
-        isLoading = false
     }
-    
+
     // MARK: - Sign Up
     /// Creates a new user account with email and password, then sets the display name.
     /// - Parameters:
     ///   - name: The user's display name (optional but recommended).
     ///   - email: The user's email address.
     ///   - password: The user's chosen password (min 6 characters, enforced by Firebase).
-    public func signUp(name: String, email: String, password: String) async {
+    @discardableResult
+    public func signUp(
+        name: String,
+        email: String,
+        password: String,
+        phone: String = "",
+        alternatePhone: String = "",
+        referralCode: String = ""
+    ) async -> Bool {
         clearError()
         isLoading = true
-        
+
         do {
             let result = try await Auth.auth().createUser(withEmail: email, password: password)
-            
+
             // Update the user's display name profile
             let changeRequest = result.user.createProfileChangeRequest()
             changeRequest.displayName = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : name.trimmingCharacters(in: .whitespacesAndNewlines)
             try await changeRequest.commitChanges()
-            
+
+            // Save user profile data to Firestore
+            let db = Firestore.firestore()
+            let userDoc: [String: Any] = [
+                "fullName": name,
+                "email": email.lowercased(),
+                "mobileNumber": phone,
+                "alternateMobileNumber": alternatePhone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : alternatePhone,
+                "referralCode": referralCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : referralCode,
+                "role": "borrower",
+                "createdAt": FieldValue.serverTimestamp(),
+                "updatedAt": FieldValue.serverTimestamp()
+            ]
+            try await db.collection("users").document(result.user.uid).setData(userDoc)
+
             // Refresh the local user reference to pick up the display name
             try await result.user.reload()
             self.currentUser = Auth.auth().currentUser
             self.isAuthenticated = true
+            isLoading = false
+            return true
         } catch {
             self.errorMessage = mapFirebaseError(error)
+            isLoading = false
+            return false
         }
-        
-        isLoading = false
     }
-    
+
     // MARK: - Sign Out
     /// Signs out the current user and resets state.
     public func signOut() {
@@ -132,7 +178,7 @@ public final class AuthManager: ObservableObject {
             self.errorMessage = mapFirebaseError(error)
         }
     }
-    
+
     // MARK: - Password Reset
     /// Sends a password reset email via Firebase.
     /// - Parameter email: The email address to send the reset link to.
@@ -141,7 +187,7 @@ public final class AuthManager: ObservableObject {
     public func resetPassword(email: String) async -> Bool {
         clearError()
         isLoading = true
-        
+
         do {
             try await Auth.auth().sendPasswordReset(withEmail: email)
             isLoading = false
@@ -152,14 +198,14 @@ public final class AuthManager: ObservableObject {
             return false
         }
     }
-    
+
     // MARK: - Helpers
-    
+
     /// Clears any existing error message.
     public func clearError() {
         errorMessage = nil
     }
-    
+
     /// Returns the user's display name initials (e.g., "Raj Kumar" → "RK").
     /// Falls back to the first character of the email, or "U" if nothing is available.
     public var userInitials: String {
@@ -176,7 +222,7 @@ public final class AuthManager: ObservableObject {
         }
         return "U"
     }
-    
+
     /// Returns the user's display name, or email, or "User" as fallback.
     public var userDisplayName: String {
         if let name = currentUser?.displayName,
@@ -185,14 +231,19 @@ public final class AuthManager: ObservableObject {
         }
         return currentUser?.email ?? "User"
     }
-    
+
+    /// Returns the signed-in user's email without leaking Firebase types into views.
+    public var userEmail: String? {
+        currentUser?.email
+    }
+
     // MARK: - Firebase Error Mapping
     /// Converts Firebase Auth errors into user-friendly messages.
     private func mapFirebaseError(_ error: Error) -> String {
         guard let authError = AuthErrorCode(_bridgedNSError: error as NSError) else {
             return error.localizedDescription
         }
-        
+
         switch authError.code {
         case .invalidEmail:
             return "Please enter a valid email address."
