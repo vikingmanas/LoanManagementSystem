@@ -99,14 +99,16 @@ public struct Transaction: Identifiable, Hashable, Sendable {
     public var amount: Double
     public var type: TransactionType
     public var referenceNo: String
+    public var bankAccountId: UUID?
 
-    public init(id: UUID = UUID(), title: String, date: Date, amount: Double, type: TransactionType, referenceNo: String) {
+    public init(id: UUID = UUID(), title: String, date: Date, amount: Double, type: TransactionType, referenceNo: String, bankAccountId: UUID? = nil) {
         self.id = id
         self.title = title
         self.date = date
         self.amount = amount
         self.type = type
         self.referenceNo = referenceNo
+        self.bankAccountId = bankAccountId
     }
 }
 

@@ -98,79 +98,79 @@ struct LoanCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.lg) {
-            // Header
-            HStack(alignment: .top, spacing: LMSSpacing.sm) {
-                VStack(alignment: .leading, spacing: LMSSpacing.xs) {
-                    Text(title)
-                        .font(LMSFont.headline)
-                        .foregroundStyle(.white)
-                    Text(subtitle)
-                        .font(LMSFont.caption)
-                        .foregroundStyle(.white.opacity(0.70))
-                }
-                Spacer()
-                Text("\(Int(clampedFraction * 100))% repaid")
-                    .font(LMSFont.caption.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(.white.opacity(0.16), in: Capsule())
-            }
-
-            // Outstanding amount
-            VStack(alignment: .leading, spacing: LMSSpacing.xs) {
-                Text("Outstanding")
-                    .font(LMSFont.caption)
-                    .foregroundStyle(.white.opacity(0.65))
-                Text(outstandingAmount.formattedAsINR())
-                    .font(.system(.title2, design: .rounded).weight(.bold))
-                    .monospacedDigit()
-                    .foregroundStyle(.white)
-                    .contentTransition(.numericText())
-            }
-
-            // Progress bar
-            ProgressView(value: clampedFraction)
-                .tint(accent)
-                .animation(.easeInOut(duration: 0.35), value: clampedFraction)
-
-            // Bottom metrics
-            HStack(spacing: LMSSpacing.lg) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Monthly EMI")
-                        .font(LMSFont.caption2)
-                        .foregroundStyle(.white.opacity(0.65))
-                    Text(monthlyEMI.formattedAsINR())
-                        .font(LMSFont.footnote.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .minimumScaleFactor(0.8)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 3) {
-                    Text("Next due")
-                        .font(LMSFont.caption2)
-                        .foregroundStyle(.white.opacity(0.65))
-                    Text(nextEMIDateText)
-                        .font(LMSFont.footnote.weight(.semibold))
-                        .foregroundStyle(.white)
-                }
-            }
-        }
-        .padding(LMSSpacing.xl)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(
+        ZStack {
             LinearGradient(
                 colors: [LMSColors.brandNavy, LMSColors.brandNavyLight],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-        )
+            
+            VStack(alignment: .leading, spacing: LMSSpacing.lg) {
+                // Header
+                HStack(alignment: .top, spacing: LMSSpacing.sm) {
+                    VStack(alignment: .leading, spacing: LMSSpacing.xs) {
+                        Text(title)
+                            .font(LMSFont.headline)
+                            .foregroundStyle(.white)
+                        Text(subtitle)
+                            .font(LMSFont.caption)
+                            .foregroundStyle(.white.opacity(0.70))
+                    }
+                    Spacer()
+                    Text("\(Int(clampedFraction * 100))% repaid")
+                        .font(LMSFont.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(.white.opacity(0.16), in: Capsule())
+                }
+
+                // Outstanding amount
+                VStack(alignment: .leading, spacing: LMSSpacing.xs) {
+                    Text("Outstanding")
+                        .font(LMSFont.caption)
+                        .foregroundStyle(.white.opacity(0.65))
+                    Text(outstandingAmount.formattedAsINR())
+                        .font(.system(.title2, design: .rounded).weight(.bold))
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                        .contentTransition(.numericText())
+                }
+
+                // Progress bar
+                ProgressView(value: clampedFraction)
+                    .tint(accent)
+                    .animation(.easeInOut(duration: 0.35), value: clampedFraction)
+
+                // Bottom metrics
+                HStack(spacing: LMSSpacing.lg) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Monthly EMI")
+                            .font(LMSFont.caption2)
+                            .foregroundStyle(.white.opacity(0.65))
+                        Text(monthlyEMI.formattedAsINR())
+                            .font(LMSFont.footnote.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .minimumScaleFactor(0.8)
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text("Next due")
+                            .font(LMSFont.caption2)
+                            .foregroundStyle(.white.opacity(0.65))
+                        Text(nextEMIDateText)
+                            .font(LMSFont.footnote.weight(.semibold))
+                            .foregroundStyle(.white)
+                    }
+                }
+            }
+            .padding(LMSSpacing.lg)
+        }
         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous)
                 .stroke(Color.white.opacity(0.12), lineWidth: 1)
         )
-        .shadow(color: LMSColors.brandNavy.opacity(0.28), radius: 18, x: 0, y: 10)
+        .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 6)
     }
 }

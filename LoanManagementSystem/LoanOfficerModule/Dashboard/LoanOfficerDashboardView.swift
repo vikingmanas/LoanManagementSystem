@@ -27,13 +27,6 @@ struct LoanOfficerDashboardView: View {
                     }
                 )
                 
-                // 2. PRIORITY ALERT STRIP (Horizontal Chips)
-                if !viewModel.isLoading {
-                    PriorityAlertStrip(viewModel: viewModel) { alertType in
-                        handleAlertDeepLink(alertType)
-                    }
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                }
                 
                 Divider()
             }
@@ -53,6 +46,19 @@ struct LoanOfficerDashboardView: View {
                                 onManagerRespondTapped: { app in
                                     HapticsManager.triggerImpact(style: .medium)
                                     selectedAppForReview = app
+                                },
+                                onQuickActionTapped: { actionIdentifier in
+                                    if actionIdentifier == "verify_docs" {
+                                        handleAlertDeepLink(.pendingDocuments)
+                                    } else if actionIdentifier == "reports" {
+                                        HapticsManager.triggerNotification(type: .success)
+                                        selectedAlertMessage = "Generating and downloading the Branch Monthly Performance Report..."
+                                        showingAlert = true
+                                    } else if actionIdentifier == "escalate" {
+                                        HapticsManager.triggerNotification(type: .warning)
+                                        selectedAlertMessage = "Operational Escalation submitted successfully to Branch Manager."
+                                        showingAlert = true
+                                    }
                                 }
                             )
                             .onChange(of: scrollTargetID) { _, newID in
