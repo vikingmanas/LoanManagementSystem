@@ -12,6 +12,8 @@ public enum DashboardRoute: Hashable {
 
 public struct DashboardView: View {
     @EnvironmentObject private var authManager: AuthManager
+    @EnvironmentObject private var appState: AppStateManager
+    @EnvironmentObject private var tabRouter: BorrowerTabRouter
     @StateObject private var viewModel = DashboardViewModel()
     @State private var navigationPath = NavigationPath()
     
@@ -34,14 +36,7 @@ public struct DashboardView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: LMSSpacing.sectionGap) {
 
-                    // 1. GREETING (below large navigation title)
-                    DashboardGreetingSection(
-                        viewModel: viewModel,
-                        authManager: authManager,
-                        onProfileTap: { showingProfileSheet = true }
-                    )
-                    
-                    // 1b. CUSTOMER INSIGHT & COMPLETION
+                    // 1. CUSTOMER INSIGHT & COMPLETION
                     if let profile = BorrowerProfileStore.shared.profile {
                         VStack(spacing: 12) {
                             if profile.profileCompletionPercentage < 100 {
@@ -94,30 +89,46 @@ public struct DashboardView: View {
                     }
                     
                 }
-                .padding(.top, 8)
-                .padding(.bottom, LMSSpacing.sectionGap)
+                .padding(.top, LMSSpacing.sm)
+                .padding(.bottom, LMSSpacing.xxl)
             }
             .lmsScreenBackground()
-            .navigationTitle("Dashboard")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    DashboardToolbarTitle(
+                        firstName: dashboardFirstName(
+                            profileStore: .shared,
+                            authManager: authManager
+                        ),
+                        customerID: BorrowerProfileStore.shared.profile?.id
+                    )
+                }
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button {
-                        // Notifications tab — surfaced via tab bar
-                    } label: {
-                        Image(systemName: "bell.badge.fill")
-                            .symbolRenderingMode(.multicolor)
+                    FintechToolbarButton(
+                        systemName: "bell.fill",
+                        showsBadge: LMSMockNotifications.unreadCount > 0
+                    ) {
+                        tabRouter.select(.notifications)
                     }
                     .accessibilityLabel("Notifications")
 
                     Button {
                         showingProfileSheet = true
                     } label: {
-                        DashboardAvatar(initials: dashboardInitials(viewModel: viewModel, authManager: authManager))
+                        DashboardAvatar(
+                            initials: dashboardInitials(
+                                viewModel: viewModel,
+                                authManager: authManager
+                            )
+                        )
                     }
+                    .buttonStyle(LMSPressableStyle())
                     .accessibilityLabel("Profile")
                 }
             }
+            .toolbarBackground(LMSColors.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .refreshable {
                 await viewModel.fetchDashboardData()
             }
@@ -158,6 +169,8 @@ public struct DashboardView: View {
             }
             .sheet(isPresented: $showingProfileSheet) {
                 ProfileView()
+                    .environmentObject(authManager)
+                    .environmentObject(appState)
             }
         }
     }
@@ -187,17 +200,24 @@ private func dashboardInitials(viewModel: DashboardViewModel, authManager: AuthM
     return authManager.userInitials
 }
 
-struct DashboardGreetingSection: View {
-    @ObservedObject var viewModel: DashboardViewModel
-    @ObservedObject var authManager: AuthManager
-    @ObservedObject var profileStore: BorrowerProfileStore = .shared
-    let onProfileTap: () -> Void
+struct DashboardToolbarTitle: View {
+    let firstName: String
+    var customerID: String?
 
     var body: some View {
-        LMSDashboardGreeting(
-            firstName: dashboardFirstName(profileStore: profileStore, authManager: authManager),
-            customerID: profileStore.profile?.id
-        )
+        VStack(alignment: .leading, spacing: LMSSpacing.xs) {
+            Text("Hello, \(firstName)")
+                .font(LMSFont.subheadline.weight(.semibold))
+                .foregroundStyle(LMSColors.textPrimary)
+            if let customerID {
+                Label(customerID, systemImage: "number")
+                    .font(LMSFont.caption.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .padding(.horizontal, LMSSpacing.sm)
+                    .padding(.vertical, 3)
+                    .background(LMSColors.brandNavy.opacity(0.10), in: Capsule())
+            }
+        }
     }
 }
 
@@ -208,8 +228,19 @@ struct DashboardAvatar: View {
         Text(initials)
             .font(LMSFont.caption.weight(.bold))
             .foregroundStyle(.white)
-            .frame(width: 32, height: 32)
-            .background(LMSColors.brandNavy, in: Circle())
+            .frame(width: 36, height: 36)
+            .background(
+                LinearGradient(
+                    colors: [LMSColors.brandNavy, LMSColors.brandNavyLight],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                in: Circle()
+            )
+            .overlay(
+                Circle()
+                    .stroke(Color.white.opacity(0.25), lineWidth: 1)
+            )
     }
 }
 
@@ -253,44 +284,50 @@ struct AccountHealthBanner: View {
 struct ProfileCompletionBanner: View {
     let percentage: Int
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 16) {
+            HStack(spacing: LMSSpacing.lg) {
                 ZStack {
                     Circle()
-                        .stroke(Color.white.opacity(0.3), lineWidth: 4)
+                        .stroke(Color.white.opacity(0.25), lineWidth: 4)
                     Circle()
                         .trim(from: 0, to: CGFloat(percentage) / 100.0)
                         .stroke(LMSColors.emerald, style: StrokeStyle(lineWidth: 4, lineCap: .round))
                         .rotationEffect(.degrees(-90))
-                    
                     Text("\(percentage)%")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.white)
+                        .font(LMSFont.caption2.weight(.bold))
+                        .foregroundStyle(.white)
                 }
-                .frame(width: 40, height: 40)
-                
-                VStack(alignment: .leading, spacing: 4) {
+                .frame(width: 44, height: 44)
+
+                VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                     Text("Complete Your Profile")
-                        .font(.system(.subheadline, weight: .bold))
-                        .foregroundColor(.white)
+                        .font(LMSFont.callout.weight(.bold))
+                        .foregroundStyle(.white)
                     Text("Unlock all features by finishing setup")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.8))
+                        .font(LMSFont.caption)
+                        .foregroundStyle(.white.opacity(0.8))
                 }
-                
-                Spacer()
-                
+
+                Spacer(minLength: 0)
+
                 Image(systemName: "chevron.right")
-                    .foregroundColor(.white.opacity(0.6))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.7))
             }
-            .padding()
-            .background(LMSColors.brandNavy)
-            .cornerRadius(16)
-            .padding(.horizontal, 20)
+            .padding(LMSSpacing.lg)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                LinearGradient(
+                    colors: [LMSColors.brandNavy, LMSColors.brandNavyLight],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+            )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(DashboardPressableStyle())
     }
 }
 
@@ -302,12 +339,9 @@ struct PortfolioCardsSection: View {
     
     var body: some View {
         SectionContainer(title: "My Portfolio", subtitle: "Loans, linked bank accounts, and protection cover") {
-            Button("See All") {
+            FintechSectionLink(title: "See All") {
                 showingPlaceholderAlert = true
             }
-            .font(.footnote.weight(.semibold))
-            .foregroundColor(LMSColors.brandNavy)
-            .frame(minWidth: 44, minHeight: 44)
             .alert("Coming Soon", isPresented: $showingPlaceholderAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
@@ -340,50 +374,20 @@ struct QuickActionChipsSection: View {
     let onForeclosure: () -> Void
     let onSupport: () -> Void
     let onTopUp: () -> Void
-    
+
     var body: some View {
-        SectionContainer(title: "Quick Actions", subtitle: "Most-used account actions") {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    QuickActionChip(icon: "arrow.up.circle.fill", title: "Pay EMI", action: onPay)
-                    QuickActionChip(icon: "doc.text.fill", title: "Statement", action: onStatement)
-                    QuickActionChip(icon: "waveform.path.ecg", title: "Foreclosure", action: onForeclosure)
-                    QuickActionChip(icon: "person.fill.questionmark", title: "Support", action: onSupport)
-                    QuickActionChip(icon: "plus.circle.fill", title: "Top-Up", action: onTopUp)
-                }
-                .padding(.horizontal, 1)
-            }
+        SectionContainer(title: "Quick Actions", subtitle: "Pay, transfer, and manage your loan") {
+            FintechQuickActionGrid(items: [
+                FintechQuickActionItem(icon: "indianrupeesign.circle.fill", title: "Pay EMI", tint: LMSColors.brandNavy, action: onPay),
+                FintechQuickActionItem(icon: "doc.text.fill", title: "Statement", tint: LMSColors.actionBlue, action: onStatement),
+                FintechQuickActionItem(icon: "chart.line.downtrend.xyaxis", title: "Foreclose", tint: LMSColors.teal, action: onForeclosure),
+                FintechQuickActionItem(icon: "headphones", title: "Support", tint: LMSColors.amber, action: onSupport),
+                FintechQuickActionItem(icon: "plus.circle.fill", title: "Top-Up", tint: LMSColors.emerald, action: onTopUp)
+            ])
         }
     }
 }
 
-struct QuickActionChip: View {
-    let icon: String
-    let title: String
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(LMSColors.brandNavy)
-                
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(LMSColors.textPrimary)
-            }
-            .padding(.horizontal, 14)
-            .frame(height: 42)
-            .background(LMSColors.surfaceElevated, in: Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(Color(.separator).opacity(0.25), lineWidth: 0.5)
-            )
-        }
-        .buttonStyle(DashboardPressableStyle())
-    }
-}
 
 // MARK: - Section 5: Transactions
 struct TransactionsHistorySection: View {
@@ -407,13 +411,14 @@ struct TransactionsHistorySection: View {
                     Image(systemName: "chevron.down")
                         .font(.caption2.weight(.bold))
                 }
-                .foregroundColor(LMSColors.brandNavy)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(LMSColors.surfaceElevated, in: Capsule())
+                .foregroundStyle(LMSColors.brandNavy)
+                .padding(.horizontal, LMSSpacing.md)
+                .padding(.vertical, LMSSpacing.sm)
+                .background(LMSColors.surface, in: Capsule())
+                .overlay(Capsule().stroke(LMSColors.separatorLight, lineWidth: 0.5))
             }
         } content: {
-            VStack(spacing: 12) {
+            VStack(spacing: LMSSpacing.md) {
                 VStack(spacing: 0) {
                     if viewModel.isLoading {
                         ForEach(0..<4) { _ in
@@ -441,17 +446,22 @@ struct TransactionsHistorySection: View {
                         }
                     }
                 }
-                .padding(.horizontal, 1)
                 .dashboardCardStyle()
-                
+
                 if !viewModel.isLoading && viewModel.transactions.count > 5 {
-                    Button("View All Transactions", action: onViewAll)
-                        .font(.footnote.weight(.semibold))
-                        .foregroundColor(LMSColors.brandNavy)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 42)
-                        .background(LMSColors.surfaceElevated, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .buttonStyle(DashboardPressableStyle())
+                    Button(action: onViewAll) {
+                        HStack {
+                            Spacer()
+                            Text("View All Transactions")
+                                .font(LMSFont.footnote.weight(.semibold))
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .bold))
+                            Spacer()
+                        }
+                        .foregroundStyle(LMSColors.actionBlue)
+                        .frame(height: 44)
+                    }
+                    .buttonStyle(DashboardPressableStyle())
                 }
             }
         }
@@ -466,12 +476,9 @@ struct GovernmentSchemesSection: View {
     
     var body: some View {
         SectionContainer(title: "Active Schemes & Offers", subtitle: "Government + partner-backed opportunities") {
-            Button("Explore All") {
+            FintechSectionLink(title: "Explore All") {
                 showingPlaceholderAlert = true
             }
-            .font(.footnote.weight(.semibold))
-            .foregroundColor(LMSColors.brandNavy)
-            .frame(minWidth: 44, minHeight: 44)
             .alert("Coming Soon", isPresented: $showingPlaceholderAlert) {
                 Button("OK", role: .cancel) { }
             } message: {

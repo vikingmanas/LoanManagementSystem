@@ -72,6 +72,8 @@ struct NotificationsTabView: View {
             .lmsScreenBackground()
             .navigationTitle("Notifications")
             .navigationBarTitleDisplayMode(.large)
+            .toolbarBackground(LMSColors.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {

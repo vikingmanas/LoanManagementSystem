@@ -1,41 +1,37 @@
 import SwiftUI
 
 struct MainTabView: View {
-    @State private var selectedTab: AppTab = .dashboard
+    @EnvironmentObject private var authManager: AuthManager
+    @EnvironmentObject private var appState: AppStateManager
+    @StateObject private var tabRouter = BorrowerTabRouter()
+
     private var notificationBadge: Int { LMSMockNotifications.unreadCount }
 
-    private enum AppTab: Hashable {
-        case dashboard, loans, profile, notifications
-    }
-
     var body: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: $tabRouter.selectedTab) {
             DashboardView()
                 .tabItem {
                     Label("Dashboard", systemImage: "house.fill")
                 }
-                .tag(AppTab.dashboard)
+                .tag(BorrowerTab.dashboard)
 
             LoanApplicationTabView()
                 .tabItem {
                     Label("Loans", systemImage: "doc.text.magnifyingglass")
                 }
-                .tag(AppTab.loans)
-
-            ProfileView()
-                .tabItem {
-                    Label("Profile", systemImage: "person.crop.circle.fill")
-                }
-                .tag(AppTab.profile)
+                .tag(BorrowerTab.loans)
 
             NotificationsTabView()
                 .tabItem {
                     Label("Notifications", systemImage: "bell.fill")
                 }
-                .tag(AppTab.notifications)
+                .tag(BorrowerTab.notifications)
                 .badge(notificationBadge)
         }
         .tint(LMSColors.brandNavy)
+        .toolbarBackground(LMSColors.surfaceElevated, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+        .environmentObject(tabRouter)
     }
 }
 

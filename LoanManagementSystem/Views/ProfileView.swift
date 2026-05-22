@@ -8,6 +8,7 @@ enum ProfileEditSheet: Identifiable {
 struct ProfileView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = BorrowerProfileViewModel()
     @State private var activeSheet: ProfileEditSheet?
 
@@ -146,6 +147,14 @@ struct ProfileView: View {
             .lmsScreenBackground()
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.large)
+            .toolbarBackground(LMSColors.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .font(LMSFont.callout.weight(.semibold))
+                }
+            }
         }
     }
 

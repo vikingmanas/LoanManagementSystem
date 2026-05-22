@@ -18,13 +18,13 @@ public struct TransactionRowView: View {
         HStack(spacing: LMSSpacing.md) {
             // Icon
             ZStack {
-                Circle()
+                RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
                     .fill(iconBackgroundColor.opacity(0.12))
                     .frame(width: 44, height: 44)
-                
                 Image(systemName: iconName)
-                    .font(.title3.weight(.semibold))
-                    .foregroundColor(iconColor)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(iconColor)
+                    .symbolRenderingMode(.hierarchical)
             }
             
             // Text Column
@@ -48,12 +48,7 @@ public struct TransactionRowView: View {
             Text(amountText)
                 .font(LMSFont.subheadline.weight(.bold))
                 .monospacedDigit()
-                .foregroundColor(amountColor)
-            
-            // Chevron
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundColor(LMSColors.textTertiary)
+                .foregroundStyle(amountColor)
         }
         .padding(.horizontal, LMSSpacing.lg)
         .padding(.vertical, LMSSpacing.md)

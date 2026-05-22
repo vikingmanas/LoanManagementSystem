@@ -15,15 +15,15 @@ struct LoanApplicationTabView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 20) {
-
-
+                VStack(spacing: LMSSpacing.lg) {
                     Picker("Loan Hub", selection: $viewModel.selectedSegment) {
                         ForEach(LoanHubSegment.allCases) { segment in
                             Text(segment.rawValue).tag(segment)
                         }
                     }
                     .pickerStyle(.segmented)
+                    .fintechSegmentedContainer()
+
                     LoanDashboardMetricsSection(metrics: viewModel.dashboardMetrics)
 
                     switch viewModel.selectedSegment {
@@ -67,12 +67,14 @@ struct LoanApplicationTabView: View {
                         )
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 28)
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+                .padding(.bottom, LMSSpacing.xxl)
             }
-            .background(LMSColors.background)
-            .navigationTitle("Loan Application")
+            .lmsScreenBackground()
+            .navigationTitle("Loans")
             .navigationBarTitleDisplayMode(.large)
+            .toolbarBackground(LMSColors.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {

@@ -52,18 +52,19 @@ struct SectionContainer<Content: View, Trailing: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
-            HStack(alignment: .firstTextBaseline, spacing: LMSSpacing.sm) {
+            HStack(alignment: .center, spacing: LMSSpacing.sm) {
                 VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                     Text(title)
                         .font(LMSFont.title3)
-                        .foregroundColor(LMSColors.textPrimary)
+                        .foregroundStyle(LMSColors.textPrimary)
                     if let subtitle {
                         Text(subtitle)
                             .font(LMSFont.footnote)
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                Spacer()
+                Spacer(minLength: LMSSpacing.sm)
                 trailing
             }
             content
@@ -165,6 +166,10 @@ struct LoanCard: View {
             )
         )
         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
-        .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 7)
+        .overlay(
+            RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous)
+                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+        )
+        .shadow(color: LMSColors.brandNavy.opacity(0.28), radius: 18, x: 0, y: 10)
     }
 }

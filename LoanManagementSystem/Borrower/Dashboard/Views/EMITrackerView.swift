@@ -29,30 +29,25 @@ public struct EMITrackerView: View {
                     Image(systemName: "chevron.down")
                         .font(LMSFont.caption2.weight(.bold))
                 }
-                .foregroundColor(LMSColors.brandNavy)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(LMSColors.surfaceElevated, in: Capsule())
+                .foregroundStyle(LMSColors.brandNavy)
+                .padding(.horizontal, LMSSpacing.md)
+                .padding(.vertical, LMSSpacing.sm)
+                .background(LMSColors.surface, in: Capsule())
+                .overlay(Capsule().stroke(LMSColors.separatorLight, lineWidth: 0.5))
             }
         } content: {
             if viewModel.isLoading {
-                // Skeleton loading state
                 LoadingTrackerSkeleton()
             } else {
                 VStack(spacing: LMSSpacing.lg) {
-                    // 4a. KPI Status Bar
                     HStack(spacing: LMSSpacing.sm) {
-                        KPITile(title: "Total EMIs", value: "24", icon: "square.grid.2x2", color: LMSColors.textSecondary, bg: LMSColors.surfaceElevated)
-                        
-                        // Dynamically compute count of paid vs pending from the active model list
-                        let paidCount = 24 - viewModel.pendingEMIs.filter({ $0.status != .paid }).count
-                        let pendingCount = viewModel.pendingEMIs.filter({ $0.status != .paid }).count
-                        
-                        KPITile(title: "Paid", value: "\(paidCount)", icon: "checkmark.circle.fill", color: LMSColors.emerald, bg: LMSColors.emerald.opacity(0.08))
-                        
-                        KPITile(title: "Pending", value: "\(pendingCount)", icon: "clock.fill", color: LMSColors.amber, bg: LMSColors.amber.opacity(0.08))
+                        let paidCount = 24 - viewModel.pendingEMIs.filter { $0.status != .paid }.count
+                        let pendingCount = viewModel.pendingEMIs.filter { $0.status != .paid }.count
+
+                        FintechStatPill(title: "Total", value: "24", icon: "square.grid.2x2", tint: LMSColors.textSecondary)
+                        FintechStatPill(title: "Paid", value: "\(paidCount)", icon: "checkmark.circle.fill", tint: LMSColors.emerald)
+                        FintechStatPill(title: "Pending", value: "\(pendingCount)", icon: "clock.fill", tint: LMSColors.amber)
                     }
-                    .padding(.horizontal, 1)
                     
                     // 4b. Highlighted Upcoming EMI Card
                     if let nextEMI = viewModel.nextEMI {
@@ -87,9 +82,11 @@ public struct EMITrackerView: View {
                                     }
                                 }
                             }
-                            .background(LMSColors.surfaceElevated)
-                            .cornerRadius(LMSRadius.lg)
-                            .padding(.horizontal, 1)
+                            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                                    .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+                            )
                             
                             if unpaidEMIs.count > 3 {
                                 Button {
@@ -109,56 +106,25 @@ public struct EMITrackerView: View {
                         }
                     }
                 }
+                .padding(LMSSpacing.lg)
+                .lmsCard(radius: LMSRadius.xl)
             }
         }
     }
 }
 
-// MARK: - KPI Tile view
-struct KPITile: View {
-    let title: String
-    let value: String
-    let icon: String
-    let color: Color
-    let bg: Color
-    
-    var body: some View {
-        HStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .fill(color.opacity(0.1))
-                    .frame(width: 32, height: 32)
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(color)
-            }
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(value)
-                    .font(LMSFont.callout.weight(.bold))
-                    .foregroundColor(LMSColors.textPrimary)
-                Text(title)
-                    .font(LMSFont.caption2)
-                    .foregroundColor(LMSColors.textSecondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            Spacer()
-        }
-        .padding(10)
-        .background(bg)
-        .cornerRadius(LMSRadius.lg)
-    }
-}
-
-// MARK: - Upcoming EMI Highlighted Card
 struct UpcomingEMICard: View {
     let nextEMI: EMIRecord
     let balance: Double
     let onPayTap: () -> Void
     @State private var showingReminderAlert = false
     
+    private var accentColor: Color {
+        nextEMI.status == .overdue ? LMSColors.coral : LMSColors.amber
+    }
+
     var body: some View {
+        FintechHighlightCard(accent: accentColor) {
         VStack(alignment: .leading, spacing: LMSSpacing.lg) {
             HStack(alignment: .top, spacing: LMSSpacing.sm) {
                 // Calendar icon with clock badge
@@ -247,32 +213,30 @@ struct UpcomingEMICard: View {
                         Text(isSufficient ? "Pay Now" : "Insufficient Funds")
                             .font(LMSFont.callout.weight(.semibold))
                     }
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(isSufficient ? LMSColors.brandNavy : Color.gray)
-                    .cornerRadius(LMSRadius.md)
+                    .background {
+                        if isSufficient {
+                            RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [LMSColors.brandNavy, LMSColors.brandNavyLight],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                        } else {
+                            RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
+                                .fill(Color.gray.opacity(0.45))
+                        }
+                    }
                 }
                 .buttonStyle(DashboardPressableStyle())
                 .disabled(!isSufficient)
             }
         }
-        .padding(LMSSpacing.xl)
-        .background(
-            ZStack {
-                LMSColors.surface
-                
-                // Left side accent border
-                HStack {
-                    Rectangle()
-                        .fill(nextEMI.status == .overdue ? LMSColors.coral : LMSColors.amber)
-                        .frame(width: 6)
-                    Spacer()
-                }
-            }
-        )
-        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
-        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
+        }
     }
 }
 
@@ -295,8 +259,7 @@ struct AllCaughtUpCard: View {
         }
         .padding(LMSSpacing.xxl)
         .frame(maxWidth: .infinity)
-        .background(LMSColors.surfaceElevated)
-        .cornerRadius(LMSRadius.card)
+        .lmsCard(radius: LMSRadius.lg)
     }
 }
 

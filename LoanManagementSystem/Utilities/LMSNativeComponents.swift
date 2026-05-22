@@ -21,8 +21,19 @@ public enum LMSAppearance {
         UINavigationBar.appearance().tintColor = UIColor(LMSColors.brandNavy)
 
         let tab = UITabBarAppearance()
-        tab.configureWithDefaultBackground()
+        tab.configureWithOpaqueBackground()
         tab.backgroundColor = UIColor(LMSColors.surfaceElevated)
+        tab.shadowColor = UIColor.black.withAlphaComponent(0.06)
+        tab.stackedLayoutAppearance.normal.iconColor = UIColor(LMSColors.textTertiary)
+        tab.stackedLayoutAppearance.normal.titleTextAttributes = [
+            .foregroundColor: UIColor(LMSColors.textTertiary),
+            .font: UIFont.systemFont(ofSize: 10, weight: .medium)
+        ]
+        tab.stackedLayoutAppearance.selected.iconColor = UIColor(LMSColors.brandNavy)
+        tab.stackedLayoutAppearance.selected.titleTextAttributes = [
+            .foregroundColor: UIColor(LMSColors.brandNavy),
+            .font: UIFont.systemFont(ofSize: 10, weight: .semibold)
+        ]
         UITabBar.appearance().standardAppearance = tab
         UITabBar.appearance().scrollEdgeAppearance = tab
         UITabBar.appearance().tintColor = UIColor(LMSColors.brandNavy)
