@@ -42,6 +42,20 @@ public final class DashboardViewModel: ObservableObject {
         return max(0, nextEMI.amount - bankAccount.availableBalance)
     }
     
+    public var isAccountHealthy: Bool {
+        !isLowBalance && !pendingEMIs.contains { $0.status == .overdue }
+    }
+    
+    public var healthStatusMessage: String {
+        if pendingEMIs.contains(where: { $0.status == .overdue }) {
+            return "You have overdue payments. Please settle immediately."
+        }
+        if isLowBalance {
+            return "Low balance. Top up to ensure next EMI payment."
+        }
+        return "All your loan accounts are in good standing."
+    }
+    
     public func isLowBalance(_ account: BankAccount) -> Bool {
         if account.id == MockData.uuid3 { // Axis Bank
             return account.availableBalance < 9200.0

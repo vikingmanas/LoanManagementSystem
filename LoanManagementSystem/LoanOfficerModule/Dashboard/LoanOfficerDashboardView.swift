@@ -1,458 +1,659 @@
 import SwiftUI
+import UIKit
+
+struct VisualEffectView: UIViewRepresentable {
+    var effect: UIVisualEffect?
+
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        UIVisualEffectView(effect: effect)
+    }
+
+    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
+        uiView.effect = effect
+    }
+}
 
 struct LoanOfficerDashboardView: View {
-    typealias LoanApplication = OfficerLoanApplication
     @StateObject private var viewModel = LoanOfficerDashboardViewModel()
-    @State private var scrollTargetID: String? = nil
-    
-    // Notifications toggle
-    @State private var showNotificationSheet = false
-    @State private var showingAlert = false
-    @State private var selectedAlertMessage: String? = nil
-    @State private var selectedAppForReview: LoanApplication? = nil
-    @State private var showProfileSheet = false
-    
+    @State private var selectedTab: OfficerWorkspaceTab = .dashboard
+    @State private var showingNotifications = false
+    @State private var showingProfile = false
+
     var body: some View {
-        VStack(spacing: 0) {
-            
-            // 1. CUSTOM TOP NAVIGATION BAR (Fixed) - Hidden for Tab 3 (Registry) to allow its own native collapsible header
-            if viewModel.selectedTab != 3 {
-                CustomTopNavigationBar(
+        TabView(selection: $selectedTab) {
+            NavigationStack {
+                LoanOfficerTodayView(
                     viewModel: viewModel,
-                    onNotificationPressed: {
-                        showNotificationSheet = true
-                    },
-                    onProfilePressed: {
-                        showProfileSheet = true
-                    }
+                    selectedTab: $selectedTab,
+                    onNotifications: { showingNotifications = true },
+                    onProfile: { showingProfile = true }
                 )
-                
-                
-                Divider()
             }
-            
-            // 3. CUSTOM TRANS-TAB CONTAINER WITH FLOATING TAB BAR
-            ZStack(alignment: .bottom) {
-                // Tab Content Switcher
-                ZStack {
-                    switch viewModel.selectedTab {
-                    case 0:
-                        ScrollViewReader { proxy in
-                            DashboardTabView(
-                                viewModel: viewModel,
-                                onDocumentSeeAllTapped: {
-                                    handleAlertDeepLink(.pendingDocuments)
-                                },
-                                onManagerRespondTapped: { app in
-                                    HapticsManager.triggerImpact(style: .medium)
-                                    selectedAppForReview = app
-                                },
-                                onQuickActionTapped: { actionIdentifier in
-                                    if actionIdentifier == "verify_docs" {
-                                        handleAlertDeepLink(.pendingDocuments)
-                                    } else if actionIdentifier == "reports" {
-                                        HapticsManager.triggerNotification(type: .success)
-                                        selectedAlertMessage = "Generating and downloading the Branch Monthly Performance Report..."
-                                        showingAlert = true
-                                    } else if actionIdentifier == "escalate" {
-                                        HapticsManager.triggerNotification(type: .warning)
-                                        selectedAlertMessage = "Operational Escalation submitted successfully to Branch Manager."
-                                        showingAlert = true
-                                    }
-                                }
-                            )
-                            .onChange(of: scrollTargetID) { _, newID in
-                                if let newID = newID {
-                                    withAnimation(.spring()) {
-                                        proxy.scrollTo(newID, anchor: .top)
-                                    }
-                                    scrollTargetID = nil
-                                }
-                            }
-                        }
-                        .background(AppTheme.background)
-                        
-                    case 1:
-                        ChatsFeedTabView(viewModel: viewModel)
-                            .background(AppTheme.background)
-                            
-                    case 2:
-                        QuickConsoleTabView(viewModel: viewModel) { actionIdentifier in
-                            viewModel.performQuickAction(actionIdentifier)
-                            selectedAlertMessage = "Routing to module utility: \(actionIdentifier.replacingOccurrences(of: "_", with: " ").capitalized)..."
-                            showingAlert = true
-                        }
-                        .background(AppTheme.background)
-                        
-                    case 3:
-                        LoanHistoryTabView(viewModel: viewModel)
-                            .background(AppTheme.background)
-                            
-                    default:
-                        EmptyView()
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .safeAreaInset(edge: .bottom) {
-                    Spacer().frame(height: 80) // Prevents active scrolling content from being clipped by tab bar
-                }
-                
-                // Floating iOS translucent tab bar capsule
-                CustomFloatingTabBar(selectedTab: $viewModel.selectedTab)
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 12)
+            .tabItem { Label("Dashboard", systemImage: "square.grid.2x2") }
+            .tag(OfficerWorkspaceTab.dashboard)
+
+            NavigationStack {
+                LoanOfficerReviewQueueView(viewModel: viewModel)
             }
-            .edgesIgnoringSafeArea(.bottom)
+            .tabItem { Label("Review", systemImage: "checklist.checked") }
+            .badge(viewModel.pendingDocumentCount > 0 ? viewModel.pendingDocumentCount : 0)
+            .tag(OfficerWorkspaceTab.review)
+
+            ChatsFeedTabView(viewModel: viewModel)
+                .tabItem { Label("Messages", systemImage: "message") }
+                .badge(viewModel.unreadActivityCount > 0 ? viewModel.unreadActivityCount : 0)
+                .tag(OfficerWorkspaceTab.messages)
+
+            NavigationStack {
+                LoanHistoryTabView(viewModel: viewModel)
+            }
+            .tabItem { Label("Registry", systemImage: "tray.full") }
+            .tag(OfficerWorkspaceTab.registry)
         }
+        .tint(LMSColors.brandNavy)
         .task {
-            // Simulated pull on load
             await viewModel.fetchDashboardData()
         }
-        .sheet(isPresented: $showNotificationSheet) {
+        .sheet(isPresented: $showingNotifications) {
             NotificationsFeedSheet(viewModel: viewModel)
         }
-        .sheet(item: $selectedAppForReview) { app in
-            LoanApplicationReviewDetailView(applicationId: app.applicationId, viewModel: viewModel)
-        }
-        .sheet(isPresented: $showProfileSheet) {
+        .sheet(isPresented: $showingProfile) {
             LoanOfficerProfileView()
-        }
-        .alert(isPresented: $showingAlert) {
-            Alert(
-                title: Text("Module Notification"),
-                message: Text(selectedAlertMessage ?? ""),
-                dismissButton: .default(Text("Continue")) {
-                    selectedAlertMessage = nil
-                }
-            )
-        }
-    }
-    
-    // Deep Link router to native bottom tabs
-    private func handleAlertDeepLink(_ type: AlertChipType) {
-        HapticsManager.triggerImpact(style: .light)
-        switch type {
-        case .overdueEMI:
-            // EMI Alerts -> Switch to Registry (Tab 4), filter by On Hold
-            viewModel.historyFilter = .onHold
-            viewModel.historySearchQuery = ""
-            withAnimation {
-                viewModel.selectedTab = 3
-            }
-            
-        case .pendingDocuments:
-            // Document Queue -> Switch to Overview (Tab 1), scroll to doc queue
-            withAnimation {
-                viewModel.selectedTab = 0
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                scrollTargetID = "doc_queue"
-            }
-            
-        case .borrowerQueries:
-            // Borrower Queries -> Switch directly to Chats & Feed (Tab 2)
-            withAnimation {
-                viewModel.selectedTab = 1
-            }
-            
-        case .readyForManager:
-            // Ready for Manager -> Switch to Overview (Tab 1), scroll to manager queue
-            withAnimation {
-                viewModel.selectedTab = 0
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                scrollTargetID = "manager_loans"
-            }
         }
     }
 }
 
-// MARK: - Navigation Subcomponents
+enum OfficerWorkspaceTab: Hashable {
+    case dashboard
+    case review
+    case messages
+    case registry
+}
 
-struct CustomTopNavigationBar: View {
+// MARK: - Dashboard Main View
+
+private struct LoanOfficerTodayView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
-    var onNotificationPressed: () -> Void
-    var onProfilePressed: () -> Void
-    
+    @Binding var selectedTab: OfficerWorkspaceTab
+    var onNotifications: () -> Void
+    var onProfile: () -> Void
+
+    @State private var selectedMetricStatus: OfficerApplicationStatus?
+    @State private var selectedApplication: OfficerLoanApplication?
+    @State private var showingReportConfirmation = false
+    @State private var showingEscalationSheet = false
+
+    private var nextApplication: OfficerLoanApplication? {
+        viewModel.applications.first { app in
+            app.status == .pending || app.status == .underReview || app.status == .documentsPending || app.status == .documentsRejected
+        }
+    }
+
     var body: some View {
-        HStack(alignment: .center) {
-            // Left Profile Summary
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Good Morning, \(LoanOfficerMockData.officerName) 👋")
-                    .font(.system(.title3, design: .rounded).bold())
-                    .foregroundStyle(LMSColors.textPrimary)
-                
-                Text("Loan Officer · Branch: \(LoanOfficerMockData.branchName)")
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(LMSColors.textSecondary)
+        ScrollView {
+            LazyVStack(spacing: LMSSpacing.lg) {
+                workloadStrip
+                nextBestActionCard
+                reviewSnapshot
+                escalationsSection
+                toolsGrid
             }
-            
-            Spacer()
-            
-            // Right Control Stack
-            HStack(spacing: 12) {
-                // Notifications icon
-                Button(action: {
-                    HapticsManager.triggerImpact(style: .light)
-                    onNotificationPressed()
-                }) {
-                    ZStack(alignment: .topTrailing) {
-                        Image(systemName: "bell.badge.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(LMSColors.textPrimary)
-                            .symbolRenderingMode(.multicolor)
-                        
-                        if viewModel.unreadActivityCount > 0 {
-                            Text("\(viewModel.unreadActivityCount)")
-                                .font(.system(size: 8, design: .rounded).bold())
-                                .foregroundStyle(.white)
-                                .frame(width: 12, height: 12)
-                                .background(AppTheme.criticalRed)
-                                .clipShape(Circle())
-                                .offset(x: 4, y: -4)
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
+            .padding(.bottom, LMSSpacing.xxl)
+        }
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("Dashboard")
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button(action: onNotifications) {
+                    Image(systemName: viewModel.unreadActivityCount > 0 ? "bell.badge" : "bell")
+                }
+                .accessibilityLabel("Notifications")
+
+                Button(action: onProfile) {
+                    Text("AK")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 30, height: 30)
+                        .background(LMSColors.brandNavy.gradient, in: Circle())
+                }
+                .accessibilityLabel("Loan officer profile")
+            }
+        }
+        .refreshable {
+            await viewModel.fetchDashboardData()
+        }
+        .sheet(item: $selectedApplication) { app in
+            LoanApplicationReviewDetailView(applicationId: app.applicationId, viewModel: viewModel)
+        }
+        .alert("Report queued", isPresented: $showingReportConfirmation) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("The monthly branch performance report is being prepared.")
+        }
+        .sheet(isPresented: $showingEscalationSheet) {
+            OfficerEscalationSheet()
+        }
+    }
+
+    // MARK: - Workload KPI Strip
+
+    private var workloadStrip: some View {
+        HStack(spacing: 10) {
+            OfficerMetricPill(title: "Pending", value: "\(viewModel.pendingCount)", icon: "clock", tint: .orange) {
+                HapticsManager.triggerImpact(style: .light)
+                routeRegistry(.pending)
+            }
+            OfficerMetricPill(title: "Docs", value: "\(viewModel.pendingDocumentCount)", icon: "doc.badge.clock", tint: .blue) {
+                HapticsManager.triggerImpact(style: .light)
+                selectedTab = .review
+            }
+            OfficerMetricPill(title: "Ready", value: "\(viewModel.sentToManagerApps.count)", icon: "paperplane", tint: .green) {
+                HapticsManager.triggerImpact(style: .light)
+                selectedTab = .registry
+            }
+        }
+    }
+
+    // MARK: - Next Best Action
+
+    private var nextBestActionCard: some View {
+        NativeGlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Next best action", systemImage: "sparkles")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+
+                if let app = nextApplication {
+                    HStack(alignment: .center, spacing: 12) {
+                        OfficerAvatar(name: app.borrowerName, tint: app.loanType.themeColor)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(app.borrowerName)
+                                .font(.body.weight(.semibold))
+                            Text("\(app.loanType.rawValue) · \(CurrencyFormatter.shared.format(app.requestedAmount))")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Text(app.status.rawValue)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(app.status.themeColor)
+                        }
+
+                        Spacer()
+
+                        Button {
+                            selectedApplication = app
+                        } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Open application")
+                    }
+                } else {
+                    ContentUnavailableView("No urgent case", systemImage: "checkmark.seal", description: Text("All priority work is clear."))
+                        .frame(minHeight: 100)
+                }
+            }
+        }
+    }
+
+    // MARK: - Review Snapshot
+
+    private var reviewSnapshot: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionTitle("Review queue", subtitle: "Newest uploads and re-uploads")
+
+            NativeGlassCard(padding: 0) {
+                VStack(spacing: 0) {
+                    ForEach(Array(viewModel.documentQueueList.prefix(4).enumerated()), id: \.element.id) { index, item in
+                        NavigationLink {
+                            DocumentReviewDetailView(item: item, viewModel: viewModel)
+                        } label: {
+                            OfficerDocumentRow(item: item)
+                                .padding(.horizontal, LMSSpacing.lg)
+                        }
+                        .buttonStyle(.plain)
+
+                        if index < min(viewModel.documentQueueList.count, 4) - 1 {
+                            Divider().padding(.leading, 76)
+                        }
+                    }
+
+                    Divider()
+
+                    Button {
+                        selectedTab = .review
+                    } label: {
+                        HStack {
+                            Text("Open full review queue")
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Image(systemName: "arrow.right")
+                                .font(.caption.weight(.bold))
+                        }
+                        .foregroundStyle(LMSColors.actionBlue)
+                        .padding(LMSSpacing.lg)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    // MARK: - Escalations (formerly Manager Follow-Up)
+
+    private var escalationsSection: some View {
+        let needsClarification = viewModel.sentToManagerApps.filter { $0.managerStatus == .needsClarification }
+
+        return VStack(alignment: .leading, spacing: 10) {
+            SectionTitle("Escalations", subtitle: "Manager clarifications & approval status")
+
+            NativeGlassCard(padding: 0) {
+                if needsClarification.isEmpty {
+                    HStack(spacing: 12) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                            .font(.title3)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("No escalations pending")
+                                .font(.subheadline.weight(.semibold))
+                            Text("All submitted cases are awaiting manager action.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding(LMSSpacing.lg)
+                } else {
+                    ForEach(Array(needsClarification.enumerated()), id: \.element.id) { index, app in
+                        Button {
+                            selectedApplication = app
+                        } label: {
+                            OfficerApplicationCompactRow(app: app, accessory: "Respond")
+                        }
+                        .buttonStyle(.plain)
+
+                        if index < needsClarification.count - 1 {
+                            Divider().padding(.leading, 72)
                         }
                     }
                 }
-                .accessibilityLabel("System notifications. \(viewModel.unreadActivityCount) unread alerts.")
-                
-                // Avatar badge Button to open Profile Sheet
-                Button(action: {
-                    HapticsManager.triggerImpact(style: .medium)
-                    onProfilePressed()
-                }) {
-                    ZStack {
-                        Circle()
-                            .fill(AppTheme.brandNavy)
-                            .frame(width: 32, height: 32)
-                        
-                        Text("AK")
-                            .font(.system(.caption, design: .rounded).bold())
-                            .foregroundStyle(.white)
-                    }
-                }
-                .accessibilityLabel("Profile: Arjun Kashyap.")
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 12)
-        .background(LMSColors.surface)
+    }
+
+    // MARK: - Tools Grid
+
+    private var toolsGrid: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionTitle("Officer tools", subtitle: "Quick utilities")
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                OfficerToolCard(title: "Review docs", icon: "doc.text.magnifyingglass", tint: .blue) { selectedTab = .review }
+                OfficerToolCard(title: "Messages", icon: "message.badge", tint: .teal) { selectedTab = .messages }
+                OfficerToolCard(title: "Reports", icon: "chart.bar.xaxis", tint: .purple) { showingReportConfirmation = true }
+                OfficerToolCard(title: "Escalate", icon: "arrow.up.forward.circle", tint: .red) { showingEscalationSheet = true }
+            }
+        }
+    }
+
+    private func routeRegistry(_ status: OfficerApplicationStatus?) {
+        viewModel.historyFilter = status
+        selectedTab = .registry
     }
 }
 
-// MARK: - Priority Alerts Bar
-enum AlertChipType: CaseIterable {
-    case overdueEMI
-    case pendingDocuments
-    case borrowerQueries
-    case readyForManager
-    
-    var symbol: String {
-        switch self {
-        case .overdueEMI: return "exclamationmark.triangle.fill"
-        case .pendingDocuments: return "clock.badge.exclamationmark"
-        case .borrowerQueries: return "person.crop.circle.badge.questionmark"
-        case .readyForManager: return "checkmark.seal.fill"
-        }
-    }
-    
-    var color: Color {
-        switch self {
-        case .overdueEMI: return AppTheme.criticalRed
-        case .pendingDocuments: return AppTheme.warningAmber
-        case .borrowerQueries: return AppTheme.actionBlue
-        case .readyForManager: return AppTheme.successGreen
-        }
-    }
-    
-    func title(count: Int) -> String {
-        switch self {
-        case .overdueEMI: return "\(count) Overdue EMI Alerts"
-        case .pendingDocuments: return "\(count) Documents Pending"
-        case .borrowerQueries: return "\(count) Borrower Queries"
-        case .readyForManager: return "\(count) Ready for Manager"
-        }
-    }
-}
+// MARK: - Review Queue
 
-struct PriorityAlertStrip: View {
+private struct LoanOfficerReviewQueueView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
-    var onChipPressed: (AlertChipType) -> Void
-    
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                // Only render chips that have counts > 0
-                
-                // 🔴 Overdue EMI
-                let emiCount = 4
-                AlertChip(type: .overdueEMI, count: emiCount, title: "4 Overdue EMI Alerts") {
-                    onChipPressed(.overdueEMI)
-                }
-                
-                // 🟡 Pending Documents
-                let docsCount = viewModel.pendingDocumentCount
-                if docsCount > 0 {
-                    AlertChip(type: .pendingDocuments, count: docsCount, title: "\(docsCount) Documents Pending") {
-                        onChipPressed(.pendingDocuments)
-                    }
-                }
-                
-                // 🔵 Borrower Queries
-                let queriesCount = viewModel.activityFeed.filter { $0.eventType == .queryRaised && !$0.isRead }.count
-                if queriesCount > 0 {
-                    AlertChip(type: .borrowerQueries, count: queriesCount, title: "\(queriesCount) Borrower Queries") {
-                        onChipPressed(.borrowerQueries)
-                    }
-                }
-                
-                // 🟢 Ready for Manager
-                let managerReadyCount = 2
-                AlertChip(type: .readyForManager, count: managerReadyCount, title: "2 Ready for Manager") {
-                    onChipPressed(.readyForManager)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+    @State private var query = ""
+    @State private var selectedStatus: OfficerDocumentStatus?
+
+    private var filteredItems: [DocumentQueueItem] {
+        viewModel.documentQueueList.filter { item in
+            let matchesQuery = query.isEmpty || item.borrowerName.localizedCaseInsensitiveContains(query) || item.applicationId.localizedCaseInsensitiveContains(query) || item.docType.rawValue.localizedCaseInsensitiveContains(query)
+            let matchesStatus = selectedStatus == nil || item.status == selectedStatus
+            return matchesQuery && matchesStatus
         }
-        .background(LMSColors.surface)
+    }
+
+    var body: some View {
+        List {
+            Section {
+                Picker("Status", selection: $selectedStatus) {
+                    Text("All").tag(Optional<OfficerDocumentStatus>.none)
+                    Text("New").tag(Optional(OfficerDocumentStatus.uploaded))
+                    Text("Re-upload").tag(Optional(OfficerDocumentStatus.reUploaded))
+                    Text("Missing").tag(Optional(OfficerDocumentStatus.pending))
+                }
+                .pickerStyle(.segmented)
+            }
+            .listRowBackground(Color.clear)
+
+            Section {
+                if filteredItems.isEmpty {
+                    ContentUnavailableView("No documents", systemImage: "doc.text.magnifyingglass", description: Text("Try a different search or status."))
+                } else {
+                    ForEach(filteredItems) { item in
+                        NavigationLink {
+                            DocumentReviewDetailView(item: item, viewModel: viewModel)
+                        } label: {
+                            OfficerDocumentRow(item: item)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            if item.status == .uploaded || item.status == .reUploaded {
+                                Button {
+                                    viewModel.updateDocumentStatus(applicationId: item.applicationId, docId: item.id, newStatus: .verified)
+                                } label: {
+                                    Label("Verify", systemImage: "checkmark.shield")
+                                }
+                                .tint(.green)
+                            }
+                        }
+                    }
+                }
+            } header: {
+                Text("Documents")
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Review")
+        .searchable(text: $query, prompt: "Borrower, document, application")
+        .refreshable { await viewModel.fetchDashboardData() }
     }
 }
 
-struct AlertChip: View {
-    let type: AlertChipType
-    let count: Int
+// MARK: - Escalation Sheet
+
+private struct OfficerEscalationSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var reason = ""
+    @State private var priority = "Normal"
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Priority") {
+                    Picker("Priority", selection: $priority) {
+                        Text("Normal").tag("Normal")
+                        Text("High").tag("High")
+                        Text("Critical").tag("Critical")
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                Section("Reason") {
+                    TextField("Describe the blocker", text: $reason, axis: .vertical)
+                        .lineLimit(3...6)
+                }
+            }
+            .navigationTitle("Escalate Case")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Send") { dismiss() }
+                        .disabled(reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Glass Card
+
+private struct NativeGlassCard<Content: View>: View {
+    var padding: CGFloat = 16
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        content
+            .padding(padding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .nativeOfficerGlass(cornerRadius: LMSRadius.card)
+    }
+}
+
+// MARK: - Section Title
+
+private struct SectionTitle: View {
     let title: String
-    var onTap: () -> Void
-    
+    let subtitle: String?
+
+    init(_ title: String, subtitle: String? = nil) {
+        self.title = title
+        self.subtitle = subtitle
+    }
+
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 6) {
-                Image(systemName: type.symbol)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(type.color)
-                
-                Text(title)
-                    .font(.system(.caption, design: .rounded).bold())
-                    .foregroundStyle(LMSColors.textPrimary)
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.headline)
+            if let subtitle {
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(type.color.opacity(0.3), lineWidth: 1)
-            )
         }
-        .buttonStyle(PlainButtonStyle())
-        .accessibilityLabel(title)
-        .accessibilityHint("Deep links to the corresponding section below.")
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-// MARK: - Sheet Subviews
+// MARK: - Metric Pill
+
+private struct OfficerMetricPill: View {
+    let title: String
+    let value: String
+    let icon: String
+    let tint: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 8) {
+                Image(systemName: icon)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(tint)
+                Text(value)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.primary)
+                Text(title)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14)
+            .nativeOfficerGlass(cornerRadius: 18, interactive: true)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Tool Card
+
+private struct OfficerToolCard: View {
+    let title: String
+    let icon: String
+    let tint: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 36, height: 36)
+                    .background(tint.opacity(0.12), in: Circle())
+                Text(title)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Spacer()
+            }
+            .padding(14)
+            .nativeOfficerGlass(cornerRadius: 18, interactive: true)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Document Row
+
+struct OfficerDocumentRow: View {
+    let item: DocumentQueueItem
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: item.docType.symbol)
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(item.docType.iconColor)
+                .frame(width: 44, height: 44)
+                .background(item.docType.iconColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.borrowerName)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Text("\(item.docType.rawValue) · \(item.applicationId)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.9)
+            }
+
+            Spacer(minLength: 4)
+
+            Text(item.status.rawValue)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(item.status.themeColor)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(item.status.themeColor.opacity(0.12), in: Capsule())
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .padding(.vertical, 10)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(item.borrowerName), \(item.docType.rawValue), \(item.status.rawValue)")
+    }
+}
+
+// MARK: - Application Compact Row
+
+struct OfficerApplicationCompactRow: View {
+    let app: OfficerLoanApplication
+    var accessory: String? = nil
+
+    var body: some View {
+        HStack(spacing: 12) {
+            OfficerAvatar(name: app.borrowerName, tint: app.loanType.themeColor)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(app.borrowerName)
+                    .font(.body.weight(.semibold))
+                Text("\(app.loanType.rawValue) · \(app.applicationId)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if let accessory {
+                Text(accessory)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(LMSColors.actionBlue)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(LMSColors.actionBlue.opacity(0.12), in: Capsule())
+            } else {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(LMSSpacing.lg)
+    }
+}
+
+// MARK: - Avatar
+
+struct OfficerAvatar: View {
+    let name: String
+    var tint: Color = .blue
+
+    private var initials: String {
+        name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
+    }
+
+    var body: some View {
+        Text(initials)
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(tint)
+            .frame(width: 44, height: 44)
+            .background(tint.opacity(0.12), in: Circle())
+    }
+}
+
+// MARK: - Glass Effect
+
+extension View {
+    @ViewBuilder
+    func nativeOfficerGlass(cornerRadius: CGFloat = 20, interactive: Bool = false) -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(interactive ? .regular.interactive() : .regular, in: .rect(cornerRadius: cornerRadius))
+        } else {
+            self
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .stroke(Color.primary.opacity(0.06), lineWidth: 0.5)
+                )
+        }
+    }
+}
+
+// MARK: - Notifications Sheet
 
 struct NotificationsFeedSheet: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
-    @Environment(\.dismiss) var dismiss
-    
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         NavigationStack {
             List {
                 if viewModel.activityFeed.isEmpty {
-                    ContentUnavailableView("No Alerts", systemImage: "bell.slash", description: Text("All is quiet here!"))
+                    ContentUnavailableView("No Notifications", systemImage: "bell.slash", description: Text("All priority work is clear."))
                 } else {
                     ForEach(viewModel.activityFeed) { item in
-                        HStack(alignment: .top, spacing: 12) {
+                        HStack(spacing: 12) {
                             Image(systemName: item.eventType.symbol)
+                                .font(.headline.weight(.semibold))
                                 .foregroundStyle(item.eventType.themeColor)
-                                .font(LMSFont.title3)
-                            
-                            VStack(alignment: .leading, spacing: 4) {
+                                .frame(width: 36, height: 36)
+                                .background(item.eventType.themeColor.opacity(0.12), in: Circle())
+                            VStack(alignment: .leading, spacing: 3) {
                                 Text(item.borrowerName)
-                                    .font(.system(.callout, design: .rounded).bold())
+                                    .font(.body.weight(.semibold))
                                 Text(item.eventDescription)
-                                    .font(.system(.caption, design: .rounded))
-                                    .foregroundStyle(LMSColors.textSecondary)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
                             }
                         }
                         .padding(.vertical, 4)
                     }
                 }
             }
-            .navigationTitle("Priority Notifications")
+            .navigationTitle("Notifications")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") { dismiss() }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
                 }
             }
         }
     }
 }
-
-// MARK: - Premium Custom Floating iOS Tab Bar
-struct CustomFloatingTabBar: View {
-    @Binding var selectedTab: Int
-    
-    var body: some View {
-        HStack {
-            TabBarButton(iconName: "house", activeIconName: "house.fill", title: "Overview", isSelected: selectedTab == 0) {
-                selectedTab = 0
-            }
-            Spacer()
-            TabBarButton(iconName: "bubble.left", activeIconName: "bubble.left.fill", title: "Chats", isSelected: selectedTab == 1) {
-                selectedTab = 1
-            }
-            Spacer()
-            TabBarButton(iconName: "bolt", activeIconName: "bolt.fill", title: "Console", isSelected: selectedTab == 2) {
-                selectedTab = 2
-            }
-            Spacer()
-            TabBarButton(iconName: "doc.text.magnifyingglass", activeIconName: "doc.text.magnifyingglass", title: "Registry", isSelected: selectedTab == 3) {
-                selectedTab = 3
-            }
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 8)
-        .background(
-            VisualEffectView(effect: UIBlurEffect(style: .systemChromeMaterial))
-                .clipShape(Capsule())
-                .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 5)
-        )
-        .overlay(
-            Capsule()
-                .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
-        )
-    }
-}
-
-struct TabBarButton: View {
-    let iconName: String
-    let activeIconName: String
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: {
-            HapticsManager.triggerImpact(style: .light)
-            action()
-        }) {
-            VStack(spacing: 4) {
-                Image(systemName: isSelected ? activeIconName : iconName)
-                    .font(.system(size: 20, weight: isSelected ? .bold : .medium))
-                    .foregroundColor(isSelected ? AppTheme.actionBlue : .secondary)
-                    .frame(height: 24)
-                
-                Text(title)
-                    .font(.system(size: 10, weight: isSelected ? .bold : .semibold, design: .rounded))
-                    .foregroundColor(isSelected ? AppTheme.actionBlue : .secondary)
-            }
-            .frame(width: 60)
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-

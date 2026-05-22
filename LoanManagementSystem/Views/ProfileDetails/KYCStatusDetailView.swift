@@ -7,61 +7,20 @@ struct KYCStatusDetailView: View {
     var body: some View {
         Form {
             if let kyc = viewModel.profile?.kycVerification {
-                Section(header: Text("Overall Status")) {
-                    HStack {
-                        Text("KYC Verification")
-                            .font(Font.AppTheme.body)
-                            .foregroundStyle(Color.AppTheme.textPrimary)
-                        Spacer()
-                        StatusBadgeView(status: kyc.overallStatus.rawValue)
+                Section {
+                    LabeledContent("Overall Status") {
+                        statusText(kyc.overallStatus)
                     }
+                } header: {
+                    Text("Verification Progress")
                 }
                 
-                Section(header: Text("Documents Status")) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Aadhaar Card")
-                                .font(Font.AppTheme.body)
-                                .fontWeight(.medium)
-                            if let fileName = kyc.aadhaarFileName {
-                                Text(fileName)
-                                    .font(Font.AppTheme.caption)
-                                    .foregroundStyle(Color.AppTheme.primary)
-                            }
-                        }
-                        Spacer()
-                        StatusBadgeView(status: kyc.aadhaarStatus.rawValue)
-                    }
-                    
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("PAN Card")
-                                .font(Font.AppTheme.body)
-                                .fontWeight(.medium)
-                            if let fileName = kyc.panFileName {
-                                Text(fileName)
-                                    .font(Font.AppTheme.caption)
-                                    .foregroundStyle(Color.AppTheme.primary)
-                            }
-                        }
-                        Spacer()
-                        StatusBadgeView(status: kyc.panStatus.rawValue)
-                    }
-                    
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Address Proof")
-                                .font(Font.AppTheme.body)
-                                .fontWeight(.medium)
-                            if let fileName = kyc.addressProofFileName {
-                                Text(fileName)
-                                    .font(Font.AppTheme.caption)
-                                    .foregroundStyle(Color.AppTheme.primary)
-                            }
-                        }
-                        Spacer()
-                        StatusBadgeView(status: kyc.addressProofStatus.rawValue)
-                    }
+                Section {
+                    kycRow(title: "Aadhaar Card", fileName: kyc.aadhaarFileName, status: kyc.aadhaarStatus)
+                    kycRow(title: "PAN Card", fileName: kyc.panFileName, status: kyc.panStatus)
+                    kycRow(title: "Address Proof", fileName: kyc.addressProofFileName, status: kyc.addressProofStatus)
+                } header: {
+                    Text("Documents Status")
                 }
             }
         }
@@ -69,14 +28,47 @@ struct KYCStatusDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Edit") {
+                Button("Update") {
                     showingEditSheet = true
                 }
-                .foregroundStyle(Color.AppTheme.primary)
             }
         }
         .sheet(isPresented: $showingEditSheet) {
             EditKYCView(viewModel: viewModel)
+        }
+    }
+    
+    @ViewBuilder
+    private func kycRow(title: String, fileName: String?, status: VerificationStatus) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(title)
+                    .font(.body)
+                Spacer()
+                statusText(status)
+            }
+            if let fileName = fileName {
+                Text(fileName)
+                    .font(.caption)
+                    .foregroundStyle(.blue)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+    
+    @ViewBuilder
+    private func statusText(_ status: VerificationStatus) -> some View {
+        Text(status.rawValue)
+            .font(.caption.bold())
+            .foregroundStyle(statusColor(status))
+    }
+    
+    private func statusColor(_ status: VerificationStatus) -> Color {
+        switch status {
+        case .verified: return .green
+        case .pending: return .orange
+        case .underReview: return .blue
+        case .rejected: return .red
         }
     }
 }

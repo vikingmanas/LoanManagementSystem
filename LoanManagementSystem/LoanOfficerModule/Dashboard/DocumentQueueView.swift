@@ -74,15 +74,14 @@ struct DocumentStatusRow: View {
     
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            // Icon representing Document Status
             ZStack {
                 Circle()
-                    .fill(item.status.themeColor.opacity(0.12))
+                    .fill(item.docType.iconColor.opacity(0.12))
                     .frame(width: 38, height: 38)
                 
                 Image(systemName: item.docType.symbol)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(item.status.themeColor)
+                    .foregroundStyle(item.docType.iconColor)
             }
             
             // Borrower details

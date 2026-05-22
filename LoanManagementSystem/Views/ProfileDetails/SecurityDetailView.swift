@@ -6,45 +6,42 @@ struct SecurityDetailView: View {
     
     var body: some View {
         Form {
-            Section(header: Text("Biometrics")) {
+            Section {
                 Toggle(isOn: $biometricEnabled) {
-                    HStack {
-                        Image(systemName: "faceid")
-                            .foregroundStyle(Color.AppTheme.primary)
-                        Text("Face ID Login")
-                    }
+                    Label("Face ID Login", systemImage: "faceid")
                 }
+            } header: {
+                Text("Biometrics")
+            } footer: {
+                Text("Use Face ID to quickly and securely log into your account.")
             }
             
-            Section(header: Text("Two-Factor Authentication")) {
+            Section {
                 Toggle(isOn: $doubleAuthEnabled) {
-                    HStack {
-                        Image(systemName: "shield.fill")
-                            .foregroundStyle(Color.AppTheme.success)
-                        Text("Two-Factor Auth (2FA)")
-                    }
+                    Label("Two-Factor Auth (2FA)", systemImage: "shield")
                 }
+            } header: {
+                Text("Two-Factor Authentication")
+            } footer: {
+                Text("Add an extra layer of security to your account by requiring a code from your phone.")
             }
             
-            Section(header: Text("Device Management")) {
+            Section {
                 HStack {
-                    VStack(alignment: .leading) {
+                    VStack(alignment: .leading, spacing: 2) {
                         Text("iPhone 17 Pro Max")
-                            .font(Font.AppTheme.body)
+                            .font(.body)
                         Text("Active Now • Mumbai, India")
-                            .font(Font.AppTheme.caption)
-                            .foregroundStyle(Color.AppTheme.textSecondary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                     Spacer()
                     Text("Current")
-                        .font(Font.AppTheme.caption)
-                        .fontWeight(.bold)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.AppTheme.success.opacity(0.1))
-                        .foregroundStyle(Color.AppTheme.success)
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .font(.caption.bold())
+                        .foregroundStyle(.blue)
                 }
+            } header: {
+                Text("Device Management")
             }
         }
         .navigationTitle("Security")

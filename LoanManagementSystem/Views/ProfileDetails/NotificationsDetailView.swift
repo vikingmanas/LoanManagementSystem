@@ -8,62 +8,68 @@ struct NotificationsDetailView: View {
     
     var body: some View {
         Form {
-            Section(header: Text("Loan Activity")) {
+            Section {
                 Toggle(isOn: $loanUpdates) {
-                    HStack {
-                        Image(systemName: "banknote.fill")
-                            .foregroundStyle(Color.AppTheme.success)
-                        VStack(alignment: .leading) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text("Loan Status Updates")
                             Text("Disbursals, approvals, and EMI receipts")
-                                .font(Font.AppTheme.caption)
-                                .foregroundStyle(Color.AppTheme.textSecondary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
+                    } icon: {
+                        Image(systemName: "banknote")
                     }
                 }
                 
                 Toggle(isOn: $paymentReminders) {
-                    HStack {
-                        Image(systemName: "calendar.badge.clock")
-                            .foregroundStyle(.orange)
-                        VStack(alignment: .leading) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text("Payment Reminders")
                             Text("Receive alerts 3 days before your EMI is due")
-                                .font(Font.AppTheme.caption)
-                                .foregroundStyle(Color.AppTheme.textSecondary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
+                    } icon: {
+                        Image(systemName: "calendar.badge.clock")
                     }
                 }
+            } header: {
+                Text("Loan Activity")
             }
             
-            Section(header: Text("Security")) {
+            Section {
                 Toggle(isOn: $securityAlerts) {
-                    HStack {
-                        Image(systemName: "shield.fill")
-                            .foregroundStyle(Color.AppTheme.primary)
-                        VStack(alignment: .leading) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text("Security Alerts")
                             Text("Notifications on password change or new login")
-                                .font(Font.AppTheme.caption)
-                                .foregroundStyle(Color.AppTheme.textSecondary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
+                    } icon: {
+                        Image(systemName: "shield")
                     }
                 }
+            } header: {
+                Text("Security")
             }
             
-            Section(header: Text("Offers & Updates")) {
+            Section {
                 Toggle(isOn: $promoOffers) {
-                    HStack {
-                        Image(systemName: "percent")
-                            .foregroundStyle(.purple)
-                        VStack(alignment: .leading) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text("Promotional Offers")
                             Text("Rate cuts, top-ups, and special credit offers")
-                                .font(Font.AppTheme.caption)
-                                .foregroundStyle(Color.AppTheme.textSecondary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
+                    } icon: {
+                        Image(systemName: "percent")
                     }
                 }
+            } header: {
+                Text("Offers & Updates")
             }
         }
         .navigationTitle("Notifications")

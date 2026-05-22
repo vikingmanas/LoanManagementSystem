@@ -8,69 +8,71 @@ struct DocumentManagementDetailView: View {
     var body: some View {
         Form {
             if let kyc = viewModel.profile?.kycVerification {
-                Section(header: Text("Uploaded Documents")) {
+                Section {
                     documentRow(title: "Aadhaar Card", fileName: kyc.aadhaarFileName)
                     documentRow(title: "PAN Card", fileName: kyc.panFileName)
                     documentRow(title: "Address Proof", fileName: kyc.addressProofFileName)
+                } header: {
+                    Text("Uploaded Documents")
+                } footer: {
+                    Text("All documents are stored in an encrypted format for your security.")
                 }
             } else {
-                Text("Loading documents...")
+                ProgressView()
             }
         }
-        .navigationTitle("Document Management")
+        .navigationTitle("Documents")
         .navigationBarTitleDisplayMode(.inline)
-        .alert(isPresented: $showingAlert) {
-            Alert(title: Text("Document Viewer"), message: Text(alertMessage), dismissButton: .default(Text("Dismiss")))
+        .alert("Document Viewer", isPresented: $showingAlert) {
+            Button("Dismiss", role: .cancel) { }
+        } message: {
+            Text(alertMessage)
         }
     }
     
     @ViewBuilder
     private func documentRow(title: String, fileName: String?) -> some View {
-        HStack {
-            Image(systemName: "doc.text.fill")
-                .foregroundStyle(fileName != nil ? Color.AppTheme.primary : Color.gray)
-                .font(.system(size: 24))
-                .frame(width: 32)
+        HStack(spacing: 12) {
+            Image(systemName: "doc.text")
+                .font(.title3)
+                .foregroundStyle(fileName != nil ? .blue : .secondary)
+                .frame(width: 24)
             
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(Font.AppTheme.body)
-                    .fontWeight(.medium)
+                    .font(.body)
                 if let fileName = fileName {
                     Text(fileName)
-                        .font(Font.AppTheme.caption)
-                        .foregroundStyle(Color.AppTheme.textSecondary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 } else {
                     Text("No file uploaded")
-                        .font(Font.AppTheme.caption)
-                        .foregroundStyle(Color.AppTheme.error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
                 }
             }
             
             Spacer()
             
             if let fileName = fileName {
-                Button(action: {
-                    alertMessage = "Simulating secure decryption & display for \(fileName)."
-                    showingAlert = true
-                }) {
-                    Image(systemName: "eye.fill")
-                        .foregroundStyle(Color.AppTheme.primary)
+                HStack(spacing: 16) {
+                    Button {
+                        alertMessage = "Simulating secure decryption & display for \(fileName)."
+                        showingAlert = true
+                    } label: {
+                        Image(systemName: "eye")
+                            .foregroundStyle(.blue)
+                    }
+                    
+                    Button {
+                        alertMessage = "Simulating secure download of \(fileName) in encrypted PDF format."
+                        showingAlert = true
+                    } label: {
+                        Image(systemName: "square.and.arrow.down")
+                            .foregroundStyle(.blue)
+                    }
                 }
-                .buttonStyle(BorderlessButtonStyle())
-                
-                Divider()
-                    .frame(height: 20)
-                    .padding(.horizontal, 4)
-                
-                Button(action: {
-                    alertMessage = "Simulating secure download of \(fileName) in encrypted PDF format."
-                    showingAlert = true
-                }) {
-                    Image(systemName: "square.and.arrow.down")
-                        .foregroundStyle(Color.AppTheme.primary)
-                }
-                .buttonStyle(BorderlessButtonStyle())
+                .buttonStyle(.borderless)
             }
         }
         .padding(.vertical, 4)

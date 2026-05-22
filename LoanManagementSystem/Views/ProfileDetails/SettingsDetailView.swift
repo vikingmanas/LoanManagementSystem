@@ -7,35 +7,30 @@ struct SettingsDetailView: View {
     
     var body: some View {
         Form {
-            Section(header: Text("Appearance")) {
+            Section {
                 Toggle(isOn: $isDarkMode) {
-                    HStack {
-                        Image(systemName: isDarkMode ? "moon.fill" : "sun.max.fill")
-                            .foregroundStyle(isDarkMode ? .indigo : .orange)
-                        Text("Dark Mode")
-                    }
+                    Label("Dark Mode", systemImage: isDarkMode ? "moon.fill" : "sun.max.fill")
                 }
+            } header: {
+                Text("Appearance")
             }
             
-            Section(header: Text("Localization")) {
-                Picker(selection: $selectedLanguage, label: HStack {
-                    Image(systemName: "globe")
-                        .foregroundStyle(.blue)
-                    Text("Language")
-                }) {
+            Section {
+                Picker(selection: $selectedLanguage) {
                     ForEach(languages, id: \.self) { lang in
                         Text(lang)
                     }
+                } label: {
+                    Label("Language", systemImage: "globe")
                 }
+            } header: {
+                Text("Localization")
             }
             
-            Section(header: Text("App Version")) {
-                HStack {
-                    Text("Version")
-                    Spacer()
-                    Text("1.0.0 (Build 42)")
-                        .foregroundStyle(Color.AppTheme.textSecondary)
-                }
+            Section {
+                LabeledContent("Version", value: "1.0.0 (Build 42)")
+            } header: {
+                Text("Information")
             }
         }
         .navigationTitle("Settings")
