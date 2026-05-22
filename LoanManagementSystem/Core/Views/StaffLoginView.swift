@@ -60,7 +60,7 @@ struct StaffLoginView: View {
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 4)
                                     .background(Color.secondary.opacity(0.1))
-                                    .cornerRadius(8)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
                             
                             Text("\(appState.selectedRole.rawValue) Portal")
@@ -85,7 +85,7 @@ struct StaffLoginView: View {
                             }
                             .padding()
                             .background(Color.AppTheme.error.opacity(0.1))
-                            .cornerRadius(12)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                             .transition(.move(edge: .top).combined(with: .opacity))
                         }
                         

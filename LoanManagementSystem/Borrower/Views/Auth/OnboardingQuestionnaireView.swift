@@ -581,7 +581,7 @@ struct OnboardingQuestionnaireView: View {
     private func saveProfessionalDetails() async -> Bool {
         let email = authManager.userEmail ?? ""
         let name = authManager.userDisplayName
-        var currentProfile = await profileStore.ensureProfile(email: email, name: name)
+        var currentProfile = profileStore.ensureProfile(email: email, name: name)
         applyFormFields(to: &currentProfile)
         
         await MainActor.run {
@@ -598,7 +598,7 @@ struct OnboardingQuestionnaireView: View {
         let user = session.user
         let email = authManager.userEmail ?? user.email ?? ""
         let name = authManager.userDisplayName
-        var currentProfile = await profileStore.ensureProfile(email: email, name: name)
+        var currentProfile = profileStore.ensureProfile(email: email, name: name)
         
         applyFormFields(to: &currentProfile)
         currentProfile.isOnboardingCompleted = true
@@ -606,7 +606,7 @@ struct OnboardingQuestionnaireView: View {
         
         do {
             try await DatabaseService.shared.updateProfile(currentProfile)
-            try? await SupabaseManager.shared.client
+            _ = try? await SupabaseManager.shared.client
                 .from("users")
                 .update(["full_name": name, "mobile_number": currentProfile.mobileNumber])
                 .eq("id", value: user.id)
@@ -638,7 +638,7 @@ struct OnboardingQuestionnaireView: View {
             let email = authManager.userEmail ?? user.email ?? ""
             let name = authManager.userDisplayName
             
-            var currentProfile = await profileStore.ensureProfile(email: email, name: name)
+            var currentProfile = profileStore.ensureProfile(email: email, name: name)
             currentProfile.id = user.id.uuidString
             currentProfile.isOnboardingCompleted = true
             

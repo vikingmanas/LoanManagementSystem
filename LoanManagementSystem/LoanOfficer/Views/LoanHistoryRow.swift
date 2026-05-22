@@ -193,7 +193,7 @@ struct LoanHistoryRow: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(details.color.opacity(0.12))
-            .cornerRadius(6)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
 

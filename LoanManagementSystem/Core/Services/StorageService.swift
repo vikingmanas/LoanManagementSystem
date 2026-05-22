@@ -19,8 +19,8 @@ final class StorageService {
             .storage
             .from(bucket)
             .upload(
-                path: path,
-                file: data,
+                path,
+                data: data,
                 options: FileOptions(
                     cacheControl: "3600",
                     contentType: "image/jpeg",

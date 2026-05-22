@@ -79,7 +79,7 @@ struct LoanApplicationTabView: View {
                     }
                 case .verificationResult:
                     DocumentVerificationResultView(viewModel: viewModel) {
-                        if let submitted = viewModel.submitCurrentApplication() {
+                        if viewModel.submitCurrentApplication() != nil {
                             navigationPath = NavigationPath()
                             viewModel.selectedSegment = .applications
                         }
@@ -585,7 +585,7 @@ private struct CombinedApplicationScreen: View {
                 Button("Done") { isInputActive = false }
             }
         }
-        .onChange(of: viewModel.formData) { _ in
+        .onChange(of: viewModel.formData) {
             viewModel.autosaveDraft()
         }
         .sheet(item: $previewDocument) { document in
@@ -593,7 +593,7 @@ private struct CombinedApplicationScreen: View {
                 .presentationDetents([.medium])
         }
         .photosPicker(isPresented: $isPhotoPickerPresented, selection: $selectedPhotoItem, matching: .images)
-        .onChange(of: selectedPhotoItem) { newItem in
+        .onChange(of: selectedPhotoItem) { _, newItem in
             guard let newItem = newItem, let docID = activeUploadingDocID else { return }
             Task {
                 do {
@@ -1046,7 +1046,7 @@ private struct DocumentVerificationResultView: View {
         .navigationTitle("Verification")
         .navigationBarTitleDisplayMode(.inline)
         .photosPicker(isPresented: $isPhotoPickerPresented, selection: $selectedPhotoItem, matching: .images)
-        .onChange(of: selectedPhotoItem) { newItem in
+        .onChange(of: selectedPhotoItem) { _, newItem in
             guard let newItem = newItem, let docID = activeUploadingDocID else { return }
             Task {
                 do {

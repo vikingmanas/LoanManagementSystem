@@ -51,8 +51,8 @@ final class SupabaseManager {
         }
 
         client = SupabaseClient(
-            supabaseURL: URL(string: "https://zufrhozjfmvvucswmudj.supabase.co")!,
-            supabaseKey: "sb_publishable_C8TSNkIM4-1f4zJuPTeqYA_bTEGFtFe",
+            supabaseURL: AppConfiguration.supabaseURL,
+            supabaseKey: AppConfiguration.supabaseKey,
             options: SupabaseClientOptions(
                 db: SupabaseClientOptions.DatabaseOptions(
                     encoder: dbEncoder,

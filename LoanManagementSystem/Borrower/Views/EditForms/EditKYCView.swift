@@ -186,7 +186,7 @@ struct EditKYCView: View {
             Button("Cancel", role: .cancel) {}
         }
         .photosPicker(isPresented: $showingPhotosPicker, selection: $selectedPhotoItem, matching: .images)
-        .onChange(of: selectedPhotoItem) { newItem in
+        .onChange(of: selectedPhotoItem) { _, newItem in
             guard let newItem = newItem, let docType = documentUploading else { return }
             let docName: String
             let filename: String
@@ -256,7 +256,6 @@ struct EditKYCView: View {
                 do {
                     // First, look up the borrower_id for this user
                     let borrowerRows: [BorrowerLookup] = try await SupabaseManager.shared.client
-                        .database
                         .from("borrowers")
                         .select("borrower_id")
                         .eq("user_id", value: userId.uuidString)
@@ -275,7 +274,6 @@ struct EditKYCView: View {
                         )
                         
                         try await SupabaseManager.shared.client
-                            .database
                             .from("documents")
                             .insert(docRow)
                             .execute()
