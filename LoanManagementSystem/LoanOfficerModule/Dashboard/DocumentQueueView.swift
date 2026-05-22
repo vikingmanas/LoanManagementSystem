@@ -6,38 +6,15 @@ struct DocumentQueueView: View {
     var onSeeAllTapped: () -> Void
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Header Row
-            HStack {
-                HStack(spacing: 8) {
-                    Text("Document Queue")
-                        .font(.system(.subheadline, design: .rounded).bold())
-                        .foregroundStyle(LMSColors.textPrimary)
-                    
-                    Text("\(viewModel.pendingDocumentCount) Pending")
-                        .font(.system(.caption2, design: .rounded).bold())
-                        .foregroundStyle(AppTheme.warningAmber)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(AppTheme.warningAmber.opacity(0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                }
-                
-                Spacer()
-                
-                Button(action: {
-                    HapticsManager.triggerImpact(style: .light)
-                    onSeeAllTapped()
-                }) {
-                    Text("See All")
-                        .font(.system(.caption, design: .rounded).weight(.bold))
-                        .foregroundStyle(AppTheme.actionBlue)
-                }
-                .accessibilityLabel("View all documents in the verification queue")
-            }
-            .padding(.horizontal, 16)
-            
-            // List of Rows inside a Card
+        VStack(spacing: 0) {
+            header
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                .padding(.bottom, 12)
+
+            Divider()
+                .padding(.leading, 16)
+
             VStack(spacing: 0) {
                 let items = viewModel.documentQueueList.prefix(5)
                 if items.isEmpty {
@@ -60,9 +37,58 @@ struct DocumentQueueView: View {
                     }
                 }
             }
-            .background(AppTheme.neutralSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 3)
+        }
+        .background(AppTheme.neutralSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(LMSColors.textPrimary.opacity(0.05), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 3)
+    }
+
+    private var header: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text("Document Queue")
+                        .font(.system(.subheadline, design: .rounded).bold())
+                        .foregroundStyle(LMSColors.textPrimary)
+
+                    Text("\(viewModel.pendingDocumentCount) Pending")
+                        .font(.system(.caption2, design: .rounded).bold())
+                        .foregroundStyle(AppTheme.warningAmber)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(AppTheme.warningAmber.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+
+                Text("Review borrower uploads in priority order")
+                    .font(.system(.caption2, design: .rounded).weight(.medium))
+                    .foregroundStyle(LMSColors.textSecondary)
+            }
+
+            Spacer()
+
+            Button(action: {
+                HapticsManager.triggerImpact(style: .light)
+                onSeeAllTapped()
+            }) {
+                HStack(spacing: 4) {
+                    Text("See All")
+                        .font(.system(.caption, design: .rounded).weight(.bold))
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .bold))
+                }
+                .foregroundStyle(AppTheme.actionBlue)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(AppTheme.actionBlue.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .buttonStyle(PlainButtonStyle())
+            .accessibilityLabel("View all documents in the verification queue")
         }
     }
 }
