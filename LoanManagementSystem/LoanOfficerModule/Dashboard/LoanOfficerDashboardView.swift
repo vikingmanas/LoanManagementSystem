@@ -13,7 +13,8 @@ struct LoanOfficerDashboardView: View {
     @State private var showProfileSheet = false
     
     var body: some View {
-        VStack(spacing: 0) {
+        NavigationStack {
+            VStack(spacing: 0) {
             
             // 1. CUSTOM TOP NAVIGATION BAR (Fixed)
             CustomTopNavigationBar(
@@ -103,7 +104,7 @@ struct LoanOfficerDashboardView: View {
         .sheet(isPresented: $showNotificationSheet) {
             NotificationsFeedSheet(viewModel: viewModel)
         }
-        .sheet(item: $selectedAppForReview) { app in
+        .navigationDestination(item: $selectedAppForReview) { app in
             LoanApplicationReviewDetailView(applicationId: app.applicationId, viewModel: viewModel)
         }
         .sheet(isPresented: $showProfileSheet) {
@@ -117,6 +118,7 @@ struct LoanOfficerDashboardView: View {
                     selectedAlertMessage = nil
                 }
             )
+        }
         }
     }
     
