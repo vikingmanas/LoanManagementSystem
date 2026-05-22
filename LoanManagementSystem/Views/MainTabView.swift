@@ -4,12 +4,11 @@ struct MainTabView: View {
     @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var appState: AppStateManager
     @StateObject private var tabRouter = BorrowerTabRouter()
-
-    private var notificationBadge: Int { LMSMockNotifications.unreadCount }
+    @StateObject private var dashboardViewModel = DashboardViewModel()
 
     var body: some View {
         TabView(selection: $tabRouter.selectedTab) {
-            DashboardView()
+            DashboardView(viewModel: dashboardViewModel)
                 .tabItem {
                     Label("Dashboard", systemImage: "house.fill")
                 }
@@ -21,12 +20,11 @@ struct MainTabView: View {
                 }
                 .tag(BorrowerTab.loans)
 
-            NotificationsTabView()
+            HistoryTabView(viewModel: dashboardViewModel)
                 .tabItem {
-                    Label("Notifications", systemImage: "bell.fill")
+                    Label("History", systemImage: "clock.fill")
                 }
-                .tag(BorrowerTab.notifications)
-                .badge(notificationBadge)
+                .tag(BorrowerTab.history)
         }
         .tint(LMSColors.brandNavy)
         .toolbarBackground(LMSColors.surfaceElevated, for: .tabBar)

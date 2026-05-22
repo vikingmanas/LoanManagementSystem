@@ -158,6 +158,7 @@ struct LoanCard: View {
             }
         }
         .padding(LMSSpacing.xl)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             LinearGradient(
                 colors: [LMSColors.brandNavy, LMSColors.brandNavyLight],

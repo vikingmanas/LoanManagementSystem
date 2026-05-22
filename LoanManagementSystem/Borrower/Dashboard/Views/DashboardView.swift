@@ -5,7 +5,6 @@ public enum DashboardRoute: Hashable {
     case loanDetails(DashboardLoanAccount)
     case bankDetails(BankAccount)
     case insuranceDetails
-    case allTransactions
     case allPendingEMIs
     case schemeDetails(GovernmentScheme)
 }
@@ -14,7 +13,7 @@ public struct DashboardView: View {
     @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var appState: AppStateManager
     @EnvironmentObject private var tabRouter: BorrowerTabRouter
-    @StateObject private var viewModel = DashboardViewModel()
+    @ObservedObject var viewModel: DashboardViewModel
     @State private var navigationPath = NavigationPath()
     
     // Quick Actions Sheets
@@ -25,11 +24,13 @@ public struct DashboardView: View {
     @State private var showingTopUpSheet = false
     @State private var showingProfileSheet = false
     
-    // Transaction Filter State
-    @State private var transactionFilter: TransactionType? = nil
-    @State private var showingFilterMenu = false
-    
-    public init() {}
+    private var greetingTitle: String {
+        guard let profile = BorrowerProfileStore.shared.profile else {
+            return "Dashboard"
+        }
+        let firstName = profile.fullName.components(separatedBy: " ").first ?? profile.fullName
+        return "Hi, \(firstName)"
+    }
     
     public var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -78,11 +79,6 @@ public struct DashboardView: View {
                         navigationPath.append(DashboardRoute.allPendingEMIs)
                     }
                     
-                    // 5. TRANSACTION HISTORY SECTION
-                    TransactionsHistorySection(viewModel: viewModel, filter: $transactionFilter) {
-                        navigationPath.append(DashboardRoute.allTransactions)
-                    }
-                    
                     // 6. GOVERNMENT SCHEMES SECTION
                     GovernmentSchemesSection(viewModel: viewModel) { scheme in
                         navigationPath.append(DashboardRoute.schemeDetails(scheme))
@@ -93,23 +89,15 @@ public struct DashboardView: View {
                 .padding(.bottom, LMSSpacing.xxl)
             }
             .lmsScreenBackground()
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(greetingTitle)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    DashboardToolbarTitle(
-                        firstName: dashboardFirstName(
-                            profileStore: .shared,
-                            authManager: authManager
-                        ),
-                        customerID: BorrowerProfileStore.shared.profile?.id
-                    )
-                }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     FintechToolbarButton(
                         systemName: "bell.fill",
-                        showsBadge: LMSMockNotifications.unreadCount > 0
+                        showsBadge: false
                     ) {
-                        tabRouter.select(.notifications)
+                        tabRouter.select(.history)
                     }
                     .accessibilityLabel("Notifications")
 
@@ -127,8 +115,6 @@ public struct DashboardView: View {
                     .accessibilityLabel("Profile")
                 }
             }
-            .toolbarBackground(LMSColors.background, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
             .refreshable {
                 await viewModel.fetchDashboardData()
             }
@@ -143,8 +129,6 @@ public struct DashboardView: View {
                     BankDetailsView(bank: bank, viewModel: viewModel)
                 case .insuranceDetails:
                     InsuranceDetailsView()
-                case .allTransactions:
-                    AllTransactionsView(viewModel: viewModel)
                 case .allPendingEMIs:
                     AllPendingEMIsView(viewModel: viewModel)
                 case .schemeDetails(let scheme):
@@ -389,84 +373,6 @@ struct QuickActionChipsSection: View {
 }
 
 
-// MARK: - Section 5: Transactions
-struct TransactionsHistorySection: View {
-    @ObservedObject var viewModel: DashboardViewModel
-    @Binding var filter: TransactionType?
-    let onViewAll: () -> Void
-    
-    var body: some View {
-        SectionContainer(title: "Recent Transactions", subtitle: "Repayments, penalties, credits and refunds") {
-            Menu {
-                Button("All Transactions") { filter = nil }
-                Divider()
-                Button("EMI Payments") { filter = .emiPayment }
-                Button("Credits") { filter = .credit }
-                Button("Penalties") { filter = .penalty }
-                Button("Refunds") { filter = .refund }
-            } label: {
-                HStack(spacing: 4) {
-                    Text(filter == nil ? "Filter" : filter!.rawValue)
-                        .font(.subheadline.weight(.medium))
-                    Image(systemName: "chevron.down")
-                        .font(.caption2.weight(.bold))
-                }
-                .foregroundStyle(LMSColors.brandNavy)
-                .padding(.horizontal, LMSSpacing.md)
-                .padding(.vertical, LMSSpacing.sm)
-                .background(LMSColors.surface, in: Capsule())
-                .overlay(Capsule().stroke(LMSColors.separatorLight, lineWidth: 0.5))
-            }
-        } content: {
-            VStack(spacing: LMSSpacing.md) {
-                VStack(spacing: 0) {
-                    if viewModel.isLoading {
-                        ForEach(0..<4) { _ in
-                            TransactionRowSkeleton()
-                            Divider().padding(.horizontal, 20)
-                        }
-                    } else {
-                        let filtered = viewModel.transactions.filter { tx in
-                            guard let filter = filter else { return true }
-                            return tx.type == filter
-                        }
-                        
-                        if filtered.isEmpty {
-                            // iOS 17 Empty State
-                            ContentUnavailableView("No transactions found", systemImage: "list.bullet.rectangle.portrait", description: Text("Try changing your filter settings to view other transaction types."))
-                                .frame(height: 160)
-                        } else {
-                            ForEach(filtered.prefix(5)) { tx in
-                                TransactionRowView(transaction: tx)
-                                if tx.id != filtered.prefix(5).last?.id {
-                                    Divider()
-                                        .padding(.horizontal, 20)
-                                }
-                            }
-                        }
-                    }
-                }
-                .dashboardCardStyle()
-
-                if !viewModel.isLoading && viewModel.transactions.count > 5 {
-                    Button(action: onViewAll) {
-                        HStack {
-                            Spacer()
-                            Text("View All Transactions")
-                                .font(LMSFont.footnote.weight(.semibold))
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 11, weight: .bold))
-                            Spacer()
-                        }
-                        .foregroundStyle(LMSColors.actionBlue)
-                        .frame(height: 44)
-                    }
-                    .buttonStyle(DashboardPressableStyle())
-                }
-            }
-        }
-    }
-}
 
 // MARK: - Section 6: Govt Schemes
 struct GovernmentSchemesSection: View {
@@ -883,26 +789,6 @@ struct InsuranceDetailsView: View {
     }
 }
 
-struct AllTransactionsView: View {
-    @ObservedObject var viewModel: DashboardViewModel
-    
-    var body: some View {
-        List(viewModel.transactions) { tx in
-            HStack {
-                VStack(alignment: .leading) {
-                    Text(tx.title).font(.headline)
-                    Text(tx.date.formattedAsDDMMMYYYY()).font(.caption).foregroundStyle(LMSColors.textSecondary)
-                }
-                Spacer()
-                Text(tx.amount.formattedAsINR())
-                    .fontWeight(.bold)
-                    .foregroundStyle(tx.type == .credit || tx.type == .refund ? LMSColors.emerald : LMSColors.coral)
-            }
-        }
-        .navigationTitle("All Transactions")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
 
 struct AllPendingEMIsView: View {
     @ObservedObject var viewModel: DashboardViewModel

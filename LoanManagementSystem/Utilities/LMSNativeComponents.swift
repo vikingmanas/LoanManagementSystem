@@ -4,40 +4,52 @@ public enum LMSAppearance {
     public static func configure() {
         let nav = UINavigationBarAppearance()
         nav.configureWithDefaultBackground()
-        nav.backgroundColor = UIColor(LMSColors.surfaceElevated)
-        nav.shadowColor = UIColor(LMSColors.separator).withAlphaComponent(0.35)
+        nav.backgroundColor = UIColor.secondarySystemGroupedBackground
+        nav.shadowColor = UIColor.separator.withAlphaComponent(0.35)
         nav.titleTextAttributes = [
-            .foregroundColor: UIColor(LMSColors.textPrimary),
+            .foregroundColor: UIColor.label,
             .font: UIFont.systemFont(ofSize: 17, weight: .semibold)
         ]
         nav.largeTitleTextAttributes = [
-            .foregroundColor: UIColor(LMSColors.textPrimary),
+            .foregroundColor: UIColor.label,
             .font: UIFont.systemFont(ofSize: 34, weight: .bold)
         ]
 
         UINavigationBar.appearance().standardAppearance = nav
         UINavigationBar.appearance().scrollEdgeAppearance = nav
         UINavigationBar.appearance().compactAppearance = nav
-        UINavigationBar.appearance().tintColor = UIColor(LMSColors.brandNavy)
+        // Since brandNavy is a custom color, it's safer to resolve it properly. But tintColor is usually fine as a single color, though if we want true dynamic behavior we could use the UIColor closure.
+        UINavigationBar.appearance().tintColor = UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor(red: 74/255, green: 114/255, blue: 190/255, alpha: 1)
+                : UIColor(red: 10/255, green: 37/255, blue: 64/255, alpha: 1)
+        }
 
         let tab = UITabBarAppearance()
         tab.configureWithOpaqueBackground()
-        tab.backgroundColor = UIColor(LMSColors.surfaceElevated)
+        tab.backgroundColor = UIColor.secondarySystemGroupedBackground
         tab.shadowColor = UIColor.black.withAlphaComponent(0.06)
-        tab.stackedLayoutAppearance.normal.iconColor = UIColor(LMSColors.textTertiary)
+        tab.stackedLayoutAppearance.normal.iconColor = UIColor.tertiaryLabel
         tab.stackedLayoutAppearance.normal.titleTextAttributes = [
-            .foregroundColor: UIColor(LMSColors.textTertiary),
+            .foregroundColor: UIColor.tertiaryLabel,
             .font: UIFont.systemFont(ofSize: 10, weight: .medium)
         ]
-        tab.stackedLayoutAppearance.selected.iconColor = UIColor(LMSColors.brandNavy)
+        
+        let brandNavyUIColor = UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor(red: 74/255, green: 114/255, blue: 190/255, alpha: 1)
+                : UIColor(red: 10/255, green: 37/255, blue: 64/255, alpha: 1)
+        }
+        
+        tab.stackedLayoutAppearance.selected.iconColor = brandNavyUIColor
         tab.stackedLayoutAppearance.selected.titleTextAttributes = [
-            .foregroundColor: UIColor(LMSColors.brandNavy),
+            .foregroundColor: brandNavyUIColor,
             .font: UIFont.systemFont(ofSize: 10, weight: .semibold)
         ]
         UITabBar.appearance().standardAppearance = tab
         UITabBar.appearance().scrollEdgeAppearance = tab
-        UITabBar.appearance().tintColor = UIColor(LMSColors.brandNavy)
-        UITabBar.appearance().unselectedItemTintColor = UIColor(LMSColors.textTertiary)
+        UITabBar.appearance().tintColor = brandNavyUIColor
+        UITabBar.appearance().unselectedItemTintColor = UIColor.tertiaryLabel
     }
 }
 

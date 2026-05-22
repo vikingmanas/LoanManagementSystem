@@ -4,7 +4,7 @@ import SwiftUI
 enum BorrowerTab: Hashable {
     case dashboard
     case loans
-    case notifications
+    case history
 }
 
 final class BorrowerTabRouter: ObservableObject {
