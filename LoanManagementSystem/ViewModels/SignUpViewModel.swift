@@ -60,7 +60,14 @@ class SignUpViewModel: ObservableObject {
         }
 
         isLoading = true
-        let success = await authManager.signUp(name: fullName, email: cleanedEmail, password: password)
+        let success = await authManager.signUp(
+            name: fullName,
+            email: cleanedEmail,
+            password: password,
+            phone: phone,
+            alternatePhone: alternatePhone,
+            referralCode: referralCode
+        )
         isLoading = false
 
         if success {

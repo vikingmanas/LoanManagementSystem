@@ -39,7 +39,6 @@ struct LoanManagementSystemApp: App {
                 .environmentObject(authManager)
                 .tint(LMSColors.brandNavy)
                 .onAppear {
-                    // Start the auth state listener now that Firebase is configured.
                     authManager.configure()
                 }
         }

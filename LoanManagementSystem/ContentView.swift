@@ -1,4 +1,6 @@
 import SwiftUI
+import FirebaseAuth
+import FirebaseFirestore
 
 struct ContentView: View {
 
@@ -125,18 +127,26 @@ struct ContentView: View {
             value: authManager.isAuthStateResolved
         )
         .onAppear {
-            syncBorrowerProfileIfNeeded()
+            authManager.configure()
+            
+            // Perform initial session check after configuration listener registers
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                handleUserAuthenticationStateChange()
+            }
 
             // MARK: - Splash Delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-
+            // Skip the splash delay inside SwiftUI Previews for instant canvas rendering.
+            let isPreview = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+            let delay = isPreview ? 3.0 : 5.0
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 withAnimation(.easeInOut(duration: 0.5)) {
                     showSplash = false
                 }
             }
         }
-        .onChange(of: authManager.userEmail) {
-            syncBorrowerProfileIfNeeded()
+        .onChange(of: authManager.isAuthenticated) {
+            handleUserAuthenticationStateChange()
         }
     }
 
@@ -158,6 +168,60 @@ struct ContentView: View {
             email: email,
             name: authManager.userDisplayName
         )
+    }
+
+    private func handleUserAuthenticationStateChange() {
+        guard authManager.isAuthenticated, let user = authManager.currentUser else {
+            // Clean up session if not authenticated
+            if appState.selectedRole != .customer {
+                appState.logout()
+            }
+            return
+        }
+        
+        // Fetch the user document from Firestore to resolve the role
+        Task {
+            do {
+                let doc = try await Firestore.firestore().collection("users").document(user.uid).getDocument()
+                if let data = doc.data(), let roleString = data["role"] as? String {
+                    await MainActor.run {
+                        switch roleString {
+                        case "admin":
+                            appState.selectedRole = .admin
+                            appState.isAuthenticated = true
+                            appState.showRoleSelection = false
+                        case "loanOfficer", "loan_officer":
+                            appState.selectedRole = .loanOfficer
+                            appState.isAuthenticated = true
+                            appState.showRoleSelection = false
+                        case "bankManager", "bank_manager":
+                            appState.selectedRole = .bankManager
+                            appState.isAuthenticated = true
+                            appState.showRoleSelection = false
+                        default:
+                            appState.selectedRole = .customer
+                            appState.isAuthenticated = false
+                            appState.showRoleSelection = false
+                            // Trigger customer profile sync
+                            syncBorrowerProfileIfNeeded()
+                        }
+                    }
+                } else {
+                    // Fallback to customer if role is missing
+                    await MainActor.run {
+                        appState.selectedRole = .customer
+                        syncBorrowerProfileIfNeeded()
+                    }
+                }
+            } catch {
+                print("Error resolving user role: \(error.localizedDescription)")
+                // Fallback to customer
+                await MainActor.run {
+                    appState.selectedRole = .customer
+                    syncBorrowerProfileIfNeeded()
+                }
+            }
+        }
     }
 
     // MARK: - Splash View
@@ -182,11 +246,11 @@ struct ContentView: View {
                 VStack(spacing: LMSSpacing.sm) {
                     Text("Loan Manager")
                         .font(LMSFont.largeTitle)
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
 
                     Text("Smart Lending, Simplified")
                         .font(LMSFont.footnote.weight(.medium))
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundStyle(.white.opacity(0.6))
                 }
 
                 ProgressView()

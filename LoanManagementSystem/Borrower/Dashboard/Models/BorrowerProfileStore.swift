@@ -1,5 +1,7 @@
 import Foundation
 import Combine
+import FirebaseAuth
+import FirebaseFirestore
 
 struct UserAccount: Codable {
     var email: String
@@ -19,45 +21,9 @@ class BorrowerProfileStore: ObservableObject {
     @Published var accounts: [UserAccount] = []
     @Published var currentEmail: String?
 
-    private let accountsKey = "lms_persisted_accounts"
-    private let activeSessionKey = "lms_active_session_email"
-
     private init() {
-        loadAccountsFromDisk()
-        loadActiveSession()
-    }
-
-    // MARK: - Local Disk Operations
-
-    func loadAccountsFromDisk() {
-        if let data = UserDefaults.standard.data(forKey: accountsKey),
-           let decoded = try? JSONDecoder().decode([UserAccount].self, from: data) {
-            self.accounts = decoded
-        } else {
-            // Setup default mock account (Rahul Sharma)
+        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
             setupDefaultAccount()
-        }
-    }
-
-    func saveAccountsToDisk() {
-        if let encoded = try? JSONEncoder().encode(accounts) {
-            UserDefaults.standard.set(encoded, forKey: accountsKey)
-        }
-    }
-
-    private func loadActiveSession() {
-        if let activeEmail = UserDefaults.standard.string(forKey: activeSessionKey),
-           let account = accounts.first(where: { $0.email == activeEmail }) {
-            self.currentEmail = activeEmail
-            self.profile = account.profile
-        }
-    }
-
-    private func saveActiveSession(_ email: String?) {
-        if let email = email {
-            UserDefaults.standard.set(email, forKey: activeSessionKey)
-        } else {
-            UserDefaults.standard.removeObject(forKey: activeSessionKey)
         }
     }
 
@@ -115,7 +81,6 @@ class BorrowerProfileStore: ObservableObject {
         )
 
         self.accounts = [rahulAccount]
-        saveAccountsToDisk()
     }
 
     // MARK: - Actions
@@ -123,65 +88,108 @@ class BorrowerProfileStore: ObservableObject {
     @discardableResult
     func ensureProfile(email: String, name: String? = nil, phone: String? = nil) -> BorrowerProfile {
         let cleanedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let cleanedPhone = phone?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
-        if let index = accounts.firstIndex(where: { $0.email == cleanedEmail }) {
-            currentEmail = accounts[index].email
-            profile = accounts[index].profile
-            saveActiveSession(accounts[index].email)
-
-            if let existingProfile = accounts[index].profile {
-                return existingProfile
-            }
-
-            let recoveredProfile = makeEmptyProfile(
-                name: accounts[index].fullName,
-                email: accounts[index].email,
-                phone: accounts[index].mobile,
-                customerId: accounts[index].customerId
-            )
-            accounts[index].profile = recoveredProfile
-            profile = recoveredProfile
-            saveAccountsToDisk()
-            return recoveredProfile
+        if let current = profile, current.email == cleanedEmail {
+            return current
         }
 
-        let customerId = "C-\(Int.random(in: 100000...999999))"
-        let displayName = name?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let profile = makeEmptyProfile(
-            name: displayName?.isEmpty == false ? displayName! : cleanedEmail,
-            email: cleanedEmail,
-            phone: cleanedPhone,
-            customerId: customerId
-        )
+        if let user = Auth.auth().currentUser, user.email?.lowercased() == cleanedEmail {
+            Task {
+                await fetchProfileFromFirestore(uid: user.uid, email: cleanedEmail, name: name, phone: phone)
+            }
+        } else {
+            // Previews / offline mock check
+            if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
+                if let account = accounts.first(where: { $0.email == cleanedEmail }) {
+                    self.profile = account.profile
+                    self.currentEmail = cleanedEmail
+                    return account.profile!
+                }
+            }
+            
+            let customerId = "C-\(Int.random(in: 100000...999999))"
+            let fallbackProfile = makeEmptyProfile(name: name ?? cleanedEmail, email: cleanedEmail, phone: phone ?? "", customerId: customerId)
+            self.profile = fallbackProfile
+            self.currentEmail = cleanedEmail
+        }
 
-        let newAccount = UserAccount(
-            email: cleanedEmail,
-            passwordHash: "",
-            customerId: customerId,
-            fullName: profile.fullName,
-            mobile: cleanedPhone,
-            isOnboardingCompleted: false,
-            profile: profile
-        )
+        return self.profile ?? makeEmptyProfile(name: name ?? cleanedEmail, email: cleanedEmail, phone: phone ?? "", customerId: "")
+    }
 
-        accounts.append(newAccount)
-        saveAccountsToDisk()
-        currentEmail = cleanedEmail
-        self.profile = profile
-        saveActiveSession(cleanedEmail)
-        return profile
+    func fetchProfileFromFirestore(uid: String, email: String, name: String? = nil, phone: String? = nil) async {
+        let db = Firestore.firestore()
+        let docRef = db.collection("users").document(uid)
+
+        do {
+            let document = try await docRef.getDocument()
+            if document.exists, let data = document.data() {
+                if let profileData = data["profile"] as? [String: Any],
+                   let decodedProfile = BorrowerProfile.from(dictionary: profileData) {
+                    self.profile = decodedProfile
+                } else {
+                    let customerId = "C-\(Int.random(in: 100000...999999))"
+                    let newProfile = makeEmptyProfile(
+                        name: name ?? data["fullName"] as? String ?? email,
+                        email: email,
+                        phone: phone ?? data["mobileNumber"] as? String ?? "",
+                        customerId: customerId
+                    )
+                    self.profile = newProfile
+                    try await docRef.updateData(["profile": newProfile.asDictionary ?? [:]])
+                }
+            } else {
+                let customerId = "C-\(Int.random(in: 100000...999999))"
+                let newProfile = makeEmptyProfile(
+                    name: name ?? email,
+                    email: email,
+                    phone: phone ?? "",
+                    customerId: customerId
+                )
+                self.profile = newProfile
+                let userDoc: [String: Any] = [
+                    "fullName": name ?? email,
+                    "email": email,
+                    "mobileNumber": phone ?? "",
+                    "role": "borrower",
+                    "createdAt": FieldValue.serverTimestamp(),
+                    "updatedAt": FieldValue.serverTimestamp(),
+                    "profile": newProfile.asDictionary ?? [:]
+                ]
+                try await docRef.setData(userDoc)
+            }
+            self.currentEmail = email
+        } catch {
+            print("Error fetching profile from Firestore: \(error.localizedDescription)")
+            let customerId = "C-\(Int.random(in: 100000...999999))"
+            self.profile = makeEmptyProfile(name: name ?? email, email: email, phone: phone ?? "", customerId: customerId)
+            self.currentEmail = email
+        }
     }
 
     func updateProfile(_ updatedProfile: BorrowerProfile) {
         self.profile = updatedProfile
 
-        guard let activeEmail = currentEmail,
-              let index = accounts.firstIndex(where: { $0.email == activeEmail }) else { return }
+        guard let user = Auth.auth().currentUser else {
+            if let index = accounts.firstIndex(where: { $0.email == updatedProfile.email }) {
+                accounts[index].profile = updatedProfile
+                accounts[index].isOnboardingCompleted = updatedProfile.isOnboardingCompleted
+            }
+            return
+        }
 
-        accounts[index].profile = updatedProfile
-        accounts[index].isOnboardingCompleted = updatedProfile.isOnboardingCompleted
-        saveAccountsToDisk()
+        let uid = user.uid
+        Task {
+            let db = Firestore.firestore()
+            let docRef = db.collection("users").document(uid)
+            do {
+                try await docRef.updateData([
+                    "profile": updatedProfile.asDictionary ?? [:],
+                    "updatedAt": FieldValue.serverTimestamp()
+                ])
+            } catch {
+                print("Error updating profile in Firestore: \(error.localizedDescription)")
+            }
+        }
     }
 
     func skipOnboarding() {
@@ -193,7 +201,6 @@ class BorrowerProfileStore: ObservableObject {
     func signOut() {
         self.profile = nil
         self.currentEmail = nil
-        saveActiveSession(nil)
     }
 
     private func makeEmptyProfile(name: String, email: String, phone: String, customerId: String) -> BorrowerProfile {
@@ -238,5 +245,21 @@ class BorrowerProfileStore: ObservableObject {
             nomineeRelationship: "",
             isOnboardingCompleted: false
         )
+    }
+}
+
+// MARK: - Codable Extensions for Firestore Serialization
+
+extension Encodable {
+    var asDictionary: [String: Any]? {
+        guard let data = try? JSONEncoder().encode(self) else { return nil }
+        return (try? JSONSerialization.jsonObject(with: data, options: .allowFragments)).flatMap { $0 as? [String: Any] }
+    }
+}
+
+extension Decodable {
+    static func from(dictionary: [String: Any]) -> Self? {
+        guard let data = try? JSONSerialization.data(withJSONObject: dictionary, options: []) else { return nil }
+        return try? JSONDecoder().decode(Self.self, from: data)
     }
 }

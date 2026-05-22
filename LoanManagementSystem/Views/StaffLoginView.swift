@@ -1,4 +1,6 @@
 import SwiftUI
+import FirebaseAuth
+import FirebaseFirestore
 
 struct StaffLoginView: View {
     @EnvironmentObject var appState: AppStateManager
@@ -37,7 +39,7 @@ struct StaffLoginView: View {
                                 Text("Back to Roles")
                             }
                             .font(LMSFont.subheadline.weight(.semibold))
-                            .foregroundColor(LMSColors.brandNavy)
+                            .foregroundStyle(LMSColors.brandNavy)
                         }
                         .padding(.top, LMSSpacing.lg)
 
@@ -51,12 +53,12 @@ struct StaffLoginView: View {
 
                                     Image(systemName: appState.selectedRole.icon)
                                         .font(LMSFont.title3)
-                                        .foregroundColor(LMSColors.brandNavy)
+                                        .foregroundStyle(LMSColors.brandNavy)
                                 }
 
                                 Text("Branch Staff")
                                     .font(LMSFont.caption.weight(.bold))
-                                    .foregroundColor(LMSColors.textSecondary)
+                                    .foregroundStyle(LMSColors.textSecondary)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 5)
                                     .background(LMSColors.surface)
@@ -65,11 +67,11 @@ struct StaffLoginView: View {
 
                             Text("\(appState.selectedRole.rawValue) Portal")
                                 .font(LMSFont.largeTitle)
-                                .foregroundColor(LMSColors.textPrimary)
+                                .foregroundStyle(LMSColors.textPrimary)
 
                             Text("Secure branch sign-in. Access credentials require verification.")
                                 .font(LMSFont.subheadline)
-                                .foregroundColor(LMSColors.textSecondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                         }
                         .padding(.bottom, LMSSpacing.sm)
 
@@ -77,10 +79,10 @@ struct StaffLoginView: View {
                         if !generalError.isEmpty {
                             HStack(alignment: .top, spacing: LMSSpacing.sm) {
                                 Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(LMSColors.coral)
+                                    .foregroundStyle(LMSColors.coral)
                                 Text(generalError)
                                     .font(LMSFont.caption)
-                                    .foregroundColor(LMSColors.coral)
+                                    .foregroundStyle(LMSColors.coral)
                                 Spacer()
                             }
                             .padding(LMSSpacing.lg)
@@ -94,7 +96,7 @@ struct StaffLoginView: View {
                             VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                                 Text("EMPLOYEE ID")
                                     .font(.system(size: 11, weight: .bold, design: .rounded))
-                                    .foregroundColor(LMSColors.textSecondary)
+                                    .foregroundStyle(LMSColors.textSecondary)
                                     .padding(.leading, LMSSpacing.xs)
 
                                 CustomTextField(
@@ -109,7 +111,7 @@ struct StaffLoginView: View {
                             VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                                 Text("PASSWORD")
                                     .font(.system(size: 11, weight: .bold, design: .rounded))
-                                    .foregroundColor(LMSColors.textSecondary)
+                                    .foregroundStyle(LMSColors.textSecondary)
                                     .padding(.leading, LMSSpacing.xs)
 
                                 SecureInputField(
@@ -124,12 +126,12 @@ struct StaffLoginView: View {
                         // Info note
                         HStack(alignment: .top, spacing: LMSSpacing.sm) {
                             Image(systemName: "info.circle")
-                                .foregroundColor(LMSColors.textTertiary)
+                                .foregroundStyle(LMSColors.textTertiary)
                                 .font(LMSFont.footnote)
 
                             Text("Staff IDs correspond to branch assignments (e.g. Loan Officer starts with 'LO', Bank Manager with 'BM', Admin with 'AD').")
                                 .font(LMSFont.caption)
-                                .foregroundColor(LMSColors.textTertiary)
+                                .foregroundStyle(LMSColors.textTertiary)
                         }
 
                         // Login button
@@ -207,28 +209,54 @@ struct StaffLoginView: View {
 
         isLoading = true
 
-        // Simulate secure API/LDAP authorization ping
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-            self.isLoading = false
+        Task {
+            let email = "\(cleanedID.lowercased())@astraloan.com"
+            let success = await authManager.signIn(email: email, password: password)
 
-            // Check mock passwords (universal 'password' for testing)
-            if self.password == "password" {
-                HapticsManager.triggerImpact(style: .heavy)
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                    appState.login()
+            if success, let user = authManager.currentUser {
+                do {
+                    let doc = try await Firestore.firestore().collection("users").document(user.uid).getDocument()
+                    if let data = doc.data(), let roleString = data["role"] as? String {
+                        let isValidRole: Bool
+                        switch appState.selectedRole {
+                        case .admin:
+                            isValidRole = (roleString == "admin")
+                        case .loanOfficer:
+                            isValidRole = (roleString == "loanOfficer" || roleString == "loan_officer")
+                        case .bankManager:
+                            isValidRole = (roleString == "bankManager" || roleString == "bank_manager")
+                        default:
+                            isValidRole = false
+                        }
+
+                        if isValidRole {
+                            HapticsManager.triggerImpact(style: .heavy)
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                appState.login()
+                            }
+                        } else {
+                            authManager.signOut()
+                            generalError = "Access Denied: You do not have the required role for this portal."
+                        }
+                    } else {
+                        authManager.signOut()
+                        generalError = "Access Denied: Role configuration not found on server."
+                    }
+                } catch {
+                    authManager.signOut()
+                    generalError = "Access Denied: Failed to retrieve security privileges. \(error.localizedDescription)"
                 }
             } else {
                 HapticsManager.triggerImpact(style: .light)
-                self.generalError = "Access Denied: Invalid credentials. Check your Employee ID and password."
+                generalError = authManager.errorMessage ?? "Access Denied: Invalid credentials. Check your Employee ID and password."
             }
+            isLoading = false
         }
     }
 }
 
-struct StaffLoginView_Previews: PreviewProvider {
-    static var previews: some View {
-        StaffLoginView()
-            .environmentObject(AppStateManager())
-            .environmentObject(AuthManager())
-    }
+#Preview {
+    StaffLoginView()
+        .environmentObject(AppStateManager())
+        .environmentObject(AuthManager())
 }
