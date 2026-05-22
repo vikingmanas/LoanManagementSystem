@@ -1,87 +1,106 @@
 import SwiftUI
 
 struct ChatsFeedTabView: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    enum ChatFilterType {
+        case all
+        case unread
+        case queries
+    }
     
-    @State private var filterOnlyQueries = false
-    @State private var activeChatApp: ActivityFeedItem? = nil
-    @State private var chatText = ""
-    @State private var simulatedReplies: [SimulatedChatMessage] = []
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @State private var selectedFilter: ChatFilterType = .all
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Sticky Filter Header
-            VStack(spacing: 12) {
-                Picker("Feed Mode", selection: $filterOnlyQueries) {
-                    Text("All Activity").tag(false)
-                    Text("Raised Queries").tag(true)
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Custom Native Header for Title and Filter
+                HStack(alignment: .center) {
+                    Text(selectedFilter == .queries ? "Queries" : (selectedFilter == .unread ? "Unread Messages" : "All Messages"))
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                    
+                    Spacer()
+                    
+                    Menu {
+                        Section(header: Text("Filter By")) {
+                            Button {
+                                selectedFilter = .all
+                            } label: {
+                                Label("All Messages", systemImage: selectedFilter == .all ? "checkmark" : "")
+                            }
+                            Button {
+                                selectedFilter = .unread
+                            } label: {
+                                Label("Unread", systemImage: selectedFilter == .unread ? "checkmark" : "")
+                            }
+                            Button {
+                                selectedFilter = .queries
+                            } label: {
+                                Label("Queries", systemImage: selectedFilter == .queries ? "checkmark" : "")
+                            }
+                        }
+                        
+                        if viewModel.unreadActivityCount > 0 {
+                            Section {
+                                Button {
+                                    HapticsManager.triggerImpact(style: .medium)
+                                    viewModel.markAllActivityRead()
+                                } label: {
+                                    Label("Mark All as Read", systemImage: "checkmark.circle")
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.system(size: 26))
+                            .foregroundColor(.blue)
+                    }
                 }
-                .pickerStyle(.segmented)
                 .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-            }
-            .background(Color(.systemBackground))
-            .shadow(color: .black.opacity(0.03), radius: 3, x: 0, y: 3)
-            
-            // Timeline Content
+                .padding(.vertical, 8)
+                
+                // Timeline Content
             let items = viewModel.activityFeed.filter { item in
-                filterOnlyQueries ? (item.eventType == .queryRaised) : true
+                switch selectedFilter {
+                case .all: return true
+                case .unread: return !item.isRead
+                case .queries: return item.eventType == .queryRaised
+                }
             }
             
             if items.isEmpty {
                 Spacer()
                 ContentUnavailableView(
-                    filterOnlyQueries ? "No Active Queries" : "No Activities",
-                    systemImage: filterOnlyQueries ? "bubble.left.and.bubble.right.fill" : "bell.slash",
-                    description: Text(filterOnlyQueries ? "Borrowers have not raised any clarification queries." : "Timeline is clean! All alerts processed.")
+                    selectedFilter == .queries ? "No Active Queries" : (selectedFilter == .unread ? "No Unread Messages" : "No Activities"),
+                    systemImage: selectedFilter == .queries ? "bubble.left.and.bubble.right.fill" : "bell.slash",
+                    description: Text(selectedFilter == .queries ? "Borrowers have not raised any clarification queries." : "Timeline is clean! All alerts processed.")
                 )
                 Spacer()
             } else {
                 List {
-                    // Quick Action: Mark all read
-                    if viewModel.unreadActivityCount > 0 && !filterOnlyQueries {
-                        Button(action: {
-                            HapticsManager.triggerImpact(style: .medium)
-                            viewModel.markAllActivityRead()
-                        }) {
-                            HStack {
-                                Spacer()
-                                Image(systemName: "checkmark.circle.fill")
-                                Text("Mark All Read")
-                                    .font(.system(.caption, design: .rounded).bold())
-                                Spacer()
-                            }
-                            .foregroundColor(AppTheme.actionBlue)
-                            .padding(.vertical, 4)
-                        }
-                        .listRowBackground(Color.clear)
-                    }
-                    
                     ForEach(items) { item in
-                        ActivityFeedRow(
-                            item: item,
-                            onMarkRead: {
+                        NavigationLink(destination: ChatDetailResolverView(item: item)
+                            .onAppear {
                                 viewModel.markActivityRead(item.id)
-                            },
-                            onDismiss: {
-                                viewModel.dismissActivity(item.id)
-                            },
-                            onActionTapped: { _ in
-                                HapticsManager.triggerImpact(style: .medium)
-                                activeChatApp = item
-                                loadSimulatedChat(for: item)
                             }
-                        )
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(item.isRead ? Color.clear : AppTheme.actionBlue.opacity(0.03))
-                        .listRowSeparator(.visible)
-                        .onTapGesture {
-                            HapticsManager.triggerImpact(style: .light)
-                            viewModel.markActivityRead(item.id)
-                            activeChatApp = item
-                            loadSimulatedChat(for: item)
+                        ) {
+                            ActivityFeedRow(
+                                item: item,
+                                onMarkRead: {
+                                    viewModel.markActivityRead(item.id)
+                                },
+                                onDismiss: {
+                                    viewModel.dismissActivity(item.id)
+                                },
+                                onActionTapped: { _ in
+                                    HapticsManager.triggerImpact(style: .medium)
+                                    viewModel.markActivityRead(item.id)
+                                }
+                            )
                         }
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color(.systemBackground))
+                        .listRowSeparator(.visible)
                     }
                 }
                 .listStyle(.plain)
@@ -90,60 +109,9 @@ struct ChatsFeedTabView: View {
                 }
             }
         }
-        .sheet(item: $activeChatApp) { item in
-            ChatDetailResolverView(
-                item: item,
-                chatText: $chatText,
-                messages: $simulatedReplies,
-                onSend: {
-                    sendChatMessage(for: item)
-                }
-            )
-        }
+        .toolbar(.hidden, for: .navigationBar)
     }
-    
-    // Simulate interactive chatting
-    private func loadSimulatedChat(for item: ActivityFeedItem) {
-        simulatedReplies = [
-            SimulatedChatMessage(
-                sender: .borrower,
-                text: "Hello, I received a notification regarding the query on \(item.loanType). Let me know what information is missing.",
-                time: "2 hours ago"
-            ),
-            SimulatedChatMessage(
-                sender: .system,
-                text: "Clarification query raised: \(item.eventDescription)",
-                time: "1 hour ago"
-            )
-        ]
-    }
-    
-    private func sendChatMessage(for item: ActivityFeedItem) {
-        guard !chatText.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        
-        // 1. Append officer message
-        let newMsg = SimulatedChatMessage(sender: .officer, text: chatText, time: "Just now")
-        simulatedReplies.append(newMsg)
-        let sentText = chatText
-        chatText = ""
-        
-        HapticsManager.triggerImpact(style: .medium)
-        
-        // 2. Simulate user reply after 1.5 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-            HapticsManager.triggerImpact(style: .light)
-            let replyText: String
-            if sentText.lowercased().contains("document") || sentText.lowercased().contains("upload") {
-                replyText = "Understood. I will re-upload the correct self-attested bank statements through my portal right away."
-            } else if sentText.lowercased().contains("cibil") || sentText.lowercased().contains("score") {
-                replyText = "Yes, I had closed an older credit card account last month, which might explain the score discrepancy."
-            } else {
-                replyText = "Thank you, Officer Arjun. I appreciate the guidance and will coordinate the details."
-            }
-            
-            simulatedReplies.append(SimulatedChatMessage(sender: .borrower, text: replyText, time: "Just now"))
-        }
-    }
+}
 }
 
 // Chat helper types
@@ -161,38 +129,11 @@ struct SimulatedChatMessage: Identifiable {
 
 struct ChatDetailResolverView: View {
     let item: ActivityFeedItem
-    @Binding var chatText: String
-    @Binding var messages: [SimulatedChatMessage]
-    var onSend: () -> Void
-    
-    @Environment(\.dismiss) var dismiss
+    @State private var chatText = ""
+    @State private var messages: [SimulatedChatMessage] = []
     
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Header details
-                HStack(spacing: 12) {
-                    Circle()
-                        .fill(AppTheme.brandNavy.opacity(0.1))
-                        .frame(width: 44, height: 44)
-                        .overlay(
-                            Text(String(item.borrowerName.prefix(2)))
-                                .font(.system(.subheadline, design: .rounded).bold())
-                                .foregroundColor(AppTheme.brandNavy)
-                        )
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(item.borrowerName)
-                            .font(.system(.subheadline, design: .rounded).bold())
-                        Text("\(item.loanType) · \(item.applicationId)")
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                }
-                .padding()
-                .background(AppTheme.neutralSurface)
-                
+        VStack(spacing: 0) {
                 // Messages List
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -215,35 +156,109 @@ struct ChatDetailResolverView: View {
                 
                 Divider()
                 
-                // Typing Row
-                HStack(spacing: 10) {
-                    TextField("Type clarification instructions...", text: $chatText)
-                        .font(.system(.subheadline, design: .rounded))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(Color.primary.opacity(0.06))
-                        .cornerRadius(20)
-                    
-                    Button(action: onSend) {
-                        Image(systemName: "paperplane.fill")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(width: 38, height: 38)
-                            .background(AppTheme.actionBlue)
+                // Native Typing Row
+                HStack(spacing: 12) {
+                    Button(action: {}) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 20))
+                            .foregroundColor(Color(.systemGray))
+                            .padding(8)
+                            .background(Color(.systemGray5))
                             .clipShape(Circle())
                     }
-                    .disabled(chatText.trimmingCharacters(in: .whitespaces).isEmpty)
+                    
+                    HStack {
+                        TextField("Message", text: $chatText)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                        
+                        if !chatText.trimmingCharacters(in: .whitespaces).isEmpty {
+                            Button(action: sendChatMessage) {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundColor(.blue)
+                            }
+                            .padding(.trailing, 4)
+                        } else {
+                            Image(systemName: "mic")
+                                .font(.system(size: 20))
+                                .foregroundColor(.gray)
+                                .padding(.trailing, 12)
+                        }
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(Color(.systemGray4), lineWidth: 1)
+                    )
+                    .background(Color(.systemBackground).clipShape(RoundedRectangle(cornerRadius: 20)))
                 }
-                .padding()
-                .background(Color(.systemBackground))
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(Color(.systemGroupedBackground))
             }
-            .navigationTitle("Borrower Chat Console")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { dismiss() }
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 2) {
+                        ZStack {
+                            Circle().fill(Color(.systemGray5)).frame(width: 32, height: 32)
+                            Text(String(item.borrowerName.prefix(2)).uppercased())
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(Color(.darkGray))
+                        }
+                        Text(item.borrowerName)
+                            .font(.caption)
+                            .bold()
+                    }
                 }
             }
+            .onAppear {
+                loadSimulatedChat()
+            }
+    }
+    
+    // Simulate interactive chatting
+    private func loadSimulatedChat() {
+        if messages.isEmpty {
+            messages = [
+                SimulatedChatMessage(
+                    sender: .borrower,
+                    text: "Hello, I received a notification regarding the query on \(item.loanType). Let me know what information is missing.",
+                    time: "2 hours ago"
+                ),
+                SimulatedChatMessage(
+                    sender: .system,
+                    text: "Clarification query raised: \(item.eventDescription)",
+                    time: "1 hour ago"
+                )
+            ]
+        }
+    }
+    
+    private func sendChatMessage() {
+        guard !chatText.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        
+        // 1. Append officer message
+        let newMsg = SimulatedChatMessage(sender: .officer, text: chatText, time: "Just now")
+        messages.append(newMsg)
+        let sentText = chatText
+        chatText = ""
+        
+        HapticsManager.triggerImpact(style: .medium)
+        
+        // 2. Simulate user reply after 1.5 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            HapticsManager.triggerImpact(style: .light)
+            let replyText: String
+            if sentText.lowercased().contains("document") || sentText.lowercased().contains("upload") {
+                replyText = "Understood. I will re-upload the correct self-attested bank statements through my portal right away."
+            } else if sentText.lowercased().contains("cibil") || sentText.lowercased().contains("score") {
+                replyText = "Yes, I had closed an older credit card account last month, which might explain the score discrepancy."
+            } else {
+                replyText = "Thank you, Officer Arjun. I appreciate the guidance and will coordinate the details."
+            }
+            
+            messages.append(SimulatedChatMessage(sender: .borrower, text: replyText, time: "Just now"))
         }
     }
 }
@@ -264,28 +279,60 @@ struct ChatMessageBubble: View {
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Color.primary.opacity(0.05))
-                    .cornerRadius(8)
+                    .background(Color(.systemGray6))
+                    .clipShape(Capsule())
                 Spacer()
             } else {
-                VStack(alignment: msg.sender == .officer ? .trailing : .leading, spacing: 3) {
-                    Text(msg.text)
-                        .font(.system(.subheadline, design: .rounded))
-                        .foregroundColor(msg.sender == .officer ? .white : .primary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(msg.sender == .officer ? AppTheme.actionBlue : AppTheme.neutralSurface)
-                        .cornerRadius(16)
-                    
-                    Text(msg.time)
-                        .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 4)
-                }
+                Text(msg.text)
+                    .font(.body)
+                    .foregroundColor(msg.sender == .officer ? .white : .primary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(msg.sender == .officer ? Color.blue : Color(.systemGray5))
+                    .clipShape(
+                        UnevenRoundedRectangle(
+                            topLeadingRadius: 18,
+                            bottomLeadingRadius: msg.sender == .officer ? 18 : 4,
+                            bottomTrailingRadius: msg.sender == .officer ? 4 : 18,
+                            topTrailingRadius: 18
+                        )
+                    )
             }
             
             if msg.sender == .borrower {
                 Spacer()
+            }
+        }
+        .contextMenu {
+            if msg.sender != .system {
+                Button {
+                    // Copy to clipboard
+                    UIPasteboard.general.string = msg.text
+                    HapticsManager.triggerImpact(style: .light)
+                } label: {
+                    Label("Copy", systemImage: "doc.on.doc")
+                }
+                
+                Button {
+                    // Mock Reply Action
+                    HapticsManager.triggerImpact(style: .light)
+                } label: {
+                    Label("Reply", systemImage: "arrowshape.turn.up.left")
+                }
+                
+                Button {
+                    // Mock Translate
+                    HapticsManager.triggerImpact(style: .light)
+                } label: {
+                    Label("Translate", systemImage: "character.book.closed")
+                }
+                
+                Button {
+                    // Mock More
+                    HapticsManager.triggerImpact(style: .light)
+                } label: {
+                    Label("More...", systemImage: "ellipsis.circle")
+                }
             }
         }
     }

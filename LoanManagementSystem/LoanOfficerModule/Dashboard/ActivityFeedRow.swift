@@ -7,110 +7,102 @@ struct ActivityFeedRow: View {
     var onActionTapped: (ActivityActionType) -> Void
     
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            // Icon + Unread Badge Stack
-            ZStack(alignment: .topTrailing) {
-                ZStack {
-                    Circle()
-                        .fill(item.eventType.themeColor.opacity(0.12))
-                        .frame(width: 40, height: 40)
-                    
-                    Image(systemName: item.eventType.symbol)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(item.eventType.themeColor)
-                }
-                
-                if !item.isRead {
-                    Circle()
-                        .fill(AppTheme.actionBlue)
-                        .frame(width: 8, height: 8)
-                        .overlay(
-                            Circle()
-                                .stroke(Color(.systemBackground), lineWidth: 1.5)
-                        )
-                        .offset(x: 2, y: -2)
-                }
+        HStack(alignment: .center, spacing: 10) {
+            // Native Unread Dot (Blue)
+            Circle()
+                .fill(item.isRead ? Color.clear : .blue)
+                .frame(width: 10, height: 10)
+            
+            // Native Avatar
+            ZStack {
+                Circle()
+                    .fill(Color(.systemGray5))
+                    .frame(width: 50, height: 50)
+                Text(String(item.borrowerName.prefix(2)).uppercased())
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color(.darkGray))
             }
             
             // Text Details Stack
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .top) {
                     Text(item.borrowerName)
-                        .font(.system(.callout, design: .rounded).bold())
+                        .font(.headline)
                         .foregroundColor(.primary)
+                        .lineLimit(1)
                     
-                    Text("·")
-                        .font(.system(.caption, design: .rounded))
-                        .foregroundColor(.secondary)
+                    Spacer()
                     
-                    Text(item.loanType)
-                        .font(.system(.caption, design: .rounded).weight(.semibold))
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 4) {
+                        Text(RelativeDateFormatter.shared.relativeString(from: item.timestamp))
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(Color(.tertiaryLabel))
+                    }
                 }
                 
-                Text(item.eventDescription)
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                
-                HStack(spacing: 6) {
-                    Text(item.applicationId)
-                        .font(.system(.caption2, design: .rounded).weight(.semibold))
-                        .foregroundColor(Color(.placeholderText))
-                    
-                    Text("•")
-                        .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(Color(.placeholderText))
-                    
-                    Text(RelativeDateFormatter.shared.relativeString(from: item.timestamp))
-                        .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(Color(.placeholderText))
+                HStack(alignment: .top) {
+                    Text(item.eventDescription)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.top, 2)
-            }
-            
-            Spacer()
-            
-            // Optional CTA Button
-            if item.requiresAction, let actionType = item.actionType {
-                Button(action: {
-                    HapticsManager.triggerImpact(style: .medium)
-                    onActionTapped(actionType)
-                }) {
-                    Text(actionType.label)
-                        .font(.system(.caption, design: .rounded).bold())
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(actionType.color.opacity(0.15))
-                        .foregroundColor(actionType.color)
-                        .cornerRadius(8)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .accessibilityLabel("Action: \(actionType.label) for \(item.borrowerName)")
             }
         }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 16)
-        .background(item.isRead ? Color.clear : AppTheme.actionBlue.opacity(0.04))
+        .padding(.vertical, 6)
+        .padding(.horizontal, 12)
+        .background(Color(.systemBackground))
         .contentShape(Rectangle())
+        .contextMenu {
+            Button {
+                // Mock Pin Action
+                HapticsManager.triggerImpact(style: .light)
+            } label: {
+                Label("Pin", systemImage: "pin")
+            }
+            
+            Button {
+                HapticsManager.triggerImpact(style: .light)
+                if !item.isRead {
+                    onMarkRead()
+                }
+            } label: {
+                Label(item.isRead ? "Mark as Unread" : "Mark as Read", systemImage: item.isRead ? "message.badge.fill" : "envelope.open")
+            }
+            
+            Button {
+                // Mock Hide Alerts Action
+                HapticsManager.triggerImpact(style: .light)
+            } label: {
+                Label("Hide Alerts", systemImage: "bell.slash")
+            }
+            
+            Button(role: .destructive) {
+                HapticsManager.triggerImpact(style: .medium)
+                onDismiss()
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             if !item.isRead {
                 Button {
                     onMarkRead()
                 } label: {
-                    Label("Mark Read", systemImage: "envelope.open.fill")
+                    Label("Read", systemImage: "envelope.open.fill")
                 }
-                .tint(AppTheme.actionBlue)
+                .tint(.blue)
             }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 onDismiss()
             } label: {
-                Label("Dismiss", systemImage: "xmark")
+                Label("Delete", systemImage: "trash.fill")
             }
-            .tint(Color.gray)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(item.borrowerName), \(item.loanType). \(item.eventDescription) Application ID \(item.applicationId), \(RelativeDateFormatter.shared.relativeString(from: item.timestamp)). Status \(item.isRead ? "read" : "unread").")
