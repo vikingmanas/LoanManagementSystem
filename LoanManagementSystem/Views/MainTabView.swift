@@ -15,7 +15,7 @@ struct MainTabView: View {
                 }
                 .tag(BorrowerTab.dashboard)
 
-            LoanApplicationTabView()
+            LoanApplicationTabView(viewModel: LoanApplicationViewModel())
                 .tabItem {
                     Label("Loans", systemImage: "doc.text.magnifyingglass")
                 }

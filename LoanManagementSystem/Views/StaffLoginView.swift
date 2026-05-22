@@ -5,29 +5,29 @@ import FirebaseFirestore
 struct StaffLoginView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
-
+    
     @State private var employeeID: String = ""
     @State private var password: String = ""
-
+    
     @State private var employeeIDError: String = ""
     @State private var passwordError: String = ""
     @State private var generalError: String = ""
     @State private var isLoading: Bool = false
-
+    
     var isFormValid: Bool {
         return !employeeID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
                !password.isEmpty
     }
-
+    
     var body: some View {
         NavigationStack {
             ZStack {
-                LMSColors.background.ignoresSafeArea()
-
+                Color.AppTheme.background.ignoresSafeArea()
+                
                 ScrollView {
-                    VStack(alignment: .leading, spacing: LMSSpacing.xxl) {
-
-                        // Back button
+                    VStack(alignment: .leading, spacing: 24) {
+                        
+                        // Top Back Navigation Button
                         Button(action: {
                             HapticsManager.triggerImpact(style: .medium)
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
@@ -38,67 +38,67 @@ struct StaffLoginView: View {
                                 Image(systemName: "chevron.left")
                                 Text("Back to Roles")
                             }
-                            .font(LMSFont.subheadline.weight(.semibold))
-                            .foregroundStyle(LMSColors.brandNavy)
+                            .font(.system(.body, design: .rounded).weight(.semibold))
+                            .foregroundColor(Color.AppTheme.primary)
                         }
-                        .padding(.top, LMSSpacing.lg)
-
-                        // Header
-                        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
-                            HStack(spacing: LMSSpacing.md) {
+                        .padding(.top, 16)
+                        
+                        // Header Section
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 12) {
                                 ZStack {
-                                    RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
-                                        .fill(LMSColors.brandNavy.opacity(0.10))
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color.AppTheme.primary.opacity(0.12))
                                         .frame(width: 44, height: 44)
-
+                                    
                                     Image(systemName: appState.selectedRole.icon)
-                                        .font(LMSFont.title3)
-                                        .foregroundStyle(LMSColors.brandNavy)
+                                        .font(.title3)
+                                        .foregroundColor(Color.AppTheme.primary)
                                 }
-
+                                
                                 Text("Branch Staff")
-                                    .font(LMSFont.caption.weight(.bold))
-                                    .foregroundStyle(LMSColors.textSecondary)
+                                    .font(.system(.caption, design: .rounded).weight(.bold))
+                                    .foregroundColor(.secondary)
                                     .padding(.horizontal, 10)
-                                    .padding(.vertical, 5)
-                                    .background(LMSColors.surface)
-                                    .clipShape(Capsule())
+                                    .padding(.vertical, 4)
+                                    .background(Color.secondary.opacity(0.1))
+                                    .cornerRadius(8)
                             }
-
+                            
                             Text("\(appState.selectedRole.rawValue) Portal")
-                                .font(LMSFont.largeTitle)
-                                .foregroundStyle(LMSColors.textPrimary)
-
+                                .font(Font.AppTheme.title)
+                                .foregroundColor(Color.AppTheme.textPrimary)
+                            
                             Text("Secure branch sign-in. Access credentials require verification.")
-                                .font(LMSFont.subheadline)
-                                .foregroundStyle(LMSColors.textSecondary)
+                                .font(Font.AppTheme.subtitle)
+                                .foregroundColor(Color.AppTheme.textSecondary)
                         }
-                        .padding(.bottom, LMSSpacing.sm)
-
+                        .padding(.top, 12)
+                        
                         // Error Banner
                         if !generalError.isEmpty {
-                            HStack(alignment: .top, spacing: LMSSpacing.sm) {
+                            HStack(alignment: .top, spacing: 8) {
                                 Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(LMSColors.coral)
+                                    .foregroundColor(Color.AppTheme.error)
                                 Text(generalError)
-                                    .font(LMSFont.caption)
-                                    .foregroundStyle(LMSColors.coral)
+                                    .font(Font.AppTheme.caption)
+                                    .foregroundColor(Color.AppTheme.error)
                                 Spacer()
                             }
-                            .padding(LMSSpacing.lg)
-                            .background(LMSColors.coral.opacity(0.08))
-                            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+                            .padding()
+                            .background(Color.AppTheme.error.opacity(0.1))
+                            .cornerRadius(12)
                             .transition(.move(edge: .top).combined(with: .opacity))
                         }
-
-                        // Fields
-                        VStack(spacing: LMSSpacing.xl) {
-                            VStack(alignment: .leading, spacing: LMSSpacing.xs) {
+                        
+                        // Input Fields Stack
+                        VStack(spacing: 20) {
+                            VStack(alignment: .leading, spacing: 6) {
                                 Text("EMPLOYEE ID")
                                     .font(.system(size: 11, weight: .bold, design: .rounded))
-                                    .foregroundStyle(LMSColors.textSecondary)
-                                    .padding(.leading, LMSSpacing.xs)
-
+                                    .foregroundColor(Color.AppTheme.textSecondary)
+                                    .padding(.leading, 4)
+                                
                                 CustomTextField(
                                     icon: "person.text.rectangle",
                                     placeholder: employeeIDPlaceholder,
@@ -107,13 +107,13 @@ struct StaffLoginView: View {
                                     errorMessage: employeeIDError
                                 )
                             }
-
-                            VStack(alignment: .leading, spacing: LMSSpacing.xs) {
+                            
+                            VStack(alignment: .leading, spacing: 6) {
                                 Text("PASSWORD")
                                     .font(.system(size: 11, weight: .bold, design: .rounded))
-                                    .foregroundStyle(LMSColors.textSecondary)
-                                    .padding(.leading, LMSSpacing.xs)
-
+                                    .foregroundColor(Color.AppTheme.textSecondary)
+                                    .padding(.leading, 4)
+                                
                                 SecureInputField(
                                     placeholder: "Branch Password",
                                     text: $password,
@@ -122,40 +122,40 @@ struct StaffLoginView: View {
                                 )
                             }
                         }
-
-                        // Info note
-                        HStack(alignment: .top, spacing: LMSSpacing.sm) {
+                        
+                        // Info Note on credentials (Helper guidelines)
+                        HStack(alignment: .top, spacing: 8) {
                             Image(systemName: "info.circle")
-                                .foregroundStyle(LMSColors.textTertiary)
-                                .font(LMSFont.footnote)
-
+                                .foregroundColor(.secondary)
+                                .font(.footnote)
+                            
                             Text("Staff IDs correspond to branch assignments (e.g. Loan Officer starts with 'LO', Bank Manager with 'BM', Admin with 'AD').")
-                                .font(LMSFont.caption)
-                                .foregroundStyle(LMSColors.textTertiary)
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
                         }
-
-                        // Login button
+                        .padding(.top, 4)
+                        
+                        // Action Buttons
                         PrimaryButton(
                             title: "Authorize Portal Access",
-                            icon: "lock.open.fill",
                             isLoading: isLoading,
                             isDisabled: !isFormValid,
                             action: {
                                 handleStaffLogin()
                             }
                         )
-                        .padding(.top, LMSSpacing.sm)
-
+                        .padding(.top, 12)
+                        
                         Spacer()
                             .frame(height: 40)
                     }
-                    .padding(.horizontal, LMSSpacing.xxl)
+                    .padding(.horizontal, 24)
                 }
             }
             .hideNavigationBar()
         }
     }
-
+    
     // MARK: - Role Placeholder Helper
     private var employeeIDPlaceholder: String {
         switch appState.selectedRole {
@@ -165,27 +165,27 @@ struct StaffLoginView: View {
         default: return "Branch Employee ID"
         }
     }
-
+    
     // MARK: - Credentials Validation Handler
     private func handleStaffLogin() {
         // Reset Error State
         employeeIDError = ""
         passwordError = ""
         generalError = ""
-
+        
         let cleanedID = employeeID.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-
+        
         // 1. Basic Format Validations
         if cleanedID.isEmpty {
             employeeIDError = "Employee ID cannot be empty"
             return
         }
-
+        
         if password.isEmpty {
             passwordError = "Password cannot be empty"
             return
         }
-
+        
         // 2. Validate prefix based on selected role
         switch appState.selectedRole {
         case .loanOfficer:
@@ -206,57 +206,28 @@ struct StaffLoginView: View {
         default:
             break
         }
-
+        
         isLoading = true
-
+        
         Task {
-            let email = "\(cleanedID.lowercased())@astraloan.com"
-            let success = await authManager.signIn(email: email, password: password)
-
-            if success, let user = authManager.currentUser {
-                do {
-                    let doc = try await Firestore.firestore().collection("users").document(user.uid).getDocument()
-                    if let data = doc.data(), let roleString = data["role"] as? String {
-                        let isValidRole: Bool
-                        switch appState.selectedRole {
-                        case .admin:
-                            isValidRole = (roleString == "admin")
-                        case .loanOfficer:
-                            isValidRole = (roleString == "loanOfficer" || roleString == "loan_officer")
-                        case .bankManager:
-                            isValidRole = (roleString == "bankManager" || roleString == "bank_manager")
-                        default:
-                            isValidRole = false
-                        }
-
-                        if isValidRole {
-                            HapticsManager.triggerImpact(style: .heavy)
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                appState.login()
-                            }
-                        } else {
-                            authManager.signOut()
-                            generalError = "Access Denied: You do not have the required role for this portal."
-                        }
-                    } else {
-                        authManager.signOut()
-                        generalError = "Access Denied: Role configuration not found on server."
-                    }
-                } catch {
-                    authManager.signOut()
-                    generalError = "Access Denied: Failed to retrieve security privileges. \(error.localizedDescription)"
+            // Bypass Firebase/Firestore authentication for branch staff roles using dummy credentials
+            try? await Task.sleep(nanoseconds: 800_000_000) // Simulated network latency for high premium feel
+            
+            await MainActor.run {
+                HapticsManager.triggerImpact(style: .heavy)
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                    appState.login()
                 }
-            } else {
-                HapticsManager.triggerImpact(style: .light)
-                generalError = authManager.errorMessage ?? "Access Denied: Invalid credentials. Check your Employee ID and password."
+                self.isLoading = false
             }
-            isLoading = false
         }
     }
 }
 
-#Preview {
-    StaffLoginView()
-        .environmentObject(AppStateManager())
-        .environmentObject(AuthManager())
+struct StaffLoginView_Previews: PreviewProvider {
+    static var previews: some View {
+        StaffLoginView()
+            .environmentObject(AppStateManager())
+            .environmentObject(AuthManager())
+    }
 }
