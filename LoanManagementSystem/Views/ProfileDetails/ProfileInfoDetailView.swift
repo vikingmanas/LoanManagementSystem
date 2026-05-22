@@ -31,7 +31,7 @@ struct ProfileInfoDetailView: View {
                                 Text("Verify")
                                     .font(Font.AppTheme.caption)
                                     .fontWeight(.bold)
-                                    .foregroundColor(Color.AppTheme.primary)
+                                    .foregroundStyle(Color.AppTheme.primary)
                             }
                         }
                     }
@@ -48,7 +48,7 @@ struct ProfileInfoDetailView: View {
                                 Text("Verify")
                                     .font(Font.AppTheme.caption)
                                     .fontWeight(.bold)
-                                    .foregroundColor(Color.AppTheme.primary)
+                                    .foregroundStyle(Color.AppTheme.primary)
                             }
                         }
                     }
@@ -117,7 +117,7 @@ struct ProfileInfoDetailView: View {
                     Button("References & Prefs") { activeSheet = .additional }
                 } label: {
                     Text("Edit")
-                        .foregroundColor(Color.AppTheme.primary)
+                        .foregroundStyle(Color.AppTheme.primary)
                 }
             }
         }

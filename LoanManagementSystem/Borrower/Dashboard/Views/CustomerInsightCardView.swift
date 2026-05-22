@@ -10,11 +10,11 @@ struct CustomerInsightCardView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(profile.fullName)
                         .font(LMSFont.headline)
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                     
                     Text("Customer ID: \(profile.id)")
                         .font(LMSFont.subheadline)
-                        .foregroundColor(.white.opacity(0.8))
+                        .foregroundStyle(.white.opacity(0.8))
                         .fontDesign(.monospaced)
                 }
                 
@@ -22,7 +22,7 @@ struct CustomerInsightCardView: View {
                 
                 Image(systemName: "checkmark.seal.fill")
                     .font(.title2)
-                    .foregroundColor(LMSColors.emerald)
+                    .foregroundStyle(LMSColors.emerald)
                     .opacity(profile.isKYCVerified ? 1 : 0)
             }
             .padding(LMSSpacing.xl)
@@ -36,19 +36,19 @@ struct CustomerInsightCardView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Account Number")
                             .font(LMSFont.caption)
-                            .foregroundColor(.white.opacity(0.65))
+                            .foregroundStyle(.white.opacity(0.65))
                         Text(maskedAccount(profile.bankDetails.accountNumber))
                             .font(.system(.body, design: .monospaced, weight: .medium))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 4) {
                         Text("Branch")
                             .font(LMSFont.caption)
-                            .foregroundColor(.white.opacity(0.65))
+                            .foregroundStyle(.white.opacity(0.65))
                         Text(profile.preferredBranch.isEmpty ? "Not Set" : profile.preferredBranch)
                             .font(LMSFont.body.weight(.medium))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                     }
                 }
                 
@@ -56,19 +56,19 @@ struct CustomerInsightCardView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Relationship Since")
                             .font(LMSFont.caption)
-                            .foregroundColor(.white.opacity(0.65))
+                            .foregroundStyle(.white.opacity(0.65))
                         Text(profile.bankingRelationshipDuration.isEmpty ? "New" : profile.bankingRelationshipDuration)
                             .font(LMSFont.body.weight(.medium))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 4) {
                         Text("Account Status")
                             .font(LMSFont.caption)
-                            .foregroundColor(.white.opacity(0.65))
+                            .foregroundStyle(.white.opacity(0.65))
                         Text("Active")
                             .font(LMSFont.body.weight(.bold))
-                            .foregroundColor(LMSColors.emerald)
+                            .foregroundStyle(LMSColors.emerald)
                     }
                 }
             }
@@ -146,15 +146,15 @@ struct InsightSummaryItem: View {
         VStack(spacing: 6) {
             Image(systemName: icon)
                 .font(.system(size: 14))
-                .foregroundColor(.white.opacity(0.9))
+                .foregroundStyle(.white.opacity(0.9))
             
             Text(value)
                 .font(LMSFont.body.weight(.bold))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
             
             Text(title)
                 .font(LMSFont.caption2)
-                .foregroundColor(.white.opacity(0.65))
+                .foregroundStyle(.white.opacity(0.65))
         }
         .frame(maxWidth: .infinity)
     }

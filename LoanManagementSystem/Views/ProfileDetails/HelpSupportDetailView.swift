@@ -7,18 +7,18 @@ struct HelpSupportDetailView: View {
                 Link(destination: URL(string: "tel:18001234567")!) {
                     HStack {
                         Image(systemName: "phone.fill")
-                            .foregroundColor(Color.AppTheme.success)
+                            .foregroundStyle(Color.AppTheme.success)
                         Text("Toll Free: 1800-123-4567")
-                            .foregroundColor(Color.AppTheme.textPrimary)
+                            .foregroundStyle(Color.AppTheme.textPrimary)
                     }
                 }
                 
                 Link(destination: URL(string: "mailto:support@loanmanagement.com")!) {
                     HStack {
                         Image(systemName: "envelope.fill")
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                         Text("Email: support@loanmanagement.com")
-                            .foregroundColor(Color.AppTheme.textPrimary)
+                            .foregroundStyle(Color.AppTheme.textPrimary)
                     }
                 }
             }
@@ -27,21 +27,21 @@ struct HelpSupportDetailView: View {
                 DisclosureGroup("How long does verification take?") {
                     Text("Standard KYC and employment verification are completed within 24-48 business hours.")
                         .font(Font.AppTheme.caption)
-                        .foregroundColor(Color.AppTheme.textSecondary)
+                        .foregroundStyle(Color.AppTheme.textSecondary)
                         .padding(.vertical, 4)
                 }
                 
                 DisclosureGroup("Can I prepayment my active loan?") {
                     Text("Yes, prepayment is allowed after 6 successful EMI payments. Please contact your loan officer for details.")
                         .font(Font.AppTheme.caption)
-                        .foregroundColor(Color.AppTheme.textSecondary)
+                        .foregroundStyle(Color.AppTheme.textSecondary)
                         .padding(.vertical, 4)
                 }
                 
                 DisclosureGroup("How is my personal data secured?") {
                     Text("All documents and bank credentials are encrypted using bank-grade AES-256 standard and transmitted securely over HTTPS.")
                         .font(Font.AppTheme.caption)
-                        .foregroundColor(Color.AppTheme.textSecondary)
+                        .foregroundStyle(Color.AppTheme.textSecondary)
                         .padding(.vertical, 4)
                 }
             }

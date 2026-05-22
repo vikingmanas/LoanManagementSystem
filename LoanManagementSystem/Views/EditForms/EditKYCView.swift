@@ -36,7 +36,7 @@ struct EditKYCView: View {
                     Section(header: Text("Instructions")) {
                         Text("Upload your KYC documents in secure PDF format. Data is encrypted using AES-256 before transmission over SSL.")
                             .font(Font.AppTheme.body)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                     }
                     
                     Section(header: Text("Documents")) {
@@ -94,7 +94,7 @@ struct EditKYCView: View {
                             presentationMode.wrappedValue.dismiss()
                         }) {
                             Image(systemName: "xmark")
-                               .foregroundColor(Color.AppTheme.primary)
+                               .foregroundStyle(Color.AppTheme.primary)
                         }
                     }
                     ToolbarItem(placement: .navigationBarTrailing) {
@@ -111,7 +111,7 @@ struct EditKYCView: View {
                         }) {
                             Image(systemName: "checkmark")
                                 .fontWeight(.bold)
-                                .foregroundColor(Color.AppTheme.primary)
+                                .foregroundStyle(Color.AppTheme.primary)
                         }
                     }
                 }
@@ -131,17 +131,17 @@ struct EditKYCView: View {
                     Text("Secure Document Upload")
                         .font(Font.AppTheme.button)
                         .fontWeight(.bold)
-                        .foregroundColor(Color.AppTheme.textPrimary)
+                        .foregroundStyle(Color.AppTheme.textPrimary)
                     
                     Text(secureUploadMessage)
                         .font(Font.AppTheme.body)
-                        .foregroundColor(Color.AppTheme.textSecondary)
+                        .foregroundStyle(Color.AppTheme.textSecondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                 }
                 .padding(30)
                 .background(LMSColors.surface)
-                .cornerRadius(16)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .shadow(radius: 10)
                 .frame(maxWidth: 300)
             }

@@ -193,7 +193,7 @@ private struct LoanDashboardMetricsSection: View {
                 Spacer()
                 Text("\(Int(metrics.averageProgress * 100))% Avg Progress")
                     .font(LMSFont.caption)
-                    .foregroundColor(LMSColors.textSecondary)
+                    .foregroundStyle(LMSColors.textSecondary)
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -253,7 +253,7 @@ private struct MetricCard: View {
             HStack {
                 Image(systemName: icon)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(tint)
+                    .foregroundStyle(tint)
                     .padding(8)
                     .background(tint.opacity(0.12), in: Circle())
                 Spacer()
@@ -263,10 +263,10 @@ private struct MetricCard: View {
                 Text(value)
                     .font(.system(.title3, design: .rounded))
                     .fontWeight(.bold)
-                    .foregroundColor(LMSColors.textPrimary)
+                    .foregroundStyle(LMSColors.textPrimary)
                 Text(title)
                     .font(LMSFont.caption)
-                    .foregroundColor(LMSColors.textSecondary)
+                    .foregroundStyle(LMSColors.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -293,7 +293,7 @@ private struct DraftApplicationsSection: View {
                 } label: {
                     HStack(spacing: 12) {
                         Image(systemName: draft.product.type.iconName)
-                            .foregroundColor(LMSColors.brandNavy)
+                            .foregroundStyle(LMSColors.brandNavy)
                             .frame(width: 28, height: 28)
                             .background(LMSColors.brandNavy.opacity(0.12), in: Circle())
 
@@ -301,15 +301,15 @@ private struct DraftApplicationsSection: View {
                             Text(draft.product.type.title)
                                 .font(LMSFont.subheadline)
                                 .fontWeight(.semibold)
-                                .foregroundColor(LMSColors.textPrimary)
+                                .foregroundStyle(LMSColors.textPrimary)
                             Text("Last updated \(draft.updatedAt.formatted(date: .abbreviated, time: .shortened))")
                                 .font(LMSFont.caption)
-                                .foregroundColor(LMSColors.textSecondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                         }
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(LMSFont.caption.weight(.semibold))
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                     }
                     .padding(12)
                     .background(LMSColors.surfaceElevated)
@@ -336,11 +336,11 @@ private struct LoanProductCatalogSection: View {
                     HStack(alignment: .center) {
                         Label(product.type.title, systemImage: product.type.iconName)
                             .font(LMSFont.headline)
-                            .foregroundColor(LMSColors.textPrimary)
+                            .foregroundStyle(LMSColors.textPrimary)
                         Spacer()
                         Text(product.interestRateRange)
                             .font(LMSFont.caption.weight(.semibold))
-                            .foregroundColor(LMSColors.brandNavy)
+                            .foregroundStyle(LMSColors.brandNavy)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
                             .background(LMSColors.brandNavy.opacity(0.10), in: Capsule())
@@ -348,7 +348,7 @@ private struct LoanProductCatalogSection: View {
 
                     Text(product.shortDescription)
                         .font(LMSFont.subheadline)
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                         .multilineTextAlignment(.leading)
 
                     VStack(spacing: 8) {
@@ -395,12 +395,12 @@ private struct ProductDataPoint: View {
         HStack(alignment: .top, spacing: 8) {
             Text(label)
                 .font(LMSFont.caption)
-                .foregroundColor(LMSColors.textSecondary)
+                .foregroundStyle(LMSColors.textSecondary)
                 .frame(width: 110, alignment: .leading)
             Text(value)
                 .font(LMSFont.caption)
                 .fontWeight(.medium)
-                .foregroundColor(LMSColors.textPrimary)
+                .foregroundStyle(LMSColors.textPrimary)
                 .multilineTextAlignment(.leading)
             Spacer(minLength: 0)
         }
@@ -416,7 +416,7 @@ private struct ApplicationFilterSection: View {
                 .font(LMSFont.headline)
             Text("Filter by status to quickly find and manage your applications.")
                 .font(LMSFont.caption)
-                .foregroundColor(LMSColors.textSecondary)
+                .foregroundStyle(LMSColors.textSecondary)
             Picker("Filter", selection: $selectedFilter) {
                 ForEach(BorrowerApplicationFilter.allCases) { filter in
                     Text(filter.rawValue).tag(filter)
@@ -450,21 +450,21 @@ private struct BorrowerApplicationsSection: View {
                         HStack {
                             Text(application.displayIdentifier)
                                 .font(LMSFont.caption.monospaced())
-                                .foregroundColor(LMSColors.textSecondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                             Spacer()
                             StageBadge(stage: application.currentStage)
                         }
 
                         Text(application.product.type.title)
                             .font(LMSFont.headline)
-                            .foregroundColor(LMSColors.textPrimary)
+                            .foregroundStyle(LMSColors.textPrimary)
 
                         HStack(spacing: 16) {
                             Label(application.formData.requestedAmountValue.formattedAsINR(), systemImage: "indianrupeesign.circle")
                             Label(application.submittedAt?.formattedAsDDMMMYYYY() ?? "-", systemImage: "calendar")
                         }
                         .font(LMSFont.caption)
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
 
                         ProgressView(value: progressProvider(application))
                             .tint(LMSColors.brandNavy)
@@ -525,7 +525,7 @@ private struct StageBadge: View {
             Text(stage.rawValue)
                 .font(LMSFont.caption.weight(.semibold))
         }
-        .foregroundColor(stage.tintColor)
+        .foregroundStyle(stage.tintColor)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(stage.tintColor.opacity(0.13), in: Capsule())
@@ -544,7 +544,7 @@ private struct LoanOverviewScreen: View {
                     Label(product.type.title, systemImage: product.type.iconName)
                         .font(LMSFont.title3.weight(.bold))
                     Text(product.shortDescription)
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -558,7 +558,7 @@ private struct LoanOverviewScreen: View {
                 Button(action: onStartApplication) {
                     Text("Start Application")
                         .font(LMSFont.headline)
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
                         .background(LMSColors.brandNavy)
@@ -596,7 +596,7 @@ private struct LoanOverviewScreen: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(LMSFont.caption)
-                .foregroundColor(LMSColors.textSecondary)
+                .foregroundStyle(LMSColors.textSecondary)
             Text(value)
                 .font(LMSFont.subheadline)
         }
@@ -617,15 +617,15 @@ private struct LoanOverviewScreen: View {
                         ForEach(categoryDocuments) { document in
                             HStack(alignment: .top, spacing: 10) {
                                 Image(systemName: document.status.iconName)
-                                    .foregroundColor(document.status.tintColor)
+                                    .foregroundStyle(document.status.tintColor)
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(document.name)
                                     Text("Upload: \(document.status.uploadStatusText) • Verification: \(document.status.verificationStatusText)")
                                         .font(LMSFont.caption)
-                                        .foregroundColor(LMSColors.textSecondary)
+                                        .foregroundStyle(LMSColors.textSecondary)
                                     Text("Last updated: \(document.lastUpdated?.formattedAsDDMMMYYYY() ?? "Not updated")")
                                         .font(LMSFont.caption2)
-                                        .foregroundColor(LMSColors.textSecondary)
+                                        .foregroundStyle(LMSColors.textSecondary)
                                 }
                                 Spacer()
                             }
@@ -653,7 +653,7 @@ private struct LoanOverviewScreen: View {
                         .font(LMSFont.subheadline.weight(.semibold))
                     Text(faq.answer)
                         .font(LMSFont.subheadline)
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                 }
                 .padding(12)
                 .background(LMSColors.surface)
@@ -682,17 +682,17 @@ private struct LoanApplicationFormScreen: View {
                         Spacer()
                         Text("\(Int(viewModel.formCompletionRatio * 100))%")
                             .font(LMSFont.caption.weight(.semibold))
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                     }
                     ProgressView(value: viewModel.formCompletionRatio)
                         .tint(LMSColors.brandNavy)
                     Text("Draft auto-saves as you type.")
                         .font(LMSFont.caption)
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                     if let lastSaved = viewModel.lastDraftSavedAt {
                         Text("Last saved \(lastSaved.formatted(date: .abbreviated, time: .shortened))")
                             .font(LMSFont.caption2)
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                     }
                 }
             }
@@ -804,12 +804,12 @@ private struct LoanApplicationFormScreen: View {
                 if let product = viewModel.selectedProduct {
                     infoLabelRow("Interest Rate", .interestRate) {
                         Text(product.interestRateRange)
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                     }
 
                     infoLabelRow("Processing Fee", .processingFee) {
                         Text(product.processingFees)
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                     }
                 }
             } header: {
@@ -839,7 +839,7 @@ private struct LoanApplicationFormScreen: View {
                     ForEach(viewModel.formValidationErrors, id: \.self) { error in
                         Label(error, systemImage: "exclamationmark.triangle.fill")
                             .font(LMSFont.caption)
-                            .foregroundColor(.orange)
+                            .foregroundStyle(.orange)
                     }
                 }
             }
@@ -866,7 +866,7 @@ private struct LoanApplicationFormScreen: View {
                 }
             }
         }
-        .onChange(of: viewModel.formData) { _ in
+        .onChange(of: viewModel.formData) { _, _ in
             viewModel.autosaveDraft()
         }
     }
@@ -877,7 +877,7 @@ private struct LoanApplicationFormScreen: View {
             HStack {
                 Text(title)
                     .font(LMSFont.caption)
-                    .foregroundColor(LMSColors.textSecondary)
+                    .foregroundStyle(LMSColors.textSecondary)
                 Spacer()
                 Button {
                     viewModel.presentInfo(for: topic)
@@ -885,7 +885,7 @@ private struct LoanApplicationFormScreen: View {
                     Image(systemName: "info.circle")
                 }
                 .buttonStyle(.plain)
-                .foregroundColor(LMSColors.brandNavy)
+                .foregroundStyle(LMSColors.brandNavy)
                 .accessibilityLabel("About \(title)")
             }
             content()
@@ -900,7 +900,7 @@ private struct FieldErrorView: View {
         if let message {
             Text(message)
                 .font(LMSFont.caption2)
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
         }
     }
 }
@@ -919,7 +919,7 @@ private struct LoanDocumentUploadScreen: View {
                         .font(LMSFont.headline)
                     Text("\(viewModel.verifiedDocumentsCount) of \(viewModel.documents.count) documents verified")
                         .font(LMSFont.caption)
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                     ProgressView(value: viewModel.documents.isEmpty ? 0 : Double(viewModel.verifiedDocumentsCount) / Double(viewModel.documents.count))
                         .tint(LMSColors.brandNavy)
                 }
@@ -965,10 +965,10 @@ private struct LoanDocumentUploadScreen: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Label("Action Required", systemImage: "exclamationmark.triangle.fill")
                             .font(LMSFont.subheadline.weight(.semibold))
-                            .foregroundColor(.orange)
+                            .foregroundStyle(.orange)
                         Text(viewModel.missingDocumentNames.joined(separator: ", "))
                             .font(LMSFont.caption)
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                     }
                     .padding(12)
                     .background(Color.orange.opacity(0.12))
@@ -1019,7 +1019,7 @@ private struct LoanDocumentUploadScreen: View {
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 44)
-                        .foregroundColor(viewModel.selectedUploadSource == source ? .white : LMSColors.brandNavy)
+                        .foregroundStyle(viewModel.selectedUploadSource == source ? .white : LMSColors.brandNavy)
                         .background(
                             RoundedRectangle(cornerRadius: 10, style: .continuous)
                                 .fill(viewModel.selectedUploadSource == source ? LMSColors.brandNavy : LMSColors.brandNavy.opacity(0.12))
@@ -1031,7 +1031,7 @@ private struct LoanDocumentUploadScreen: View {
 
             Text("Drag & Drop is best on iPad and larger screens.")
                 .font(LMSFont.caption2)
-                .foregroundColor(LMSColors.textSecondary)
+                .foregroundStyle(LMSColors.textSecondary)
         }
         .padding(14)
         .background(LMSColors.surfaceElevated)
@@ -1066,13 +1066,13 @@ private struct DocumentRequirementCard: View {
                         .font(LMSFont.subheadline.weight(.semibold))
                     Text("Upload: \(document.status.uploadStatusText)")
                         .font(LMSFont.caption)
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                     Text("Verification: \(document.status.verificationStatusText)")
                         .font(LMSFont.caption)
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                     Text("Last updated: \(document.lastUpdated?.formattedAsDDMMMYYYY() ?? "Not updated")")
                         .font(LMSFont.caption2)
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                 }
                 Spacer()
                 HStack(spacing: 6) {
@@ -1080,7 +1080,7 @@ private struct DocumentRequirementCard: View {
                     Text(document.status.rawValue)
                         .font(LMSFont.caption2.weight(.semibold))
                 }
-                .foregroundColor(document.status.tintColor)
+                .foregroundStyle(document.status.tintColor)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(document.status.tintColor.opacity(0.15), in: Capsule())
@@ -1106,13 +1106,13 @@ private struct DocumentRequirementCard: View {
                 } else {
                     Label("Locked", systemImage: "lock.fill")
                         .font(LMSFont.caption.weight(.semibold))
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                 }
             }
 
             Text("Selected source: \(selectedUploadSource.rawValue)")
                 .font(LMSFont.caption2)
-                .foregroundColor(LMSColors.textSecondary)
+                .foregroundStyle(LMSColors.textSecondary)
         }
         .padding(12)
         .background(LMSColors.surface)
@@ -1136,18 +1136,18 @@ private struct DocumentPreviewSheet: View {
         VStack(spacing: 16) {
             Image(systemName: "doc.text.image.fill")
                 .font(.system(size: 50))
-                .foregroundColor(LMSColors.brandNavy)
+                .foregroundStyle(LMSColors.brandNavy)
             Text(document.name)
                 .font(LMSFont.headline)
             Text(document.fileName ?? "No file uploaded yet")
                 .font(LMSFont.subheadline)
-                .foregroundColor(LMSColors.textSecondary)
+                .foregroundStyle(LMSColors.textSecondary)
             Text("Uploaded: \(document.uploadDate?.formattedAsDDMMMYYYY() ?? "Not uploaded")")
                 .font(LMSFont.caption)
-                .foregroundColor(LMSColors.textSecondary)
+                .foregroundStyle(LMSColors.textSecondary)
             Text("Verification: \(document.status.rawValue)")
                 .font(LMSFont.caption.weight(.semibold))
-                .foregroundColor(document.status.tintColor)
+                .foregroundStyle(document.status.tintColor)
         }
         .padding(24)
     }
@@ -1169,7 +1169,7 @@ private struct LoanApplicationReviewScreen: View {
                     if let product = viewModel.selectedProduct {
                         Text(product.type.title)
                             .font(LMSFont.caption.weight(.semibold))
-                            .foregroundColor(LMSColors.brandNavy)
+                            .foregroundStyle(LMSColors.brandNavy)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
                             .background(LMSColors.brandNavy.opacity(0.12), in: Capsule())
@@ -1180,11 +1180,11 @@ private struct LoanApplicationReviewScreen: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Label("Warnings", systemImage: "exclamationmark.triangle.fill")
                             .font(LMSFont.subheadline.weight(.semibold))
-                            .foregroundColor(.orange)
+                            .foregroundStyle(.orange)
                         ForEach(viewModel.preSubmissionWarnings, id: \.self) { warning in
                             Text("• \(warning)")
                                 .font(LMSFont.caption)
-                                .foregroundColor(LMSColors.textSecondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                         }
                     }
                     .padding(14)
@@ -1225,7 +1225,7 @@ private struct LoanApplicationReviewScreen: View {
                                 Spacer()
                                 Text(document.status.rawValue)
                                     .font(LMSFont.caption2.weight(.semibold))
-                                    .foregroundColor(document.status.tintColor)
+                                    .foregroundStyle(document.status.tintColor)
                             }
                             .font(LMSFont.caption)
                         }
@@ -1235,7 +1235,7 @@ private struct LoanApplicationReviewScreen: View {
                         ForEach(viewModel.eligibilitySummary, id: \.self) { line in
                             Label(line, systemImage: "checkmark.circle")
                                 .font(LMSFont.caption)
-                                .foregroundColor(LMSColors.textSecondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                         }
                     }
                 }
@@ -1259,7 +1259,7 @@ private struct LoanApplicationReviewScreen: View {
                 } label: {
                     Text("Submit Application")
                         .font(LMSFont.headline)
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
                         .background(viewModel.canSubmitApplication ? LMSColors.brandNavy : Color.gray)
@@ -1270,7 +1270,7 @@ private struct LoanApplicationReviewScreen: View {
                 if !viewModel.canSubmitApplication {
                     Text("Resolve warnings and ensure all documents are verified to submit.")
                         .font(LMSFont.caption)
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                 }
             }
             .padding(20)
@@ -1295,7 +1295,7 @@ private struct LoanApplicationReviewScreen: View {
     private func reviewRow(_ title: String, _ value: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Text(title)
-                .foregroundColor(LMSColors.textSecondary)
+                .foregroundStyle(LMSColors.textSecondary)
             Spacer()
             Text(value.isEmpty ? "-" : value)
                 .multilineTextAlignment(.trailing)
@@ -1322,7 +1322,7 @@ private struct LoanApplicationTrackingScreen: View {
                         HStack {
                             Text(application.displayIdentifier)
                                 .font(LMSFont.caption.monospaced())
-                                .foregroundColor(LMSColors.textSecondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                             Spacer()
                             StageBadge(stage: application.currentStage)
                         }
@@ -1333,7 +1333,7 @@ private struct LoanApplicationTrackingScreen: View {
                             Label(application.submittedAt?.formattedAsDDMMMYYYY() ?? "-", systemImage: "calendar")
                         }
                         .font(LMSFont.caption)
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                         ProgressView(value: viewModel.progressValue(for: application))
                             .tint(LMSColors.brandNavy)
                     }
@@ -1392,7 +1392,7 @@ private struct LoanApplicationTrackingScreen: View {
                             .overlay(
                                 Image(systemName: timelineIcon(for: state))
                                     .font(.system(size: 7, weight: .bold))
-                                    .foregroundColor(.white)
+                                    .foregroundStyle(.white)
                             )
                         if index < stages.count - 1 {
                             Rectangle()
@@ -1406,7 +1406,7 @@ private struct LoanApplicationTrackingScreen: View {
                             .font(LMSFont.subheadline.weight(state == .current ? .bold : .regular))
                         Text(viewModel.stageTimestamp(for: stage, application: application)?.formattedAsDDMMMYYYY() ?? "Pending")
                             .font(LMSFont.caption2)
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                     }
 
                     Spacer()
@@ -1470,7 +1470,7 @@ private struct LoanApplicationTrackingScreen: View {
     private func reviewRow(_ title: String, _ value: String) -> some View {
         HStack {
             Text(title)
-                .foregroundColor(LMSColors.textSecondary)
+                .foregroundStyle(LMSColors.textSecondary)
             Spacer()
             Text(value)
                 .multilineTextAlignment(.trailing)
@@ -1490,12 +1490,12 @@ private struct ContextHelpSheetView: View {
                         .font(LMSFont.title3.weight(.bold))
                     Spacer()
                     Image(systemName: "info.circle.fill")
-                        .foregroundColor(LMSColors.brandNavy)
+                        .foregroundStyle(LMSColors.brandNavy)
                 }
 
                 Text(item.explanation)
                     .font(LMSFont.body)
-                    .foregroundColor(LMSColors.textSecondary)
+                    .foregroundStyle(LMSColors.textSecondary)
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Examples")
@@ -1503,7 +1503,7 @@ private struct ContextHelpSheetView: View {
                     ForEach(item.examples, id: \.self) { example in
                         Label(example, systemImage: "checkmark.circle")
                             .font(LMSFont.subheadline)
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                     }
                 }
 
@@ -1512,7 +1512,7 @@ private struct ContextHelpSheetView: View {
                         .font(LMSFont.headline)
                     Text(item.recommendation)
                         .font(LMSFont.subheadline)
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                 }
             }
             .padding(20)

@@ -26,7 +26,7 @@ struct ResetPasswordDetailView: View {
                         Spacer()
                         Text("Update Password")
                             .fontWeight(.bold)
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                         Spacer()
                     }
                 }

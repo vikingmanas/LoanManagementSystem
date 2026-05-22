@@ -19,13 +19,13 @@ struct KPIGridView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(AppTheme.successGreen)
+                            .foregroundStyle(AppTheme.successGreen)
                         Text("+12%")
                             .font(.system(.caption2, design: .rounded).bold())
-                            .foregroundColor(AppTheme.successGreen)
+                            .foregroundStyle(AppTheme.successGreen)
                         Text("vs last month")
                             .font(.system(.caption2, design: .rounded))
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                     }
                 ),
                 accessibilityLabel: "Total Applications: \(viewModel.totalApplications). Twelve percent increase since last month."
@@ -45,7 +45,7 @@ struct KPIGridView: View {
                 bottomContent: AnyView(
                     Text("Oldest: 3 days ago")
                         .font(.system(.caption2, design: .rounded).weight(.semibold))
-                        .foregroundColor(AppTheme.criticalRed)
+                        .foregroundStyle(AppTheme.criticalRed)
                 ),
                 accessibilityLabel: "Pending Review: \(viewModel.pendingCount). Awaiting action. Oldest submitted three days ago."
             )
@@ -64,7 +64,7 @@ struct KPIGridView: View {
                 bottomContent: AnyView(
                     Text("₹ 4.2 Cr disbursed")
                         .font(.system(.caption2, design: .rounded).weight(.semibold))
-                        .foregroundColor(AppTheme.successGreen)
+                        .foregroundStyle(AppTheme.successGreen)
                 ),
                 accessibilityLabel: "Approved Applications: \(viewModel.approvedCount). Sent to Manager. Four point two Crore Rupees disbursed."
             )
@@ -83,7 +83,7 @@ struct KPIGridView: View {
                 bottomContent: AnyView(
                     Text("6 rejected · 5 on hold")
                         .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                 ),
                 accessibilityLabel: "Rejected or On Hold: \(viewModel.rejectedOrHoldCount). Requires re-evaluation."
             )
@@ -109,27 +109,27 @@ struct KPICard: View {
             HStack {
                 Image(systemName: symbol)
                     .font(.system(size: 22))
-                    .foregroundColor(symbolColor)
+                    .foregroundStyle(symbolColor)
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(Color(.placeholderText))
+                    .foregroundStyle(Color(.placeholderText))
             }
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(value)
                     .font(.system(.title, design: .rounded).bold())
-                    .foregroundColor(LMSColors.textPrimary)
+                    .foregroundStyle(LMSColors.textPrimary)
                 
                 Text(label)
                     .font(.system(.callout, design: .rounded).weight(.semibold))
-                    .foregroundColor(LMSColors.textPrimary)
+                    .foregroundStyle(LMSColors.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 
                 Text(sub)
                     .font(.system(.caption2, design: .rounded))
-                    .foregroundColor(LMSColors.textSecondary)
+                    .foregroundStyle(LMSColors.textSecondary)
             }
             
             Spacer(minLength: 4)
@@ -142,7 +142,7 @@ struct KPICard: View {
         .padding(16)
         .frame(minHeight: 125)
         .background(AppTheme.neutralSurface)
-        .cornerRadius(16)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 3)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)

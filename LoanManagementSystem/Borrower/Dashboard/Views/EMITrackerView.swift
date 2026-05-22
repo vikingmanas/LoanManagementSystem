@@ -65,7 +65,7 @@ public struct EMITrackerView: View {
                         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                             Text("Pending Payments")
                                 .font(LMSFont.caption.weight(.bold))
-                                .foregroundColor(LMSColors.textSecondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                                 .padding(.horizontal, 1)
                             
                             VStack(spacing: 0) {
@@ -96,7 +96,7 @@ public struct EMITrackerView: View {
                                         Spacer()
                                         Text("View All Pending (\(unpaidEMIs.count))")
                                             .font(LMSFont.callout.weight(.semibold))
-                                            .foregroundColor(LMSColors.actionBlue)
+                                            .foregroundStyle(LMSColors.actionBlue)
                                         Spacer()
                                     }
                                     .frame(height: 44) // Tap target compliance
@@ -134,19 +134,19 @@ struct UpcomingEMICard: View {
                         .frame(width: 44, height: 44)
                     Image(systemName: "calendar.badge.clock")
                         .font(.system(size: 20))
-                        .foregroundColor(LMSColors.amber)
+                        .foregroundStyle(LMSColors.amber)
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Next EMI Due")
                         .font(LMSFont.subheadline.weight(.semibold))
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                     
                     Text(nextEMI.amount.formattedAsINR())
                         .font(.system(.title2, design: .rounded).weight(.bold))
                         .monospacedDigit()
                         .contentTransition(.numericText())
-                        .foregroundColor(LMSColors.textPrimary)
+                        .foregroundStyle(LMSColors.textPrimary)
                 }
                 
                 Spacer()
@@ -154,11 +154,11 @@ struct UpcomingEMICard: View {
                 // Loan Type Tag
                 Text(nextEMI.loanType)
                     .font(LMSFont.caption2.weight(.bold))
-                    .foregroundColor(LMSColors.brandNavy)
+                    .foregroundStyle(LMSColors.brandNavy)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(LMSColors.brandNavy.opacity(0.08))
-                    .cornerRadius(10)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
             
             // Due alert string
@@ -170,7 +170,7 @@ struct UpcomingEMICard: View {
                 
                 Text(isOverdue ? "Overdue! Please settle immediately" : "Due in 3 days — \(nextEMI.dueDate.formattedAsDDMMMYYYY())")
                     .font(LMSFont.caption.weight(.medium))
-                    .foregroundColor(isOverdue ? LMSColors.coral : LMSColors.textPrimary)
+                    .foregroundStyle(isOverdue ? LMSColors.coral : LMSColors.textPrimary)
             }
             
             Divider()
@@ -185,7 +185,7 @@ struct UpcomingEMICard: View {
                 } label: {
                     Text("Set Reminder")
                         .font(LMSFont.callout.weight(.semibold))
-                        .foregroundColor(LMSColors.brandNavy)
+                        .foregroundStyle(LMSColors.brandNavy)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
                         .background(
@@ -246,15 +246,15 @@ struct AllCaughtUpCard: View {
         VStack(spacing: LMSSpacing.sm) {
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 40))
-                .foregroundColor(LMSColors.emerald)
+                .foregroundStyle(LMSColors.emerald)
             
             Text("All Caught Up! 🎉")
                 .font(LMSFont.subheadline.weight(.bold))
-                .foregroundColor(LMSColors.textPrimary)
+                .foregroundStyle(LMSColors.textPrimary)
             
             Text("No upcoming or outstanding EMIs due for this billing cycle.")
                 .font(LMSFont.caption)
-                .foregroundColor(LMSColors.textSecondary)
+                .foregroundStyle(LMSColors.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .padding(LMSSpacing.xxl)
@@ -274,10 +274,10 @@ struct PendingEMIRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(emi.dueDate.formattedAsDDMMMYYYY())
                     .font(LMSFont.callout.weight(.bold))
-                    .foregroundColor(LMSColors.textPrimary)
+                    .foregroundStyle(LMSColors.textPrimary)
                 Text("Due Date")
                     .font(LMSFont.caption2)
-                    .foregroundColor(LMSColors.textSecondary)
+                    .foregroundStyle(LMSColors.textSecondary)
             }
             
             Spacer()
@@ -285,19 +285,19 @@ struct PendingEMIRow: View {
             // Amount
             Text(emi.amount.formattedAsINR())
                 .font(LMSFont.callout.weight(.bold))
-                .foregroundColor(LMSColors.textPrimary)
+                .foregroundStyle(LMSColors.textPrimary)
             
             // Status Badge
             Text(emi.status == .overdue ? "Overdue" : emi.status == .dueSoon ? "Due Soon" : "Upcoming")
                 .font(.system(size: 10, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
                 .background(
                     emi.status == .overdue ? LMSColors.coral :
                     emi.status == .dueSoon ? LMSColors.amber : Color.gray
                 )
-                .cornerRadius(10)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
         .padding(.horizontal, LMSSpacing.lg)
         .padding(.vertical, 14)

@@ -10,7 +10,7 @@ struct SecurityDetailView: View {
                 Toggle(isOn: $biometricEnabled) {
                     HStack {
                         Image(systemName: "faceid")
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                         Text("Face ID Login")
                     }
                 }
@@ -20,7 +20,7 @@ struct SecurityDetailView: View {
                 Toggle(isOn: $doubleAuthEnabled) {
                     HStack {
                         Image(systemName: "shield.fill")
-                            .foregroundColor(Color.AppTheme.success)
+                            .foregroundStyle(Color.AppTheme.success)
                         Text("Two-Factor Auth (2FA)")
                     }
                 }
@@ -33,7 +33,7 @@ struct SecurityDetailView: View {
                             .font(Font.AppTheme.body)
                         Text("Active Now • Mumbai, India")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                     }
                     Spacer()
                     Text("Current")
@@ -42,8 +42,8 @@ struct SecurityDetailView: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(Color.AppTheme.success.opacity(0.1))
-                        .foregroundColor(Color.AppTheme.success)
-                        .cornerRadius(6)
+                        .foregroundStyle(Color.AppTheme.success)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
             }
         }

@@ -35,7 +35,7 @@ struct StatusBadgeView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
-        .foregroundColor(resolvedColor)
+        .foregroundStyle(resolvedColor)
         .background(resolvedColor.opacity(0.12))
         .clipShape(Capsule())
     }
@@ -58,13 +58,11 @@ struct StatusBadgeView: View {
     }
 }
 
-struct StatusBadgeView_Previews: PreviewProvider {
-    static var previews: some View {
-        HStack {
-            StatusBadgeView(status: "Verified", icon: "checkmark.seal.fill")
-            StatusBadgeView(status: "Pending")
-            StatusBadgeView(status: "Rejected")
-            StatusBadgeView(status: "Active", type: .success)
-        }
+#Preview {
+    HStack {
+        StatusBadgeView(status: "Verified", icon: "checkmark.seal.fill")
+        StatusBadgeView(status: "Pending")
+        StatusBadgeView(status: "Rejected")
+        StatusBadgeView(status: "Active", type: .success)
     }
 }

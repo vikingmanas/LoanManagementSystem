@@ -214,7 +214,7 @@ extension View {
     @ViewBuilder
     public func hideNavigationBar() -> some View {
         #if os(iOS) || os(tvOS) || os(watchOS)
-        self.navigationBarHidden(true)
+        self.toolbar(.hidden, for: .navigationBar)
         #else
         self
         #endif

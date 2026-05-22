@@ -106,8 +106,6 @@ struct NotificationsTabView: View {
     }
 }
 
-struct NotificationsTabView_Previews: PreviewProvider {
-    static var previews: some View {
-        NotificationsTabView()
-    }
+#Preview {
+    NotificationsTabView()
 }

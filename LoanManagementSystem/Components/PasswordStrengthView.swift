@@ -53,7 +53,7 @@ struct PasswordStrengthView: View {
 
                 Text(strengthLabel)
                     .font(LMSFont.caption.weight(.bold))
-                    .foregroundColor(strengthColor)
+                    .foregroundStyle(strengthColor)
                     .frame(width: 50, alignment: .trailing)
                     .animation(.easeInOut, value: metCount)
             }
@@ -81,20 +81,18 @@ struct RequirementRow: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: isMet ? "checkmark.circle.fill" : "circle")
-                .foregroundColor(isMet ? LMSColors.emerald : LMSColors.textTertiary)
+                .foregroundStyle(isMet ? LMSColors.emerald : LMSColors.textTertiary)
                 .font(.system(size: 13))
                 .contentTransition(.symbolEffect(.replace))
 
             Text(text)
                 .font(LMSFont.caption)
-                .foregroundColor(isMet ? LMSColors.textPrimary : LMSColors.textTertiary)
+                .foregroundStyle(isMet ? LMSColors.textPrimary : LMSColors.textTertiary)
         }
     }
 }
 
-struct PasswordStrengthView_Previews: PreviewProvider {
-    static var previews: some View {
-        PasswordStrengthView(isMinLength: true, hasUppercase: false, hasNumber: true, hasSpecialChar: false)
-            .padding()
-    }
+#Preview {
+    PasswordStrengthView(isMinLength: true, hasUppercase: false, hasNumber: true, hasSpecialChar: false)
+        .padding()
 }

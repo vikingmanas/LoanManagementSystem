@@ -47,7 +47,7 @@ struct EditAdditionalInfoView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Emergency Contact Name")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Enter Contact Full Name", text: $emergencyContactName)
                             .font(Font.AppTheme.input)
                     }
@@ -55,7 +55,7 @@ struct EditAdditionalInfoView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Emergency Contact Mobile Number")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Enter 10-digit number", text: $emergencyContactNumber)
                             .keyboardType(.phonePad)
                             .font(Font.AppTheme.input)
@@ -66,7 +66,7 @@ struct EditAdditionalInfoView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Nominee Full Name")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Enter Nominee Full Name", text: $nomineeName)
                             .font(Font.AppTheme.input)
                     }
@@ -83,7 +83,7 @@ struct EditAdditionalInfoView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Occupation / Designation")
                             .font(Font.AppTheme.caption)
-                            .foregroundColor(Color.AppTheme.textSecondary)
+                            .foregroundStyle(Color.AppTheme.textSecondary)
                         TextField("Occupation", text: $occupation)
                             .font(Font.AppTheme.input)
                     }
@@ -95,7 +95,7 @@ struct EditAdditionalInfoView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Existing Bank Customer ID")
                                 .font(Font.AppTheme.caption)
-                                .foregroundColor(Color.AppTheme.textSecondary)
+                                .foregroundStyle(Color.AppTheme.textSecondary)
                             TextField("Customer ID", text: $existingCustomerId)
                                 .font(Font.AppTheme.input)
                         }
@@ -118,7 +118,7 @@ struct EditAdditionalInfoView: View {
                         presentationMode.wrappedValue.dismiss()
                     }) {
                         Image(systemName: "xmark")
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -127,7 +127,7 @@ struct EditAdditionalInfoView: View {
                     }) {
                         Image(systemName: "checkmark")
                             .fontWeight(.bold)
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                     }
                 }
             }

@@ -31,15 +31,15 @@ public struct TransactionRowView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(transaction.title)
                     .font(LMSFont.subheadline.weight(.semibold))
-                    .foregroundColor(LMSColors.textPrimary)
+                    .foregroundStyle(LMSColors.textPrimary)
                 
                 Text(formattedDateTime)
                     .font(LMSFont.caption)
-                    .foregroundColor(LMSColors.textSecondary)
+                    .foregroundStyle(LMSColors.textSecondary)
                 
                 Text("Ref: \(transaction.referenceNo)")
                     .font(.system(.caption2, design: .monospaced))
-                    .foregroundColor(LMSColors.textTertiary)
+                    .foregroundStyle(LMSColors.textTertiary)
             }
             
             Spacer()

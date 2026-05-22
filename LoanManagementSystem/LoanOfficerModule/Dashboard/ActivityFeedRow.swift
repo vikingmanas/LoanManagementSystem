@@ -17,7 +17,7 @@ struct ActivityFeedRow: View {
                     
                     Image(systemName: item.eventType.symbol)
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(item.eventType.themeColor)
+                        .foregroundStyle(item.eventType.themeColor)
                 }
                 
                 if !item.isRead {
@@ -37,35 +37,35 @@ struct ActivityFeedRow: View {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(item.borrowerName)
                         .font(.system(.callout, design: .rounded).bold())
-                        .foregroundColor(LMSColors.textPrimary)
+                        .foregroundStyle(LMSColors.textPrimary)
                     
                     Text("·")
                         .font(.system(.caption, design: .rounded))
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                     
                     Text(item.loanType)
                         .font(.system(.caption, design: .rounded).weight(.semibold))
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                 }
                 
                 Text(item.eventDescription)
                     .font(.system(.caption, design: .rounded))
-                    .foregroundColor(LMSColors.textSecondary)
+                    .foregroundStyle(LMSColors.textSecondary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 
                 HStack(spacing: 6) {
                     Text(item.applicationId)
                         .font(.system(.caption2, design: .rounded).weight(.semibold))
-                        .foregroundColor(Color(.placeholderText))
+                        .foregroundStyle(Color(.placeholderText))
                     
                     Text("•")
                         .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(Color(.placeholderText))
+                        .foregroundStyle(Color(.placeholderText))
                     
                     Text(RelativeDateFormatter.shared.relativeString(from: item.timestamp))
                         .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(Color(.placeholderText))
+                        .foregroundStyle(Color(.placeholderText))
                 }
                 .padding(.top, 2)
             }
@@ -83,8 +83,8 @@ struct ActivityFeedRow: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(actionType.color.opacity(0.15))
-                        .foregroundColor(actionType.color)
-                        .cornerRadius(8)
+                        .foregroundStyle(actionType.color)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(PlainButtonStyle())
                 .accessibilityLabel("Action: \(actionType.label) for \(item.borrowerName)")

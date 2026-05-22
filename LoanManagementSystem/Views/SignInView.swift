@@ -23,7 +23,7 @@ struct SignInView: View {
                                 Text("Back to Roles")
                             }
                             .font(LMSFont.subheadline.weight(.semibold))
-                            .foregroundColor(LMSColors.brandNavy)
+                            .foregroundStyle(LMSColors.brandNavy)
                         }
                         .padding(.top, LMSSpacing.lg)
 
@@ -31,11 +31,11 @@ struct SignInView: View {
                         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                             Text("Welcome Back")
                                 .font(LMSFont.largeTitle)
-                                .foregroundColor(LMSColors.textPrimary)
+                                .foregroundStyle(LMSColors.textPrimary)
 
                             Text("Sign in securely to manage your loans.")
                                 .font(LMSFont.subheadline)
-                                .foregroundColor(LMSColors.textSecondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                         }
                         .padding(.bottom, LMSSpacing.sm)
 
@@ -43,10 +43,10 @@ struct SignInView: View {
                         if !viewModel.generalError.isEmpty {
                             HStack(alignment: .top, spacing: LMSSpacing.sm) {
                                 Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(LMSColors.coral)
+                                    .foregroundStyle(LMSColors.coral)
                                 Text(viewModel.generalError)
                                     .font(LMSFont.caption)
-                                    .foregroundColor(LMSColors.coral)
+                                    .foregroundStyle(LMSColors.coral)
                                 Spacer()
                             }
                             .padding(LMSSpacing.lg)
@@ -83,7 +83,7 @@ struct SignInView: View {
                             NavigationLink(destination: BorrowerForgotPasswordView()) {
                                 Text("Forgot Password?")
                                     .font(LMSFont.footnote.weight(.semibold))
-                                    .foregroundColor(LMSColors.brandNavy)
+                                    .foregroundStyle(LMSColors.brandNavy)
                             }
                         }
 
@@ -108,7 +108,7 @@ struct SignInView: View {
                                 .frame(height: 0.5)
                             Text("OR")
                                 .font(LMSFont.caption.weight(.medium))
-                                .foregroundColor(LMSColors.textTertiary)
+                                .foregroundStyle(LMSColors.textTertiary)
                             Rectangle()
                                 .fill(LMSColors.separator)
                                 .frame(height: 0.5)
@@ -119,12 +119,12 @@ struct SignInView: View {
                             Spacer()
                             Text("Don't have an account?")
                                 .font(LMSFont.footnote)
-                                .foregroundColor(LMSColors.textSecondary)
+                                .foregroundStyle(LMSColors.textSecondary)
 
                             NavigationLink(destination: BorrowerSignUpView()) {
                                 Text("Sign Up")
                                     .font(LMSFont.footnote.weight(.bold))
-                                    .foregroundColor(LMSColors.brandNavy)
+                                    .foregroundStyle(LMSColors.brandNavy)
                             }
                             Spacer()
                         }
@@ -145,10 +145,8 @@ struct SignInView: View {
     }
 }
 
-struct SignInView_Previews: PreviewProvider {
-    static var previews: some View {
-        SignInView()
-            .environmentObject(AppStateManager())
-            .environmentObject(AuthManager())
-    }
+#Preview {
+    SignInView()
+        .environmentObject(AppStateManager())
+        .environmentObject(AuthManager())
 }

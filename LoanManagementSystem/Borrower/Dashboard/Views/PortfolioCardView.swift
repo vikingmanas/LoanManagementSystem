@@ -207,20 +207,20 @@ struct BankAccountCardRefined: View {
                     HStack(spacing: LMSSpacing.sm) {
                         Image(systemName: "building.columns.fill")
                             .font(.system(size: 20))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                         
                         VStack(alignment: .leading, spacing: 3) {
                             Text(account.accountType.displayName)
                                 .font(LMSFont.caption2.weight(.semibold))
-                                .foregroundColor(.white.opacity(0.9))
+                                .foregroundStyle(.white.opacity(0.9))
                             
                             Text("•••• \(account.accountNumber.suffix(4))")
                                 .font(.system(.caption, design: .monospaced))
-                                .foregroundColor(.white.opacity(0.70))
+                                .foregroundStyle(.white.opacity(0.70))
                             
                             Text(account.bankName)
                                 .font(LMSFont.caption2)
-                                .foregroundColor(.white.opacity(0.55))
+                                .foregroundStyle(.white.opacity(0.55))
                         }
                     }
                     
@@ -228,7 +228,7 @@ struct BankAccountCardRefined: View {
                     
                     Text("\(cardPosition) of \(totalAccountCards)")
                         .font(LMSFont.caption2)
-                        .foregroundColor(.white.opacity(0.45))
+                        .foregroundStyle(.white.opacity(0.45))
                 }
                 
                 Spacer()
@@ -237,12 +237,12 @@ struct BankAccountCardRefined: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Current Balance")
                         .font(LMSFont.caption)
-                        .foregroundColor(.white.opacity(0.75))
+                        .foregroundStyle(.white.opacity(0.75))
                     
                     HStack(alignment: .center, spacing: LMSSpacing.sm) {
                         Text(account.availableBalance.formattedAsINR())
                             .font(.system(.title, design: .rounded).weight(.bold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                         
                         if isLowBalance {
                             HStack(spacing: 4) {
@@ -251,7 +251,7 @@ struct BankAccountCardRefined: View {
                                 Text("Low Balance — Top up ₹\(Int(deficit)) to avoid penalty")
                                     .font(LMSFont.caption2.weight(.medium))
                             }
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
                             .background(LMSColors.coral.opacity(0.85))
@@ -277,17 +277,17 @@ struct BankAccountCardRefined: View {
                         Text(getChipText())
                             .font(LMSFont.caption2.weight(.semibold))
                     }
-                    .foregroundColor(LMSColors.brandNavy)
+                    .foregroundStyle(LMSColors.brandNavy)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(Color.white)
-                    .cornerRadius(8)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     
                     Spacer()
                     
                     Text("Linked: \(linkedLoanTypes)")
                         .font(LMSFont.caption2)
-                        .foregroundColor(.white.opacity(0.65))
+                        .foregroundStyle(.white.opacity(0.65))
                     
                     Spacer()
                     
@@ -298,11 +298,11 @@ struct BankAccountCardRefined: View {
                             Text("Transfer")
                                 .font(LMSFont.caption2.weight(.semibold))
                         }
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(Color.white.opacity(0.2))
-                        .cornerRadius(8)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -369,11 +369,11 @@ struct LoanProtectionCardRefined: View {
                     HStack(spacing: LMSSpacing.sm) {
                         Image(systemName: "shield.lefthalf.filled")
                             .font(.system(size: 22))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                         
                         Text("LOAN PROTECTION")
                             .font(LMSFont.caption2.weight(.semibold))
-                            .foregroundColor(.white.opacity(0.85))
+                            .foregroundStyle(.white.opacity(0.85))
                     }
                     
                     Spacer()
@@ -386,19 +386,19 @@ struct LoanProtectionCardRefined: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Coverage Amount")
                             .font(LMSFont.caption2)
-                            .foregroundColor(.white.opacity(0.65))
+                            .foregroundStyle(.white.opacity(0.65))
                         Text("₹ 15,00,000")
                             .font(.system(.title2, design: .rounded).weight(.bold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                     }
                     
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Monthly Premium")
                             .font(LMSFont.caption2)
-                            .foregroundColor(.white.opacity(0.65))
+                            .foregroundStyle(.white.opacity(0.65))
                         Text("₹ 850 / mo")
                             .font(.system(.title3, design: .rounded).weight(.bold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                     }
                 }
                 
@@ -413,17 +413,17 @@ struct LoanProtectionCardRefined: View {
                         Text("Active")
                             .font(LMSFont.caption2.weight(.bold))
                     }
-                    .foregroundColor(LMSColors.emerald)
+                    .foregroundStyle(LMSColors.emerald)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(Color.white)
-                    .cornerRadius(8)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     
                     Spacer()
                     
                     Text("Renews: 12 Jan 2026")
                         .font(LMSFont.caption2)
-                        .foregroundColor(.white.opacity(0.65))
+                        .foregroundStyle(.white.opacity(0.65))
                     
                     Spacer()
                     
@@ -433,7 +433,7 @@ struct LoanProtectionCardRefined: View {
                         Image(systemName: "arrow.right")
                             .font(.system(size: 10, weight: .bold))
                     }
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                 }
             }
             .padding(LMSSpacing.lg)
@@ -477,7 +477,7 @@ public struct PortfolioCardView: View {
             }
         }
         .frame(width: 280, height: 180)
-        .cornerRadius(LMSRadius.card)
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
         .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
         .shimmer(active: isLoading)
     }
@@ -505,7 +505,7 @@ struct RepaidProgressArc: View {
             
             Text("\(Int(percentage * 100))%")
                 .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
         }
         .frame(width: 36, height: 36)
     }
@@ -533,11 +533,11 @@ struct PulsingLowBalanceBadge: View {
     var body: some View {
         Text("Low Balance")
             .font(.system(size: 9, weight: .bold, design: .rounded))
-            .foregroundColor(.white)
+            .foregroundStyle(.white)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(LMSColors.coral)
-            .cornerRadius(10)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 

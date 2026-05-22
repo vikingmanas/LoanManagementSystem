@@ -24,30 +24,30 @@ public struct SchemeCardView: View {
                     // Category Badge
                     Text(categoryBadgeText)
                         .font(.system(size: 8, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(categoryBadgeBgColor)
-                        .cornerRadius(8)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     
                     Spacer()
                     
                     // Category Icon
                     Image(systemName: iconName)
                         .font(.system(size: 16))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                 }
                 
                 // Title
                 Text(scheme.title)
                     .font(LMSFont.callout.weight(.bold))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .lineLimit(1)
                 
                 // Description (2-line limit)
                 Text(scheme.description)
                     .font(LMSFont.caption2)
-                    .foregroundColor(.white.opacity(0.85))
+                    .foregroundStyle(.white.opacity(0.85))
                     .lineLimit(2)
                     .frame(height: 30, alignment: .topLeading)
                 
@@ -57,7 +57,7 @@ public struct SchemeCardView: View {
                 HStack {
                     Text("Valid: \(scheme.validTill.formattedAsDDMMMYYYY())")
                         .font(.system(size: 9, weight: .medium, design: .rounded))
-                        .foregroundColor(.white.opacity(0.75))
+                        .foregroundStyle(.white.opacity(0.75))
                     
                     Spacer()
                     
@@ -67,11 +67,11 @@ public struct SchemeCardView: View {
                     } label: {
                         Text("Apply →")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .background(Color.white.opacity(0.2))
-                            .cornerRadius(6)
+                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -79,7 +79,7 @@ public struct SchemeCardView: View {
             .padding(14)
         }
         .frame(width: 240, height: 140)
-        .cornerRadius(LMSRadius.card)
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
         .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
     

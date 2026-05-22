@@ -111,11 +111,11 @@ struct BankManagerDashboardView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Welcome Back, Manager 🏢")
                         .font(.system(.title3, design: .rounded).bold())
-                        .foregroundColor(LMSColors.textPrimary)
+                        .foregroundStyle(LMSColors.textPrimary)
                     
                     Text("Branch Manager · Branch: Bengaluru Central")
                         .font(.system(.caption, design: .rounded))
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                 }
                 
                 Spacer()
@@ -129,7 +129,7 @@ struct BankManagerDashboardView: View {
                             .fill(LMSColors.surfaceElevated)
                             .frame(width: 38, height: 38)
                         Image(systemName: "bell.fill")
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                             .font(.system(size: 16))
                         
                         if unreadCount > 0 {
@@ -152,7 +152,7 @@ struct BankManagerDashboardView: View {
                             .fill(LMSColors.surfaceElevated)
                             .frame(width: 38, height: 38)
                         Image(systemName: "gearshape.fill")
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                             .font(.system(size: 16))
                     }
                 }
@@ -169,7 +169,7 @@ struct BankManagerDashboardView: View {
                         
                         Text("BM")
                             .font(.system(.footnote, design: .rounded).bold())
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                     }
                     .shadow(color: Color(hex: "#00C48C").opacity(0.3), radius: 6, x: 0, y: 3)
                 }
@@ -188,7 +188,7 @@ struct BankManagerDashboardView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Portfolio Tracking YTD")
                             .font(.system(.footnote, design: .rounded).bold())
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                             .padding(.horizontal, 16)
                         
                         ScrollView(.horizontal, showsIndicators: false) {
@@ -232,7 +232,7 @@ struct BankManagerDashboardView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Portfolio Distribution")
                                 .font(.system(.footnote, design: .rounded).bold())
-                                .foregroundColor(LMSColors.textPrimary)
+                                .foregroundStyle(LMSColors.textPrimary)
                             
                             HStack(spacing: 0) {
                                 Rectangle()
@@ -248,7 +248,7 @@ struct BankManagerDashboardView: View {
                                     .fill(Color.gray.opacity(0.3))
                             }
                             .frame(height: 8)
-                            .cornerRadius(4)
+                            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                             
                             HStack(spacing: 16) {
                                 PortfolioLegendItem(color: Color(hex: "#00C48C"), title: "Home", percentage: "40%")
@@ -270,11 +270,11 @@ struct BankManagerDashboardView: View {
                                     Text("Report")
                                 }
                                 .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                                .foregroundColor(.white)
+                                .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 12)
                                 .background(Color(hex: "#34495E"))
-                                .cornerRadius(12)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
                             
                             Button(action: {
@@ -286,11 +286,11 @@ struct BankManagerDashboardView: View {
                                     Text("Audit Logs")
                                 }
                                 .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                                .foregroundColor(Color.AppTheme.primary)
+                                .foregroundStyle(Color.AppTheme.primary)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 12)
                                 .background(Color.AppTheme.primary.opacity(0.12))
-                                .cornerRadius(12)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
                         }
                         .padding(.horizontal, 16)
@@ -303,7 +303,7 @@ struct BankManagerDashboardView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Team Workload Directory")
                             .font(.system(.footnote, design: .rounded).bold())
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                             .padding(.leading, 16)
                         
                         VStack(spacing: 0) {
@@ -316,7 +316,7 @@ struct BankManagerDashboardView: View {
                             }
                         }
                         .background(LMSColors.surfaceElevated)
-                        .cornerRadius(16)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .padding(.horizontal, 16)
                     }
                     .padding(.top, 12)
@@ -326,7 +326,7 @@ struct BankManagerDashboardView: View {
                         HStack {
                             Text("Applications Awaiting Clearance")
                                 .font(.system(.footnote, design: .rounded).bold())
-                                .foregroundColor(LMSColors.textSecondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                             
                             Spacer()
                             
@@ -336,7 +336,7 @@ struct BankManagerDashboardView: View {
                             }) {
                                 Text("View All")
                                     .font(.system(.footnote, design: .rounded).bold())
-                                    .foregroundColor(Color.AppTheme.primary)
+                                    .foregroundStyle(Color.AppTheme.primary)
                             }
                         }
                         .padding(.horizontal, 4)
@@ -347,20 +347,20 @@ struct BankManagerDashboardView: View {
                             VStack(spacing: 16) {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: 44))
-                                    .foregroundColor(Color(hex: "#00C48C"))
+                                    .foregroundStyle(Color(hex: "#00C48C"))
                                 
                                 Text("No Pending Clearances")
                                     .font(.system(.subheadline, design: .rounded).bold())
                                 
                                 Text("All branch loan applications have been audited and resolved.")
                                     .font(.system(.caption, design: .rounded))
-                                    .foregroundColor(LMSColors.textSecondary)
+                                    .foregroundStyle(LMSColors.textSecondary)
                                     .multilineTextAlignment(.center)
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 32)
                             .background(LMSColors.surfaceElevated)
-                            .cornerRadius(16)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         } else {
                             VStack(spacing: 12) {
                                 ForEach(pendingApps) { app in
@@ -375,42 +375,42 @@ struct BankManagerDashboardView: View {
                                                     .frame(width: 44, height: 44)
                                                 
                                                 Image(systemName: app.status == "Sent to Manager" ? "exclamationmark.shield.fill" : "questionmark.circle.fill")
-                                                    .foregroundColor(app.status == "Sent to Manager" ? Color(hex: "#FFB300") : Color(hex: "#1A73E8"))
+                                                    .foregroundStyle(app.status == "Sent to Manager" ? Color(hex: "#FFB300") : Color(hex: "#1A73E8"))
                                             }
                                             
                                             VStack(alignment: .leading, spacing: 3) {
                                                 HStack {
                                                     Text(app.borrowerName)
                                                         .font(.system(.callout, design: .rounded).bold())
-                                                        .foregroundColor(LMSColors.textPrimary)
+                                                        .foregroundStyle(LMSColors.textPrimary)
                                                     
                                                     Spacer()
                                                     
                                                     Text("₹ \(Int(app.requestedAmount / 100_000)) Lakh")
                                                         .font(.system(.caption, design: .rounded).bold())
-                                                        .foregroundColor(Color.AppTheme.primary)
+                                                        .foregroundStyle(Color.AppTheme.primary)
                                                 }
                                                 
                                                 HStack {
                                                     Text("\(app.loanType) · CIBIL: \(app.cibilScore)")
                                                         .font(.system(.caption, design: .rounded))
-                                                        .foregroundColor(LMSColors.textSecondary)
+                                                        .foregroundStyle(LMSColors.textSecondary)
                                                     
                                                     Spacer()
                                                     
                                                     Text(app.status)
                                                         .font(.system(size: 9, weight: .bold, design: .rounded))
-                                                        .foregroundColor(app.status == "Sent to Manager" ? Color(hex: "#FFB300") : Color(hex: "#1A73E8"))
+                                                        .foregroundStyle(app.status == "Sent to Manager" ? Color(hex: "#FFB300") : Color(hex: "#1A73E8"))
                                                         .padding(.horizontal, 6)
                                                         .padding(.vertical, 2)
                                                         .background(app.status == "Sent to Manager" ? Color(hex: "#FFB300").opacity(0.1) : Color(hex: "#1A73E8").opacity(0.1))
-                                                        .cornerRadius(6)
+                                                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                                                 }
                                             }
                                         }
                                         .padding(.all, 14)
                                         .background(LMSColors.surfaceElevated)
-                                        .cornerRadius(16)
+                                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                 }
@@ -487,11 +487,11 @@ struct BankManagerDashboardView: View {
                             .tint(.white)
                         Text("Generating PDF Report...")
                             .font(.system(.headline, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                     }
                     .padding(32)
                     .background(LMSColors.surfaceElevated.opacity(0.1))
-                    .cornerRadius(20)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }
                 .transition(.opacity)
             }
@@ -518,32 +518,32 @@ struct ManagerMetricCard: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
                 .font(.system(size: 10, weight: .bold, design: .rounded))
-                .foregroundColor(LMSColors.textSecondary)
+                .foregroundStyle(LMSColors.textSecondary)
             
             Text(value)
                 .font(.system(size: 22, weight: .bold, design: .rounded))
-                .foregroundColor(LMSColors.textPrimary)
+                .foregroundStyle(LMSColors.textPrimary)
             
             VStack(alignment: .leading, spacing: 6) {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         Capsule().frame(width: geometry.size.width, height: 4)
-                            .foregroundColor(accentColor.opacity(0.2))
+                            .foregroundStyle(accentColor.opacity(0.2))
                         Capsule().frame(width: geometry.size.width * progress, height: 4)
-                            .foregroundColor(accentColor)
+                            .foregroundStyle(accentColor)
                     }
                 }
                 .frame(height: 4)
                 
                 Text(subtitle)
                     .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundColor(accentColor)
+                    .foregroundStyle(accentColor)
             }
         }
         .padding(16)
         .frame(width: 160)
         .background(LMSColors.surfaceElevated)
-        .cornerRadius(16)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -558,7 +558,7 @@ struct ManagerMetricRingCard: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
                 .font(.system(size: 10, weight: .bold, design: .rounded))
-                .foregroundColor(LMSColors.textSecondary)
+                .foregroundStyle(LMSColors.textSecondary)
             
             HStack(spacing: 12) {
                 ZStack {
@@ -574,17 +574,17 @@ struct ManagerMetricRingCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(value)
                         .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundColor(LMSColors.textPrimary)
+                        .foregroundStyle(LMSColors.textPrimary)
                     Text(subtitle)
                         .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        .foregroundColor(accentColor)
+                        .foregroundStyle(accentColor)
                 }
             }
         }
         .padding(16)
         .frame(width: 180)
         .background(LMSColors.surfaceElevated)
-        .cornerRadius(16)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -600,7 +600,7 @@ struct PortfolioLegendItem: View {
                 .frame(width: 6, height: 6)
             Text("\(title) \(percentage)")
                 .font(.system(size: 10, weight: .semibold, design: .rounded))
-                .foregroundColor(LMSColors.textSecondary)
+                .foregroundStyle(LMSColors.textSecondary)
         }
     }
 }
@@ -617,7 +617,7 @@ struct ManagerMetricBox: View {
             HStack {
                 Text(title)
                     .font(.system(size: 9, weight: .bold, design: .rounded))
-                    .foregroundColor(LMSColors.textSecondary)
+                    .foregroundStyle(LMSColors.textSecondary)
                 Spacer()
                 Circle()
                     .fill(accentColor.opacity(0.2))
@@ -626,16 +626,16 @@ struct ManagerMetricBox: View {
             
             Text(value)
                 .font(.system(.title2, design: .rounded).bold())
-                .foregroundColor(LMSColors.textPrimary)
+                .foregroundStyle(LMSColors.textPrimary)
             
             Text(subtitle)
                 .font(.system(size: 9))
-                .foregroundColor(LMSColors.textSecondary)
+                .foregroundStyle(LMSColors.textSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(LMSColors.surfaceElevated)
-        .cornerRadius(16)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -657,7 +657,7 @@ struct ManagerActionSheet: View {
                 VStack(spacing: 8) {
                     Image(systemName: "doc.text.fill")
                         .font(.system(size: 48))
-                        .foregroundColor(Color.AppTheme.primary)
+                        .foregroundStyle(Color.AppTheme.primary)
                         .padding(.bottom, 4)
                     
                     Text(application.borrowerName)
@@ -665,11 +665,11 @@ struct ManagerActionSheet: View {
                     
                     Text("FILE ID: \(application.applicationId)")
                         .font(LMSFont.caption.bold())
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
                         .background(LMSColors.textSecondary.opacity(0.15))
-                        .cornerRadius(6)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
                 .padding(.top, 20)
                 
@@ -684,13 +684,13 @@ struct ManagerActionSheet: View {
                     DetailItemRow(label: "DATE SUBMITTED", value: application.submissionDate)
                 }
                 .background(LMSColors.surfaceElevated)
-                .cornerRadius(16)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 
                 // Documents section
                 VStack(alignment: .leading, spacing: 10) {
                     Text("BORROWER DOCUMENTS")
                         .font(.system(size: 9, weight: .bold, design: .rounded))
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                         .padding(.leading, 4)
                     
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -703,13 +703,13 @@ struct ManagerActionSheet: View {
                                             .frame(width: 54, height: 54)
                                         
                                         Image(systemName: "doc.richtext.fill")
-                                            .foregroundColor(Color(hex: "#1A73E8"))
+                                            .foregroundStyle(Color(hex: "#1A73E8"))
                                             .font(.system(size: 24))
                                     }
                                     
                                     Text(doc)
                                         .font(.system(size: 10, weight: .medium, design: .rounded))
-                                        .foregroundColor(LMSColors.textPrimary)
+                                        .foregroundStyle(LMSColors.textPrimary)
                                         .frame(width: 72)
                                         .multilineTextAlignment(.center)
                                         .lineLimit(2)
@@ -724,10 +724,10 @@ struct ManagerActionSheet: View {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Image(systemName: "person.badge.shield.checkmark.fill")
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                         Text("OFFICER REMARKS")
                             .font(.system(size: 9, weight: .bold, design: .rounded))
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                     }
                     
                     HStack(alignment: .top, spacing: 10) {
@@ -737,16 +737,16 @@ struct ManagerActionSheet: View {
                                 .frame(width: 32, height: 32)
                             Text("LO")
                                 .font(.system(size: 10, weight: .bold, design: .rounded))
-                                .foregroundColor(LMSColors.textPrimary)
+                                .foregroundStyle(LMSColors.textPrimary)
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Assigned Loan Officer")
                                 .font(.system(size: 10, weight: .bold, design: .rounded))
-                                .foregroundColor(LMSColors.textPrimary)
+                                .foregroundStyle(LMSColors.textPrimary)
                             Text(application.reason)
                                 .font(.system(.footnote, design: .rounded))
-                                .foregroundColor(LMSColors.textPrimary)
+                                .foregroundStyle(LMSColors.textPrimary)
                                 .lineSpacing(4)
                         }
                     }
@@ -754,7 +754,7 @@ struct ManagerActionSheet: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(14)
                 .background(Color(hex: "#FFB300").opacity(0.08))
-                .cornerRadius(12)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(Color(hex: "#FFB300").opacity(0.2), lineWidth: 1)
@@ -771,11 +771,11 @@ struct ManagerActionSheet: View {
                     }) {
                         Text("Approve & Disburse Clearance")
                             .font(.system(.body, design: .rounded).weight(.bold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 52)
                             .background(Color(hex: "#00C48C"))
-                            .cornerRadius(14)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     
                     HStack(spacing: 12) {
@@ -786,11 +786,11 @@ struct ManagerActionSheet: View {
                         }) {
                             Text("Reject")
                                 .font(.system(.body, design: .rounded).weight(.semibold))
-                                .foregroundColor(Color.AppTheme.error)
+                                .foregroundStyle(Color.AppTheme.error)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 52)
                                 .background(Color.AppTheme.error.opacity(0.12))
-                                .cornerRadius(14)
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         }
                         
                         Button(action: {
@@ -800,11 +800,11 @@ struct ManagerActionSheet: View {
                         }) {
                             Text("Escalate")
                                 .font(.system(.body, design: .rounded).weight(.semibold))
-                                .foregroundColor(Color(hex: "#9C27B0"))
+                                .foregroundStyle(Color(hex: "#9C27B0"))
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 52)
                                 .background(Color(hex: "#9C27B0").opacity(0.12))
-                                .cornerRadius(14)
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         }
                     }
                     
@@ -815,11 +815,11 @@ struct ManagerActionSheet: View {
                     }) {
                         Text("Request Officer Clarification")
                             .font(.system(.body, design: .rounded).weight(.semibold))
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                             .frame(maxWidth: .infinity)
                             .frame(height: 52)
                             .background(Color.AppTheme.primary.opacity(0.12))
-                            .cornerRadius(14)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                 }
                 .padding(.bottom, 20)
@@ -844,11 +844,11 @@ struct DetailItemRow: View {
         HStack {
             Text(label)
                 .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundColor(LMSColors.textSecondary)
+                .foregroundStyle(LMSColors.textSecondary)
             Spacer()
             Text(value)
                 .font(.system(.footnote, design: .rounded).weight(.semibold))
-                .foregroundColor(LMSColors.textPrimary)
+                .foregroundStyle(LMSColors.textPrimary)
         }
         .padding(.vertical, 14)
         .padding(.horizontal, 16)
@@ -879,7 +879,7 @@ struct BankManagerProfileView: View {
                             
                             Text("BM")
                                 .font(.system(size: 32, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
+                                .foregroundStyle(.white)
                         }
                         
                         VStack(spacing: 4) {
@@ -888,24 +888,24 @@ struct BankManagerProfileView: View {
                             
                             Text("Principal Branch Manager")
                                 .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                                .foregroundColor(Color(hex: "#00C48C"))
+                                .foregroundStyle(Color(hex: "#00C48C"))
                             
                             Text("Bengaluru Central Branch (ID: BM-490)")
                                 .font(.system(.caption, design: .rounded))
-                                .foregroundColor(LMSColors.textSecondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                         }
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 20)
                     .background(LMSColors.surfaceElevated)
-                    .cornerRadius(20)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .padding(.horizontal, 16)
                     
                     // Operations details
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Operational Authority")
                             .font(.system(.caption, design: .rounded).bold())
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                             .padding(.leading, 20)
                         
                         VStack(spacing: 0) {
@@ -916,7 +916,7 @@ struct BankManagerProfileView: View {
                             ProfileDetailRow(label: "BRANCH RATING", value: "A+ Audit Class")
                         }
                         .background(LMSColors.surfaceElevated)
-                        .cornerRadius(16)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .padding(.horizontal, 16)
                     }
                     
@@ -929,11 +929,11 @@ struct BankManagerProfileView: View {
                     }) {
                         Text("Sign Out of Portal")
                             .font(.system(.subheadline, design: .rounded).bold())
-                            .foregroundColor(Color.AppTheme.error)
+                            .foregroundStyle(Color.AppTheme.error)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(Color.AppTheme.error.opacity(0.08))
-                            .cornerRadius(16)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
                     .padding(.horizontal, 16)
                     
@@ -970,7 +970,7 @@ struct BranchConfigurationView: View {
                         Text("Home Loan")
                         Spacer()
                         Text("₹ \(CurrencyFormatter.shared.format(homeLoanLimit))")
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                     }
                     Slider(value: $homeLoanLimit, in: 1_000_000...100_000_000, step: 1_000_000)
                         .accentColor(Color(hex: "#00C48C"))
@@ -979,7 +979,7 @@ struct BranchConfigurationView: View {
                         Text("Auto Loan")
                         Spacer()
                         Text("₹ \(CurrencyFormatter.shared.format(autoLoanLimit))")
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                     }
                     Slider(value: $autoLoanLimit, in: 500_000...30_000_000, step: 500_000)
                         .accentColor(Color(hex: "#1A73E8"))
@@ -988,7 +988,7 @@ struct BranchConfigurationView: View {
                         Text("Education Loan")
                         Spacer()
                         Text("₹ \(CurrencyFormatter.shared.format(eduLoanLimit))")
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                     }
                     Slider(value: $eduLoanLimit, in: 1_000_000...50_000_000, step: 500_000)
                         .accentColor(Color(hex: "#FFB300"))
@@ -999,7 +999,7 @@ struct BranchConfigurationView: View {
                         Text("Minimum CIBIL Score")
                         Spacer()
                         Text("\(Int(minimumCibilScore))")
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                     }
                     Slider(value: $minimumCibilScore, in: 300...900, step: 10)
                         .accentColor(Color.AppTheme.primary)
@@ -1015,7 +1015,7 @@ struct BranchConfigurationView: View {
                     }) {
                         Text("Save Branch Configuration")
                             .font(.system(.body, design: .rounded).weight(.bold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 4)
                     }
@@ -1088,7 +1088,7 @@ struct ReportExportOptionsView: View {
                     }) {
                         Text("Export Now")
                             .font(.system(.body, design: .rounded).weight(.bold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 4)
                     }
@@ -1146,17 +1146,17 @@ struct StaffWorkloadRow: View {
                 
                 Text(staff.initials)
                     .font(.system(.footnote, design: .rounded).weight(.bold))
-                    .foregroundColor(Color.AppTheme.primary)
+                    .foregroundStyle(Color.AppTheme.primary)
             }
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(staff.name)
                     .font(.system(.body, design: .rounded).weight(.semibold))
-                    .foregroundColor(LMSColors.textPrimary)
+                    .foregroundStyle(LMSColors.textPrimary)
                 
                 Text(staff.role)
                     .font(.system(.caption, design: .rounded))
-                    .foregroundColor(LMSColors.textSecondary)
+                    .foregroundStyle(LMSColors.textSecondary)
             }
             
             Spacer()
@@ -1164,7 +1164,7 @@ struct StaffWorkloadRow: View {
             VStack(alignment: .trailing, spacing: 4) {
                 HStack(spacing: 4) {
                     Image(systemName: "star.fill")
-                        .foregroundColor(Color(hex: "#FFB300"))
+                        .foregroundStyle(Color(hex: "#FFB300"))
                         .font(.system(size: 10))
                     Text(String(format: "%.1f", staff.rating))
                         .font(.system(size: 12, weight: .bold, design: .rounded))
@@ -1173,14 +1173,14 @@ struct StaffWorkloadRow: View {
                 HStack(spacing: 6) {
                     Text("\(staff.activeCases)/\(staff.maxCapacity) Cases")
                         .font(.system(.caption2, design: .rounded).weight(.medium))
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                     
                     GeometryReader { geometry in
                         ZStack(alignment: .leading) {
                             Capsule().frame(width: geometry.size.width, height: 4)
-                                .foregroundColor(staff.capacityColor.opacity(0.2))
+                                .foregroundStyle(staff.capacityColor.opacity(0.2))
                             Capsule().frame(width: geometry.size.width * staff.capacityPercentage, height: 4)
-                                .foregroundColor(staff.capacityColor)
+                                .foregroundStyle(staff.capacityColor)
                         }
                     }
                     .frame(width: 32, height: 4)
@@ -1241,27 +1241,27 @@ struct BranchAuditLogView: View {
             List(events) { event in
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: event.severity.icon)
-                        .foregroundColor(event.severity.color)
+                        .foregroundStyle(event.severity.color)
                         .font(.system(size: 20))
                         .padding(.top, 2)
                     
                     VStack(alignment: .leading, spacing: 4) {
                         Text(event.action)
                             .font(.system(.body, design: .rounded).weight(.semibold))
-                            .foregroundColor(LMSColors.textPrimary)
+                            .foregroundStyle(LMSColors.textPrimary)
                             .fixedSize(horizontal: false, vertical: true)
                         
                         HStack {
                             Text(event.user)
                                 .font(.system(.caption, design: .rounded))
-                                .foregroundColor(LMSColors.textSecondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                             Spacer()
                             Text(event.timestamp, style: .time)
                                 .font(.system(.caption2, design: .rounded).bold())
-                                .foregroundColor(LMSColors.textSecondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                             Text(event.timestamp, style: .date)
                                 .font(.system(.caption2, design: .rounded))
-                                .foregroundColor(LMSColors.textSecondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                         }
                     }
                 }
@@ -1319,23 +1319,23 @@ struct ManagerNotificationsView: View {
                 ForEach($notifications) { $notification in
                     HStack(alignment: .top, spacing: 12) {
                         Image(systemName: notification.type.icon)
-                            .foregroundColor(notification.type.color)
+                            .foregroundStyle(notification.type.color)
                             .font(.system(size: 24))
                             .padding(.top, 4)
                         
                         VStack(alignment: .leading, spacing: 4) {
                             Text(notification.title)
                                 .font(.system(.headline, design: .rounded))
-                                .foregroundColor(notification.isRead ? .secondary : .primary)
+                                .foregroundStyle(notification.isRead ? .secondary : .primary)
                             
                             Text(notification.message)
                                 .font(.system(.subheadline, design: .rounded))
-                                .foregroundColor(notification.isRead ? .secondary : .primary)
+                                .foregroundStyle(notification.isRead ? .secondary : .primary)
                                 .fixedSize(horizontal: false, vertical: true)
                             
                             Text(notification.timestamp, style: .relative)
                                 .font(.system(.caption, design: .rounded))
-                                .foregroundColor(LMSColors.textSecondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                                 .padding(.top, 2)
                         }
                         Spacer()

@@ -50,11 +50,11 @@ struct RoleSelectionView: View {
 
                     Text("Loan Manager")
                         .font(LMSFont.title)
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
 
                     Text("Select your role to access your workspace")
                         .font(LMSFont.subheadline)
-                        .foregroundColor(.white.opacity(0.65))
+                        .foregroundStyle(.white.opacity(0.65))
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, LMSSpacing.xxxl)
                 }
@@ -97,7 +97,7 @@ struct RoleSelectionView: View {
                             Image(systemName: "arrow.right")
                                 .font(.system(.body, design: .rounded).weight(.bold))
                         }
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
                         .background(
@@ -135,18 +135,18 @@ struct RoleCardView: View {
 
                     Image(systemName: role.icon)
                         .font(.system(size: 20))
-                        .foregroundColor(isSelected ? .white : .white.opacity(0.7))
+                        .foregroundStyle(isSelected ? .white : .white.opacity(0.7))
                 }
 
                 // Label
                 VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                     Text(role.rawValue)
                         .font(LMSFont.callout.weight(.bold))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
 
                     Text(role.description)
                         .font(LMSFont.caption)
-                        .foregroundColor(.white.opacity(0.55))
+                        .foregroundStyle(.white.opacity(0.55))
                         .multilineTextAlignment(.leading)
                         .lineLimit(2)
                 }
@@ -166,7 +166,7 @@ struct RoleCardView: View {
 
                         Image(systemName: "checkmark")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                     }
                 }
             }
@@ -185,9 +185,7 @@ struct RoleCardView: View {
     }
 }
 
-struct RoleSelectionView_Previews: PreviewProvider {
-    static var previews: some View {
-        RoleSelectionView()
-            .environmentObject(AppStateManager())
-    }
+#Preview {
+    RoleSelectionView()
+        .environmentObject(AppStateManager())
 }

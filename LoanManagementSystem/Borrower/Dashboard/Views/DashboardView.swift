@@ -521,7 +521,7 @@ struct QuickPaySheet: View {
                 if let nextEMI = viewModel.nextEMI {
                     Image(systemName: "indianrupeesign.circle.fill")
                         .font(.system(size: 60))
-                        .foregroundColor(LMSColors.brandNavy)
+                        .foregroundStyle(LMSColors.brandNavy)
                     
                     Text("Confirm EMI Payment")
                         .font(.title2)
@@ -546,7 +546,7 @@ struct QuickPaySheet: View {
                     }
                     .padding()
                     .background(LMSColors.surfaceElevated)
-                    .cornerRadius(16)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     
                     Button {
                         viewModel.payNextEMI()
@@ -554,11 +554,11 @@ struct QuickPaySheet: View {
                     } label: {
                         Text("Pay Now")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
                             .background(LMSColors.brandNavy)
-                            .cornerRadius(14)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     .disabled(viewModel.bankAccount.availableBalance < nextEMI.amount)
                     
@@ -588,7 +588,7 @@ struct StatementSheet: View {
                 HStack {
                     VStack(alignment: .leading) {
                         Text(tx.title).font(.headline)
-                        Text(tx.date.formattedAsDDMMMYYYY()).font(.subheadline).foregroundColor(LMSColors.textSecondary)
+                        Text(tx.date.formattedAsDDMMMYYYY()).font(.subheadline).foregroundStyle(LMSColors.textSecondary)
                     }
                     Spacer()
                     Text(tx.amount.formattedAsINR()).fontWeight(.bold)
@@ -614,7 +614,7 @@ struct ForeclosureSheet: View {
             VStack(spacing: 20) {
                 Image(systemName: "exclamationmark.shield.fill")
                     .font(.system(size: 60))
-                    .foregroundColor(LMSColors.coral)
+                    .foregroundStyle(LMSColors.coral)
                 
                 Text("Request Foreclosure")
                     .font(.title2)
@@ -622,19 +622,19 @@ struct ForeclosureSheet: View {
                 
                 Text("Foreclosing your home loan will trigger a 1% processing fee of the remaining outstanding amount. Do you wish to schedule a callback with our credit advisor?")
                     .multilineTextAlignment(.center)
-                    .foregroundColor(LMSColors.textSecondary)
+                    .foregroundStyle(LMSColors.textSecondary)
                     .padding()
                 
                 Button {
                     showingToast = true
                 } label: {
                     Text("Schedule Callback")
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
                         .background(LMSColors.brandNavy)
-                        .cornerRadius(14)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
             }
             .padding(24)
@@ -665,15 +665,15 @@ struct SupportSheet: View {
                     Button(action: { showingToast = true }) {
                         Label("Call Support: 1800-BANK-LOAN", systemImage: "phone.fill")
                     }
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                     Button(action: { showingToast = true }) {
                         Label("Email: support@brandbank.com", systemImage: "envelope.fill")
                     }
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                     Button(action: { showingToast = true }) {
                         Label("Live chat assistant", systemImage: "message.fill")
                     }
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                 }
                 Section(header: Text("FAQs")) {
                     Text("How to reschedule EMIs?")
@@ -707,7 +707,7 @@ struct TopUpSheet: View {
             VStack(spacing: 24) {
                 Image(systemName: "plus.circle.fill")
                     .font(.system(size: 60))
-                    .foregroundColor(LMSColors.emerald)
+                    .foregroundStyle(LMSColors.emerald)
                 
                 Text("Top-Up Account Balance")
                     .font(.title2)
@@ -717,19 +717,19 @@ struct TopUpSheet: View {
                 
                 Text("Amount to Add: \(topUpAmount.formattedAsINR())")
                     .font(.headline)
-                    .foregroundColor(LMSColors.emerald)
+                    .foregroundStyle(LMSColors.emerald)
                 
                 Button {
                     viewModel.topUpAccount(amount: topUpAmount)
                     dismiss()
                 } label: {
                     Text("Confirm Deposit")
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
                         .background(LMSColors.emerald)
-                        .cornerRadius(14)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
             }
             .padding(24)
@@ -760,19 +760,19 @@ struct LoanDetailsView: View {
                         Text(loan.loanType.uppercased())
                             .font(.caption)
                             .fontWeight(.bold)
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundStyle(.white.opacity(0.8))
                         
                         Text(loan.principalOutstanding.formattedAsINR())
                             .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                         
                         Text("Outstanding Principal")
                             .font(.caption)
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundStyle(.white.opacity(0.7))
                     }
                     .padding(.vertical, 32)
                 }
-                .cornerRadius(20)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .padding(.horizontal, 20)
                 
                 // Detailed Stats Grid
@@ -780,7 +780,7 @@ struct LoanDetailsView: View {
                     Text("LOAN METRICS")
                         .font(.caption)
                         .fontWeight(.bold)
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                     
                     Group {
                         DetailMetricRow(label: "Account Number", value: loan.accountNumber)
@@ -793,7 +793,7 @@ struct LoanDetailsView: View {
                 }
                 .padding(20)
                 .background(LMSColors.surfaceElevated)
-                .cornerRadius(20)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .padding(.horizontal, 20)
             }
         }
@@ -818,19 +818,19 @@ struct BankDetailsView: View {
                         Text(bank.accountType.rawValue.uppercased())
                             .font(.caption)
                             .fontWeight(.bold)
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundStyle(.white.opacity(0.8))
                         
                         Text(bank.availableBalance.formattedAsINR())
                             .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                         
                         Text("Available balance")
                             .font(.caption)
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundStyle(.white.opacity(0.7))
                     }
                     .padding(.vertical, 32)
                 }
-                .cornerRadius(20)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .padding(.horizontal, 20)
                 
                 // Top-up Section inside details
@@ -838,7 +838,7 @@ struct BankDetailsView: View {
                     Text("ADD FUNDS")
                         .font(.caption)
                         .fontWeight(.bold)
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                     
                     HStack(spacing: 12) {
                         Button("+ ₹5,000") { viewModel.topUpAccount(amount: 5000) }
@@ -856,7 +856,7 @@ struct BankDetailsView: View {
                 }
                 .padding(20)
                 .background(LMSColors.surfaceElevated)
-                .cornerRadius(20)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .padding(.horizontal, 20)
             }
         }
@@ -891,12 +891,12 @@ struct AllTransactionsView: View {
             HStack {
                 VStack(alignment: .leading) {
                     Text(tx.title).font(.headline)
-                    Text(tx.date.formattedAsDDMMMYYYY()).font(.caption).foregroundColor(LMSColors.textSecondary)
+                    Text(tx.date.formattedAsDDMMMYYYY()).font(.caption).foregroundStyle(LMSColors.textSecondary)
                 }
                 Spacer()
                 Text(tx.amount.formattedAsINR())
                     .fontWeight(.bold)
-                    .foregroundColor(tx.type == .credit || tx.type == .refund ? LMSColors.emerald : LMSColors.coral)
+                    .foregroundStyle(tx.type == .credit || tx.type == .refund ? LMSColors.emerald : LMSColors.coral)
             }
         }
         .navigationTitle("All Transactions")
@@ -912,7 +912,7 @@ struct AllPendingEMIsView: View {
             HStack {
                 VStack(alignment: .leading) {
                     Text(emi.loanType).font(.headline)
-                    Text("Due Date: \(emi.dueDate.formattedAsDDMMMYYYY())").font(.caption).foregroundColor(LMSColors.textSecondary)
+                    Text("Due Date: \(emi.dueDate.formattedAsDDMMMYYYY())").font(.caption).foregroundStyle(LMSColors.textSecondary)
                 }
                 Spacer()
                 Text(emi.amount.formattedAsINR()).fontWeight(.bold)
@@ -935,21 +935,21 @@ struct SchemeDetailsView: View {
                     .fontWeight(.bold)
                 
                 Text("Category: \(scheme.category.rawValue)")
-                    .foregroundColor(LMSColors.textSecondary)
+                    .foregroundStyle(LMSColors.textSecondary)
                 
                 Text(scheme.description)
                     .font(.body)
                 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Benefit Summary").font(.headline)
-                    Text(scheme.benefitSummary).foregroundColor(LMSColors.emerald).fontWeight(.bold)
+                    Text(scheme.benefitSummary).foregroundStyle(LMSColors.emerald).fontWeight(.bold)
                 }
                 
                 Divider()
                 
                 if appSubmitted {
                     Text("🎉 Application Submitted Successfully! Our relationship manager will contact you in 24 hours.")
-                        .foregroundColor(LMSColors.emerald)
+                        .foregroundStyle(LMSColors.emerald)
                         .fontWeight(.bold)
                         .multilineTextAlignment(.center)
                         .padding()
@@ -959,11 +959,11 @@ struct SchemeDetailsView: View {
                     } label: {
                         Text("Apply Now")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
                             .background(LMSColors.brandNavy)
-                            .cornerRadius(14)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                 }
             }
@@ -982,12 +982,12 @@ struct DetailMetricRow: View {
         HStack {
             Text(label)
                 .font(.system(.body, design: .rounded))
-                .foregroundColor(LMSColors.textSecondary)
+                .foregroundStyle(LMSColors.textSecondary)
             Spacer()
             Text(value)
                 .font(.system(.body, design: .rounded))
                 .fontWeight(.bold)
-                .foregroundColor(LMSColors.textPrimary)
+                .foregroundStyle(LMSColors.textPrimary)
         }
         .padding(.vertical, 4)
     }

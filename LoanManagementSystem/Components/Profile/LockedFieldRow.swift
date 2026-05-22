@@ -10,40 +10,40 @@ struct LockedFieldRow: View {
             HStack {
                 Text(label)
                     .font(Font.AppTheme.caption)
-                    .foregroundColor(Color.AppTheme.textSecondary)
+                    .foregroundStyle(Color.AppTheme.textSecondary)
                 
                 Spacer()
                 
                 HStack(spacing: 4) {
                     Image(systemName: "checkmark.seal.fill")
-                        .foregroundColor(Color.AppTheme.success)
+                        .foregroundStyle(Color.AppTheme.success)
                         .font(.system(size: 12))
                     Text("Verified")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(Color.AppTheme.success)
+                        .foregroundStyle(Color.AppTheme.success)
                 }
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(Color.AppTheme.success.opacity(0.12))
-                .cornerRadius(4)
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
             }
             
             HStack {
                 Image(systemName: "lock.fill")
-                    .foregroundColor(Color.AppTheme.textSecondary)
+                    .foregroundStyle(Color.AppTheme.textSecondary)
                     .font(.system(size: 14))
                 
                 Text(value)
                     .font(Font.AppTheme.body)
                     .fontWeight(.semibold)
-                    .foregroundColor(Color.AppTheme.textPrimary)
+                    .foregroundStyle(Color.AppTheme.textPrimary)
                 
                 Spacer()
                 
                 Button(action: onRequestChange) {
                     Text("Request Change")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(Color.AppTheme.primary)
+                        .foregroundStyle(Color.AppTheme.primary)
                 }
                 .buttonStyle(PlainButtonStyle())
             }

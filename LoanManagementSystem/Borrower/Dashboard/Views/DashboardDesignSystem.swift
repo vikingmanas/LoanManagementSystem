@@ -104,15 +104,15 @@ struct LoanCard: View {
                 VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                     Text(title)
                         .font(LMSFont.headline)
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                     Text(subtitle)
                         .font(LMSFont.caption)
-                        .foregroundColor(.white.opacity(0.70))
+                        .foregroundStyle(.white.opacity(0.70))
                 }
                 Spacer()
                 Text("\(Int(clampedFraction * 100))% repaid")
                     .font(LMSFont.caption.weight(.semibold))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(.white.opacity(0.16), in: Capsule())
@@ -122,11 +122,11 @@ struct LoanCard: View {
             VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                 Text("Outstanding")
                     .font(LMSFont.caption)
-                    .foregroundColor(.white.opacity(0.65))
+                    .foregroundStyle(.white.opacity(0.65))
                 Text(outstandingAmount.formattedAsINR())
                     .font(.system(.title2, design: .rounded).weight(.bold))
                     .monospacedDigit()
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .contentTransition(.numericText())
             }
 
@@ -140,20 +140,20 @@ struct LoanCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Monthly EMI")
                         .font(LMSFont.caption2)
-                        .foregroundColor(.white.opacity(0.65))
+                        .foregroundStyle(.white.opacity(0.65))
                     Text(monthlyEMI.formattedAsINR())
                         .font(LMSFont.footnote.weight(.semibold))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .minimumScaleFactor(0.8)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 3) {
                     Text("Next due")
                         .font(LMSFont.caption2)
-                        .foregroundColor(.white.opacity(0.65))
+                        .foregroundStyle(.white.opacity(0.65))
                     Text(nextEMIDateText)
                         .font(LMSFont.footnote.weight(.semibold))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                 }
             }
         }

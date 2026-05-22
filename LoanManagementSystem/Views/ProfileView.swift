@@ -117,13 +117,13 @@ struct ProfileView: View {
                                             .frame(width: 32, height: 32)
 
                                         Image(systemName: "arrow.left.square.fill")
-                                            .foregroundColor(LMSColors.coral)
+                                            .foregroundStyle(LMSColors.coral)
                                             .font(.system(size: 15, weight: .semibold))
                                     }
 
                                     Text("Log Out")
                                         .font(LMSFont.callout.weight(.semibold))
-                                        .foregroundColor(LMSColors.coral)
+                                        .foregroundStyle(LMSColors.coral)
 
                                     Spacer()
                                 }
@@ -167,10 +167,8 @@ struct ProfileView: View {
     }
 }
 
-struct ProfileView_Previews: PreviewProvider {
-    static var previews: some View {
-        ProfileView()
-            .environmentObject(AppStateManager())
-            .environmentObject(AuthManager())
-    }
+#Preview {
+    ProfileView()
+        .environmentObject(AppStateManager())
+        .environmentObject(AuthManager())
 }

@@ -15,7 +15,7 @@ struct SecureInputField: View {
             HStack(spacing: LMSSpacing.md) {
                 Image(systemName: "lock.fill")
                     .font(.system(.callout, design: .rounded))
-                    .foregroundColor(iconColor)
+                    .foregroundStyle(iconColor)
                     .frame(width: 22)
 
                 Group {
@@ -26,7 +26,7 @@ struct SecureInputField: View {
                     }
                 }
                 .font(LMSFont.body)
-                .foregroundColor(LMSColors.textPrimary)
+                .foregroundStyle(LMSColors.textPrimary)
                 .disableAutocapitalization()
                 .autocorrectionDisabled(true)
                 .focused($isFocused)
@@ -38,7 +38,7 @@ struct SecureInputField: View {
                 } label: {
                     Image(systemName: isVisible ? "eye.slash.fill" : "eye.fill")
                         .font(.system(.callout, design: .rounded))
-                        .foregroundColor(LMSColors.textTertiary)
+                        .foregroundStyle(LMSColors.textTertiary)
                         .contentTransition(.symbolEffect(.replace))
                 }
                 .buttonStyle(.plain)
@@ -63,7 +63,7 @@ struct SecureInputField: View {
                     Text(errorMessage)
                         .font(LMSFont.caption)
                 }
-                .foregroundColor(LMSColors.coral)
+                .foregroundStyle(LMSColors.coral)
                 .padding(.leading, LMSSpacing.xs)
                 .transition(.move(edge: .top).combined(with: .opacity))
             }

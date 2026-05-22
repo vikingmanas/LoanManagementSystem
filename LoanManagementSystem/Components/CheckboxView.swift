@@ -15,12 +15,12 @@ struct CheckboxView: View {
             HStack(alignment: .top, spacing: LMSSpacing.md) {
                 Image(systemName: isChecked ? "checkmark.square.fill" : "square")
                     .font(.system(size: 22, weight: .medium, design: .rounded))
-                    .foregroundColor(isChecked ? LMSColors.brandNavy : LMSColors.textTertiary)
+                    .foregroundStyle(isChecked ? LMSColors.brandNavy : LMSColors.textTertiary)
                     .contentTransition(.symbolEffect(.replace))
 
                 Text(label)
                     .font(LMSFont.footnote)
-                    .foregroundColor(LMSColors.textSecondary)
+                    .foregroundStyle(LMSColors.textSecondary)
                     .multilineTextAlignment(.leading)
             }
             .contentShape(Rectangle())
@@ -31,9 +31,7 @@ struct CheckboxView: View {
     }
 }
 
-struct CheckboxView_Previews: PreviewProvider {
-    static var previews: some View {
-        CheckboxView(isChecked: .constant(true), label: "I agree to the Terms and Conditions")
-            .padding()
-    }
+#Preview {
+    CheckboxView(isChecked: .constant(true), label: "I agree to the Terms and Conditions")
+        .padding()
 }

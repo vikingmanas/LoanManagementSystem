@@ -49,7 +49,7 @@ struct ManagerAllApplicationsView: View {
                     // Search Bar
                     HStack {
                         Image(systemName: "magnifyingglass")
-                            .foregroundColor(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.textSecondary)
                         
                         TextField("Search by Name or ID...", text: $searchText)
                             .font(.system(.body, design: .rounded))
@@ -57,14 +57,14 @@ struct ManagerAllApplicationsView: View {
                         if !searchText.isEmpty {
                             Button(action: { searchText = "" }) {
                                 Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(LMSColors.textSecondary)
+                                    .foregroundStyle(LMSColors.textSecondary)
                             }
                         }
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background(LMSColors.surfaceElevated)
-                    .cornerRadius(12)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     
                     // Status Filter
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -78,11 +78,11 @@ struct ManagerAllApplicationsView: View {
                                 }) {
                                     Text(filter.rawValue)
                                         .font(.system(.subheadline, design: .rounded).bold())
-                                        .foregroundColor(selectedFilter == filter ? .white : .primary)
+                                        .foregroundStyle(selectedFilter == filter ? .white : .primary)
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 8)
                                         .background(selectedFilter == filter ? Color.AppTheme.primary : LMSColors.surfaceElevated)
-                                        .cornerRadius(20)
+                                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                                 }
                             }
                         }
@@ -100,14 +100,14 @@ struct ManagerAllApplicationsView: View {
                         VStack(spacing: 16) {
                             Image(systemName: "doc.text.magnifyingglass")
                                 .font(.system(size: 44))
-                                .foregroundColor(LMSColors.textSecondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                             
                             Text("No Applications Found")
                                 .font(.system(.headline, design: .rounded))
                             
                             Text("Try adjusting your search or filters.")
                                 .font(.system(.subheadline, design: .rounded))
-                                .foregroundColor(LMSColors.textSecondary)
+                                .foregroundStyle(LMSColors.textSecondary)
                         }
                         .padding(.top, 60)
                     } else {
@@ -162,7 +162,7 @@ struct ManagerApplicationRowView: View {
                     .frame(width: 48, height: 48)
                 
                 Image(systemName: statusIcon)
-                    .foregroundColor(statusColor)
+                    .foregroundStyle(statusColor)
                     .font(.system(size: 20))
             }
             
@@ -170,47 +170,47 @@ struct ManagerApplicationRowView: View {
                 HStack {
                     Text(app.borrowerName)
                         .font(.system(.callout, design: .rounded).bold())
-                        .foregroundColor(LMSColors.textPrimary)
+                        .foregroundStyle(LMSColors.textPrimary)
                     
                     Spacer()
                     
                     Text("₹ \(Int(app.requestedAmount / 100_000))L")
                         .font(.system(.subheadline, design: .rounded).bold())
-                        .foregroundColor(LMSColors.textPrimary)
+                        .foregroundStyle(LMSColors.textPrimary)
                 }
                 
                 HStack {
                     Text("\(app.applicationId)")
                         .font(.system(.caption2, design: .monospaced))
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                     
                     Spacer()
                     
                     Text(app.loanType)
                         .font(.system(.caption, design: .rounded))
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                 }
                 
                 HStack {
                     Text(app.submissionDate)
                         .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(LMSColors.textSecondary)
+                        .foregroundStyle(LMSColors.textSecondary)
                     
                     Spacer()
                     
                     Text(app.status)
                         .font(.system(size: 9, weight: .bold, design: .rounded))
-                        .foregroundColor(statusColor)
+                        .foregroundStyle(statusColor)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)
                         .background(statusColor.opacity(0.1))
-                        .cornerRadius(6)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
             }
         }
         .padding(.all, 14)
         .background(LMSColors.surfaceElevated)
-        .cornerRadius(16)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: Color.black.opacity(0.02), radius: 5, x: 0, y: 2)
     }
 }

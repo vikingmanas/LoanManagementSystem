@@ -31,7 +31,7 @@ struct EditLoanOverviewView: View {
                         presentationMode.wrappedValue.dismiss()
                     }) {
                         Image(systemName: "xmark")
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -40,7 +40,7 @@ struct EditLoanOverviewView: View {
                     }) {
                         Image(systemName: "checkmark")
                             .fontWeight(.bold)
-                            .foregroundColor(Color.AppTheme.primary)
+                            .foregroundStyle(Color.AppTheme.primary)
                     }
                 }
             }

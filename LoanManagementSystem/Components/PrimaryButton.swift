@@ -37,7 +37,7 @@ struct PrimaryButton: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 50)
-            .foregroundColor(foregroundColor)
+            .foregroundStyle(foregroundColor)
             .background(backgroundView)
             .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
             .overlay(overlayView)

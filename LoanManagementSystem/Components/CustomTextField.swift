@@ -15,12 +15,12 @@ struct CustomTextField: View {
             HStack(spacing: LMSSpacing.md) {
                 Image(systemName: icon)
                     .font(.system(.callout, design: .rounded))
-                    .foregroundColor(iconColor)
+                    .foregroundStyle(iconColor)
                     .frame(width: 22)
 
                 TextField(placeholder, text: $text)
                     .font(LMSFont.body)
-                    .foregroundColor(LMSColors.textPrimary)
+                    .foregroundStyle(LMSColors.textPrimary)
                     .disableAutocapitalization()
                     .autocorrectionDisabled(true)
                     .keyboardType(keyboardType)
@@ -32,7 +32,7 @@ struct CustomTextField: View {
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(.callout))
-                            .foregroundColor(LMSColors.textTertiary)
+                            .foregroundStyle(LMSColors.textTertiary)
                     }
                     .buttonStyle(.plain)
                     .transition(.scale.combined(with: .opacity))
@@ -57,7 +57,7 @@ struct CustomTextField: View {
                     Text(errorMessage)
                         .font(LMSFont.caption)
                 }
-                .foregroundColor(LMSColors.coral)
+                .foregroundStyle(LMSColors.coral)
                 .padding(.leading, LMSSpacing.xs)
                 .transition(.move(edge: .top).combined(with: .opacity))
             }

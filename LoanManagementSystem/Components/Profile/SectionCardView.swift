@@ -15,12 +15,12 @@ struct SectionCardView<Content: View>: View {
             HStack(spacing: LMSSpacing.md) {
                 Image(systemName: icon)
                     .font(.system(.callout, design: .rounded).weight(.semibold))
-                    .foregroundColor(LMSColors.brandNavy)
+                    .foregroundStyle(LMSColors.brandNavy)
                     .frame(width: 22)
 
                 Text(title)
                     .font(LMSFont.headline)
-                    .foregroundColor(LMSColors.textPrimary)
+                    .foregroundStyle(LMSColors.textPrimary)
 
                 Spacer()
 
@@ -30,7 +30,7 @@ struct SectionCardView<Content: View>: View {
                     }) {
                         Text("Edit")
                             .font(LMSFont.caption.weight(.semibold))
-                            .foregroundColor(LMSColors.brandNavy)
+                            .foregroundStyle(LMSColors.brandNavy)
                     }
                 }
             }
