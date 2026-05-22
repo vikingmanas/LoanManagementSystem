@@ -8,6 +8,8 @@
 import SwiftUI
 import Combine
 import FirebaseAuth
+import FirebaseCore
+import FirebaseFirestore
 
 // MARK: - AuthManager
 /// Centralized authentication service wrapping Firebase Auth.
@@ -45,10 +47,27 @@ public final class AuthManager: ObservableObject {
         // after FirebaseApp.configure() in the App's init().
     }
 
-    /// Call this once after FirebaseApp.configure() to start listening for auth state changes.
     public func configure() {
         guard authStateListenerHandle == nil else { return }
+        
+        // If Firebase is not configured (e.g. running in Xcode Previews),
+        // we avoid calling Auth.auth() to prevent a crash, and mark it resolved.
+        guard FirebaseApp.app() != nil else {
+            isAuthStateResolved = true
+            return
+        }
+        
         listenToAuthState()
+        
+        // Fallback timeout: If Firebase Auth takes too long to resolve (e.g. due to
+        // offline state, simulator keychain issues, or configuration delay), force
+        // resolve it after 5.5 seconds so the app doesn't hang on the splash screen.
+        Task {
+            try? await Task.sleep(nanoseconds: 5_500_000_000) // 5.5 seconds
+            if !self.isAuthStateResolved {
+                self.isAuthStateResolved = true
+            }
+        }
     }
 
     nonisolated deinit {
@@ -102,7 +121,14 @@ public final class AuthManager: ObservableObject {
     ///   - email: The user's email address.
     ///   - password: The user's chosen password (min 6 characters, enforced by Firebase).
     @discardableResult
-    public func signUp(name: String, email: String, password: String) async -> Bool {
+    public func signUp(
+        name: String,
+        email: String,
+        password: String,
+        phone: String = "",
+        alternatePhone: String = "",
+        referralCode: String = ""
+    ) async -> Bool {
         clearError()
         isLoading = true
 
@@ -113,6 +139,20 @@ public final class AuthManager: ObservableObject {
             let changeRequest = result.user.createProfileChangeRequest()
             changeRequest.displayName = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : name.trimmingCharacters(in: .whitespacesAndNewlines)
             try await changeRequest.commitChanges()
+
+            // Save user profile data to Firestore
+            let db = Firestore.firestore()
+            let userDoc: [String: Any] = [
+                "fullName": name,
+                "email": email.lowercased(),
+                "mobileNumber": phone,
+                "alternateMobileNumber": alternatePhone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : alternatePhone,
+                "referralCode": referralCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : referralCode,
+                "role": "borrower",
+                "createdAt": FieldValue.serverTimestamp(),
+                "updatedAt": FieldValue.serverTimestamp()
+            ]
+            try await db.collection("users").document(result.user.uid).setData(userDoc)
 
             // Refresh the local user reference to pick up the display name
             try await result.user.reload()

@@ -1,4 +1,6 @@
 import SwiftUI
+import FirebaseAuth
+import FirebaseFirestore
 
 struct OnboardingQuestionnaireView: View {
     @EnvironmentObject private var authManager: AuthManager
@@ -20,39 +22,23 @@ struct OnboardingQuestionnaireView: View {
     
     // Step 2: Financial Details
     @State private var hasExistingBankAccount = false
-    @State private var existingCustomerId = ""
-    @State private var preferredBranch = "Mumbai Main Branch"
-    
-    // Emergency Reference (Conditional for New Customers)
     @State private var emergencyContactName = ""
     @State private var emergencyContactRelationship = "Spouse"
     @State private var emergencyContactNumber = ""
     @State private var emergencyContactAlternateNumber = ""
     @State private var emergencyContactAddress = ""
     
-    // Validation state
-    @State private var isValidatingCustomer = false
-    @State private var showInsightCard = false
-    
-    // Error feedback
+    // Loading & validation state
+    @State private var isLoading = false
     @State private var errorMessage = ""
     @State private var showValidationError = false
     
     // Lists of Options
-    private let employmentTypes = ["Salaried", "Self-Employed", "Business Owner", "Student", "Retired"]
-    private let relationships = ["Spouse", "Mother", "Father", "Brother", "Sister", "Friend", "Other"]
-    private let branches = [
-        "Mumbai Main Branch",
-        "Andheri Tech Park Branch",
-        "Mindspace Malad Branch",
-        "Bandra Kurla Complex Branch",
-        "Delhi Connaught Place Branch",
-        "Bengaluru Whitefield Branch"
-    ]
+    private let employmentTypes = ["Salaried", "Self-Employed", "Business Owner"]
+    private let relationships = ["Spouse", "Parent", "Sibling", "Friend", "Relative", "Other"]
     
     // Colors based on requirements
     private let primaryBlue = Color(hex: "0A84FF")
-    private let navyBackground = Color(hex: "1C1C1E")
     private let successGreen = Color(hex: "34C759")
     
     var body: some View {
@@ -88,6 +74,9 @@ struct OnboardingQuestionnaireView: View {
             .onAppear {
                 prepopulateFieldsIfPossible()
             }
+            .onChange(of: profileStore.profile) {
+                prepopulateFieldsIfPossible()
+            }
         }
     }
     
@@ -110,7 +99,7 @@ struct OnboardingQuestionnaireView: View {
                 Spacer()
                 
                 Button {
-                    profileStore.skipOnboarding()
+                    handleSkip()
                 } label: {
                     Text("Skip for Now")
                         .font(.system(.subheadline, weight: .semibold))
@@ -120,6 +109,7 @@ struct OnboardingQuestionnaireView: View {
                         .background(primaryBlue.opacity(0.1))
                         .cornerRadius(12)
                 }
+                .disabled(isLoading)
             }
             .padding(.horizontal, 24)
             .padding(.top, 16)
@@ -178,20 +168,29 @@ struct OnboardingQuestionnaireView: View {
                                     .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                             )
                     }
+                    .disabled(isLoading)
                 }
                 
                 Button {
                     validateAndProceed()
                 } label: {
-                    Text(currentStep == totalSteps - 1 ? "Complete Setup" : "Continue")
-                        .font(.system(.body, weight: .bold))
-                        .foregroundColor(.white)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(primaryBlue)
-                        .cornerRadius(16)
-                        .shadow(color: primaryBlue.opacity(0.3), radius: 8, x: 0, y: 4)
+                    HStack(spacing: 8) {
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Text(currentStep == totalSteps - 1 ? "Complete Setup" : "Continue")
+                                .font(.system(.body, weight: .bold))
+                        }
+                    }
+                    .foregroundColor(.white)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(isLoading ? primaryBlue.opacity(0.6) : primaryBlue)
+                    .cornerRadius(16)
+                    .shadow(color: primaryBlue.opacity(0.3), radius: 8, x: 0, y: 4)
                 }
+                .disabled(isLoading)
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
@@ -229,30 +228,29 @@ struct OnboardingQuestionnaireView: View {
     
     private var stepProfessionalView: some View {
         VStack(spacing: 24) {
-            // Employment Type (Segmented Control style)
+            // Employment Type
             VStack(alignment: .leading, spacing: 8) {
                 Text("Employment Type")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(employmentTypes, id: \.self) { item in
-                            Button {
-                                withAnimation { employmentType = item }
-                            } label: {
-                                Text(item)
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(employmentType == item ? .white : .primary)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 10)
-                                    .background(employmentType == item ? primaryBlue : Color(UIColor.secondarySystemGroupedBackground))
-                                    .cornerRadius(20)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 20)
-                                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                                    )
-                            }
+                HStack(spacing: 10) {
+                    ForEach(employmentTypes, id: \.self) { item in
+                        Button {
+                            withAnimation { employmentType = item }
+                        } label: {
+                            Text(item)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(employmentType == item ? .white : .primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+                                .frame(maxWidth: .infinity)
+                                .background(employmentType == item ? primaryBlue : Color(UIColor.secondarySystemGroupedBackground))
+                                .cornerRadius(20)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                                )
                         }
                     }
                 }
@@ -303,58 +301,7 @@ struct OnboardingQuestionnaireView: View {
             .background(Color(UIColor.secondarySystemGroupedBackground))
             .cornerRadius(12)
             
-            if hasExistingBankAccount {
-                existingCustomerSection
-            } else {
-                newCustomerEmergencySection
-            }
-        }
-    }
-    
-    private var existingCustomerSection: some View {
-        VStack(spacing: 24) {
-            VStack(spacing: 0) {
-                formRow(title: "Customer ID", placeholder: "e.g. C-109482", text: $existingCustomerId)
-                
-                if !existingCustomerId.isEmpty {
-                    Divider().padding(.leading, 16)
-                    
-                    HStack {
-                        Text("Preferred Branch")
-                            .font(.subheadline)
-                        Spacer()
-                        Picker("Branch", selection: $preferredBranch) {
-                            ForEach(branches, id: \.self) {
-                                Text($0)
-                            }
-                        }
-                        .tint(.primary)
-                    }
-                    .padding()
-                }
-            }
-            .background(Color(UIColor.secondarySystemGroupedBackground))
-            .cornerRadius(12)
-            
-            // Trigger Validation
-            if !existingCustomerId.isEmpty && !showInsightCard {
-                Button {
-                    validateCustomer()
-                } label: {
-                    Text("Verify Customer ID")
-                        .font(.system(.body, weight: .semibold))
-                        .foregroundColor(primaryBlue)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(primaryBlue.opacity(0.1))
-                        .cornerRadius(12)
-                }
-            }
-            
-            if showInsightCard, let profile = profileStore.profile {
-                CustomerInsightCardView(profile: profile)
-                    .transition(.scale.combined(with: .opacity))
-            }
+            newCustomerEmergencySection
         }
     }
     
@@ -419,17 +366,6 @@ struct OnboardingQuestionnaireView: View {
         }
     }
     
-    private func validateCustomer() {
-        isValidatingCustomer = true
-        // Simulate network call
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            isValidatingCustomer = false
-            withAnimation(.spring()) {
-                showInsightCard = true
-            }
-        }
-    }
-    
     private func prepopulateFieldsIfPossible() {
         if let p = profileStore.profile {
             if !p.occupation.isEmpty { occupation = p.occupation }
@@ -441,8 +377,6 @@ struct OnboardingQuestionnaireView: View {
             if p.income.annualIncome > 0 { annualIncome = "\(Int(p.income.annualIncome))" }
             
             hasExistingBankAccount = p.hasExistingBankAccount
-            if let cid = p.existingCustomerId { existingCustomerId = cid }
-            if !p.preferredBranch.isEmpty { preferredBranch = p.preferredBranch }
             
             if !p.emergencyContactName.isEmpty { emergencyContactName = p.emergencyContactName }
             if !p.emergencyContactNumber.isEmpty { emergencyContactNumber = p.emergencyContactNumber }
@@ -463,34 +397,91 @@ struct OnboardingQuestionnaireView: View {
                 return
             }
             if companyName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                showError("Company Name cannot be empty.")
+                showError("Company name cannot be empty.")
                 return
             }
-            if monthlyIncome.isEmpty || annualIncome.isEmpty {
-                showError("Please enter your income details.")
+            if industry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                showError("Industry cannot be empty.")
+                return
+            }
+            if yearsOfExperience.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                showError("Years of experience is required.")
+                return
+            }
+            guard let years = Int(yearsOfExperience), years >= 0 else {
+                showError("Years of experience must be a valid number.")
+                return
+            }
+            if monthlyIncome.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                showError("Monthly income cannot be empty.")
+                return
+            }
+            guard let monthly = Double(monthlyIncome), monthly > 0 else {
+                showError("Monthly income must be a positive number.")
+                return
+            }
+            if annualIncome.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                showError("Annual income cannot be empty.")
+                return
+            }
+            guard let annual = Double(annualIncome), annual > 0 else {
+                showError("Annual income must be a positive number.")
                 return
             }
             
-            withAnimation { currentStep += 1 }
+            // Validate & save step 1 professional details to Firestore
+            isLoading = true
+            Task {
+                let success = await saveProfessionalDetails()
+                await MainActor.run {
+                    isLoading = false
+                    if success {
+                        withAnimation {
+                            currentStep += 1
+                        }
+                    }
+                }
+            }
             
         case 1:
-            if hasExistingBankAccount {
-                if existingCustomerId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    showError("Please provide your Customer ID or disable the option.")
-                    return
-                }
-            } else {
-                if emergencyContactName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    showError("Emergency contact name is required.")
-                    return
-                }
-                if emergencyContactNumber.trimmingCharacters(in: .whitespacesAndNewlines).count < 10 {
-                    showError("Valid 10-digit emergency number is required.")
+            if emergencyContactName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                showError("Emergency contact name is required.")
+                return
+            }
+            
+            let phone = emergencyContactNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+            if phone.isEmpty {
+                showError("Emergency contact mobile number is required.")
+                return
+            }
+            let phoneDigits = phone.filter { $0.isNumber }
+            if phoneDigits.count != 10 {
+                showError("Emergency contact mobile number must be a valid 10-digit number.")
+                return
+            }
+            
+            let altPhone = emergencyContactAlternateNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !altPhone.isEmpty {
+                let altDigits = altPhone.filter { $0.isNumber }
+                if altDigits.count != 10 {
+                    showError("Alternate mobile number must be a valid 10-digit number.")
                     return
                 }
             }
             
-            submitOnboardingQuestionnaire()
+            if emergencyContactAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                showError("Emergency contact address is required.")
+                return
+            }
+            
+            // Validate & save step 2 financial details & complete onboarding
+            isLoading = true
+            Task {
+                let success = await saveFinancialDetailsAndComplete()
+                await MainActor.run {
+                    isLoading = false
+                }
+            }
             
         default:
             break
@@ -504,51 +495,152 @@ struct OnboardingQuestionnaireView: View {
         }
     }
     
-    private func submitOnboardingQuestionnaire() {
-        guard var updatedProfile = profileStore.profile else {
-            showError("Active user profile session not found.")
+    private func saveProfessionalDetails() async -> Bool {
+        guard let user = Auth.auth().currentUser else {
+            showError("Authentication session not found.")
+            return false
+        }
+        
+        let db = Firestore.firestore()
+        let docRef = db.collection("users")
+            .document(user.uid)
+            .collection("onboarding")
+            .document("professionalDetails")
+        
+        let data: [String: Any] = [
+            "employmentType": employmentType,
+            "occupation": occupation,
+            "companyName": companyName,
+            "industry": industry,
+            "yearsOfExperience": Int(yearsOfExperience) ?? 0,
+            "monthlyIncome": Double(monthlyIncome) ?? 0.0,
+            "annualIncome": Double(annualIncome) ?? 0.0,
+            "onboardingStep": 1,
+            "completed": true,
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        
+        do {
+            try await docRef.setData(data)
+            return true
+        } catch {
+            showError("Failed to save professional details: \(error.localizedDescription)")
+            return false
+        }
+    }
+    
+    private func saveFinancialDetailsAndComplete() async -> Bool {
+        guard let user = Auth.auth().currentUser else {
+            showError("Authentication session not found.")
+            return false
+        }
+        
+        let db = Firestore.firestore()
+        let financialDocRef = db.collection("users")
+            .document(user.uid)
+            .collection("onboarding")
+            .document("financialDetails")
+        
+        let financialData: [String: Any] = [
+            "existingBankAccount": hasExistingBankAccount,
+            "emergencyContactName": emergencyContactName,
+            "relationship": emergencyContactRelationship,
+            "mobileNumber": emergencyContactNumber,
+            "alternateNumber": emergencyContactAlternateNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : emergencyContactAlternateNumber,
+            "address": emergencyContactAddress,
+            "onboardingStep": 2,
+            "completed": true,
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        
+        do {
+            // 1. Save Step 2 details
+            try await financialDocRef.setData(financialData)
+            
+            // 2. Update parent profile document in Firestore
+            let userDocRef = db.collection("users").document(user.uid)
+            
+            let email = authManager.userEmail ?? ""
+            let name = authManager.userDisplayName ?? email
+            var currentProfile = await profileStore.ensureProfile(email: email, name: name)
+            
+            currentProfile.occupation = occupation
+            currentProfile.employment = EmploymentInfo(
+                employmentType: employmentType,
+                companyName: companyName,
+                designation: occupation,
+                workExperienceYears: Int(yearsOfExperience) ?? 0,
+                employerAddress: currentProfile.employment.employerAddress
+            )
+            currentProfile.industry = industry
+            currentProfile.yearsOfExperience = Int(yearsOfExperience) ?? 0
+            currentProfile.income = IncomeInfo(
+                monthlyIncome: Double(monthlyIncome) ?? 0,
+                annualIncome: Double(annualIncome) ?? 0,
+                existingEMIs: currentProfile.income.existingEMIs,
+                creditScore: currentProfile.income.creditScore,
+                incomeSource: employmentType
+            )
+            currentProfile.hasExistingBankAccount = hasExistingBankAccount
+            currentProfile.emergencyContactName = emergencyContactName
+            currentProfile.emergencyContactNumber = emergencyContactNumber
+            currentProfile.emergencyContactAlternateNumber = emergencyContactAlternateNumber
+            currentProfile.emergencyContactAddress = emergencyContactAddress
+            currentProfile.emergencyContactRelationship = emergencyContactRelationship
+            currentProfile.isOnboardingCompleted = true
+            
+            try await userDocRef.updateData([
+                "onboardingCompleted": true,
+                "onboardingCompletedAt": FieldValue.serverTimestamp(),
+                "profileCompletionPercentage": 100,
+                "profile": currentProfile.asDictionary ?? [:]
+            ])
+            
+            // Update local profile store so the view reactively transitions
+            await MainActor.run {
+                profileStore.profile = currentProfile
+            }
+            
+            return true
+        } catch {
+            showError("Failed to complete onboarding: \(error.localizedDescription)")
+            return false
+        }
+    }
+    
+    private func handleSkip() {
+        isLoading = true
+        guard let user = Auth.auth().currentUser else {
+            showError("Authentication session not found.")
+            isLoading = false
             return
         }
         
-        // Save Step 1
-        updatedProfile.occupation = occupation
-        updatedProfile.employment = EmploymentInfo(
-            employmentType: employmentType,
-            companyName: companyName,
-            designation: occupation,
-            workExperienceYears: Int(yearsOfExperience) ?? 0,
-            employerAddress: updatedProfile.employment.employerAddress
-        )
-        updatedProfile.industry = industry
-        updatedProfile.yearsOfExperience = Int(yearsOfExperience) ?? 0
-        updatedProfile.income = IncomeInfo(
-            monthlyIncome: Double(monthlyIncome) ?? 0,
-            annualIncome: Double(annualIncome) ?? 0,
-            existingEMIs: updatedProfile.income.existingEMIs,
-            creditScore: updatedProfile.income.creditScore,
-            incomeSource: employmentType
-        )
-        
-        // Save Step 2
-        updatedProfile.hasExistingBankAccount = hasExistingBankAccount
-        if hasExistingBankAccount {
-            updatedProfile.existingCustomerId = existingCustomerId
-            updatedProfile.preferredBranch = preferredBranch
-            updatedProfile.existingLoansCount = 1 // Simulated for existing customer
-            updatedProfile.existingCreditCardsCount = 1 // Simulated
-            updatedProfile.bankingRelationshipDuration = "2 Years" // Simulated
-        } else {
-            updatedProfile.existingCustomerId = nil
-            updatedProfile.emergencyContactName = emergencyContactName
-            updatedProfile.emergencyContactNumber = emergencyContactNumber
-            updatedProfile.emergencyContactAlternateNumber = emergencyContactAlternateNumber
-            updatedProfile.emergencyContactAddress = emergencyContactAddress
-            updatedProfile.emergencyContactRelationship = emergencyContactRelationship
+        Task {
+            let db = Firestore.firestore()
+            let userDocRef = db.collection("users").document(user.uid)
+            do {
+                let email = authManager.userEmail ?? ""
+                let name = authManager.userDisplayName ?? email
+                var currentProfile = await profileStore.ensureProfile(email: email, name: name)
+                currentProfile.isOnboardingCompleted = true
+                
+                try await userDocRef.updateData([
+                    "onboardingCompleted": true,
+                    "onboardingCompletedAt": FieldValue.serverTimestamp(),
+                    "profileCompletionPercentage": 100,
+                    "profile": currentProfile.asDictionary ?? [:]
+                ])
+                
+                await MainActor.run {
+                    profileStore.profile = currentProfile
+                }
+            } catch {
+                print("Error skipping onboarding: \(error.localizedDescription)")
+            }
+            await MainActor.run {
+                isLoading = false
+            }
         }
-        
-        updatedProfile.isOnboardingCompleted = true
-        
-        // Push updates to store
-        profileStore.updateProfile(updatedProfile)
     }
 }
