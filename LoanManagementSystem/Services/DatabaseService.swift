@@ -37,20 +37,42 @@ final class DatabaseService {
         }
     }
     
-    /// Updates borrower profile metadata in "profiles" table.
+    /// Updates borrower profile metadata in "profiles" table and synchronizes "users" table.
     func updateProfile(_ profile: BorrowerProfile) async throws {
         // Save locally first so user's work is not lost
         saveProfileLocally(profile, userId: profile.id)
         
+        // 1. Update profiles table (camelCase)
+        print("UPDATE REQUEST - Table: profiles, ID: \(profile.id)")
         do {
             try await client
                 .from("profiles")
                 .upsert(profile)
                 .execute()
-            print("[DatabaseService] Profile upserted to Supabase successfully.")
+            print("UPDATED RESPONSE - Table: profiles, Status: Success")
         } catch {
-            print("[DatabaseService] Failed to update profile in Supabase: \(error.localizedDescription)")
-            // Graceful fallback: we do not rethrow since local cache has successfully saved the data.
+            print("EXACT SUPABASE ERROR - Table: profiles, Error: \(error.localizedDescription)")
+            throw error
+        }
+        
+        // 2. Synchronize users table (snake_case)
+        if let userId = UUID(uuidString: profile.id) {
+            let userUpdates: [String: String] = [
+                "full_name": profile.fullName,
+                "mobile_number": profile.mobileNumber
+            ]
+            print("UPDATE REQUEST - Table: users, ID: \(userId), Payload: \(userUpdates)")
+            do {
+                try await client
+                    .from("users")
+                    .update(userUpdates)
+                    .eq("id", value: userId)
+                    .execute()
+                print("UPDATED RESPONSE - Table: users, Status: Success")
+            } catch {
+                print("EXACT SUPABASE ERROR - Table: users, Sync Error: \(error.localizedDescription)")
+                throw error
+            }
         }
     }
     

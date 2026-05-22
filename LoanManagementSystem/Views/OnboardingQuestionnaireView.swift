@@ -640,16 +640,16 @@ struct OnboardingQuestionnaireView: View {
                 .update(["full_name": name, "mobile_number": currentProfile.mobileNumber])
                 .eq("id", value: user.id)
                 .execute()
-            
-            await MainActor.run {
-                profileStore.profile = currentProfile
-            }
-            
-            return true
         } catch {
-            showError("Failed to complete onboarding: \(error.localizedDescription)")
-            return false
+            print("Failed to sync onboarding to Supabase: \(error.localizedDescription)")
+            // Gracefully proceed locally so user isn't blocked on network/RLS issues
         }
+        
+        await MainActor.run {
+            profileStore.profile = currentProfile
+        }
+        
+        return true
     }
     
     private func handleSkip() {
@@ -670,15 +670,14 @@ struct OnboardingQuestionnaireView: View {
             
             do {
                 try await DatabaseService.shared.updateProfile(currentProfile)
-                await MainActor.run {
-                    profileStore.profile = currentProfile
-                    isLoading = false
-                }
             } catch {
-                print("Error skipping onboarding: \(error.localizedDescription)")
-                await MainActor.run {
-                    isLoading = false
-                }
+                print("Error skipping onboarding in Supabase: \(error.localizedDescription)")
+                // Gracefully proceed locally so user isn't blocked on network/RLS issues
+            }
+            
+            await MainActor.run {
+                profileStore.profile = currentProfile
+                isLoading = false
             }
         }
     }

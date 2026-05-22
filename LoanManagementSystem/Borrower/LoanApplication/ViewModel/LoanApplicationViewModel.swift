@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import Supabase
 
 @MainActor
 final class LoanApplicationViewModel: ObservableObject {
@@ -400,17 +401,34 @@ final class LoanApplicationViewModel: ObservableObject {
         documents.filter { $0.category == category }
     }
 
-    func uploadDocument(_ documentID: UUID) {
+    func uploadDocument(_ documentID: UUID, imageData: Data) async {
         guard let index = documents.firstIndex(where: { $0.id == documentID }) else { return }
         guard !documents[index].isLocked else { return }
 
-        let now = Date()
-        documents[index].status = .uploaded
-        documents[index].uploadDate = now
-        documents[index].lastUpdated = now
-        documents[index].fileName = "\(selectedUploadSource.rawValue.replacingOccurrences(of: " ", with: "_").lowercased())-\(Int(now.timeIntervalSince1970)).pdf"
-
-        autosaveDraft()
+        do {
+            guard let session = try? await SupabaseManager.shared.client.auth.session else {
+                print("Error uploading document: Auth session not found")
+                return
+            }
+            let userId = session.user.id.uuidString
+            let path = "\(userId)/\(documentID.uuidString).jpg"
+            
+            // Upload to Supabase Storage
+            let publicUrl = try await StorageService.shared.uploadDocument(data: imageData, bucket: "documents", path: path)
+            
+            await MainActor.run {
+                let now = Date()
+                documents[index].status = .uploaded
+                documents[index].uploadDate = now
+                documents[index].lastUpdated = now
+                documents[index].fileName = "\(documentID.uuidString).jpg"
+                documents[index].fileUrl = publicUrl.absoluteString
+                
+                autosaveDraft()
+            }
+        } catch {
+            print("Failed to upload document to Supabase Storage: \(error.localizedDescription)")
+        }
     }
 
     func moveDocumentToVerification(_ documentID: UUID) {

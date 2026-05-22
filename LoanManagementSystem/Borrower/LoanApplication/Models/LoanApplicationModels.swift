@@ -173,6 +173,7 @@ struct BorrowerLoanDocumentItem: Identifiable, Hashable {
     var category: BorrowerDocumentCategory
     var status: BorrowerDocumentStatus
     var fileName: String?
+    var fileUrl: String?
     var uploadDate: Date?
     var lastUpdated: Date?
     var isLocked: Bool

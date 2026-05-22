@@ -13,10 +13,14 @@ struct SupabaseUserInsert: Codable {
     let id: UUID
     let email: String
     let role: String
+    let full_name: String
+    let mobile_number: String
     let created_at: Date
     
     enum CodingKeys: String, CodingKey {
         case id, email, role
+        case full_name = "full_name"
+        case mobile_number = "mobile_number"
         case created_at = "created_at"
     }
 }
@@ -24,6 +28,21 @@ struct SupabaseUserInsert: Codable {
 /// Helper structure to decode the role from the 'users' table.
 struct UserRoleResponse: Codable {
     let role: String
+}
+
+/// Custom errors for AuthService operations.
+enum AuthServiceError: LocalizedError {
+    case emailAlreadyRegistered
+    case obfuscatedSignUpDetected
+    
+    var errorDescription: String? {
+        switch self {
+        case .emailAlreadyRegistered:
+            return "This email is already registered. Please sign in instead."
+        case .obfuscatedSignUpDetected:
+            return "Sign up could not be completed. This email may already be in use."
+        }
+    }
 }
 
 /// Service for managing Supabase Authentication flow and role-based lookups.
@@ -42,13 +61,37 @@ final class AuthService {
         return session
     }
     
+    /// Checks whether an email is already registered in the 'users' table.
+    func isEmailRegistered(_ email: String) async -> Bool {
+        do {
+            let results: [UserRoleResponse] = try await client
+                .from("users")
+                .select("role")
+                .eq("email", value: email)
+                .execute()
+                .value
+            return !results.isEmpty
+        } catch {
+            print("[Supabase Auth] Email existence check failed: \(error.localizedDescription)")
+            // On network/query failure, allow signup to proceed (Supabase Auth will catch real duplicates)
+            return false
+        }
+    }
+    
     /// Signs up a new user using email, password, and registers them in the database.
-    func signUp(email: String, password: String, name: String) async throws -> Session? {
+    /// Includes protection against Supabase's obfuscated/fake user responses.
+    func signUp(email: String, password: String, name: String, phone: String) async throws -> Session? {
         let cleanEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         
         print("[Supabase Auth] Starting signup for: \(cleanEmail)")
         
-        // 1. Sign up the user with Supabase Auth
+        // 1. Pre-check: Reject if email already exists in the users table
+        if await isEmailRegistered(cleanEmail) {
+            print("[Supabase Auth] ✋ Email already exists in users table: \(cleanEmail)")
+            throw AuthServiceError.emailAlreadyRegistered
+        }
+        
+        // 2. Sign up the user with Supabase Auth
         let authResponse = try await client.auth.signUp(
             email: cleanEmail,
             password: password,
@@ -56,12 +99,31 @@ final class AuthService {
         )
         
         let user = authResponse.user
-        print("[Supabase Auth] Auth signup succeeded. Retrieved UID: \(user.id)")
+        print("[Supabase Auth] Auth signup returned UID: \(user.id)")
         
-        // 2. Insert corresponding profile into public 'users' table BEFORE checking session
+        // 3. Detect Supabase's obfuscated/fake user responses
+        //    When a duplicate email signup is attempted, Supabase GoTrue may return
+        //    a fake user with a random email like "test_XXXXX@test.com" and display
+        //    name "Test Diagnostic" instead of throwing an error.
+        let returnedEmail = (user.email ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if returnedEmail != cleanEmail {
+            print("[Supabase Auth] ⚠️ Obfuscated signup detected!")
+            print("[Supabase Auth]   Input email:    \(cleanEmail)")
+            print("[Supabase Auth]   Returned email: \(returnedEmail)")
+            print("[Supabase Auth]   Skipping public.users insert to prevent dummy user creation.")
+            throw AuthServiceError.obfuscatedSignUpDetected
+        }
+        
+        // 4. Verify the session exists (confirms this is a real, new user)
+        guard authResponse.session != nil else {
+            print("[Supabase Auth] ⚠️ Signup returned nil session — email may require confirmation or already exists.")
+            throw AuthServiceError.obfuscatedSignUpDetected
+        }
+        
+        // 5. Insert corresponding profile into public 'users' table
         do {
             print("[Supabase DB] Attempting insert into public.users table...")
-            try await insertUserRecord(uid: user.id, email: cleanEmail, role: "borrower")
+            try await insertUserRecord(uid: user.id, email: cleanEmail, role: "borrower", name: name, phone: phone)
             print("[Supabase DB] Insert into public.users succeeded!")
         } catch {
             print("[Supabase DB] Failed to insert profile into public.users: \(error.localizedDescription)")
@@ -73,8 +135,8 @@ final class AuthService {
     }
     
     /// Inserts a new user record in the Supabase 'users' table.
-    func insertUserRecord(uid: UUID, email: String, role: String) async throws {
-        let record = SupabaseUserInsert(id: uid, email: email, role: role, created_at: Date())
+    func insertUserRecord(uid: UUID, email: String, role: String, name: String, phone: String) async throws {
+        let record = SupabaseUserInsert(id: uid, email: email, role: role, full_name: name, mobile_number: phone, created_at: Date())
         try await client
             .from("users")
             .insert(record)

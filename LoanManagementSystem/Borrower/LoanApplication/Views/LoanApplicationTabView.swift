@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import PhotosUI
 
 // MARK: - Navigation Route
 
@@ -534,6 +535,11 @@ private struct CombinedApplicationScreen: View {
 
     @FocusState private var isInputActive: Bool
     @State private var previewDocument: BorrowerLoanDocumentItem?
+    
+    // Photo picker states
+    @State private var isPhotoPickerPresented = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var activeUploadingDocID: UUID?
 
     var body: some View {
         ScrollView {
@@ -585,6 +591,23 @@ private struct CombinedApplicationScreen: View {
         .sheet(item: $previewDocument) { document in
             DocumentPreviewSheet(document: document)
                 .presentationDetents([.medium])
+        }
+        .photosPicker(isPresented: $isPhotoPickerPresented, selection: $selectedPhotoItem, matching: .images)
+        .onChange(of: selectedPhotoItem) { newItem in
+            guard let newItem = newItem, let docID = activeUploadingDocID else { return }
+            Task {
+                do {
+                    if let data = try await newItem.loadTransferable(type: Data.self) {
+                        await viewModel.uploadDocument(docID, imageData: data)
+                    }
+                } catch {
+                    print("Error loading picked image data: \(error.localizedDescription)")
+                }
+                await MainActor.run {
+                    selectedPhotoItem = nil
+                    activeUploadingDocID = nil
+                }
+            }
         }
     }
 
@@ -785,7 +808,10 @@ private struct CombinedApplicationScreen: View {
                                 document: document,
                                 selectedUploadSource: viewModel.selectedUploadSource,
                                 onPreview: { previewDocument = document },
-                                onUpload: { viewModel.uploadDocument(document.id) },
+                                onUpload: {
+                                    activeUploadingDocID = document.id
+                                    isPhotoPickerPresented = true
+                                },
                                 onMarkForVerification: { viewModel.moveDocumentToVerification(document.id) }
                             )
                         }
@@ -982,6 +1008,11 @@ private struct InlineDocumentCard: View {
 private struct DocumentVerificationResultView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let onSubmit: () -> Void
+    
+    // Photo picker states
+    @State private var isPhotoPickerPresented = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var activeUploadingDocID: UUID?
 
     var body: some View {
         ScrollView {
@@ -1014,6 +1045,23 @@ private struct DocumentVerificationResultView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Verification")
         .navigationBarTitleDisplayMode(.inline)
+        .photosPicker(isPresented: $isPhotoPickerPresented, selection: $selectedPhotoItem, matching: .images)
+        .onChange(of: selectedPhotoItem) { newItem in
+            guard let newItem = newItem, let docID = activeUploadingDocID else { return }
+            Task {
+                do {
+                    if let data = try await newItem.loadTransferable(type: Data.self) {
+                        await viewModel.uploadDocument(docID, imageData: data)
+                    }
+                } catch {
+                    print("Error loading picked image data in verification: \(error.localizedDescription)")
+                }
+                await MainActor.run {
+                    selectedPhotoItem = nil
+                    activeUploadingDocID = nil
+                }
+            }
+        }
     }
 
     private var verificationStatusHeader: some View {
@@ -1110,7 +1158,8 @@ private struct DocumentVerificationResultView: View {
                     }
                     Spacer()
                     Button("Re-upload") {
-                        viewModel.uploadDocument(doc.id)
+                        activeUploadingDocID = doc.id
+                        isPhotoPickerPresented = true
                     }
                     .font(.caption2.weight(.bold))
                     .foregroundColor(.white)

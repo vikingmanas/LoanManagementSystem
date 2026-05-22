@@ -159,16 +159,21 @@ class BorrowerProfileStore: ObservableObject {
         self.profile = updatedProfile
 
         Task {
-            if let session = try? await SupabaseManager.shared.client.auth.session {
-                let user = session.user
-                var profileWithUid = updatedProfile
-                profileWithUid.id = user.id.uuidString
-                try? await DatabaseService.shared.updateProfile(profileWithUid)
-            } else {
-                if let index = accounts.firstIndex(where: { $0.email == updatedProfile.email }) {
-                    accounts[index].profile = updatedProfile
-                    accounts[index].isOnboardingCompleted = updatedProfile.isOnboardingCompleted
+            do {
+                if let session = try? await SupabaseManager.shared.client.auth.session {
+                    let user = session.user
+                    var profileWithUid = updatedProfile
+                    profileWithUid.id = user.id.uuidString
+                    try await DatabaseService.shared.updateProfile(profileWithUid)
+                    print("[BorrowerProfileStore] Profile synchronization completed successfully.")
+                } else {
+                    if let index = accounts.firstIndex(where: { $0.email == updatedProfile.email }) {
+                        accounts[index].profile = updatedProfile
+                        accounts[index].isOnboardingCompleted = updatedProfile.isOnboardingCompleted
+                    }
                 }
+            } catch {
+                print("Error updating profile in Supabase: \(error.localizedDescription)")
             }
         }
     }
