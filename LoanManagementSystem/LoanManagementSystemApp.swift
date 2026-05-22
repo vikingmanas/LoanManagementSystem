@@ -29,10 +29,15 @@ struct LoanManagementSystemApp: App {
     /// Shared authentication manager injected into the environment.
     @StateObject private var authManager = AuthManager()
     
+    init() {
+        LMSAppearance.configure()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(authManager)
+                .tint(LMSColors.brandNavy)
                 .onAppear {
                     // Start the auth state listener now that Firebase is configured.
                     authManager.configure()

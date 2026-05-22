@@ -37,11 +37,11 @@ struct QuickConsoleTabView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Operations Console")
                         .font(.system(.title3, design: .rounded).bold())
-                        .foregroundColor(.primary)
+                        .foregroundColor(LMSColors.textPrimary)
                     
                     Text("Select branch workspace utilities and financial simulation tools.")
                         .font(.system(.caption, design: .rounded))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(LMSColors.textSecondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16)
@@ -51,7 +51,7 @@ struct QuickConsoleTabView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Workspace Utilities")
                         .font(.system(.subheadline, design: .rounded).bold())
-                        .foregroundColor(.primary)
+                        .foregroundColor(LMSColors.textPrimary)
                         .padding(.horizontal, 16)
                     
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
@@ -116,7 +116,7 @@ struct QuickConsoleTabView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Quick Financial Calculator")
                         .font(.system(.subheadline, design: .rounded).bold())
-                        .foregroundColor(.primary)
+                        .foregroundColor(LMSColors.textPrimary)
                         .padding(.horizontal, 16)
                     
                     VStack(spacing: 16) {
@@ -125,7 +125,7 @@ struct QuickConsoleTabView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Monthly EMI")
                                     .font(.system(.caption, design: .rounded).bold())
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(LMSColors.textSecondary)
                                 
                                 Text(CurrencyFormatter.shared.format(calculatedEMI))
                                     .font(.system(.title, design: .rounded).bold())
@@ -137,11 +137,11 @@ struct QuickConsoleTabView: View {
                             VStack(alignment: .trailing, spacing: 4) {
                                 Text("Total Interest Payable")
                                     .font(.system(.caption, design: .rounded).bold())
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(LMSColors.textSecondary)
                                 
                                 Text(CurrencyFormatter.shared.format(totalInterest))
                                     .font(.system(.body, design: .rounded).bold())
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(LMSColors.textPrimary)
                             }
                         }
                         .padding()
@@ -239,12 +239,12 @@ struct ConsoleGridCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
                         .font(.system(.callout, design: .rounded).bold())
-                        .foregroundColor(.primary)
+                        .foregroundColor(LMSColors.textPrimary)
                         .multilineTextAlignment(.leading)
                     
                     Text(desc)
                         .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(LMSColors.textSecondary)
                         .multilineTextAlignment(.leading)
                         .lineLimit(2)
                 }
@@ -256,7 +256,7 @@ struct ConsoleGridCard: View {
             .shadow(color: .black.opacity(0.02), radius: 3, x: 0, y: 2)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.primary.opacity(0.04), lineWidth: 1)
+                    .stroke(LMSColors.textPrimary.opacity(0.04), lineWidth: 1)
             )
         }
         .buttonStyle(PlainButtonStyle())

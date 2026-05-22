@@ -3,29 +3,29 @@ import SwiftUI
 struct StaffLoginView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
-    
+
     @State private var employeeID: String = ""
     @State private var password: String = ""
-    
+
     @State private var employeeIDError: String = ""
     @State private var passwordError: String = ""
     @State private var generalError: String = ""
     @State private var isLoading: Bool = false
-    
+
     var isFormValid: Bool {
         return !employeeID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
                !password.isEmpty
     }
-    
+
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.AppTheme.background.ignoresSafeArea()
-                
+                LMSColors.background.ignoresSafeArea()
+
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        
-                        // Top Back Navigation Button
+                    VStack(alignment: .leading, spacing: LMSSpacing.xxl) {
+
+                        // Back button
                         Button(action: {
                             HapticsManager.triggerImpact(style: .medium)
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
@@ -36,67 +36,67 @@ struct StaffLoginView: View {
                                 Image(systemName: "chevron.left")
                                 Text("Back to Roles")
                             }
-                            .font(.system(.body, design: .rounded).weight(.semibold))
-                            .foregroundColor(Color.AppTheme.primary)
+                            .font(LMSFont.subheadline.weight(.semibold))
+                            .foregroundColor(LMSColors.brandNavy)
                         }
-                        .padding(.top, 16)
-                        
-                        // Header Section
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 12) {
+                        .padding(.top, LMSSpacing.lg)
+
+                        // Header
+                        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
+                            HStack(spacing: LMSSpacing.md) {
                                 ZStack {
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color.AppTheme.primary.opacity(0.12))
+                                    RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
+                                        .fill(LMSColors.brandNavy.opacity(0.10))
                                         .frame(width: 44, height: 44)
-                                    
+
                                     Image(systemName: appState.selectedRole.icon)
-                                        .font(.title3)
-                                        .foregroundColor(Color.AppTheme.primary)
+                                        .font(LMSFont.title3)
+                                        .foregroundColor(LMSColors.brandNavy)
                                 }
-                                
+
                                 Text("Branch Staff")
-                                    .font(.system(.caption, design: .rounded).weight(.bold))
-                                    .foregroundColor(.secondary)
+                                    .font(LMSFont.caption.weight(.bold))
+                                    .foregroundColor(LMSColors.textSecondary)
                                     .padding(.horizontal, 10)
-                                    .padding(.vertical, 4)
-                                    .background(Color.secondary.opacity(0.1))
-                                    .cornerRadius(8)
+                                    .padding(.vertical, 5)
+                                    .background(LMSColors.surface)
+                                    .clipShape(Capsule())
                             }
-                            
+
                             Text("\(appState.selectedRole.rawValue) Portal")
-                                .font(Font.AppTheme.title)
-                                .foregroundColor(Color.AppTheme.textPrimary)
-                            
+                                .font(LMSFont.largeTitle)
+                                .foregroundColor(LMSColors.textPrimary)
+
                             Text("Secure branch sign-in. Access credentials require verification.")
-                                .font(Font.AppTheme.subtitle)
-                                .foregroundColor(Color.AppTheme.textSecondary)
+                                .font(LMSFont.subheadline)
+                                .foregroundColor(LMSColors.textSecondary)
                         }
-                        .padding(.top, 12)
-                        
+                        .padding(.bottom, LMSSpacing.sm)
+
                         // Error Banner
                         if !generalError.isEmpty {
-                            HStack(alignment: .top, spacing: 8) {
+                            HStack(alignment: .top, spacing: LMSSpacing.sm) {
                                 Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(Color.AppTheme.error)
+                                    .foregroundColor(LMSColors.coral)
                                 Text(generalError)
-                                    .font(Font.AppTheme.caption)
-                                    .foregroundColor(Color.AppTheme.error)
+                                    .font(LMSFont.caption)
+                                    .foregroundColor(LMSColors.coral)
                                 Spacer()
                             }
-                            .padding()
-                            .background(Color.AppTheme.error.opacity(0.1))
-                            .cornerRadius(12)
+                            .padding(LMSSpacing.lg)
+                            .background(LMSColors.coral.opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
                             .transition(.move(edge: .top).combined(with: .opacity))
                         }
-                        
-                        // Input Fields Stack
-                        VStack(spacing: 20) {
-                            VStack(alignment: .leading, spacing: 6) {
+
+                        // Fields
+                        VStack(spacing: LMSSpacing.xl) {
+                            VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                                 Text("EMPLOYEE ID")
                                     .font(.system(size: 11, weight: .bold, design: .rounded))
-                                    .foregroundColor(Color.AppTheme.textSecondary)
-                                    .padding(.leading, 4)
-                                
+                                    .foregroundColor(LMSColors.textSecondary)
+                                    .padding(.leading, LMSSpacing.xs)
+
                                 CustomTextField(
                                     icon: "person.text.rectangle",
                                     placeholder: employeeIDPlaceholder,
@@ -105,13 +105,13 @@ struct StaffLoginView: View {
                                     errorMessage: employeeIDError
                                 )
                             }
-                            
-                            VStack(alignment: .leading, spacing: 6) {
+
+                            VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                                 Text("PASSWORD")
                                     .font(.system(size: 11, weight: .bold, design: .rounded))
-                                    .foregroundColor(Color.AppTheme.textSecondary)
-                                    .padding(.leading, 4)
-                                
+                                    .foregroundColor(LMSColors.textSecondary)
+                                    .padding(.leading, LMSSpacing.xs)
+
                                 SecureInputField(
                                     placeholder: "Branch Password",
                                     text: $password,
@@ -120,40 +120,40 @@ struct StaffLoginView: View {
                                 )
                             }
                         }
-                        
-                        // Info Note on credentials (Helper guidelines)
-                        HStack(alignment: .top, spacing: 8) {
+
+                        // Info note
+                        HStack(alignment: .top, spacing: LMSSpacing.sm) {
                             Image(systemName: "info.circle")
-                                .foregroundColor(.secondary)
-                                .font(.footnote)
-                            
+                                .foregroundColor(LMSColors.textTertiary)
+                                .font(LMSFont.footnote)
+
                             Text("Staff IDs correspond to branch assignments (e.g. Loan Officer starts with 'LO', Bank Manager with 'BM', Admin with 'AD').")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
+                                .font(LMSFont.caption)
+                                .foregroundColor(LMSColors.textTertiary)
                         }
-                        .padding(.top, 4)
-                        
-                        // Action Buttons
+
+                        // Login button
                         PrimaryButton(
                             title: "Authorize Portal Access",
+                            icon: "lock.open.fill",
                             isLoading: isLoading,
                             isDisabled: !isFormValid,
                             action: {
                                 handleStaffLogin()
                             }
                         )
-                        .padding(.top, 12)
-                        
+                        .padding(.top, LMSSpacing.sm)
+
                         Spacer()
                             .frame(height: 40)
                     }
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, LMSSpacing.xxl)
                 }
             }
             .hideNavigationBar()
         }
     }
-    
+
     // MARK: - Role Placeholder Helper
     private var employeeIDPlaceholder: String {
         switch appState.selectedRole {
@@ -163,27 +163,27 @@ struct StaffLoginView: View {
         default: return "Branch Employee ID"
         }
     }
-    
+
     // MARK: - Credentials Validation Handler
     private func handleStaffLogin() {
         // Reset Error State
         employeeIDError = ""
         passwordError = ""
         generalError = ""
-        
+
         let cleanedID = employeeID.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        
+
         // 1. Basic Format Validations
         if cleanedID.isEmpty {
             employeeIDError = "Employee ID cannot be empty"
             return
         }
-        
+
         if password.isEmpty {
             passwordError = "Password cannot be empty"
             return
         }
-        
+
         // 2. Validate prefix based on selected role
         switch appState.selectedRole {
         case .loanOfficer:
@@ -204,13 +204,13 @@ struct StaffLoginView: View {
         default:
             break
         }
-        
+
         isLoading = true
-        
+
         // Simulate secure API/LDAP authorization ping
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
             self.isLoading = false
-            
+
             // Check mock passwords (universal 'password' for testing)
             if self.password == "password" {
                 HapticsManager.triggerImpact(style: .heavy)

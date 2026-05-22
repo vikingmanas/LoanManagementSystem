@@ -49,7 +49,7 @@ struct ManagerAllApplicationsView: View {
                     // Search Bar
                     HStack {
                         Image(systemName: "magnifyingglass")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(LMSColors.textSecondary)
                         
                         TextField("Search by Name or ID...", text: $searchText)
                             .font(.system(.body, design: .rounded))
@@ -57,13 +57,13 @@ struct ManagerAllApplicationsView: View {
                         if !searchText.isEmpty {
                             Button(action: { searchText = "" }) {
                                 Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(LMSColors.textSecondary)
                             }
                         }
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(Color(.secondarySystemBackground))
+                    .background(LMSColors.surfaceElevated)
                     .cornerRadius(12)
                     
                     // Status Filter
@@ -81,7 +81,7 @@ struct ManagerAllApplicationsView: View {
                                         .foregroundColor(selectedFilter == filter ? .white : .primary)
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 8)
-                                        .background(selectedFilter == filter ? Color.AppTheme.primary : Color(.secondarySystemBackground))
+                                        .background(selectedFilter == filter ? Color.AppTheme.primary : LMSColors.surfaceElevated)
                                         .cornerRadius(20)
                                 }
                             }
@@ -90,7 +90,7 @@ struct ManagerAllApplicationsView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .background(Color(.systemBackground))
+                .background(LMSColors.surface)
                 
                 Divider()
                 
@@ -100,14 +100,14 @@ struct ManagerAllApplicationsView: View {
                         VStack(spacing: 16) {
                             Image(systemName: "doc.text.magnifyingglass")
                                 .font(.system(size: 44))
-                                .foregroundColor(.secondary)
+                                .foregroundColor(LMSColors.textSecondary)
                             
                             Text("No Applications Found")
                                 .font(.system(.headline, design: .rounded))
                             
                             Text("Try adjusting your search or filters.")
                                 .font(.system(.subheadline, design: .rounded))
-                                .foregroundColor(.secondary)
+                                .foregroundColor(LMSColors.textSecondary)
                         }
                         .padding(.top, 60)
                     } else {
@@ -120,7 +120,7 @@ struct ManagerAllApplicationsView: View {
                         .padding(.vertical, 16)
                     }
                 }
-                .background(Color(.systemGroupedBackground))
+                .background(LMSColors.background)
             }
             .navigationTitle("All Applications")
             .navigationBarTitleDisplayMode(.inline)
@@ -170,31 +170,31 @@ struct ManagerApplicationRowView: View {
                 HStack {
                     Text(app.borrowerName)
                         .font(.system(.callout, design: .rounded).bold())
-                        .foregroundColor(.primary)
+                        .foregroundColor(LMSColors.textPrimary)
                     
                     Spacer()
                     
                     Text("₹ \(Int(app.requestedAmount / 100_000))L")
                         .font(.system(.subheadline, design: .rounded).bold())
-                        .foregroundColor(.primary)
+                        .foregroundColor(LMSColors.textPrimary)
                 }
                 
                 HStack {
                     Text("\(app.applicationId)")
                         .font(.system(.caption2, design: .monospaced))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(LMSColors.textSecondary)
                     
                     Spacer()
                     
                     Text(app.loanType)
                         .font(.system(.caption, design: .rounded))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(LMSColors.textSecondary)
                 }
                 
                 HStack {
                     Text(app.submissionDate)
                         .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(LMSColors.textSecondary)
                     
                     Spacer()
                     
@@ -209,7 +209,7 @@ struct ManagerApplicationRowView: View {
             }
         }
         .padding(.all, 14)
-        .background(Color(.secondarySystemBackground))
+        .background(LMSColors.surfaceElevated)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.02), radius: 5, x: 0, y: 2)
     }

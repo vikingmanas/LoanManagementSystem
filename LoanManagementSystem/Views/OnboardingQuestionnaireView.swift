@@ -104,7 +104,7 @@ struct OnboardingQuestionnaireView: View {
                     
                     Text(stepTitle)
                         .font(.system(size: 28, weight: .bold, design: .default))
-                        .foregroundColor(.primary)
+                        .foregroundColor(LMSColors.textPrimary)
                 }
                 
                 Spacer()
@@ -168,7 +168,7 @@ struct OnboardingQuestionnaireView: View {
                     } label: {
                         Text("Back")
                             .font(.system(.body, weight: .semibold))
-                            .foregroundColor(.primary)
+                            .foregroundColor(LMSColors.textPrimary)
                             .padding()
                             .frame(maxWidth: .infinity)
                             .background(Color(UIColor.secondarySystemGroupedBackground))
@@ -232,8 +232,8 @@ struct OnboardingQuestionnaireView: View {
             // Employment Type (Segmented Control style)
             VStack(alignment: .leading, spacing: 8) {
                 Text("Employment Type")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(LMSFont.subheadline)
+                    .foregroundColor(LMSColors.textSecondary)
                 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
@@ -293,8 +293,8 @@ struct OnboardingQuestionnaireView: View {
                         Text("Existing Bank Account")
                             .font(.system(.body, weight: .semibold))
                         Text("Do you have an account with us?")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(LMSFont.caption)
+                            .foregroundColor(LMSColors.textSecondary)
                     }
                 }
                 .tint(successGreen)
@@ -321,7 +321,7 @@ struct OnboardingQuestionnaireView: View {
                     
                     HStack {
                         Text("Preferred Branch")
-                            .font(.subheadline)
+                            .font(LMSFont.subheadline)
                         Spacer()
                         Picker("Branch", selection: $preferredBranch) {
                             ForEach(branches, id: \.self) {
@@ -361,8 +361,8 @@ struct OnboardingQuestionnaireView: View {
     private var newCustomerEmergencySection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Emergency Reference")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(LMSFont.subheadline)
+                .foregroundColor(LMSColors.textSecondary)
                 .padding(.leading, 4)
             
             VStack(spacing: 0) {
@@ -371,7 +371,7 @@ struct OnboardingQuestionnaireView: View {
                 
                 HStack {
                     Text("Relationship")
-                        .font(.subheadline)
+                        .font(LMSFont.subheadline)
                     Spacer()
                     Picker("Relationship", selection: $emergencyContactRelationship) {
                         ForEach(relationships, id: \.self) {
@@ -400,11 +400,11 @@ struct OnboardingQuestionnaireView: View {
     private func formRow(title: String, placeholder: String, text: Binding<String>, keyboardType: UIKeyboardType = .default) -> some View {
         HStack {
             Text(title)
-                .font(.subheadline)
+                .font(LMSFont.subheadline)
                 .frame(width: 130, alignment: .leading)
             
             TextField(placeholder, text: text)
-                .font(.body)
+                .font(LMSFont.body)
                 .keyboardType(keyboardType)
                 .multilineTextAlignment(.trailing)
         }

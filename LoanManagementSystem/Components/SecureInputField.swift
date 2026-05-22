@@ -1,55 +1,90 @@
 import SwiftUI
 
+/// Secure password field with visibility toggle, matching `CustomTextField` styling.
 struct SecureInputField: View {
     var placeholder: String
     @Binding var text: String
     @State private var isVisible: Bool = false
     var isError: Bool = false
     var errorMessage: String = ""
-    
+
+    @FocusState private var isFocused: Bool
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 12) {
-                Image(systemName: "lock")
-                    .foregroundColor(Color.AppTheme.textSecondary)
-                    .frame(width: 20)
-                
-                if isVisible {
-                    TextField(placeholder, text: $text)
-                        .font(Font.AppTheme.input)
-                        .foregroundColor(Color.AppTheme.textPrimary)
-                        .disableAutocapitalization()
-                        .autocorrectionDisabled(true)
-                } else {
-                    SecureField(placeholder, text: $text)
-                        .font(Font.AppTheme.input)
-                        .foregroundColor(Color.AppTheme.textPrimary)
-                        .disableAutocapitalization()
-                        .autocorrectionDisabled(true)
+        VStack(alignment: .leading, spacing: LMSSpacing.xs) {
+            HStack(spacing: LMSSpacing.md) {
+                Image(systemName: "lock.fill")
+                    .font(.system(.callout, design: .rounded))
+                    .foregroundColor(iconColor)
+                    .frame(width: 22)
+
+                Group {
+                    if isVisible {
+                        TextField(placeholder, text: $text)
+                    } else {
+                        SecureField(placeholder, text: $text)
+                    }
                 }
-                
-                Button(action: {
-                    isVisible.toggle()
-                }) {
-                    Image(systemName: isVisible ? "eye.slash" : "eye")
-                        .foregroundColor(Color.AppTheme.textSecondary)
+                .font(LMSFont.body)
+                .foregroundColor(LMSColors.textPrimary)
+                .disableAutocapitalization()
+                .autocorrectionDisabled(true)
+                .focused($isFocused)
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        isVisible.toggle()
+                    }
+                } label: {
+                    Image(systemName: isVisible ? "eye.slash.fill" : "eye.fill")
+                        .font(.system(.callout, design: .rounded))
+                        .foregroundColor(LMSColors.textTertiary)
+                        .contentTransition(.symbolEffect(.replace))
                 }
+                .buttonStyle(.plain)
+                .frame(width: 44, height: 44) // HIG tap target
             }
-            .padding()
-            .background(Color.AppTheme.secondary)
-            .cornerRadius(12)
+            .padding(.horizontal, LMSSpacing.lg)
+            .frame(height: 50)
+            .background(LMSColors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isError ? Color.AppTheme.error : Color.gray.opacity(0.2), lineWidth: 1)
+                RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
+                    .stroke(borderColor, lineWidth: borderWidth)
             )
-            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-            
+            .shadow(color: .black.opacity(0.03), radius: 4, x: 0, y: 2)
+            .animation(.easeInOut(duration: 0.2), value: isFocused)
+            .animation(.easeInOut(duration: 0.2), value: isError)
+
             if isError && !errorMessage.isEmpty {
-                Text(errorMessage)
-                    .font(Font.AppTheme.caption)
-                    .foregroundColor(Color.AppTheme.error)
-                    .padding(.leading, 12)
+                HStack(spacing: LMSSpacing.xs) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: 11))
+                    Text(errorMessage)
+                        .font(LMSFont.caption)
+                }
+                .foregroundColor(LMSColors.coral)
+                .padding(.leading, LMSSpacing.xs)
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+    }
+
+    // MARK: - Computed Styling
+
+    private var iconColor: Color {
+        if isError { return LMSColors.coral }
+        if isFocused { return LMSColors.brandNavy }
+        return LMSColors.textTertiary
+    }
+
+    private var borderColor: Color {
+        if isError { return LMSColors.coral }
+        if isFocused { return LMSColors.brandNavy }
+        return LMSColors.separator.opacity(0.3)
+    }
+
+    private var borderWidth: CGFloat {
+        (isFocused || isError) ? 1.5 : 0.5
     }
 }

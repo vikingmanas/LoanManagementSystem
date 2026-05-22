@@ -172,11 +172,11 @@ struct CustomTopNavigationBar: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Good Morning, \(LoanOfficerMockData.officerName) 👋")
                     .font(.system(.title3, design: .rounded).bold())
-                    .foregroundColor(.primary)
+                    .foregroundColor(LMSColors.textPrimary)
                 
                 Text("Loan Officer · Branch: \(LoanOfficerMockData.branchName)")
                     .font(.system(.caption, design: .rounded))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(LMSColors.textSecondary)
             }
             
             Spacer()
@@ -191,7 +191,7 @@ struct CustomTopNavigationBar: View {
                     ZStack(alignment: .topTrailing) {
                         Image(systemName: "bell.badge.fill")
                             .font(.system(size: 18))
-                            .foregroundColor(.primary)
+                            .foregroundColor(LMSColors.textPrimary)
                             .symbolRenderingMode(.multicolor)
                         
                         if viewModel.unreadActivityCount > 0 {
@@ -228,7 +228,7 @@ struct CustomTopNavigationBar: View {
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 12)
-        .background(Color(.systemBackground))
+        .background(LMSColors.surface)
     }
 }
 
@@ -307,7 +307,7 @@ struct PriorityAlertStrip: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
-        .background(Color(.systemBackground))
+        .background(LMSColors.surface)
     }
 }
 
@@ -326,7 +326,7 @@ struct AlertChip: View {
                 
                 Text(title)
                     .font(.system(.caption, design: .rounded).bold())
-                    .foregroundColor(.primary)
+                    .foregroundColor(LMSColors.textPrimary)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -359,14 +359,14 @@ struct NotificationsFeedSheet: View {
                         HStack(alignment: .top, spacing: 12) {
                             Image(systemName: item.eventType.symbol)
                                 .foregroundColor(item.eventType.themeColor)
-                                .font(.title3)
+                                .font(LMSFont.title3)
                             
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(item.borrowerName)
                                     .font(.system(.callout, design: .rounded).bold())
                                 Text(item.eventDescription)
                                     .font(.system(.caption, design: .rounded))
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(LMSColors.textSecondary)
                             }
                         }
                         .padding(.vertical, 4)

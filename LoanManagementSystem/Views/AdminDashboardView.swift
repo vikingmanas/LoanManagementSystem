@@ -72,7 +72,7 @@ struct AdminDashboardView: View {
                     
                     Text("Astra Portal Admin 🛡️")
                         .font(.system(.title3, design: .rounded).bold())
-                        .foregroundColor(.primary)
+                        .foregroundColor(LMSColors.textPrimary)
                 }
                 
                 Spacer()
@@ -96,7 +96,7 @@ struct AdminDashboardView: View {
             .padding(.horizontal, 16)
             .padding(.top, 12)
             .padding(.bottom, 12)
-            .background(Color(.systemBackground))
+            .background(LMSColors.surface)
             
             Divider()
             
@@ -107,7 +107,7 @@ struct AdminDashboardView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("System Operations")
                             .font(.system(.footnote, design: .rounded).bold())
-                            .foregroundColor(.secondary)
+                            .foregroundColor(LMSColors.textSecondary)
                             .padding(.leading, 4)
                         
                         HStack(spacing: 12) {
@@ -122,7 +122,7 @@ struct AdminDashboardView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Systemic Loan Rules (Global Config)")
                             .font(.system(.footnote, design: .rounded).bold())
-                            .foregroundColor(.secondary)
+                            .foregroundColor(LMSColors.textSecondary)
                             .padding(.leading, 4)
                         
                         VStack(spacing: 16) {
@@ -210,7 +210,7 @@ struct AdminDashboardView: View {
                             }
                         }
                         .padding(.all, 16)
-                        .background(Color(.secondarySystemBackground))
+                        .background(LMSColors.surfaceElevated)
                         .cornerRadius(16)
                     }
                     .padding(.horizontal, 16)
@@ -219,14 +219,14 @@ struct AdminDashboardView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Live System Audit Logs")
                             .font(.system(.footnote, design: .rounded).bold())
-                            .foregroundColor(.secondary)
+                            .foregroundColor(LMSColors.textSecondary)
                             .padding(.leading, 4)
                         
                         VStack(spacing: 0) {
                             // Search bar inside console
                             HStack {
                                 Image(systemName: "magnifyingglass")
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(LMSColors.textSecondary)
                                 
                                 TextField("Filter system logs...", text: $logSearch)
                                     .font(.system(.caption, design: .monospaced))
@@ -234,13 +234,13 @@ struct AdminDashboardView: View {
                                 if !logSearch.isEmpty {
                                     Button(action: { logSearch = "" }) {
                                         Image(systemName: "xmark.circle.fill")
-                                            .foregroundColor(.secondary)
+                                            .foregroundColor(LMSColors.textSecondary)
                                     }
                                 }
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
-                            .background(Color(.systemBackground).opacity(0.6))
+                            .background(LMSColors.surface.opacity(0.6))
                             .cornerRadius(8)
                             .padding(.all, 10)
                             
@@ -250,7 +250,7 @@ struct AdminDashboardView: View {
                                     HStack(alignment: .top, spacing: 10) {
                                         Image(systemName: log.type.symbol)
                                             .foregroundColor(log.type.color)
-                                            .font(.caption2)
+                                            .font(LMSFont.caption2)
                                             .padding(.top, 2)
                                         
                                         VStack(alignment: .leading, spacing: 2) {
@@ -263,24 +263,24 @@ struct AdminDashboardView: View {
                                                 
                                                 Text(log.timestamp)
                                                     .font(.system(size: 8, design: .monospaced))
-                                                    .foregroundColor(.secondary)
+                                                    .foregroundColor(LMSColors.textSecondary)
                                             }
                                             
                                             Text(log.action)
                                                 .font(.system(size: 10, design: .monospaced))
-                                                .foregroundColor(.primary)
+                                                .foregroundColor(LMSColors.textPrimary)
                                                 .lineSpacing(2)
                                         }
                                     }
                                     .padding(.all, 8)
-                                    .background(Color(.systemBackground).opacity(0.4))
+                                    .background(LMSColors.surface.opacity(0.4))
                                     .cornerRadius(8)
                                 }
                             }
                             .padding(.horizontal, 10)
                             .padding(.bottom, 12)
                         }
-                        .background(Color(.secondarySystemBackground))
+                        .background(LMSColors.surfaceElevated)
                         .cornerRadius(16)
                     }
                     .padding(.horizontal, 16)
@@ -288,7 +288,7 @@ struct AdminDashboardView: View {
                 }
                 .padding(.bottom, 24)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(LMSColors.background)
         }
         .sheet(isPresented: $showProfileSheet) {
             AdminProfileView()
@@ -325,23 +325,23 @@ struct AdminStatusCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: symbol)
-                    .font(.footnote)
+                    .font(LMSFont.footnote)
                     .foregroundColor(color)
                 
                 Spacer()
                 
                 Text(title)
                     .font(.system(size: 8, weight: .bold, design: .rounded))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(LMSColors.textSecondary)
             }
             
             Text(value)
                 .font(.system(.headline, design: .rounded).bold())
-                .foregroundColor(.primary)
+                .foregroundColor(LMSColors.textPrimary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(Color(.secondarySystemBackground))
+        .background(LMSColors.surfaceElevated)
         .cornerRadius(16)
     }
 }
@@ -383,12 +383,12 @@ struct AdminProfileView: View {
                             
                             Text("National HQ · (Node ID: ADM-01)")
                                 .font(.system(.caption, design: .rounded))
-                                .foregroundColor(.secondary)
+                                .foregroundColor(LMSColors.textSecondary)
                         }
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 20)
-                    .background(Color(.secondarySystemBackground))
+                    .background(LMSColors.surfaceElevated)
                     .cornerRadius(20)
                     .padding(.horizontal, 16)
                     
@@ -396,7 +396,7 @@ struct AdminProfileView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("National System Node")
                             .font(.system(.caption, design: .rounded).bold())
-                            .foregroundColor(.secondary)
+                            .foregroundColor(LMSColors.textSecondary)
                             .padding(.leading, 20)
                         
                         VStack(spacing: 0) {
@@ -406,7 +406,7 @@ struct AdminProfileView: View {
                             Divider().padding(.leading, 16)
                             ProfileDetailRow(label: "ENCRYPTION STATUS", value: "AES-256 Active")
                         }
-                        .background(Color(.secondarySystemBackground))
+                        .background(LMSColors.surfaceElevated)
                         .cornerRadius(16)
                         .padding(.horizontal, 16)
                     }
@@ -431,7 +431,7 @@ struct AdminProfileView: View {
                 }
                 .padding(.vertical, 16)
             }
-            .background(Color(.systemBackground))
+            .background(LMSColors.surface)
             .navigationTitle("Admin Profile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

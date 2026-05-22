@@ -1,10 +1,3 @@
-//
-//  EMITrackerView.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 19/05/26.
-//
-
 import SwiftUI
 
 public struct EMITrackerView: View {
@@ -32,32 +25,32 @@ public struct EMITrackerView: View {
             } label: {
                 HStack(spacing: 4) {
                     Text(selectedMonth)
-                        .font(.subheadline.weight(.medium))
+                        .font(LMSFont.subheadline.weight(.medium))
                     Image(systemName: "chevron.down")
-                        .font(.caption2.weight(.bold))
+                        .font(LMSFont.caption2.weight(.bold))
                 }
-                .foregroundColor(.brandNavy)
+                .foregroundColor(LMSColors.brandNavy)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
-                .background(Color(.secondarySystemBackground), in: Capsule())
+                .background(LMSColors.surfaceElevated, in: Capsule())
             }
         } content: {
             if viewModel.isLoading {
                 // Skeleton loading state
                 LoadingTrackerSkeleton()
             } else {
-                VStack(spacing: 16) {
+                VStack(spacing: LMSSpacing.lg) {
                     // 4a. KPI Status Bar
-                    HStack(spacing: 12) {
-                        KPITile(title: "Total EMIs", value: "24", icon: "square.grid.2x2", color: Color(.secondaryLabel), bg: Color(.secondarySystemBackground))
+                    HStack(spacing: LMSSpacing.sm) {
+                        KPITile(title: "Total EMIs", value: "24", icon: "square.grid.2x2", color: LMSColors.textSecondary, bg: LMSColors.surfaceElevated)
                         
                         // Dynamically compute count of paid vs pending from the active model list
                         let paidCount = 24 - viewModel.pendingEMIs.filter({ $0.status != .paid }).count
                         let pendingCount = viewModel.pendingEMIs.filter({ $0.status != .paid }).count
                         
-                        KPITile(title: "Paid", value: "\(paidCount)", icon: "checkmark.circle.fill", color: .brandEmerald, bg: .brandEmerald.opacity(0.08))
+                        KPITile(title: "Paid", value: "\(paidCount)", icon: "checkmark.circle.fill", color: LMSColors.emerald, bg: LMSColors.emerald.opacity(0.08))
                         
-                        KPITile(title: "Pending", value: "\(pendingCount)", icon: "clock.fill", color: .brandAmber, bg: .brandAmber.opacity(0.08))
+                        KPITile(title: "Pending", value: "\(pendingCount)", icon: "clock.fill", color: LMSColors.amber, bg: LMSColors.amber.opacity(0.08))
                     }
                     .padding(.horizontal, 1)
                     
@@ -74,11 +67,10 @@ public struct EMITrackerView: View {
                     // 4c. Pending EMIs list
                     let unpaidEMIs = viewModel.pendingEMIs.filter { $0.status != .paid }
                     if !unpaidEMIs.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                             Text("Pending Payments")
-                                .font(.system(.caption, design: .rounded))
-                                .fontWeight(.bold)
-                                .foregroundColor(Color(.secondaryLabel))
+                                .font(LMSFont.caption.weight(.bold))
+                                .foregroundColor(LMSColors.textSecondary)
                                 .padding(.horizontal, 1)
                             
                             VStack(spacing: 0) {
@@ -91,12 +83,12 @@ public struct EMITrackerView: View {
                                     }
                                     if emi.id != unpaidEMIs.prefix(3).last?.id {
                                         Divider()
-                                            .padding(.horizontal, 16)
+                                            .padding(.horizontal, LMSSpacing.lg)
                                     }
                                 }
                             }
-                            .background(Color(.secondarySystemBackground))
-                            .cornerRadius(16)
+                            .background(LMSColors.surfaceElevated)
+                            .cornerRadius(LMSRadius.lg)
                             .padding(.horizontal, 1)
                             
                             if unpaidEMIs.count > 3 {
@@ -106,9 +98,8 @@ public struct EMITrackerView: View {
                                     HStack {
                                         Spacer()
                                         Text("View All Pending (\(unpaidEMIs.count))")
-                                            .font(.system(.callout, design: .rounded))
-                                            .fontWeight(.semibold)
-                                            .foregroundColor(.blue)
+                                            .font(LMSFont.callout.weight(.semibold))
+                                            .foregroundColor(LMSColors.actionBlue)
                                         Spacer()
                                     }
                                     .frame(height: 44) // Tap target compliance
@@ -144,12 +135,11 @@ struct KPITile: View {
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(value)
-                    .font(.system(.callout, design: .rounded))
-                    .fontWeight(.bold)
-                    .foregroundColor(Color(.label))
+                    .font(LMSFont.callout.weight(.bold))
+                    .foregroundColor(LMSColors.textPrimary)
                 Text(title)
-                    .font(.system(.caption2, design: .rounded))
-                    .foregroundColor(Color(.secondaryLabel))
+                    .font(LMSFont.caption2)
+                    .foregroundColor(LMSColors.textSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
@@ -157,7 +147,7 @@ struct KPITile: View {
         }
         .padding(10)
         .background(bg)
-        .cornerRadius(16)
+        .cornerRadius(LMSRadius.lg)
     }
 }
 
@@ -169,42 +159,39 @@ struct UpcomingEMICard: View {
     @State private var showingReminderAlert = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top, spacing: 12) {
+        VStack(alignment: .leading, spacing: LMSSpacing.lg) {
+            HStack(alignment: .top, spacing: LMSSpacing.sm) {
                 // Calendar icon with clock badge
                 ZStack {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.brandAmber.opacity(0.15))
+                    RoundedRectangle(cornerRadius: LMSRadius.md)
+                        .fill(LMSColors.amber.opacity(0.15))
                         .frame(width: 44, height: 44)
                     Image(systemName: "calendar.badge.clock")
                         .font(.system(size: 20))
-                        .foregroundColor(.brandAmber)
+                        .foregroundColor(LMSColors.amber)
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Next EMI Due")
-                        .font(.system(.subheadline, design: .rounded))
-                        .fontWeight(.semibold)
-                        .foregroundColor(Color(.secondaryLabel))
+                        .font(LMSFont.subheadline.weight(.semibold))
+                        .foregroundColor(LMSColors.textSecondary)
                     
                     Text(nextEMI.amount.formattedAsINR())
-                        .font(.system(.title2, design: .rounded))
-                        .fontWeight(.bold)
+                        .font(.system(.title2, design: .rounded).weight(.bold))
                         .monospacedDigit()
                         .contentTransition(.numericText())
-                        .foregroundColor(Color(.label))
+                        .foregroundColor(LMSColors.textPrimary)
                 }
                 
                 Spacer()
                 
                 // Loan Type Tag
                 Text(nextEMI.loanType)
-                    .font(.system(.caption2, design: .rounded))
-                    .fontWeight(.bold)
-                    .foregroundColor(.brandNavy)
+                    .font(LMSFont.caption2.weight(.bold))
+                    .foregroundColor(LMSColors.brandNavy)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Color.brandNavy.opacity(0.08))
+                    .background(LMSColors.brandNavy.opacity(0.08))
                     .cornerRadius(10)
             }
             
@@ -212,19 +199,18 @@ struct UpcomingEMICard: View {
             let isOverdue = nextEMI.status == .overdue
             HStack(spacing: 6) {
                 Circle()
-                    .fill(isOverdue ? Color.brandCoral : Color.brandAmber)
+                    .fill(isOverdue ? LMSColors.coral : LMSColors.amber)
                     .frame(width: 8, height: 8)
                 
                 Text(isOverdue ? "Overdue! Please settle immediately" : "Due in 3 days — \(nextEMI.dueDate.formattedAsDDMMMYYYY())")
-                    .font(.system(.caption, design: .rounded))
-                    .fontWeight(.medium)
-                    .foregroundColor(isOverdue ? Color.brandCoral : Color(.label))
+                    .font(LMSFont.caption.weight(.medium))
+                    .foregroundColor(isOverdue ? LMSColors.coral : LMSColors.textPrimary)
             }
             
             Divider()
             
             // Buttons Row
-            HStack(spacing: 12) {
+            HStack(spacing: LMSSpacing.sm) {
                 // Set Reminder Button (Outlined)
                 Button {
                     let feedback = UIImpactFeedbackGenerator(style: .light)
@@ -232,14 +218,13 @@ struct UpcomingEMICard: View {
                     showingReminderAlert = true
                 } label: {
                     Text("Set Reminder")
-                        .font(.system(.callout, design: .rounded))
-                        .fontWeight(.semibold)
-                        .foregroundColor(.brandNavy)
+                        .font(LMSFont.callout.weight(.semibold))
+                        .foregroundColor(LMSColors.brandNavy)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
                         .background(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(Color.brandNavy, lineWidth: 1.5)
+                            RoundedRectangle(cornerRadius: LMSRadius.md)
+                                .stroke(LMSColors.brandNavy, lineWidth: 1.5)
                         )
                 }
                 .buttonStyle(DashboardPressableStyle())
@@ -260,34 +245,33 @@ struct UpcomingEMICard: View {
                                 .font(.system(size: 14))
                         }
                         Text(isSufficient ? "Pay Now" : "Insufficient Funds")
-                            .font(.system(.callout, design: .rounded))
-                            .fontWeight(.semibold)
+                            .font(LMSFont.callout.weight(.semibold))
                     }
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(isSufficient ? Color.brandNavy : Color.gray)
-                    .cornerRadius(14)
+                    .background(isSufficient ? LMSColors.brandNavy : Color.gray)
+                    .cornerRadius(LMSRadius.md)
                 }
                 .buttonStyle(DashboardPressableStyle())
                 .disabled(!isSufficient)
             }
         }
-        .padding(20)
+        .padding(LMSSpacing.xl)
         .background(
             ZStack {
-                Color(uiColor: .systemBackground)
+                LMSColors.surface
                 
                 // Left side accent border
                 HStack {
                     Rectangle()
-                        .fill(nextEMI.status == .overdue ? Color.brandCoral : Color.brandAmber)
+                        .fill(nextEMI.status == .overdue ? LMSColors.coral : LMSColors.amber)
                         .frame(width: 6)
                     Spacer()
                 }
             }
         )
-        .cornerRadius(20)
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
         .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
 }
@@ -295,25 +279,24 @@ struct UpcomingEMICard: View {
 // MARK: - All Caught Up Card
 struct AllCaughtUpCard: View {
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: LMSSpacing.sm) {
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 40))
-                .foregroundColor(.brandEmerald)
+                .foregroundColor(LMSColors.emerald)
             
             Text("All Caught Up! 🎉")
-                .font(.system(.subheadline, design: .rounded))
-                .fontWeight(.bold)
-                .foregroundColor(Color(.label))
+                .font(LMSFont.subheadline.weight(.bold))
+                .foregroundColor(LMSColors.textPrimary)
             
             Text("No upcoming or outstanding EMIs due for this billing cycle.")
-                .font(.system(.caption, design: .rounded))
-                .foregroundColor(Color(.secondaryLabel))
+                .font(LMSFont.caption)
+                .foregroundColor(LMSColors.textSecondary)
                 .multilineTextAlignment(.center)
         }
-        .padding(24)
+        .padding(LMSSpacing.xxl)
         .frame(maxWidth: .infinity)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(20)
+        .background(LMSColors.surfaceElevated)
+        .cornerRadius(LMSRadius.card)
     }
 }
 
@@ -323,25 +306,23 @@ struct PendingEMIRow: View {
     var onSwipePay: () -> Void
     
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: LMSSpacing.lg) {
             // Due Date
             VStack(alignment: .leading, spacing: 2) {
                 Text(emi.dueDate.formattedAsDDMMMYYYY())
-                    .font(.system(.callout, design: .rounded))
-                    .fontWeight(.bold)
-                    .foregroundColor(Color(.label))
+                    .font(LMSFont.callout.weight(.bold))
+                    .foregroundColor(LMSColors.textPrimary)
                 Text("Due Date")
-                    .font(.system(.caption2, design: .rounded))
-                    .foregroundColor(Color(.secondaryLabel))
+                    .font(LMSFont.caption2)
+                    .foregroundColor(LMSColors.textSecondary)
             }
             
             Spacer()
             
             // Amount
             Text(emi.amount.formattedAsINR())
-                .font(.system(.callout, design: .rounded))
-                .fontWeight(.bold)
-                .foregroundColor(Color(.label))
+                .font(LMSFont.callout.weight(.bold))
+                .foregroundColor(LMSColors.textPrimary)
             
             // Status Badge
             Text(emi.status == .overdue ? "Overdue" : emi.status == .dueSoon ? "Due Soon" : "Upcoming")
@@ -350,12 +331,12 @@ struct PendingEMIRow: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
                 .background(
-                    emi.status == .overdue ? Color.brandCoral :
-                    emi.status == .dueSoon ? Color.brandAmber : Color.gray
+                    emi.status == .overdue ? LMSColors.coral :
+                    emi.status == .dueSoon ? LMSColors.amber : Color.gray
                 )
                 .cornerRadius(10)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, LMSSpacing.lg)
         .padding(.vertical, 14)
         .contentShape(Rectangle()) // HIG tap target
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -364,7 +345,7 @@ struct PendingEMIRow: View {
             } label: {
                 Label("Pay", systemImage: "indianrupeesign.circle.fill")
             }
-            .tint(.brandNavy)
+            .tint(LMSColors.brandNavy)
         }
     }
 }
@@ -372,23 +353,23 @@ struct PendingEMIRow: View {
 // MARK: - Loading Skeleton
 struct LoadingTrackerSkeleton: View {
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: LMSSpacing.lg) {
             // KPI Tiles skeleton
-            HStack(spacing: 12) {
+            HStack(spacing: LMSSpacing.sm) {
                 ForEach(0..<3) { _ in
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(.secondarySystemBackground))
+                    RoundedRectangle(cornerRadius: LMSRadius.lg)
+                        .fill(LMSColors.surfaceElevated)
                         .frame(height: 52)
                         .shimmer(active: true)
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
             
             // Big card skeleton
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color(.secondarySystemBackground))
+            RoundedRectangle(cornerRadius: LMSRadius.card)
+                .fill(LMSColors.surfaceElevated)
                 .frame(height: 180)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
                 .shimmer(active: true)
         }
     }

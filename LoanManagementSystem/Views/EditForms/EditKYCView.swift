@@ -140,7 +140,7 @@ struct EditKYCView: View {
                         .padding(.horizontal)
                 }
                 .padding(30)
-                .background(Color(.systemBackground))
+                .background(LMSColors.surface)
                 .cornerRadius(16)
                 .shadow(radius: 10)
                 .frame(maxWidth: 300)

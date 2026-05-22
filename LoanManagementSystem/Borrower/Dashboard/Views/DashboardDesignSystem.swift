@@ -1,31 +1,27 @@
 import SwiftUI
 
+// MARK: - Dashboard Spacing (Aliases → unified LMSSpacing)
 enum DashboardSpacing {
-    static let screenHorizontal: CGFloat = 20
-    static let sectionVertical: CGFloat = 16
-    static let cardCornerRadius: CGFloat = 22
+    static let screenHorizontal: CGFloat = LMSSpacing.screenHorizontal
+    static let sectionVertical: CGFloat = LMSSpacing.sectionGap
+    static let cardCornerRadius: CGFloat = LMSRadius.card
 }
 
+// MARK: - Pressable Style
 struct DashboardPressableStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.spring(response: 0.28, dampingFraction: 0.8), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.92 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.75), value: configuration.isPressed)
     }
 }
 
+// MARK: - Card Modifier (Redirects to unified .lmsCard)
 struct DashboardCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .background(
-                RoundedRectangle(cornerRadius: DashboardSpacing.cardCornerRadius, style: .continuous)
-                    .fill(Color(.secondarySystemBackground))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: DashboardSpacing.cardCornerRadius, style: .continuous)
-                    .stroke(Color(.separator).opacity(0.18), lineWidth: 0.5)
-            )
-            .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 5)
+            .lmsCard(radius: LMSRadius.card)
     }
 }
 
@@ -35,6 +31,7 @@ extension View {
     }
 }
 
+// MARK: - Section Container
 struct SectionContainer<Content: View, Trailing: View>: View {
     let title: LocalizedStringKey
     let subtitle: String?
@@ -54,16 +51,16 @@ struct SectionContainer<Content: View, Trailing: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            HStack(alignment: .firstTextBaseline, spacing: LMSSpacing.sm) {
+                VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                     Text(title)
-                        .font(.title3.weight(.semibold))
-                        .foregroundColor(Color(.label))
+                        .font(LMSFont.title3)
+                        .foregroundColor(LMSColors.textPrimary)
                     if let subtitle {
                         Text(subtitle)
-                            .font(.footnote)
-                            .foregroundColor(Color(.secondaryLabel))
+                            .font(LMSFont.footnote)
+                            .foregroundColor(LMSColors.textSecondary)
                     }
                 }
                 Spacer()
@@ -71,7 +68,7 @@ struct SectionContainer<Content: View, Trailing: View>: View {
             }
             content
         }
-        .padding(.horizontal, DashboardSpacing.screenHorizontal)
+        .padding(.horizontal, LMSSpacing.screenHorizontal)
     }
 }
 
@@ -85,6 +82,7 @@ extension SectionContainer where Trailing == EmptyView {
     }
 }
 
+// MARK: - Loan Card (Hero card on dashboard carousel)
 struct LoanCard: View {
     let title: String
     let subtitle: String
@@ -99,70 +97,74 @@ struct LoanCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 10) {
-                VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: LMSSpacing.lg) {
+            // Header
+            HStack(alignment: .top, spacing: LMSSpacing.sm) {
+                VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                     Text(title)
-                        .font(.headline.weight(.semibold))
+                        .font(LMSFont.headline)
                         .foregroundColor(.white)
                     Text(subtitle)
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.72))
+                        .font(LMSFont.caption)
+                        .foregroundColor(.white.opacity(0.70))
                 }
                 Spacer()
                 Text("\(Int(clampedFraction * 100))% repaid")
-                    .font(.caption.weight(.semibold))
+                    .font(LMSFont.caption.weight(.semibold))
                     .foregroundColor(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(.white.opacity(0.18), in: Capsule())
+                    .background(.white.opacity(0.16), in: Capsule())
             }
 
-            VStack(alignment: .leading, spacing: 4) {
+            // Outstanding amount
+            VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                 Text("Outstanding")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.7))
+                    .font(LMSFont.caption)
+                    .foregroundColor(.white.opacity(0.65))
                 Text(outstandingAmount.formattedAsINR())
-                    .font(.title2.weight(.bold))
+                    .font(.system(.title2, design: .rounded).weight(.bold))
                     .monospacedDigit()
                     .foregroundColor(.white)
                     .contentTransition(.numericText())
             }
 
+            // Progress bar
             ProgressView(value: clampedFraction)
                 .tint(accent)
                 .animation(.easeInOut(duration: 0.35), value: clampedFraction)
 
-            HStack(spacing: 16) {
+            // Bottom metrics
+            HStack(spacing: LMSSpacing.lg) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Monthly EMI")
-                        .font(.caption2)
-                        .foregroundColor(.white.opacity(0.7))
+                        .font(LMSFont.caption2)
+                        .foregroundColor(.white.opacity(0.65))
                     Text(monthlyEMI.formattedAsINR())
-                        .font(.footnote.weight(.semibold))
+                        .font(LMSFont.footnote.weight(.semibold))
                         .foregroundColor(.white)
                         .minimumScaleFactor(0.8)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 3) {
                     Text("Next due")
-                        .font(.caption2)
-                        .foregroundColor(.white.opacity(0.7))
+                        .font(LMSFont.caption2)
+                        .foregroundColor(.white.opacity(0.65))
                     Text(nextEMIDateText)
-                        .font(.footnote.weight(.semibold))
+                        .font(LMSFont.footnote.weight(.semibold))
                         .foregroundColor(.white)
                 }
             }
         }
-        .padding(18)
+        .padding(LMSSpacing.xl)
         .background(
             LinearGradient(
-                colors: [Color(hex: "0D1B4C"), Color(hex: "2D3FA5")],
+                colors: [LMSColors.brandNavy, LMSColors.brandNavyLight],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: DashboardSpacing.cardCornerRadius, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
         .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 7)
     }
 }

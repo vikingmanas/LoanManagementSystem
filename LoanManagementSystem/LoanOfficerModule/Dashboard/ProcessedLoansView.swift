@@ -12,7 +12,7 @@ struct ProcessedLoansView: View {
                 HStack(spacing: 8) {
                     Text("Sent to Manager")
                         .font(.system(.subheadline, design: .rounded).bold())
-                        .foregroundColor(.primary)
+                        .foregroundColor(LMSColors.textPrimary)
                     
                     Text("This Week")
                         .font(.system(.caption2, design: .rounded).bold())
@@ -79,11 +79,11 @@ struct ProcessedLoanRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("\(app.borrowerName) · \(app.loanType.rawValue)")
                     .font(.system(.callout, design: .rounded).bold())
-                    .foregroundColor(.primary)
+                    .foregroundColor(LMSColors.textPrimary)
                 
                 Text("\(app.applicationId) · \(CurrencyFormatter.shared.format(app.requestedAmount))")
                     .font(.system(.caption, design: .rounded))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(LMSColors.textSecondary)
                 
                 if let sentDate = app.sentToManagerDate {
                     Text("Sent on \(RelativeDateFormatter.shared.absoluteString(from: sentDate))")

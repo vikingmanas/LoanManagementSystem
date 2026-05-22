@@ -25,7 +25,7 @@ struct QuickActionRowView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Quick Actions")
                 .font(.system(.subheadline, design: .rounded).bold())
-                .foregroundColor(.primary)
+                .foregroundColor(LMSColors.textPrimary)
                 .padding(.horizontal, 16)
             
             ScrollView(.horizontal, showsIndicators: false) {
@@ -48,7 +48,7 @@ struct QuickActionRowView: View {
                                 
                                 Text(action.title)
                                     .font(.system(.caption2, design: .rounded).weight(.semibold))
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(LMSColors.textPrimary)
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.8)
                             }
@@ -57,7 +57,7 @@ struct QuickActionRowView: View {
                             .cornerRadius(14)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 14)
-                                    .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                                    .stroke(LMSColors.textPrimary.opacity(0.06), lineWidth: 1)
                             )
                         }
                         .buttonStyle(ScaleButtonStyle())

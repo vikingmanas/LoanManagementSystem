@@ -166,32 +166,37 @@ struct ContentView: View {
     // MARK: - Splash View
     private var splashView: some View {
         ZStack {
-
             LinearGradient(
                 colors: [
-                    Color.brandNavy,
-                    Color(hex: "#2E3B84")
+                    LMSColors.brandNavy,
+                    LMSColors.brandNavyLight
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
 
-            VStack(spacing: 20) {
-
+            VStack(spacing: LMSSpacing.xxl) {
                 Image(systemName: "indianrupeesign.circle.fill")
-                    .font(.system(size: 60))
-                    .foregroundColor(.white)
+                    .font(.system(size: 64, weight: .light))
+                    .foregroundStyle(.white.opacity(0.95))
+                    .shadow(color: .white.opacity(0.3), radius: 20, x: 0, y: 0)
 
-                Text("Loan Manager")
-                    .font(.system(.title, design: .rounded))
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
+                VStack(spacing: LMSSpacing.sm) {
+                    Text("Loan Manager")
+                        .font(LMSFont.largeTitle)
+                        .foregroundColor(.white)
+
+                    Text("Smart Lending, Simplified")
+                        .font(LMSFont.footnote.weight(.medium))
+                        .foregroundColor(.white.opacity(0.6))
+                }
 
                 ProgressView()
                     .progressViewStyle(.circular)
-                    .tint(.white.opacity(0.8))
-                    .scaleEffect(1.1)
+                    .tint(.white.opacity(0.7))
+                    .scaleEffect(0.9)
+                    .padding(.top, LMSSpacing.lg)
             }
         }
     }

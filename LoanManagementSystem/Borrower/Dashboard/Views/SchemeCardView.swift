@@ -1,10 +1,3 @@
-//
-//  SchemeCardView.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 19/05/26.
-//
-
 import SwiftUI
 
 public struct SchemeCardView: View {
@@ -47,14 +40,13 @@ public struct SchemeCardView: View {
                 
                 // Title
                 Text(scheme.title)
-                    .font(.system(.callout, design: .rounded))
-                    .fontWeight(.bold)
+                    .font(LMSFont.callout.weight(.bold))
                     .foregroundColor(.white)
                     .lineLimit(1)
                 
                 // Description (2-line limit)
                 Text(scheme.description)
-                    .font(.system(.caption2, design: .rounded))
+                    .font(LMSFont.caption2)
                     .foregroundColor(.white.opacity(0.85))
                     .lineLimit(2)
                     .frame(height: 30, alignment: .topLeading)
@@ -87,7 +79,7 @@ public struct SchemeCardView: View {
             .padding(14)
         }
         .frame(width: 240, height: 140)
-        .cornerRadius(20)
+        .cornerRadius(LMSRadius.card)
         .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
     
@@ -125,7 +117,7 @@ public struct SchemeCardView: View {
             return Color(hex: "#E05A00").opacity(0.85)
         case .homeLoan, .education:
             // Deep blue shade
-            return Color(hex: "#0A2540").opacity(0.8)
+            return LMSColors.brandNavy.opacity(0.8)
         }
     }
     
@@ -144,8 +136,8 @@ public struct SchemeCardSkeleton: View {
     public init() {}
     
     public var body: some View {
-        RoundedRectangle(cornerRadius: 20)
-            .fill(Color(.secondarySystemBackground))
+        RoundedRectangle(cornerRadius: LMSRadius.card)
+            .fill(LMSColors.surfaceElevated)
             .frame(width: 240, height: 140)
             .shimmer(active: true)
     }

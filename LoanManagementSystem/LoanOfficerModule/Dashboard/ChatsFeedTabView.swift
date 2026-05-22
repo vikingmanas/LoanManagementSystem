@@ -21,7 +21,7 @@ struct ChatsFeedTabView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 8)
             }
-            .background(Color(.systemBackground))
+            .background(LMSColors.surface)
             .shadow(color: .black.opacity(0.03), radius: 3, x: 0, y: 3)
             
             // Timeline Content
@@ -186,7 +186,7 @@ struct ChatDetailResolverView: View {
                             .font(.system(.subheadline, design: .rounded).bold())
                         Text("\(item.loanType) · \(item.applicationId)")
                             .font(.system(.caption, design: .rounded))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(LMSColors.textSecondary)
                     }
                     Spacer()
                 }
@@ -221,7 +221,7 @@ struct ChatDetailResolverView: View {
                         .font(.system(.subheadline, design: .rounded))
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
-                        .background(Color.primary.opacity(0.06))
+                        .background(LMSColors.textPrimary.opacity(0.06))
                         .cornerRadius(20)
                     
                     Button(action: onSend) {
@@ -235,7 +235,7 @@ struct ChatDetailResolverView: View {
                     .disabled(chatText.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
                 .padding()
-                .background(Color(.systemBackground))
+                .background(LMSColors.surface)
             }
             .navigationTitle("Borrower Chat Console")
             .navigationBarTitleDisplayMode(.inline)
@@ -261,10 +261,10 @@ struct ChatMessageBubble: View {
                 Spacer()
                 Text(msg.text)
                     .font(.system(.caption2, design: .rounded).bold())
-                    .foregroundColor(.secondary)
+                    .foregroundColor(LMSColors.textSecondary)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Color.primary.opacity(0.05))
+                    .background(LMSColors.textPrimary.opacity(0.05))
                     .cornerRadius(8)
                 Spacer()
             } else {
@@ -279,7 +279,7 @@ struct ChatMessageBubble: View {
                     
                     Text(msg.time)
                         .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(LMSColors.textSecondary)
                         .padding(.horizontal, 4)
                 }
             }

@@ -24,11 +24,11 @@ struct LoanHistoryRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(app.borrowerName)
                     .font(.system(.callout, design: .rounded).bold())
-                    .foregroundColor(.primary)
+                    .foregroundColor(LMSColors.textPrimary)
                 
                 Text("\(app.loanType.rawValue) · \(CurrencyFormatter.shared.format(app.requestedAmount))")
                     .font(.system(.caption, design: .rounded).weight(.medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(LMSColors.textSecondary)
                 
                 Text("\(app.applicationId) · Branch: \(app.branch)")
                     .font(.system(.caption2, design: .rounded))

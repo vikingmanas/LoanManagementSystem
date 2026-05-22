@@ -25,7 +25,7 @@ struct KPIGridView: View {
                             .foregroundColor(AppTheme.successGreen)
                         Text("vs last month")
                             .font(.system(.caption2, design: .rounded))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(LMSColors.textSecondary)
                     }
                 ),
                 accessibilityLabel: "Total Applications: \(viewModel.totalApplications). Twelve percent increase since last month."
@@ -83,7 +83,7 @@ struct KPIGridView: View {
                 bottomContent: AnyView(
                     Text("6 rejected · 5 on hold")
                         .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(LMSColors.textSecondary)
                 ),
                 accessibilityLabel: "Rejected or On Hold: \(viewModel.rejectedOrHoldCount). Requires re-evaluation."
             )
@@ -119,17 +119,17 @@ struct KPICard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(value)
                     .font(.system(.title, design: .rounded).bold())
-                    .foregroundColor(.primary)
+                    .foregroundColor(LMSColors.textPrimary)
                 
                 Text(label)
                     .font(.system(.callout, design: .rounded).weight(.semibold))
-                    .foregroundColor(.primary)
+                    .foregroundColor(LMSColors.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 
                 Text(sub)
                     .font(.system(.caption2, design: .rounded))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(LMSColors.textSecondary)
             }
             
             Spacer(minLength: 4)

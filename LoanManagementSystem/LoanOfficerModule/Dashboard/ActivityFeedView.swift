@@ -11,7 +11,7 @@ struct ActivityFeedView: View {
             HStack {
                 Text("Borrower Activity")
                     .font(.system(.subheadline, design: .rounded).bold())
-                    .foregroundColor(.primary)
+                    .foregroundColor(LMSColors.textPrimary)
                 
                 Spacer()
                 
@@ -84,7 +84,7 @@ struct ActivityFeedView: View {
                             Spacer()
                         }
                         .padding(.vertical, 14)
-                        .background(Color.primary.opacity(0.02))
+                        .background(LMSColors.textPrimary.opacity(0.02))
                     }
                     .buttonStyle(PlainButtonStyle())
                     .accessibilityLabel("View all activity feeds")

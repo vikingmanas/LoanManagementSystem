@@ -79,7 +79,7 @@ struct LoanHistoryTabView: View {
                             HStack(spacing: 4) {
                                 Image(systemName: "magnifyingglass")
                                     .font(.system(size: 14))
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(LMSColors.textSecondary)
                                 
                                 TextField("Search name, ID...", text: $viewModel.historySearchQuery)
                                     .font(.system(.caption, design: .rounded))
@@ -94,12 +94,12 @@ struct LoanHistoryTabView: View {
                                 }) {
                                     Image(systemName: "xmark.circle.fill")
                                         .font(.system(size: 14))
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(LMSColors.textSecondary)
                                 }
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 6)
-                            .background(Color.primary.opacity(0.06))
+                            .background(LMSColors.textPrimary.opacity(0.06))
                             .cornerRadius(12)
                         } else {
                             Button(action: {
@@ -109,7 +109,7 @@ struct LoanHistoryTabView: View {
                             }) {
                                 Image(systemName: "magnifyingglass")
                                     .font(.system(size: 14, weight: .bold))
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(LMSColors.textPrimary)
                                     .frame(width: 32, height: 32)
                                     .background(.ultraThinMaterial)
                                     .cornerRadius(16)
@@ -120,14 +120,14 @@ struct LoanHistoryTabView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
             }
-            .background(Color(.systemBackground))
+            .background(LMSColors.surface)
             .shadow(color: .black.opacity(0.04), radius: 3, x: 0, y: 3)
             
             // RESULTS HEADER
             HStack {
                 Text("Showing \(viewModel.filteredApplications.count) of \(viewModel.totalApplications) loans")
                     .font(.system(.caption, design: .rounded).weight(.semibold))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(LMSColors.textSecondary)
                 
                 Spacer()
                 
@@ -205,14 +205,14 @@ struct LoanHistoryTabView: View {
                         viewModel.historyLoanTypeFilter = nil
                         showTypePicker = false
                     }
-                    .foregroundColor(.primary)
+                    .foregroundColor(LMSColors.textPrimary)
                     
                     ForEach(LoanType.allCases, id: \.self) { type in
                         Button(type.rawValue) {
                             viewModel.historyLoanTypeFilter = type
                             showTypePicker = false
                         }
-                        .foregroundColor(.primary)
+                        .foregroundColor(LMSColors.textPrimary)
                     }
                 }
                 .navigationTitle("Filter by Loan Type")
@@ -252,7 +252,7 @@ struct LoanHistoryTabView: View {
                             viewModel.historySortOrder = order
                             showSortPicker = false
                         }
-                        .foregroundColor(.primary)
+                        .foregroundColor(LMSColors.textPrimary)
                     }
                 }
                 .navigationTitle("Sort Orders")
@@ -350,7 +350,7 @@ struct FilterPill: View {
                 .font(.system(.caption, design: .rounded).bold())
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
-                .background(isSelected ? AppTheme.actionBlue : Color.primary.opacity(0.06))
+                .background(isSelected ? AppTheme.actionBlue : LMSColors.textPrimary.opacity(0.06))
                 .foregroundColor(isSelected ? .white : .primary)
                 .cornerRadius(17)
         }
@@ -387,7 +387,7 @@ struct DropdownChip: View {
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isActive ? AppTheme.actionBlue.opacity(0.3) : Color.primary.opacity(0.06), lineWidth: 1)
+                    .stroke(isActive ? AppTheme.actionBlue.opacity(0.3) : LMSColors.textPrimary.opacity(0.06), lineWidth: 1)
             )
         }
         .buttonStyle(PlainButtonStyle())
@@ -429,8 +429,8 @@ struct LoanDetailMockView: View {
                                 Text(doc.docType.rawValue)
                                 Spacer()
                                 Text(doc.status.rawValue)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .font(LMSFont.caption)
+                                    .foregroundColor(LMSColors.textSecondary)
                             }
                         }
                     }
@@ -438,7 +438,7 @@ struct LoanDetailMockView: View {
                 
                 Section("Officer Notes") {
                     Text(app.notes)
-                        .font(.body)
+                        .font(LMSFont.body)
                 }
             }
             .navigationTitle("Loan Details")

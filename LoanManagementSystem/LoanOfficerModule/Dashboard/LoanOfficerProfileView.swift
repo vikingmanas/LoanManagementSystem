@@ -30,7 +30,7 @@ struct LoanOfficerProfileView: View {
                         VStack(spacing: 4) {
                             Text("Arjun Kashyap")
                                 .font(.system(.title3, design: .rounded).bold())
-                                .foregroundColor(.primary)
+                                .foregroundColor(LMSColors.textPrimary)
                             
                             Text("Senior Loan Officer")
                                 .font(.system(.subheadline, design: .rounded).weight(.semibold))
@@ -38,7 +38,7 @@ struct LoanOfficerProfileView: View {
                             
                             Text("Bengaluru Central Branch (ID: BR-492)")
                                 .font(.system(.caption, design: .rounded))
-                                .foregroundColor(.secondary)
+                                .foregroundColor(LMSColors.textSecondary)
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -51,7 +51,7 @@ struct LoanOfficerProfileView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Employee Information")
                             .font(.system(.caption, design: .rounded).bold())
-                            .foregroundColor(.secondary)
+                            .foregroundColor(LMSColors.textSecondary)
                             .padding(.leading, 20)
                         
                         VStack(spacing: 0) {
@@ -72,7 +72,7 @@ struct LoanOfficerProfileView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Contact Information")
                             .font(.system(.caption, design: .rounded).bold())
-                            .foregroundColor(.secondary)
+                            .foregroundColor(LMSColors.textSecondary)
                             .padding(.leading, 20)
                         
                         VStack(spacing: 0) {
@@ -89,7 +89,7 @@ struct LoanOfficerProfileView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Performance & Operations")
                             .font(.system(.caption, design: .rounded).bold())
-                            .foregroundColor(.secondary)
+                            .foregroundColor(LMSColors.textSecondary)
                             .padding(.leading, 20)
                         
                         Grid(horizontalSpacing: 12, verticalSpacing: 12) {
@@ -109,7 +109,7 @@ struct LoanOfficerProfileView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("System Settings")
                             .font(.system(.caption, design: .rounded).bold())
-                            .foregroundColor(.secondary)
+                            .foregroundColor(LMSColors.textSecondary)
                             .padding(.leading, 20)
                         
                         VStack(spacing: 0) {
@@ -126,23 +126,23 @@ struct LoanOfficerProfileView: View {
                                         
                                         Image(systemName: "arrow.left.arrow.right.circle.fill")
                                             .foregroundColor(AppTheme.actionBlue)
-                                            .font(.title3)
+                                            .font(LMSFont.title3)
                                     }
                                     
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("Switch to Borrower Mode")
                                             .font(.system(.subheadline, design: .rounded).bold())
-                                            .foregroundColor(.primary)
+                                            .foregroundColor(LMSColors.textPrimary)
                                         Text("Access simulation client interface")
                                             .font(.system(size: 10))
-                                            .foregroundColor(.secondary)
+                                            .foregroundColor(LMSColors.textSecondary)
                                     }
                                     
                                     Spacer()
                                     
                                     Image(systemName: "chevron.right")
-                                        .font(.caption.bold())
-                                        .foregroundColor(.secondary)
+                                        .font(LMSFont.caption.bold())
+                                        .foregroundColor(LMSColors.textSecondary)
                                 }
                                 .padding(.vertical, 12)
                                 .padding(.horizontal, 16)
@@ -198,11 +198,11 @@ struct ProfileDetailRow: View {
         HStack {
             Text(label)
                 .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundColor(.secondary)
+                .foregroundColor(LMSColors.textSecondary)
             Spacer()
             Text(value)
                 .font(.system(.footnote, design: .rounded).bold())
-                .foregroundColor(.primary)
+                .foregroundColor(LMSColors.textPrimary)
         }
         .padding(.vertical, 14)
         .padding(.horizontal, 16)
@@ -218,7 +218,7 @@ struct MetricBox: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.system(size: 8, weight: .bold, design: .rounded))
-                .foregroundColor(.secondary)
+                .foregroundColor(LMSColors.textSecondary)
             
             Text(value)
                 .font(.system(.title2, design: .rounded).bold())
@@ -226,7 +226,7 @@ struct MetricBox: View {
             
             Text(subtitle)
                 .font(.system(size: 9))
-                .foregroundColor(.secondary)
+                .foregroundColor(LMSColors.textSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)

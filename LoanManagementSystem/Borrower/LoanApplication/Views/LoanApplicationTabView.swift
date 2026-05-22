@@ -70,7 +70,7 @@ struct LoanApplicationTabView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 28)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(LMSColors.background)
             .navigationTitle("Loan Application")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
@@ -186,12 +186,12 @@ private struct LoanDashboardMetricsSection: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Loan Dashboard")
-                    .font(.title3)
+                    .font(LMSFont.title3)
                     .fontWeight(.semibold)
                 Spacer()
                 Text("\(Int(metrics.averageProgress * 100))% Avg Progress")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(LMSFont.caption)
+                    .foregroundColor(LMSColors.textSecondary)
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -200,7 +200,7 @@ private struct LoanDashboardMetricsSection: View {
                         title: "Active Applications",
                         value: "\(metrics.activeApplications)",
                         icon: "clock.badge.checkmark.fill",
-                        tint: .brandNavy
+                        tint: LMSColors.brandNavy
                     )
                     MetricCard(
                         title: "Draft Applications",
@@ -212,19 +212,19 @@ private struct LoanDashboardMetricsSection: View {
                         title: "Approved Loans",
                         value: "\(metrics.approvedLoans)",
                         icon: "checkmark.seal.fill",
-                        tint: .brandEmerald
+                        tint: LMSColors.emerald
                     )
                     MetricCard(
                         title: "Rejected Loans",
                         value: "\(metrics.rejectedLoans)",
                         icon: "xmark.octagon.fill",
-                        tint: .brandCoral
+                        tint: LMSColors.coral
                     )
                     MetricCard(
                         title: "Outstanding Balance",
                         value: metrics.outstandingBalance.formattedAsINR(),
                         icon: "wallet.bifold.fill",
-                        tint: .brandNavy
+                        tint: LMSColors.brandNavy
                     )
                     MetricCard(
                         title: "Upcoming EMIs",
@@ -261,16 +261,16 @@ private struct MetricCard: View {
                 Text(value)
                     .font(.system(.title3, design: .rounded))
                     .fontWeight(.bold)
-                    .foregroundColor(.primary)
+                    .foregroundColor(LMSColors.textPrimary)
                 Text(title)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(LMSFont.caption)
+                    .foregroundColor(LMSColors.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
         .frame(width: 140, alignment: .leading)
         .padding(16)
-        .background(Color(.secondarySystemBackground))
+        .background(LMSColors.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 3)
     }
@@ -283,7 +283,7 @@ private struct DraftApplicationsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Continue Drafts")
-                .font(.headline)
+                .font(LMSFont.headline)
 
             ForEach(drafts) { draft in
                 Button {
@@ -291,26 +291,26 @@ private struct DraftApplicationsSection: View {
                 } label: {
                     HStack(spacing: 12) {
                         Image(systemName: draft.product.type.iconName)
-                            .foregroundColor(.brandNavy)
+                            .foregroundColor(LMSColors.brandNavy)
                             .frame(width: 28, height: 28)
-                            .background(Color.brandNavy.opacity(0.12), in: Circle())
+                            .background(LMSColors.brandNavy.opacity(0.12), in: Circle())
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(draft.product.type.title)
-                                .font(.subheadline)
+                                .font(LMSFont.subheadline)
                                 .fontWeight(.semibold)
-                                .foregroundColor(.primary)
+                                .foregroundColor(LMSColors.textPrimary)
                             Text("Last updated \(draft.updatedAt.formatted(date: .abbreviated, time: .shortened))")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .font(LMSFont.caption)
+                                .foregroundColor(LMSColors.textSecondary)
                         }
                         Spacer()
                         Image(systemName: "chevron.right")
-                            .font(.caption.weight(.semibold))
-                            .foregroundColor(.secondary)
+                            .font(LMSFont.caption.weight(.semibold))
+                            .foregroundColor(LMSColors.textSecondary)
                     }
                     .padding(12)
-                    .background(Color(.secondarySystemBackground))
+                    .background(LMSColors.surfaceElevated)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .buttonStyle(.plain)
@@ -327,26 +327,26 @@ private struct LoanProductCatalogSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Available Loan Products")
-                .font(.headline)
+                .font(LMSFont.headline)
 
             ForEach(products) { product in
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(alignment: .center) {
                         Label(product.type.title, systemImage: product.type.iconName)
-                            .font(.headline)
-                            .foregroundColor(.primary)
+                            .font(LMSFont.headline)
+                            .foregroundColor(LMSColors.textPrimary)
                         Spacer()
                         Text(product.interestRateRange)
-                            .font(.caption.weight(.semibold))
-                            .foregroundColor(.brandNavy)
+                            .font(LMSFont.caption.weight(.semibold))
+                            .foregroundColor(LMSColors.brandNavy)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
-                            .background(Color.brandNavy.opacity(0.10), in: Capsule())
+                            .background(LMSColors.brandNavy.opacity(0.10), in: Capsule())
                     }
 
                     Text(product.shortDescription)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(LMSFont.subheadline)
+                        .foregroundColor(LMSColors.textSecondary)
                         .multilineTextAlignment(.leading)
 
                     VStack(spacing: 8) {
@@ -364,7 +364,7 @@ private struct LoanProductCatalogSection: View {
                                 .frame(height: 42)
                         }
                         .buttonStyle(.bordered)
-                        .tint(.brandNavy)
+                        .tint(LMSColors.brandNavy)
 
                         Button {
                             onQuickStart(product)
@@ -374,11 +374,11 @@ private struct LoanProductCatalogSection: View {
                                 .frame(height: 42)
                         }
                         .buttonStyle(.borderedProminent)
-                        .tint(.brandNavy)
+                        .tint(LMSColors.brandNavy)
                     }
                 }
                 .padding(14)
-                .background(Color(.secondarySystemBackground))
+                .background(LMSColors.surfaceElevated)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
         }
@@ -392,13 +392,13 @@ private struct ProductDataPoint: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Text(label)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(LMSFont.caption)
+                .foregroundColor(LMSColors.textSecondary)
                 .frame(width: 110, alignment: .leading)
             Text(value)
-                .font(.caption)
+                .font(LMSFont.caption)
                 .fontWeight(.medium)
-                .foregroundColor(.primary)
+                .foregroundColor(LMSColors.textPrimary)
                 .multilineTextAlignment(.leading)
             Spacer(minLength: 0)
         }
@@ -411,10 +411,10 @@ private struct ApplicationFilterSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Application Tracking")
-                .font(.headline)
+                .font(LMSFont.headline)
             Text("Filter by status to quickly find and manage your applications.")
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(LMSFont.caption)
+                .foregroundColor(LMSColors.textSecondary)
             Picker("Filter", selection: $selectedFilter) {
                 ForEach(BorrowerApplicationFilter.allCases) { filter in
                     Text(filter.rawValue).tag(filter)
@@ -447,25 +447,25 @@ private struct BorrowerApplicationsSection: View {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
                             Text(application.displayIdentifier)
-                                .font(.caption.monospaced())
-                                .foregroundColor(.secondary)
+                                .font(LMSFont.caption.monospaced())
+                                .foregroundColor(LMSColors.textSecondary)
                             Spacer()
                             StageBadge(stage: application.currentStage)
                         }
 
                         Text(application.product.type.title)
-                            .font(.headline)
-                            .foregroundColor(.primary)
+                            .font(LMSFont.headline)
+                            .foregroundColor(LMSColors.textPrimary)
 
                         HStack(spacing: 16) {
                             Label(application.formData.requestedAmountValue.formattedAsINR(), systemImage: "indianrupeesign.circle")
                             Label(application.submittedAt?.formattedAsDDMMMYYYY() ?? "-", systemImage: "calendar")
                         }
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(LMSFont.caption)
+                        .foregroundColor(LMSColors.textSecondary)
 
                         ProgressView(value: progressProvider(application))
-                            .tint(Color.brandNavy)
+                            .tint(LMSColors.brandNavy)
 
                         HStack(spacing: 10) {
                             Button {
@@ -475,7 +475,7 @@ private struct BorrowerApplicationsSection: View {
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.borderedProminent)
-                            .tint(.brandNavy)
+                            .tint(LMSColors.brandNavy)
 
                             if !application.currentStage.isTerminal {
                                 Menu {
@@ -494,7 +494,7 @@ private struct BorrowerApplicationsSection: View {
                         }
                     }
                     .padding(14)
-                    .background(Color(.secondarySystemBackground))
+                    .background(LMSColors.surfaceElevated)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .contextMenu {
                         if !application.currentStage.isTerminal {
@@ -519,9 +519,9 @@ private struct StageBadge: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: stage.iconName)
-                .font(.caption2.weight(.bold))
+                .font(LMSFont.caption2.weight(.bold))
             Text(stage.rawValue)
-                .font(.caption.weight(.semibold))
+                .font(LMSFont.caption.weight(.semibold))
         }
         .foregroundColor(stage.tintColor)
         .padding(.horizontal, 10)
@@ -540,13 +540,13 @@ private struct LoanOverviewScreen: View {
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 10) {
                     Label(product.type.title, systemImage: product.type.iconName)
-                        .font(.title3.weight(.bold))
+                        .font(LMSFont.title3.weight(.bold))
                     Text(product.shortDescription)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(LMSColors.textSecondary)
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(.secondarySystemBackground))
+                .background(LMSColors.surfaceElevated)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
                 overviewInfoSection
@@ -555,11 +555,11 @@ private struct LoanOverviewScreen: View {
 
                 Button(action: onStartApplication) {
                     Text("Start Application")
-                        .font(.headline)
+                        .font(LMSFont.headline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
-                        .background(Color.brandNavy)
+                        .background(LMSColors.brandNavy)
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 .accessibilityLabel("Start loan application")
@@ -567,7 +567,7 @@ private struct LoanOverviewScreen: View {
             .padding(20)
             .padding(.bottom, 18)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(LMSColors.background)
         .navigationTitle("Loan Overview")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -575,7 +575,7 @@ private struct LoanOverviewScreen: View {
     private var overviewInfoSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Loan Information")
-                .font(.headline)
+                .font(LMSFont.headline)
 
             overviewRow("Purpose", product.purpose)
             overviewRow("Benefits", product.benefits.joined(separator: ", "))
@@ -586,31 +586,31 @@ private struct LoanOverviewScreen: View {
             overviewRow("Processing Fee", product.processingFees)
         }
         .padding(14)
-        .background(Color(.secondarySystemBackground))
+        .background(LMSColors.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private func overviewRow(_ title: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(LMSFont.caption)
+                .foregroundColor(LMSColors.textSecondary)
             Text(value)
-                .font(.subheadline)
+                .font(LMSFont.subheadline)
         }
     }
 
     private var documentsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Required Documents")
-                .font(.headline)
+                .font(LMSFont.headline)
 
             ForEach(BorrowerDocumentCategory.allCases) { category in
                 let categoryDocuments = documents.filter { $0.category == category }
                 if !categoryDocuments.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(category.rawValue)
-                            .font(.subheadline.weight(.semibold))
+                            .font(LMSFont.subheadline.weight(.semibold))
 
                         ForEach(categoryDocuments) { document in
                             HStack(alignment: .top, spacing: 10) {
@@ -619,47 +619,47 @@ private struct LoanOverviewScreen: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(document.name)
                                     Text("Upload: \(document.status.uploadStatusText) • Verification: \(document.status.verificationStatusText)")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .font(LMSFont.caption)
+                                        .foregroundColor(LMSColors.textSecondary)
                                     Text("Last updated: \(document.lastUpdated?.formattedAsDDMMMYYYY() ?? "Not updated")")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
+                                        .font(LMSFont.caption2)
+                                        .foregroundColor(LMSColors.textSecondary)
                                 }
                                 Spacer()
                             }
                         }
                     }
                     .padding(12)
-                    .background(Color(.systemBackground))
+                    .background(LMSColors.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
             }
         }
         .padding(14)
-        .background(Color(.secondarySystemBackground))
+        .background(LMSColors.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private var faqSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Frequently Asked Questions")
-                .font(.headline)
+                .font(LMSFont.headline)
 
             ForEach(product.faqs) { faq in
                 VStack(alignment: .leading, spacing: 6) {
                     Text(faq.question)
-                        .font(.subheadline.weight(.semibold))
+                        .font(LMSFont.subheadline.weight(.semibold))
                     Text(faq.answer)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(LMSFont.subheadline)
+                        .foregroundColor(LMSColors.textSecondary)
                 }
                 .padding(12)
-                .background(Color(.systemBackground))
+                .background(LMSColors.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
         }
         .padding(14)
-        .background(Color(.secondarySystemBackground))
+        .background(LMSColors.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
@@ -676,21 +676,21 @@ private struct LoanApplicationFormScreen: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         Text("Form Progress")
-                            .font(.subheadline.weight(.semibold))
+                            .font(LMSFont.subheadline.weight(.semibold))
                         Spacer()
                         Text("\(Int(viewModel.formCompletionRatio * 100))%")
-                            .font(.caption.weight(.semibold))
-                            .foregroundColor(.secondary)
+                            .font(LMSFont.caption.weight(.semibold))
+                            .foregroundColor(LMSColors.textSecondary)
                     }
                     ProgressView(value: viewModel.formCompletionRatio)
-                        .tint(.brandNavy)
+                        .tint(LMSColors.brandNavy)
                     Text("Draft auto-saves as you type.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(LMSFont.caption)
+                        .foregroundColor(LMSColors.textSecondary)
                     if let lastSaved = viewModel.lastDraftSavedAt {
                         Text("Last saved \(lastSaved.formatted(date: .abbreviated, time: .shortened))")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .font(LMSFont.caption2)
+                            .foregroundColor(LMSColors.textSecondary)
                     }
                 }
             }
@@ -802,12 +802,12 @@ private struct LoanApplicationFormScreen: View {
                 if let product = viewModel.selectedProduct {
                     infoLabelRow("Interest Rate", .interestRate) {
                         Text(product.interestRateRange)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(LMSColors.textSecondary)
                     }
 
                     infoLabelRow("Processing Fee", .processingFee) {
                         Text(product.processingFees)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(LMSColors.textSecondary)
                     }
                 }
             } header: {
@@ -836,7 +836,7 @@ private struct LoanApplicationFormScreen: View {
                 Section("Validation Warnings") {
                     ForEach(viewModel.formValidationErrors, id: \.self) { error in
                         Label(error, systemImage: "exclamationmark.triangle.fill")
-                            .font(.caption)
+                            .font(LMSFont.caption)
                             .foregroundColor(.orange)
                     }
                 }
@@ -850,7 +850,7 @@ private struct LoanApplicationFormScreen: View {
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(.brandNavy)
+                .tint(LMSColors.brandNavy)
                 .disabled(!viewModel.formValidationErrors.isEmpty)
             }
         }
@@ -874,8 +874,8 @@ private struct LoanApplicationFormScreen: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(title)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(LMSFont.caption)
+                    .foregroundColor(LMSColors.textSecondary)
                 Spacer()
                 Button {
                     viewModel.presentInfo(for: topic)
@@ -883,7 +883,7 @@ private struct LoanApplicationFormScreen: View {
                     Image(systemName: "info.circle")
                 }
                 .buttonStyle(.plain)
-                .foregroundColor(.brandNavy)
+                .foregroundColor(LMSColors.brandNavy)
                 .accessibilityLabel("About \(title)")
             }
             content()
@@ -897,7 +897,7 @@ private struct FieldErrorView: View {
     var body: some View {
         if let message {
             Text(message)
-                .font(.caption2)
+                .font(LMSFont.caption2)
                 .foregroundColor(.orange)
         }
     }
@@ -914,15 +914,15 @@ private struct LoanDocumentUploadScreen: View {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Document Upload & Verification")
-                        .font(.headline)
+                        .font(LMSFont.headline)
                     Text("\(viewModel.verifiedDocumentsCount) of \(viewModel.documents.count) documents verified")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(LMSFont.caption)
+                        .foregroundColor(LMSColors.textSecondary)
                     ProgressView(value: viewModel.documents.isEmpty ? 0 : Double(viewModel.verifiedDocumentsCount) / Double(viewModel.documents.count))
-                        .tint(.brandNavy)
+                        .tint(LMSColors.brandNavy)
                 }
                 .padding(14)
-                .background(Color(.secondarySystemBackground))
+                .background(LMSColors.surfaceElevated)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
                 uploadSourceSection
@@ -932,7 +932,7 @@ private struct LoanDocumentUploadScreen: View {
                     if !categoryDocs.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
                             Text(category.rawValue)
-                                .font(.subheadline.weight(.semibold))
+                                .font(LMSFont.subheadline.weight(.semibold))
 
                             ForEach(categoryDocs) { document in
                                 DocumentRequirementCard(
@@ -954,7 +954,7 @@ private struct LoanDocumentUploadScreen: View {
                             }
                         }
                         .padding(14)
-                        .background(Color(.secondarySystemBackground))
+                        .background(LMSColors.surfaceElevated)
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                 }
@@ -962,11 +962,11 @@ private struct LoanDocumentUploadScreen: View {
                 if !viewModel.missingDocumentNames.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Label("Action Required", systemImage: "exclamationmark.triangle.fill")
-                            .font(.subheadline.weight(.semibold))
+                            .font(LMSFont.subheadline.weight(.semibold))
                             .foregroundColor(.orange)
                         Text(viewModel.missingDocumentNames.joined(separator: ", "))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(LMSFont.caption)
+                            .foregroundColor(LMSColors.textSecondary)
                     }
                     .padding(12)
                     .background(Color.orange.opacity(0.12))
@@ -978,19 +978,19 @@ private struct LoanDocumentUploadScreen: View {
                         viewModel.runBulkVerification()
                     }
                     .buttonStyle(.bordered)
-                    .tint(.brandNavy)
+                    .tint(LMSColors.brandNavy)
 
                     Button("Continue to Review") {
                         onContinue()
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(.brandNavy)
+                    .tint(LMSColors.brandNavy)
                 }
             }
             .padding(20)
             .padding(.bottom, 20)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(LMSColors.background)
         .navigationTitle("Verify Documents")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $previewDocument) { document in
@@ -1002,7 +1002,7 @@ private struct LoanDocumentUploadScreen: View {
     private var uploadSourceSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Upload Methods")
-                .font(.subheadline.weight(.semibold))
+                .font(LMSFont.subheadline.weight(.semibold))
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                 ForEach(BorrowerDocumentUploadSource.allCases) { source in
@@ -1012,15 +1012,15 @@ private struct LoanDocumentUploadScreen: View {
                         HStack(spacing: 8) {
                             Image(systemName: source.iconName)
                             Text(source.rawValue)
-                                .font(.caption.weight(.semibold))
+                                .font(LMSFont.caption.weight(.semibold))
                                 .lineLimit(1)
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 44)
-                        .foregroundColor(viewModel.selectedUploadSource == source ? .white : .brandNavy)
+                        .foregroundColor(viewModel.selectedUploadSource == source ? .white : LMSColors.brandNavy)
                         .background(
                             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(viewModel.selectedUploadSource == source ? Color.brandNavy : Color.brandNavy.opacity(0.12))
+                                .fill(viewModel.selectedUploadSource == source ? LMSColors.brandNavy : LMSColors.brandNavy.opacity(0.12))
                         )
                     }
                     .buttonStyle(.plain)
@@ -1028,11 +1028,11 @@ private struct LoanDocumentUploadScreen: View {
             }
 
             Text("Drag & Drop is best on iPad and larger screens.")
-                .font(.caption2)
-                .foregroundColor(.secondary)
+                .font(LMSFont.caption2)
+                .foregroundColor(LMSColors.textSecondary)
         }
         .padding(14)
-        .background(Color(.secondarySystemBackground))
+        .background(LMSColors.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
@@ -1061,22 +1061,22 @@ private struct DocumentRequirementCard: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(document.name)
-                        .font(.subheadline.weight(.semibold))
+                        .font(LMSFont.subheadline.weight(.semibold))
                     Text("Upload: \(document.status.uploadStatusText)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(LMSFont.caption)
+                        .foregroundColor(LMSColors.textSecondary)
                     Text("Verification: \(document.status.verificationStatusText)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(LMSFont.caption)
+                        .foregroundColor(LMSColors.textSecondary)
                     Text("Last updated: \(document.lastUpdated?.formattedAsDDMMMYYYY() ?? "Not updated")")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .font(LMSFont.caption2)
+                        .foregroundColor(LMSColors.textSecondary)
                 }
                 Spacer()
                 HStack(spacing: 6) {
                     Image(systemName: document.status.iconName)
                     Text(document.status.rawValue)
-                        .font(.caption2.weight(.semibold))
+                        .font(LMSFont.caption2.weight(.semibold))
                 }
                 .foregroundColor(document.status.tintColor)
                 .padding(.horizontal, 10)
@@ -1095,7 +1095,7 @@ private struct DocumentRequirementCard: View {
                         onUpload()
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(.brandNavy)
+                    .tint(LMSColors.brandNavy)
 
                     Button("Verify") {
                         onMarkForVerification()
@@ -1103,17 +1103,17 @@ private struct DocumentRequirementCard: View {
                     .buttonStyle(.bordered)
                 } else {
                     Label("Locked", systemImage: "lock.fill")
-                        .font(.caption.weight(.semibold))
-                        .foregroundColor(.secondary)
+                        .font(LMSFont.caption.weight(.semibold))
+                        .foregroundColor(LMSColors.textSecondary)
                 }
             }
 
             Text("Selected source: \(selectedUploadSource.rawValue)")
-                .font(.caption2)
-                .foregroundColor(.secondary)
+                .font(LMSFont.caption2)
+                .foregroundColor(LMSColors.textSecondary)
         }
         .padding(12)
-        .background(Color(.systemBackground))
+        .background(LMSColors.surface)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .contextMenu {
             if !document.isLocked {
@@ -1134,17 +1134,17 @@ private struct DocumentPreviewSheet: View {
         VStack(spacing: 16) {
             Image(systemName: "doc.text.image.fill")
                 .font(.system(size: 50))
-                .foregroundColor(.brandNavy)
+                .foregroundColor(LMSColors.brandNavy)
             Text(document.name)
-                .font(.headline)
+                .font(LMSFont.headline)
             Text(document.fileName ?? "No file uploaded yet")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(LMSFont.subheadline)
+                .foregroundColor(LMSColors.textSecondary)
             Text("Uploaded: \(document.uploadDate?.formattedAsDDMMMYYYY() ?? "Not uploaded")")
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(LMSFont.caption)
+                .foregroundColor(LMSColors.textSecondary)
             Text("Verification: \(document.status.rawValue)")
-                .font(.caption.weight(.semibold))
+                .font(LMSFont.caption.weight(.semibold))
                 .foregroundColor(document.status.tintColor)
         }
         .padding(24)
@@ -1162,27 +1162,27 @@ private struct LoanApplicationReviewScreen: View {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     Text("Pre-Submission Review")
-                        .font(.headline)
+                        .font(LMSFont.headline)
                     Spacer()
                     if let product = viewModel.selectedProduct {
                         Text(product.type.title)
-                            .font(.caption.weight(.semibold))
-                            .foregroundColor(.brandNavy)
+                            .font(LMSFont.caption.weight(.semibold))
+                            .foregroundColor(LMSColors.brandNavy)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
-                            .background(Color.brandNavy.opacity(0.12), in: Capsule())
+                            .background(LMSColors.brandNavy.opacity(0.12), in: Capsule())
                     }
                 }
 
                 if !viewModel.preSubmissionWarnings.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Label("Warnings", systemImage: "exclamationmark.triangle.fill")
-                            .font(.subheadline.weight(.semibold))
+                            .font(LMSFont.subheadline.weight(.semibold))
                             .foregroundColor(.orange)
                         ForEach(viewModel.preSubmissionWarnings, id: \.self) { warning in
                             Text("• \(warning)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .font(LMSFont.caption)
+                                .foregroundColor(LMSColors.textSecondary)
                         }
                     }
                     .padding(14)
@@ -1222,18 +1222,18 @@ private struct LoanApplicationReviewScreen: View {
                                 Text(document.name)
                                 Spacer()
                                 Text(document.status.rawValue)
-                                    .font(.caption2.weight(.semibold))
+                                    .font(LMSFont.caption2.weight(.semibold))
                                     .foregroundColor(document.status.tintColor)
                             }
-                            .font(.caption)
+                            .font(LMSFont.caption)
                         }
                     }
 
                     reviewCard("Eligibility Summary") {
                         ForEach(viewModel.eligibilitySummary, id: \.self) { line in
                             Label(line, systemImage: "checkmark.circle")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .font(LMSFont.caption)
+                                .foregroundColor(LMSColors.textSecondary)
                         }
                     }
                 }
@@ -1243,38 +1243,38 @@ private struct LoanApplicationReviewScreen: View {
                         onEditForm()
                     }
                     .buttonStyle(.bordered)
-                    .tint(.brandNavy)
+                    .tint(LMSColors.brandNavy)
 
                     Button("Edit Documents") {
                         onEditDocuments()
                     }
                     .buttonStyle(.bordered)
-                    .tint(.brandNavy)
+                    .tint(LMSColors.brandNavy)
                 }
 
                 Button {
                     onSubmit()
                 } label: {
                     Text("Submit Application")
-                        .font(.headline)
+                        .font(LMSFont.headline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
-                        .background(viewModel.canSubmitApplication ? Color.brandNavy : Color.gray)
+                        .background(viewModel.canSubmitApplication ? LMSColors.brandNavy : Color.gray)
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 .disabled(!viewModel.canSubmitApplication)
 
                 if !viewModel.canSubmitApplication {
                     Text("Resolve warnings and ensure all documents are verified to submit.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(LMSFont.caption)
+                        .foregroundColor(LMSColors.textSecondary)
                 }
             }
             .padding(20)
             .padding(.bottom, 24)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(LMSColors.background)
         .navigationTitle("Review")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -1282,23 +1282,23 @@ private struct LoanApplicationReviewScreen: View {
     private func reviewCard<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.subheadline.weight(.semibold))
+                .font(LMSFont.subheadline.weight(.semibold))
             content()
         }
         .padding(14)
-        .background(Color(.secondarySystemBackground))
+        .background(LMSColors.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private func reviewRow(_ title: String, _ value: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Text(title)
-                .foregroundColor(.secondary)
+                .foregroundColor(LMSColors.textSecondary)
             Spacer()
             Text(value.isEmpty ? "-" : value)
                 .multilineTextAlignment(.trailing)
         }
-        .font(.caption)
+        .font(LMSFont.caption)
     }
 }
 
@@ -1319,24 +1319,24 @@ private struct LoanApplicationTrackingScreen: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Text(application.displayIdentifier)
-                                .font(.caption.monospaced())
-                                .foregroundColor(.secondary)
+                                .font(LMSFont.caption.monospaced())
+                                .foregroundColor(LMSColors.textSecondary)
                             Spacer()
                             StageBadge(stage: application.currentStage)
                         }
                         Text(application.product.type.title)
-                            .font(.title3.weight(.semibold))
+                            .font(LMSFont.title3.weight(.semibold))
                         HStack(spacing: 14) {
                             Label(application.formData.requestedAmountValue.formattedAsINR(), systemImage: "indianrupeesign.circle.fill")
                             Label(application.submittedAt?.formattedAsDDMMMYYYY() ?? "-", systemImage: "calendar")
                         }
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(LMSFont.caption)
+                        .foregroundColor(LMSColors.textSecondary)
                         ProgressView(value: viewModel.progressValue(for: application))
-                            .tint(.brandNavy)
+                            .tint(LMSColors.brandNavy)
                     }
                     .padding(14)
-                    .background(Color(.secondarySystemBackground))
+                    .background(LMSColors.surfaceElevated)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
                     timelineSection(application: application)
@@ -1353,7 +1353,7 @@ private struct LoanApplicationTrackingScreen: View {
                                 viewModel.advanceStage(for: application.id)
                             }
                             .buttonStyle(.borderedProminent)
-                            .tint(.brandNavy)
+                            .tint(LMSColors.brandNavy)
 
                             Button("Mark Rejected") {
                                 viewModel.rejectApplication(application.id)
@@ -1366,7 +1366,7 @@ private struct LoanApplicationTrackingScreen: View {
                 .padding(20)
                 .padding(.bottom, 24)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(LMSColors.background)
             .navigationTitle("Application Tracking")
             .navigationBarTitleDisplayMode(.inline)
         } else {
@@ -1377,7 +1377,7 @@ private struct LoanApplicationTrackingScreen: View {
     private func timelineSection(application: BorrowerLoanApplication) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Status Timeline")
-                .font(.headline)
+                .font(LMSFont.headline)
 
             let stages = viewModel.timelineStages(for: application)
             ForEach(Array(stages.enumerated()), id: \.offset) { index, stage in
@@ -1401,10 +1401,10 @@ private struct LoanApplicationTrackingScreen: View {
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(stage.rawValue)
-                            .font(.subheadline.weight(state == .current ? .bold : .regular))
+                            .font(LMSFont.subheadline.weight(state == .current ? .bold : .regular))
                         Text(viewModel.stageTimestamp(for: stage, application: application)?.formattedAsDDMMMYYYY() ?? "Pending")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .font(LMSFont.caption2)
+                            .foregroundColor(LMSColors.textSecondary)
                     }
 
                     Spacer()
@@ -1412,7 +1412,7 @@ private struct LoanApplicationTrackingScreen: View {
             }
         }
         .padding(14)
-        .background(Color(.secondarySystemBackground))
+        .background(LMSColors.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
@@ -1435,9 +1435,9 @@ private struct LoanApplicationTrackingScreen: View {
     private func timelineColor(for state: TimelineNodeState) -> Color {
         switch state {
         case .completed:
-            return .brandEmerald
+            return LMSColors.emerald
         case .current:
-            return .brandNavy
+            return LMSColors.brandNavy
         case .pending:
             return Color(.systemGray3)
         }
@@ -1457,23 +1457,23 @@ private struct LoanApplicationTrackingScreen: View {
     private func reviewCard<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.subheadline.weight(.semibold))
+                .font(LMSFont.subheadline.weight(.semibold))
             content()
         }
         .padding(14)
-        .background(Color(.secondarySystemBackground))
+        .background(LMSColors.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private func reviewRow(_ title: String, _ value: String) -> some View {
         HStack {
             Text(title)
-                .foregroundColor(.secondary)
+                .foregroundColor(LMSColors.textSecondary)
             Spacer()
             Text(value)
                 .multilineTextAlignment(.trailing)
         }
-        .font(.caption)
+        .font(LMSFont.caption)
     }
 }
 
@@ -1485,32 +1485,32 @@ private struct ContextHelpSheetView: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     Text(item.title)
-                        .font(.title3.weight(.bold))
+                        .font(LMSFont.title3.weight(.bold))
                     Spacer()
                     Image(systemName: "info.circle.fill")
-                        .foregroundColor(.brandNavy)
+                        .foregroundColor(LMSColors.brandNavy)
                 }
 
                 Text(item.explanation)
-                    .font(.body)
-                    .foregroundColor(.secondary)
+                    .font(LMSFont.body)
+                    .foregroundColor(LMSColors.textSecondary)
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Examples")
-                        .font(.headline)
+                        .font(LMSFont.headline)
                     ForEach(item.examples, id: \.self) { example in
                         Label(example, systemImage: "checkmark.circle")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .font(LMSFont.subheadline)
+                            .foregroundColor(LMSColors.textSecondary)
                     }
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Tip")
-                        .font(.headline)
+                        .font(LMSFont.headline)
                     Text(item.recommendation)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(LMSFont.subheadline)
+                        .foregroundColor(LMSColors.textSecondary)
                 }
             }
             .padding(20)

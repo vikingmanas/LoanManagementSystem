@@ -26,7 +26,7 @@ struct ActivityFeedRow: View {
                         .frame(width: 8, height: 8)
                         .overlay(
                             Circle()
-                                .stroke(Color(.systemBackground), lineWidth: 1.5)
+                                .stroke(LMSColors.surface, lineWidth: 1.5)
                         )
                         .offset(x: 2, y: -2)
                 }
@@ -37,20 +37,20 @@ struct ActivityFeedRow: View {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(item.borrowerName)
                         .font(.system(.callout, design: .rounded).bold())
-                        .foregroundColor(.primary)
+                        .foregroundColor(LMSColors.textPrimary)
                     
                     Text("·")
                         .font(.system(.caption, design: .rounded))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(LMSColors.textSecondary)
                     
                     Text(item.loanType)
                         .font(.system(.caption, design: .rounded).weight(.semibold))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(LMSColors.textSecondary)
                 }
                 
                 Text(item.eventDescription)
                     .font(.system(.caption, design: .rounded))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(LMSColors.textSecondary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 

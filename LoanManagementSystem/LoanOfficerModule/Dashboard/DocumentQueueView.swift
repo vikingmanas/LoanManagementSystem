@@ -12,7 +12,7 @@ struct DocumentQueueView: View {
                 HStack(spacing: 8) {
                     Text("Document Queue")
                         .font(.system(.subheadline, design: .rounded).bold())
-                        .foregroundColor(.primary)
+                        .foregroundColor(LMSColors.textPrimary)
                     
                     Text("\(viewModel.pendingDocumentCount) Pending")
                         .font(.system(.caption2, design: .rounded).bold())
@@ -89,11 +89,11 @@ struct DocumentStatusRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.borrowerName)
                     .font(.system(.caption, design: .rounded).bold())
-                    .foregroundColor(.primary)
+                    .foregroundColor(LMSColors.textPrimary)
                 
                 Text(item.docType.rawValue)
                     .font(.system(.caption2, design: .rounded).weight(.semibold))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(LMSColors.textSecondary)
             }
             
             Spacer()
