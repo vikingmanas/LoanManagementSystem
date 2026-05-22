@@ -303,4 +303,10 @@ struct HapticsManager {
         generator.prepare()
         generator.impactOccurred()
     }
+    
+    static func triggerNotification(type: UINotificationFeedbackGenerator.FeedbackType) {
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        generator.notificationOccurred(type)
+    }
 }
