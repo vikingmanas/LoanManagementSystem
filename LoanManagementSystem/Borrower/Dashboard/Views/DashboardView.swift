@@ -34,90 +34,116 @@ public struct DashboardView: View {
     
     public var body: some View {
         NavigationStack(path: $navigationPath) {
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: LMSSpacing.sectionGap) {
-
-                    // 1. CUSTOMER INSIGHT & COMPLETION
-                    if let profile = BorrowerProfileStore.shared.profile {
-                        VStack(spacing: 12) {
-                            if profile.profileCompletionPercentage < 100 {
-                                ProfileCompletionBanner(percentage: profile.profileCompletionPercentage) {
-                                    showingProfileSheet = true
-                                }
-                                .padding(.horizontal, LMSSpacing.screenHorizontal)
-                            }
-                            
-                            if profile.hasExistingBankAccount, profile.existingCustomerId != nil {
-                                CustomerInsightCardView(profile: profile)
-                                    .padding(.horizontal, LMSSpacing.screenHorizontal)
-                            }
+            VStack(spacing: 0) {
+                // 0. CUSTOM TOP BAR (HStack showing navigation title 'Dashboard' and notification/profile toolbar)
+                HStack(alignment: .center) {
+                    Text("Dashboard")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(LMSColors.brandNavy)
+                    
+                    Spacer()
+                    
+                    // Notification & Profile Toolbar Pill
+                    HStack(spacing: 12) {
+                        Button {
+                            tabRouter.select(.history)
+                        } label: {
+                            Image(systemName: "bell.fill")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(LMSColors.brandNavy)
+                                .frame(width: 36, height: 36)
                         }
-                        .padding(.bottom, 4)
+                        .buttonStyle(LMSPressableStyle())
+                        .accessibilityLabel("Notifications")
+
+                        Button {
+                            showingProfileSheet = true
+                        } label: {
+                            DashboardAvatar(
+                                initials: dashboardInitials(
+                                    viewModel: viewModel,
+                                    authManager: authManager
+                                )
+                            )
+                        }
+                        .buttonStyle(LMSPressableStyle())
+                        .accessibilityLabel("Profile")
                     }
-                    
-                    // 2. PORTFOLIO CARDS
-                    PortfolioCardsSection(viewModel: viewModel) { route in
-                        navigationPath.append(route)
-                    }
-                    
-                    // 2b. ACCOUNT HEALTH BANNER (Moved here below Portfolio)
-                    AccountHealthBanner(viewModel: viewModel)
-                    
-                    // 3. QUICK ACTION CHIPS
-                    QuickActionChipsSection(
-                        onPay: { showingQuickPaySheet = true },
-                        onStatement: { showingStatementSheet = true },
-                        onForeclosure: { showingForeclosureSheet = true },
-                        onSupport: { showingSupportSheet = true },
-                        onTopUp: { showingTopUpSheet = true }
+                    .padding(.leading, 12)
+                    .padding(.trailing, 6)
+                    .padding(.vertical, 6)
+                    .background(LMSColors.surface, in: Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(LMSColors.separatorLight, lineWidth: 0.5)
                     )
-                    
-                    // 4. EMI TRACKER SECTION
-                    EMITrackerView(viewModel: viewModel) {
-                        viewModel.payNextEMI()
-                    } onViewAllPendingTap: {
-                        navigationPath.append(DashboardRoute.allPendingEMIs)
-                    }
-                    
-                    // 6. GOVERNMENT SCHEMES SECTION
-                    GovernmentSchemesSection(viewModel: viewModel) { scheme in
-                        navigationPath.append(DashboardRoute.schemeDetails(scheme))
-                    }
-                    
+                    .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 3)
                 }
-                .padding(.top, LMSSpacing.sm)
-                .padding(.bottom, LMSSpacing.xxl)
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+                .padding(.top, 12)
+                .padding(.bottom, 12)
+                .background(LMSColors.background) // match screen background
+
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: LMSSpacing.sectionGap) {
+
+                        // 1. CUSTOMER INSIGHT & COMPLETION
+                        if let profile = BorrowerProfileStore.shared.profile {
+                            VStack(spacing: 12) {
+                                if profile.profileCompletionPercentage < 100 {
+                                    ProfileCompletionBanner(percentage: profile.profileCompletionPercentage) {
+                                        showingProfileSheet = true
+                                    }
+                                    .padding(.horizontal, LMSSpacing.screenHorizontal)
+                                }
+                                
+                                if profile.hasExistingBankAccount, profile.existingCustomerId != nil {
+                                    CustomerInsightCardView(profile: profile)
+                                        .padding(.horizontal, LMSSpacing.screenHorizontal)
+                                }
+                            }
+                            .padding(.bottom, 4)
+                        }
+                        
+                        // 2. PORTFOLIO CARDS
+                        PortfolioCardsSection(viewModel: viewModel) { route in
+                            navigationPath.append(route)
+                        }
+                        
+                        // 2b. ACCOUNT HEALTH BANNER (Moved here below Portfolio)
+                        AccountHealthBanner(viewModel: viewModel)
+                        
+                        // 3. QUICK ACTION CHIPS
+                        QuickActionChipsSection(
+                            onPay: { showingQuickPaySheet = true },
+                            onStatement: { showingStatementSheet = true },
+                            onForeclosure: { showingForeclosureSheet = true },
+                            onSupport: { showingSupportSheet = true },
+                            onTopUp: { showingTopUpSheet = true }
+                        )
+                        
+                        // 4. EMI TRACKER SECTION
+                        EMITrackerView(viewModel: viewModel) {
+                            viewModel.payNextEMI()
+                        } onViewAllPendingTap: {
+                            navigationPath.append(DashboardRoute.allPendingEMIs)
+                        }
+                        
+                        // 6. GOVERNMENT SCHEMES SECTION
+                        GovernmentSchemesSection(viewModel: viewModel) { scheme in
+                            navigationPath.append(DashboardRoute.schemeDetails(scheme))
+                        }
+                        
+                    }
+                    .padding(.top, LMSSpacing.sm)
+                    .padding(.bottom, LMSSpacing.xxl)
+                }
+                .refreshable {
+                    await viewModel.fetchDashboardData()
+                }
             }
             .lmsScreenBackground()
-            .navigationTitle(greetingTitle)
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    FintechToolbarButton(
-                        systemName: "bell.fill",
-                        showsBadge: false
-                    ) {
-                        tabRouter.select(.history)
-                    }
-                    .accessibilityLabel("Notifications")
-
-                    Button {
-                        showingProfileSheet = true
-                    } label: {
-                        DashboardAvatar(
-                            initials: dashboardInitials(
-                                viewModel: viewModel,
-                                authManager: authManager
-                            )
-                        )
-                    }
-                    .buttonStyle(LMSPressableStyle())
-                    .accessibilityLabel("Profile")
-                }
-            }
-            .refreshable {
-                await viewModel.fetchDashboardData()
-            }
+            .hideNavigationBar()
             .task {
                 await viewModel.fetchDashboardData()
             }
@@ -322,15 +348,10 @@ struct PortfolioCardsSection: View {
     @State private var showingPlaceholderAlert = false
     
     var body: some View {
-        SectionContainer(title: "My Portfolio", subtitle: "Loans, linked bank accounts, and protection cover") {
-            FintechSectionLink(title: "See All") {
-                showingPlaceholderAlert = true
-            }
-            .alert("Coming Soon", isPresented: $showingPlaceholderAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text("This feature is currently under development.")
-            }
+        SectionContainer(title: "My Portfolio") {
+//            FintechSectionLink(title: "See All") {
+//                showingPlaceholderAlert = true
+//            }
         } content: {
             PortfolioCarouselView(
                 viewModel: viewModel,

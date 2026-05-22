@@ -79,7 +79,7 @@ public struct PortfolioCarouselView: View {
     public var body: some View {
         GeometryReader { proxy in
             let screenWidth = proxy.size.width
-            let cardWidth = screenWidth - (LMSSpacing.screenHorizontal * 2)
+            let cardWidth = screenWidth
             
             VStack(spacing: LMSSpacing.md) {
                 if viewModel.isLoading {
@@ -311,16 +311,6 @@ struct BankAccountCardRefined: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
         .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 6)
-        .overlay(
-            Group {
-                if isLowBalance {
-                    Rectangle()
-                        .fill(LMSColors.coral)
-                        .frame(height: 3)
-                }
-            },
-            alignment: .bottom
-        )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(account.accountType.displayName). Account ending \(account.accountNumber.suffix(4)). Current balance \(account.availableBalance.formattedAsINR()).\(isLowBalance ? " Warning: Low balance." : "")")
     }

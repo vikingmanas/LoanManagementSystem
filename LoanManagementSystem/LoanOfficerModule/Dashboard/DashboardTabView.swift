@@ -7,6 +7,7 @@ struct DashboardTabView: View {
     // Callbacks to bubble up user actions to the main dashboard container
     var onDocumentSeeAllTapped: () -> Void
     var onManagerRespondTapped: (LoanApplication) -> Void
+    var onQuickActionTapped: (String) -> Void
     
     // Local Sheet presentation states
     @State private var showingPortfolioMetrics = false
@@ -57,11 +58,19 @@ struct DashboardTabView: View {
                         .id("doc_queue")
                         .padding(.horizontal, 16)
                         
-                        // SECTION E — LOANS PROCESSED TO MANAGER
-                        ProcessedLoansView(viewModel: viewModel) { app in
-                            onManagerRespondTapped(app)
-                        }
-                        .id("manager_loans")
+                        // SECTION E — QUICK OPERATIONAL ACTIONS
+                        OfficerQuickActionsView(
+                            onVerifyDocs: {
+                                onQuickActionTapped("verify_docs")
+                            },
+                            onReports: {
+                                onQuickActionTapped("reports")
+                            },
+                            onEscalate: {
+                                onQuickActionTapped("escalate")
+                            }
+                        )
+                        .id("quick_actions")
                         .padding(.horizontal, 16)
                     }
                     .padding(.top, 16)

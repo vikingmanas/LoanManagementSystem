@@ -25,6 +25,19 @@ struct LoanApplicationTabView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
+                // Custom Top Bar (HorizontalStack)
+                HStack(alignment: .center) {
+                    Text("Loans")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(LMSColors.brandNavy)
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
+                .background(Color(.systemGroupedBackground))
+
                 // Segmented Control
                 Picker("", selection: $viewModel.selectedSegment) {
                     ForEach(LoanHubSegment.allCases) { segment in
@@ -49,8 +62,7 @@ struct LoanApplicationTabView: View {
                 }
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Loans")
-            .navigationBarTitleDisplayMode(.large)
+            .hideNavigationBar()
             .navigationDestination(for: LoanApplicationRoute.self) { route in
                 switch route {
                 case .overview(let productID):
