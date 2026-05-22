@@ -9,7 +9,7 @@ struct MainTabView: View {
                     Text("Dashboard")
                 }
 
-            LoanApplicationTabView()
+            LoanApplicationTabView(viewModel: LoanApplicationViewModel())
                 .tabItem {
                     Image(systemName: "doc.text.magnifyingglass")
                     Text("Loans")

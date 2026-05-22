@@ -174,6 +174,11 @@ struct ContentView: View {
     }
 
     private func handleUserAuthenticationStateChange() {
+        // If a staff member is already authenticated locally via dummy credentials, do not log them out
+        if appState.selectedRole != .customer && appState.isAuthenticated {
+            return
+        }
+
         guard authManager.isAuthenticated, let user = authManager.currentUser else {
             // Clean up session if not authenticated
             if appState.selectedRole != .customer {
