@@ -1,6 +1,5 @@
 import SwiftUI
-import FirebaseAuth
-import FirebaseFirestore
+import Supabase
 
 struct OnboardingQuestionnaireView: View {
     @EnvironmentObject private var authManager: AuthManager
@@ -483,7 +482,7 @@ struct OnboardingQuestionnaireView: View {
                 return
             }
             
-            // Validate & save step 1 professional details to Firestore
+            // Validate & save step 1 professional details to local cache / Supabase
             isLoading = true
             Task {
                 let success = await saveProfessionalDetails()
@@ -560,107 +559,88 @@ struct OnboardingQuestionnaireView: View {
     }
     
     private func saveProfessionalDetails() async -> Bool {
-        guard let user = Auth.auth().currentUser else {
-            showError("Authentication session not found.")
-            return false
+        let email = authManager.userEmail ?? ""
+        let name = authManager.userDisplayName
+        var currentProfile = await profileStore.ensureProfile(email: email, name: name)
+        
+        currentProfile.occupation = occupation
+        currentProfile.employment = EmploymentInfo(
+            employmentType: employmentType,
+            companyName: companyName,
+            designation: occupation,
+            workExperienceYears: Int(yearsOfExperience) ?? 0,
+            employerAddress: currentProfile.employment.employerAddress
+        )
+        currentProfile.industry = industry
+        currentProfile.yearsOfExperience = Int(yearsOfExperience) ?? 0
+        currentProfile.income = IncomeInfo(
+            monthlyIncome: Double(monthlyIncome) ?? 0,
+            annualIncome: Double(annualIncome) ?? 0,
+            existingEMIs: currentProfile.income.existingEMIs,
+            creditScore: currentProfile.income.creditScore,
+            incomeSource: employmentType
+        )
+        
+        await MainActor.run {
+            profileStore.profile = currentProfile
         }
         
-        let db = Firestore.firestore()
-        let docRef = db.collection("users")
-            .document(user.uid)
-            .collection("onboarding")
-            .document("professionalDetails")
-        
-        let data: [String: Any] = [
-            "employmentType": employmentType,
-            "occupation": occupation,
-            "companyName": companyName,
-            "industry": industry,
-            "yearsOfExperience": Int(yearsOfExperience) ?? 0,
-            "monthlyIncome": Double(monthlyIncome) ?? 0.0,
-            "annualIncome": Double(annualIncome) ?? 0.0,
-            "onboardingStep": 1,
-            "completed": true,
-            "updatedAt": FieldValue.serverTimestamp()
-        ]
-        
-        do {
-            try await docRef.setData(data)
-            return true
-        } catch {
-            showError("Failed to save professional details: \(error.localizedDescription)")
-            return false
-        }
+        return true
     }
     
     private func saveFinancialDetailsAndComplete() async -> Bool {
-        guard let user = Auth.auth().currentUser else {
+        guard let session = try? await SupabaseManager.shared.client.auth.session else {
             showError("Authentication session not found.")
             return false
         }
+        let user = session.user
         
-        let db = Firestore.firestore()
-        let financialDocRef = db.collection("users")
-            .document(user.uid)
-            .collection("onboarding")
-            .document("financialDetails")
+        let email = authManager.userEmail ?? user.email ?? ""
+        let name = authManager.userDisplayName
+        var currentProfile = await profileStore.ensureProfile(email: email, name: name)
         
-        let financialData: [String: Any] = [
-            "existingBankAccount": hasExistingBankAccount,
-            "emergencyContactName": emergencyContactName,
-            "relationship": emergencyContactRelationship,
-            "mobileNumber": emergencyContactNumber,
-            "alternateNumber": emergencyContactAlternateNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : emergencyContactAlternateNumber,
-            "address": emergencyContactAddress,
-            "onboardingStep": 2,
-            "completed": true,
-            "updatedAt": FieldValue.serverTimestamp()
-        ]
+        // Re-apply step 1 fields
+        currentProfile.occupation = occupation
+        currentProfile.employment = EmploymentInfo(
+            employmentType: employmentType,
+            companyName: companyName,
+            designation: occupation,
+            workExperienceYears: Int(yearsOfExperience) ?? 0,
+            employerAddress: currentProfile.employment.employerAddress
+        )
+        currentProfile.industry = industry
+        currentProfile.yearsOfExperience = Int(yearsOfExperience) ?? 0
+        currentProfile.income = IncomeInfo(
+            monthlyIncome: Double(monthlyIncome) ?? 0,
+            annualIncome: Double(annualIncome) ?? 0,
+            existingEMIs: currentProfile.income.existingEMIs,
+            creditScore: currentProfile.income.creditScore,
+            incomeSource: employmentType
+        )
+        
+        // Apply step 2 fields
+        currentProfile.hasExistingBankAccount = hasExistingBankAccount
+        currentProfile.emergencyContactName = emergencyContactName
+        currentProfile.emergencyContactNumber = emergencyContactNumber
+        currentProfile.emergencyContactAlternateNumber = emergencyContactAlternateNumber
+        currentProfile.emergencyContactAddress = emergencyContactAddress
+        currentProfile.emergencyContactRelationship = emergencyContactRelationship
+        currentProfile.isOnboardingCompleted = true
+        
+        // Set profile ID to user's UID
+        currentProfile.id = user.id.uuidString
         
         do {
-            // 1. Save Step 2 details
-            try await financialDocRef.setData(financialData)
+            // Update profile via DatabaseService which saves locally and tries to sync to Supabase
+            try await DatabaseService.shared.updateProfile(currentProfile)
             
-            // 2. Update parent profile document in Firestore
-            let userDocRef = db.collection("users").document(user.uid)
+            // Also update the users table with full_name and mobile_number
+            try? await SupabaseManager.shared.client
+                .from("users")
+                .update(["full_name": name, "mobile_number": currentProfile.mobileNumber])
+                .eq("id", value: user.id)
+                .execute()
             
-            let email = authManager.userEmail ?? ""
-            let name = authManager.userDisplayName ?? email
-            var currentProfile = await profileStore.ensureProfile(email: email, name: name)
-            
-            currentProfile.occupation = occupation
-            currentProfile.employment = EmploymentInfo(
-                employmentType: employmentType,
-                companyName: companyName,
-                designation: occupation,
-                workExperienceYears: Int(yearsOfExperience) ?? 0,
-                employerAddress: currentProfile.employment.employerAddress
-            )
-            currentProfile.industry = industry
-            currentProfile.yearsOfExperience = Int(yearsOfExperience) ?? 0
-            currentProfile.income = IncomeInfo(
-                monthlyIncome: Double(monthlyIncome) ?? 0,
-                annualIncome: Double(annualIncome) ?? 0,
-                existingEMIs: currentProfile.income.existingEMIs,
-                creditScore: currentProfile.income.creditScore,
-                incomeSource: employmentType
-            )
-            currentProfile.hasExistingBankAccount = hasExistingBankAccount
-            currentProfile.emergencyContactName = emergencyContactName
-            currentProfile.emergencyContactNumber = emergencyContactNumber
-            currentProfile.emergencyContactAlternateNumber = emergencyContactAlternateNumber
-            currentProfile.emergencyContactAddress = emergencyContactAddress
-            currentProfile.emergencyContactRelationship = emergencyContactRelationship
-            currentProfile.isOnboardingCompleted = true
-            
-            try await userDocRef.updateData([
-                "onboardingCompleted": true,
-                "onboardingCompletedAt": FieldValue.serverTimestamp(),
-                "profileCompletionPercentage": 100,
-                "profile": currentProfile.asDictionary ?? [:]
-            ])
-            
-            // Update local profile store so the view reactively transitions
             await MainActor.run {
                 profileStore.profile = currentProfile
             }
@@ -674,36 +654,31 @@ struct OnboardingQuestionnaireView: View {
     
     private func handleSkip() {
         isLoading = true
-        guard let user = Auth.auth().currentUser else {
-            showError("Authentication session not found.")
-            isLoading = false
-            return
-        }
-        
         Task {
-            let db = Firestore.firestore()
-            let userDocRef = db.collection("users").document(user.uid)
+            guard let session = try? await SupabaseManager.shared.client.auth.session else {
+                showError("Authentication session not found.")
+                await MainActor.run { isLoading = false }
+                return
+            }
+            let user = session.user
+            let email = authManager.userEmail ?? user.email ?? ""
+            let name = authManager.userDisplayName
+            
+            var currentProfile = await profileStore.ensureProfile(email: email, name: name)
+            currentProfile.id = user.id.uuidString
+            currentProfile.isOnboardingCompleted = true
+            
             do {
-                let email = authManager.userEmail ?? ""
-                let name = authManager.userDisplayName ?? email
-                var currentProfile = await profileStore.ensureProfile(email: email, name: name)
-                currentProfile.isOnboardingCompleted = true
-                
-                try await userDocRef.updateData([
-                    "onboardingCompleted": true,
-                    "onboardingCompletedAt": FieldValue.serverTimestamp(),
-                    "profileCompletionPercentage": 100,
-                    "profile": currentProfile.asDictionary ?? [:]
-                ])
-                
+                try await DatabaseService.shared.updateProfile(currentProfile)
                 await MainActor.run {
                     profileStore.profile = currentProfile
+                    isLoading = false
                 }
             } catch {
                 print("Error skipping onboarding: \(error.localizedDescription)")
-            }
-            await MainActor.run {
-                isLoading = false
+                await MainActor.run {
+                    isLoading = false
+                }
             }
         }
     }

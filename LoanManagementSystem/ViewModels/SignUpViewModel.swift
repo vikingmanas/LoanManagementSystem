@@ -63,10 +63,7 @@ class SignUpViewModel: ObservableObject {
         let success = await authManager.signUp(
             name: fullName,
             email: cleanedEmail,
-            password: password,
-            phone: phone,
-            alternatePhone: alternatePhone,
-            referralCode: referralCode
+            password: password
         )
         isLoading = false
 
@@ -74,7 +71,8 @@ class SignUpViewModel: ObservableObject {
             BorrowerProfileStore.shared.ensureProfile(
                 email: cleanedEmail,
                 name: fullName,
-                phone: phone
+                phone: phone,
+                alternatePhone: alternatePhone
             )
             showSuccess = true
         } else {
