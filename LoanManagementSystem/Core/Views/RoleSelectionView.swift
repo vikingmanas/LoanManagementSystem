@@ -3,6 +3,7 @@ import SwiftUI
 struct RoleSelectionView: View {
     @EnvironmentObject var appState: AppStateManager
     @State private var tempSelectedRole: PortalRole = .customer
+    @State private var showAdminSignUp = false
 
     var body: some View {
         ZStack {
@@ -43,10 +44,15 @@ struct RoleSelectionView: View {
             VStack(spacing: LMSSpacing.xl) {
                 // Header
                 VStack(spacing: LMSSpacing.md) {
-                    Image(systemName: "indianrupeesign.circle.fill")
-                        .font(.system(size: 52, weight: .light))
-                        .foregroundStyle(.white.opacity(0.95))
-                        .shadow(color: LMSColors.actionBlue.opacity(0.35), radius: 12, x: 0, y: 4)
+                    Button(action: {
+                        HapticsManager.triggerImpact(style: .medium)
+                        showAdminSignUp = true
+                    }) {
+                        Image(systemName: "indianrupeesign.circle.fill")
+                            .font(.system(size: 52, weight: .light))
+                            .foregroundStyle(.white.opacity(0.95))
+                            .shadow(color: LMSColors.actionBlue.opacity(0.35), radius: 12, x: 0, y: 4)
+                    }
 
                     Text("Loan Manager")
                         .font(LMSFont.title)
@@ -114,6 +120,9 @@ struct RoleSelectionView: View {
                 }
                 .padding(.bottom, LMSSpacing.xxxl)
             }
+        }
+        .sheet(isPresented: $showAdminSignUp) {
+            AdminSignUpView()
         }
     }
 }

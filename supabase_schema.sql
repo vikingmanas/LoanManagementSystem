@@ -1,452 +1,293 @@
--- ============================================================
--- LoanManagementSystem — Complete Supabase Database Schema
--- ============================================================
--- Run this entire script in Supabase Dashboard → SQL Editor.
--- Tables are ordered by dependency (run top to bottom).
--- ============================================================
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
 
-
--- ============================================================
--- STEP 1: Create "users" table in public schema
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.users (
-    id              UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    email           TEXT NOT NULL,
-    role            TEXT NOT NULL DEFAULT 'borrower'
-        CHECK (role IN ('borrower', 'loan_officer', 'manager', 'admin')),
-    full_name       TEXT NOT NULL DEFAULT '',
-    mobile_number   TEXT NOT NULL DEFAULT '',
-    status          TEXT NOT NULL DEFAULT 'active'
-        CHECK (status IN ('active', 'inactive', 'suspended', 'pending')),
-    last_login      TIMESTAMPTZ,
-    created_by      UUID REFERENCES public.users(id) ON DELETE SET NULL,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE public.admins (
+  admin_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL UNIQUE,
+  admin_level integer NOT NULL DEFAULT 1,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT admins_pkey PRIMARY KEY (admin_id),
+  CONSTRAINT admins_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
-
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-
--- Security helper to check if a user is admin (used to avoid infinite recursion in RLS policies)
-CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
-RETURNS BOOLEAN AS $$
-BEGIN
-    RETURN EXISTS (
-        SELECT 1 FROM public.users
-        WHERE id = user_id AND role = 'admin'
-    );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- RLS policies for public.users
-CREATE POLICY "Admins can do everything on users" ON public.users
-    FOR ALL TO authenticated
-    USING (public.is_admin(auth.uid()))
-    WITH CHECK (public.is_admin(auth.uid()));
-
-CREATE POLICY "Users can view their own profile" ON public.users
-    FOR SELECT TO authenticated
-    USING (auth.uid() = id);
-
-CREATE POLICY "Users can update their own profile" ON public.users
-    FOR UPDATE TO authenticated
-    USING (auth.uid() = id)
-    WITH CHECK (auth.uid() = id);
-
-
--- ============================================================
--- STEP 2: Branches (no FK deps, created first)
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.branches (
-    branch_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name        TEXT NOT NULL,
-    code        TEXT NOT NULL UNIQUE,
-    region      TEXT NOT NULL,
-    address     TEXT NOT NULL,
-    manager_id  UUID,  -- FK added later after managers table exists
-    status      TEXT NOT NULL DEFAULT 'active'
-        CHECK (status IN ('active', 'inactive', 'closed')),
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+ALTER TABLE public.admins DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.application_workflow (
+  workflow_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  application_id uuid NOT NULL,
+  action_by uuid NOT NULL,
+  action text NOT NULL CHECK (action = ANY (ARRAY['submitted'::text, 'reviewed'::text, 'approved'::text, 'rejected'::text, 'comment_added'::text, 'disbursed'::text])),
+  remarks text,
+  action_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT application_workflow_pkey PRIMARY KEY (workflow_id),
+  CONSTRAINT application_workflow_application_id_fkey FOREIGN KEY (application_id) REFERENCES public.loan_applications(application_id),
+  CONSTRAINT application_workflow_action_by_fkey FOREIGN KEY (action_by) REFERENCES auth.users(id)
 );
-
-ALTER TABLE public.branches ENABLE ROW LEVEL SECURITY;
-
--- RLS policies for public.branches
-CREATE POLICY "Admins can do everything on branches" ON public.branches
-    FOR ALL TO authenticated
-    USING (public.is_admin(auth.uid()))
-    WITH CHECK (public.is_admin(auth.uid()));
-
-CREATE POLICY "Anyone authenticated can view branches" ON public.branches
-    FOR SELECT TO authenticated
-    USING (true);
-
--- Seed default branch for development and testing
-INSERT INTO public.branches (branch_id, name, code, region, address)
-VALUES ('7b129c78-cf14-411a-8b1e-05fa21d4c2b9', 'Headquarters Branch', 'HQ-001', 'National', '123 Finance Street, New Delhi')
-ON CONFLICT (code) DO NOTHING;
-
-
--- ============================================================
--- STEP 3: Borrowers
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.borrowers (
-    borrower_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    date_of_birth   DATE NOT NULL,
-    pan_number      TEXT NOT NULL,
-    aadhaar_number  TEXT NOT NULL,
-    kyc_status      TEXT NOT NULL DEFAULT 'pending'
-        CHECK (kyc_status IN ('pending', 'in_progress', 'verified', 'rejected')),
-    kyc_verified_at TIMESTAMPTZ,
-    address         TEXT NOT NULL DEFAULT '',
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (user_id)
+ALTER TABLE public.application_workflow DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.audit_logs (
+  log_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  action text NOT NULL,
+  entity_type text NOT NULL,
+  entity_id uuid NOT NULL,
+  old_value jsonb,
+  new_value jsonb,
+  ip_address text NOT NULL DEFAULT ''::text,
+  ts timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT audit_logs_pkey PRIMARY KEY (log_id),
+  CONSTRAINT audit_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
-
-ALTER TABLE public.borrowers ENABLE ROW LEVEL SECURITY;
-
-
--- ============================================================
--- STEP 4: Loan Officers
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.loan_officers (
-    officer_id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    employee_code   TEXT NOT NULL UNIQUE,
-    branch_id       UUID NOT NULL REFERENCES public.branches(branch_id),
-    designation     TEXT NOT NULL DEFAULT '',
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (user_id)
+ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.borrowers (
+  borrower_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL UNIQUE,
+  date_of_birth date NOT NULL,
+  pan_number text NOT NULL,
+  aadhaar_number text NOT NULL,
+  kyc_status text NOT NULL DEFAULT 'pending'::text CHECK (kyc_status = ANY (ARRAY['pending'::text, 'in_progress'::text, 'verified'::text, 'rejected'::text])),
+  kyc_verified_at timestamp with time zone,
+  address text NOT NULL DEFAULT ''::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT borrowers_pkey PRIMARY KEY (borrower_id),
+  CONSTRAINT borrowers_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
-
-ALTER TABLE public.loan_officers ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Admins can do everything on loan_officers" ON public.loan_officers
-    FOR ALL TO authenticated
-    USING (public.is_admin(auth.uid()))
-    WITH CHECK (public.is_admin(auth.uid()));
-
-CREATE POLICY "Loan officers can view their own profile details" ON public.loan_officers
-    FOR SELECT TO authenticated
-    USING (user_id = auth.uid());
-
-
--- ============================================================
--- STEP 5: Managers
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.managers (
-    manager_id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    employee_code   TEXT NOT NULL UNIQUE,
-    branch_id       UUID NOT NULL REFERENCES public.branches(branch_id),
-    region          TEXT NOT NULL DEFAULT '',
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (user_id)
+ALTER TABLE public.borrowers DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.branches (
+  branch_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  code text NOT NULL UNIQUE,
+  region text NOT NULL,
+  address text NOT NULL,
+  manager_id uuid,
+  status text NOT NULL DEFAULT 'active'::text CHECK (status = ANY (ARRAY['active'::text, 'inactive'::text, 'closed'::text])),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT branches_pkey PRIMARY KEY (branch_id),
+  CONSTRAINT fk_branches_manager FOREIGN KEY (manager_id) REFERENCES public.managers(manager_id)
 );
-
-ALTER TABLE public.managers ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Admins can do everything on managers" ON public.managers
-    FOR ALL TO authenticated
-    USING (public.is_admin(auth.uid()))
-    WITH CHECK (public.is_admin(auth.uid()));
-
-CREATE POLICY "Managers can view their own profile details" ON public.managers
-    FOR SELECT TO authenticated
-    USING (user_id = auth.uid());
-
--- Now add the deferred FK on branches.manager_id → managers.manager_id
-ALTER TABLE public.branches DROP CONSTRAINT IF EXISTS fk_branches_manager;
-ALTER TABLE public.branches
-    ADD CONSTRAINT fk_branches_manager
-    FOREIGN KEY (manager_id) REFERENCES public.managers(manager_id);
-
-
--- ============================================================
--- STEP 6: Admins
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.admins (
-    admin_id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    admin_level INT NOT NULL DEFAULT 1,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (user_id)
+ALTER TABLE public.branches DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.credit_scores (
+  score_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  borrower_id uuid NOT NULL,
+  score integer NOT NULL,
+  risk_category text NOT NULL DEFAULT 'medium'::text CHECK (risk_category = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text])),
+  bureau_name text NOT NULL DEFAULT ''::text,
+  assessed_at timestamp with time zone NOT NULL DEFAULT now(),
+  is_current boolean NOT NULL DEFAULT true,
+  CONSTRAINT credit_scores_pkey PRIMARY KEY (score_id),
+  CONSTRAINT credit_scores_borrower_id_fkey FOREIGN KEY (borrower_id) REFERENCES public.borrowers(borrower_id)
 );
-
-ALTER TABLE public.admins ENABLE ROW LEVEL SECURITY;
-
-
--- ============================================================
--- STEP 7: Loan Products
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.loan_products (
-    product_id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name                TEXT NOT NULL,
-    loan_type           TEXT NOT NULL
-        CHECK (loan_type IN ('personal', 'home', 'auto', 'education', 'business')),
-    min_amount          NUMERIC(15, 2) NOT NULL DEFAULT 0,
-    max_amount          NUMERIC(15, 2) NOT NULL DEFAULT 0,
-    min_tenure_months   INT NOT NULL DEFAULT 1,
-    max_tenure_months   INT NOT NULL DEFAULT 360,
-    base_interest_rate  NUMERIC(5, 2) NOT NULL DEFAULT 0,
-    processing_fee_pct  NUMERIC(5, 2) NOT NULL DEFAULT 0,
-    eligibility_criteria TEXT NOT NULL DEFAULT '',
-    is_active           BOOLEAN NOT NULL DEFAULT true,
-    created_by          UUID NOT NULL REFERENCES auth.users(id),
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+ALTER TABLE public.credit_scores DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.documents (
+  document_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  borrower_id uuid NOT NULL,
+  application_id uuid,
+  doc_type text NOT NULL CHECK (doc_type = ANY (ARRAY['identity_proof'::text, 'address_proof'::text, 'income_proof'::text, 'bank_statement'::text, 'property_document'::text])),
+  file_url text NOT NULL,
+  file_name text NOT NULL,
+  status text NOT NULL DEFAULT 'uploaded'::text CHECK (status = ANY (ARRAY['uploaded'::text, 'verified'::text, 'rejected'::text])),
+  uploaded_at timestamp with time zone NOT NULL DEFAULT now(),
+  verified_by uuid,
+  CONSTRAINT documents_pkey PRIMARY KEY (document_id),
+  CONSTRAINT documents_borrower_id_fkey FOREIGN KEY (borrower_id) REFERENCES public.borrowers(borrower_id),
+  CONSTRAINT documents_application_id_fkey FOREIGN KEY (application_id) REFERENCES public.loan_applications(application_id),
+  CONSTRAINT documents_verified_by_fkey FOREIGN KEY (verified_by) REFERENCES auth.users(id)
 );
-
-ALTER TABLE public.loan_products ENABLE ROW LEVEL SECURITY;
-
-
--- ============================================================
--- STEP 8: Loan Applications
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.loan_applications (
-    application_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    borrower_id     UUID NOT NULL REFERENCES public.borrowers(borrower_id),
-    officer_id      UUID REFERENCES public.loan_officers(officer_id),
-    product_id      UUID NOT NULL REFERENCES public.loan_products(product_id),
-    amount_requested NUMERIC(15, 2) NOT NULL,
-    tenure_months   INT NOT NULL,
-    purpose         TEXT NOT NULL DEFAULT '',
-    status          TEXT NOT NULL DEFAULT 'draft'
-        CHECK (status IN ('draft', 'submitted', 'under_review', 'approved', 'rejected', 'disbursed')),
-    submitted_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+ALTER TABLE public.documents DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.emi_schedule (
+  emi_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  account_id uuid NOT NULL,
+  instalment_no integer NOT NULL,
+  due_date date NOT NULL,
+  emi_amount numeric NOT NULL,
+  principal_component numeric NOT NULL,
+  interest_component numeric NOT NULL,
+  status text NOT NULL DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'paid'::text, 'overdue'::text, 'bounced'::text])),
+  paid_date date,
+  paid_amount numeric,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT emi_schedule_pkey PRIMARY KEY (emi_id),
+  CONSTRAINT emi_schedule_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.loan_accounts(account_id)
 );
-
-ALTER TABLE public.loan_applications ENABLE ROW LEVEL SECURITY;
-
-
--- ============================================================
--- STEP 9: Loan Accounts
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.loan_accounts (
-    account_id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    application_id      UUID NOT NULL REFERENCES public.loan_applications(application_id),
-    borrower_id         UUID NOT NULL REFERENCES public.borrowers(borrower_id),
-    principal_amount    NUMERIC(15, 2) NOT NULL,
-    outstanding_balance NUMERIC(15, 2) NOT NULL,
-    interest_rate       NUMERIC(5, 2) NOT NULL,
-    disbursement_date   DATE,
-    closure_date        DATE,
-    status              TEXT NOT NULL DEFAULT 'active'
-        CHECK (status IN ('active', 'closed', 'defaulted', 'delinquent')),
-    next_emi_date       DATE,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+ALTER TABLE public.emi_schedule DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.loan_accounts (
+  account_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  application_id uuid NOT NULL,
+  borrower_id uuid NOT NULL,
+  principal_amount numeric NOT NULL,
+  outstanding_balance numeric NOT NULL,
+  interest_rate numeric NOT NULL,
+  disbursement_date date,
+  closure_date date,
+  status text NOT NULL DEFAULT 'active'::text CHECK (status = ANY (ARRAY['active'::text, 'closed'::text, 'defaulted'::text, 'delinquent'::text])),
+  next_emi_date date,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT loan_accounts_pkey PRIMARY KEY (account_id),
+  CONSTRAINT loan_accounts_application_id_fkey FOREIGN KEY (application_id) REFERENCES public.loan_applications(application_id),
+  CONSTRAINT loan_accounts_borrower_id_fkey FOREIGN KEY (borrower_id) REFERENCES public.borrowers(borrower_id)
 );
-
-ALTER TABLE public.loan_accounts ENABLE ROW LEVEL SECURITY;
-
-
--- ============================================================
--- STEP 10: EMI Schedule
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.emi_schedule (
-    emi_id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    account_id          UUID NOT NULL REFERENCES public.loan_accounts(account_id),
-    instalment_no       INT NOT NULL,
-    due_date            DATE NOT NULL,
-    emi_amount          NUMERIC(15, 2) NOT NULL,
-    principal_component NUMERIC(15, 2) NOT NULL,
-    interest_component  NUMERIC(15, 2) NOT NULL,
-    status              TEXT NOT NULL DEFAULT 'pending'
-        CHECK (status IN ('pending', 'paid', 'overdue', 'bounced')),
-    paid_date           DATE,
-    paid_amount         NUMERIC(15, 2),
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+ALTER TABLE public.loan_accounts DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.loan_applications (
+  application_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  borrower_id uuid NOT NULL,
+  officer_id uuid,
+  product_id uuid NOT NULL,
+  amount_requested numeric NOT NULL,
+  tenure_months integer NOT NULL,
+  purpose text NOT NULL DEFAULT ''::text,
+  status text NOT NULL DEFAULT 'draft'::text CHECK (status = ANY (ARRAY['draft'::text, 'submitted'::text, 'under_review'::text, 'approved'::text, 'rejected'::text, 'disbursed'::text])),
+  submitted_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT loan_applications_pkey PRIMARY KEY (application_id),
+  CONSTRAINT loan_applications_borrower_id_fkey FOREIGN KEY (borrower_id) REFERENCES public.borrowers(borrower_id),
+  CONSTRAINT loan_applications_officer_id_fkey FOREIGN KEY (officer_id) REFERENCES public.loan_officers(officer_id),
+  CONSTRAINT loan_applications_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.loan_products(product_id)
 );
-
-ALTER TABLE public.emi_schedule ENABLE ROW LEVEL SECURITY;
-
-
--- ============================================================
--- STEP 11: Documents
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.documents (
-    document_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    borrower_id     UUID NOT NULL REFERENCES public.borrowers(borrower_id),
-    application_id  UUID REFERENCES public.loan_applications(application_id),
-    doc_type        TEXT NOT NULL
-        CHECK (doc_type IN ('identity_proof', 'address_proof', 'income_proof', 'bank_statement', 'property_document')),
-    file_url        TEXT NOT NULL,
-    file_name       TEXT NOT NULL,
-    status          TEXT NOT NULL DEFAULT 'uploaded'
-        CHECK (status IN ('uploaded', 'verified', 'rejected')),
-    uploaded_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-    verified_by     UUID REFERENCES auth.users(id)
+ALTER TABLE public.loan_applications DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.loan_officers (
+  officer_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL UNIQUE,
+  employee_code text NOT NULL UNIQUE,
+  branch_id uuid NOT NULL,
+  designation text NOT NULL DEFAULT ''::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT loan_officers_pkey PRIMARY KEY (officer_id),
+  CONSTRAINT loan_officers_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT loan_officers_branch_id_fkey FOREIGN KEY (branch_id) REFERENCES public.branches(branch_id)
 );
-
-ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
-
-
--- ============================================================
--- STEP 12: Credit Scores
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.credit_scores (
-    score_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    borrower_id     UUID NOT NULL REFERENCES public.borrowers(borrower_id),
-    score           INT NOT NULL,
-    risk_category   TEXT NOT NULL DEFAULT 'medium'
-        CHECK (risk_category IN ('low', 'medium', 'high')),
-    bureau_name     TEXT NOT NULL DEFAULT '',
-    assessed_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-    is_current      BOOLEAN NOT NULL DEFAULT true
+ALTER TABLE public.loan_officers DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.loan_products (
+  product_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  loan_type text NOT NULL CHECK (loan_type = ANY (ARRAY['personal'::text, 'home'::text, 'auto'::text, 'education'::text, 'business'::text])),
+  min_amount numeric NOT NULL DEFAULT 0,
+  max_amount numeric NOT NULL DEFAULT 0,
+  min_tenure_months integer NOT NULL DEFAULT 1,
+  max_tenure_months integer NOT NULL DEFAULT 360,
+  base_interest_rate numeric NOT NULL DEFAULT 0,
+  processing_fee_pct numeric NOT NULL DEFAULT 0,
+  eligibility_criteria text NOT NULL DEFAULT ''::text,
+  is_active boolean NOT NULL DEFAULT true,
+  created_by uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT loan_products_pkey PRIMARY KEY (product_id),
+  CONSTRAINT loan_products_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
 );
-
-ALTER TABLE public.credit_scores ENABLE ROW LEVEL SECURITY;
-
-
--- ============================================================
--- STEP 13: Application Workflow
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.application_workflow (
-    workflow_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    application_id  UUID NOT NULL REFERENCES public.loan_applications(application_id),
-    action_by       UUID NOT NULL REFERENCES auth.users(id),
-    action          TEXT NOT NULL
-        CHECK (action IN ('submitted', 'reviewed', 'approved', 'rejected', 'comment_added', 'disbursed')),
-    remarks         TEXT,
-    action_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+ALTER TABLE public.loan_products DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.managers (
+  manager_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL UNIQUE,
+  employee_code text NOT NULL UNIQUE,
+  branch_id uuid NOT NULL,
+  region text NOT NULL DEFAULT ''::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT managers_pkey PRIMARY KEY (manager_id),
+  CONSTRAINT managers_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT managers_branch_id_fkey FOREIGN KEY (branch_id) REFERENCES public.branches(branch_id)
 );
-
-ALTER TABLE public.application_workflow ENABLE ROW LEVEL SECURITY;
-
-
--- ============================================================
--- STEP 14: Messages
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.messages (
-    message_id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    sender_id       UUID NOT NULL REFERENCES auth.users(id),
-    receiver_id     UUID NOT NULL REFERENCES auth.users(id),
-    application_id  UUID REFERENCES public.loan_applications(application_id),
-    content         TEXT NOT NULL,
-    sent_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
-    is_read         BOOLEAN NOT NULL DEFAULT false
+ALTER TABLE public.managers DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.messages (
+  message_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  sender_id uuid NOT NULL,
+  receiver_id uuid NOT NULL,
+  application_id uuid,
+  content text NOT NULL,
+  sent_at timestamp with time zone NOT NULL DEFAULT now(),
+  is_read boolean NOT NULL DEFAULT false,
+  CONSTRAINT messages_pkey PRIMARY KEY (message_id),
+  CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES auth.users(id),
+  CONSTRAINT messages_receiver_id_fkey FOREIGN KEY (receiver_id) REFERENCES auth.users(id),
+  CONSTRAINT messages_application_id_fkey FOREIGN KEY (application_id) REFERENCES public.loan_applications(application_id)
 );
-
-ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
-
-
--- ============================================================
--- STEP 15: Notifications
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.notifications (
-    notification_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         UUID NOT NULL REFERENCES auth.users(id),
-    notif_type      TEXT NOT NULL DEFAULT 'push'
-        CHECK (notif_type IN ('email', 'sms', 'push')),
-    title           TEXT NOT NULL,
-    message         TEXT NOT NULL,
-    is_read         BOOLEAN NOT NULL DEFAULT false,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+ALTER TABLE public.messages DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.notification_templates (
+  template_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  notif_type text NOT NULL CHECK (notif_type = ANY (ARRAY['email'::text, 'sms'::text, 'push'::text])),
+  title_template text NOT NULL,
+  body_template text NOT NULL,
+  created_by uuid NOT NULL,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT notification_templates_pkey PRIMARY KEY (template_id),
+  CONSTRAINT notification_templates_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
 );
-
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-
-
--- ============================================================
--- STEP 16: Notification Templates
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.notification_templates (
-    template_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    notif_type      TEXT NOT NULL
-        CHECK (notif_type IN ('email', 'sms', 'push')),
-    title_template  TEXT NOT NULL,
-    body_template   TEXT NOT NULL,
-    created_by      UUID NOT NULL REFERENCES auth.users(id),
-    is_active       BOOLEAN NOT NULL DEFAULT true,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+ALTER TABLE public.notification_templates DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.notifications (
+  notification_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  notif_type text NOT NULL DEFAULT 'push'::text CHECK (notif_type = ANY (ARRAY['email'::text, 'sms'::text, 'push'::text])),
+  title text NOT NULL,
+  message text NOT NULL,
+  is_read boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT notifications_pkey PRIMARY KEY (notification_id),
+  CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
-
-ALTER TABLE public.notification_templates ENABLE ROW LEVEL SECURITY;
-
-
--- ============================================================
--- STEP 17: Reports
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.reports (
-    report_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    generated_by    UUID NOT NULL REFERENCES auth.users(id),
-    report_type     TEXT NOT NULL
-        CHECK (report_type IN ('disbursement', 'collection', 'default_rate', 'performance')),
-    period_type     TEXT NOT NULL
-        CHECK (period_type IN ('daily', 'weekly', 'monthly', 'yearly')),
-    from_date       DATE NOT NULL,
-    to_date         DATE NOT NULL,
-    format          TEXT NOT NULL DEFAULT 'pdf'
-        CHECK (format IN ('pdf', 'csv', 'excel')),
-    file_url        TEXT NOT NULL,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.profiles (
+  id uuid NOT NULL,
+  full_name text NOT NULL DEFAULT ''::text,
+  email text NOT NULL DEFAULT ''::text,
+  mobile_number text NOT NULL DEFAULT ''::text,
+  alternate_number text,
+  date_of_birth timestamp with time zone,
+  gender text NOT NULL DEFAULT ''::text,
+  marital_status text NOT NULL DEFAULT ''::text,
+  nationality text NOT NULL DEFAULT ''::text,
+  aadhaar_number text NOT NULL DEFAULT ''::text,
+  pan_number text NOT NULL DEFAULT ''::text,
+  is_email_verified boolean NOT NULL DEFAULT false,
+  is_phone_verified boolean NOT NULL DEFAULT false,
+  current_address jsonb NOT NULL DEFAULT '{}'::jsonb,
+  permanent_address jsonb NOT NULL DEFAULT '{}'::jsonb,
+  employment jsonb NOT NULL DEFAULT '{}'::jsonb,
+  income jsonb NOT NULL DEFAULT '{}'::jsonb,
+  bank_details jsonb NOT NULL DEFAULT '{}'::jsonb,
+  kyc_verification jsonb NOT NULL DEFAULT '{}'::jsonb,
+  loan_overview jsonb NOT NULL DEFAULT '{}'::jsonb,
+  profile_image_data text,
+  occupation text NOT NULL DEFAULT ''::text,
+  industry text NOT NULL DEFAULT ''::text,
+  years_of_experience integer NOT NULL DEFAULT 0,
+  has_existing_bank_account boolean NOT NULL DEFAULT false,
+  existing_customer_id text,
+  preferred_branch text NOT NULL DEFAULT ''::text,
+  existing_loans_count integer NOT NULL DEFAULT 0,
+  existing_credit_cards_count integer NOT NULL DEFAULT 0,
+  banking_relationship_duration text NOT NULL DEFAULT ''::text,
+  average_monthly_balance numeric NOT NULL DEFAULT 0,
+  emergency_contact_name text NOT NULL DEFAULT ''::text,
+  emergency_contact_number text NOT NULL DEFAULT ''::text,
+  emergency_contact_alternate_number text NOT NULL DEFAULT ''::text,
+  emergency_contact_address text NOT NULL DEFAULT ''::text,
+  emergency_contact_relationship text NOT NULL DEFAULT ''::text,
+  nominee_name text NOT NULL DEFAULT ''::text,
+  nominee_relationship text NOT NULL DEFAULT ''::text,
+  is_onboarding_completed boolean NOT NULL DEFAULT false,
+  CONSTRAINT profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES public.users(id)
 );
-
-ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
-
-
--- ============================================================
--- STEP 18: Audit Logs
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.audit_logs (
-    log_id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         UUID NOT NULL REFERENCES auth.users(id),
-    action          TEXT NOT NULL,
-    entity_type     TEXT NOT NULL,
-    entity_id       UUID NOT NULL,
-    old_value       JSONB,
-    new_value       JSONB,
-    ip_address      TEXT NOT NULL DEFAULT '',
-    ts              TIMESTAMPTZ NOT NULL DEFAULT now()
+ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.reports (
+  report_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  generated_by uuid NOT NULL,
+  report_type text NOT NULL CHECK (report_type = ANY (ARRAY['disbursement'::text, 'collection'::text, 'default_rate'::text, 'performance'::text])),
+  period_type text NOT NULL CHECK (period_type = ANY (ARRAY['daily'::text, 'weekly'::text, 'monthly'::text, 'yearly'::text])),
+  from_date date NOT NULL,
+  to_date date NOT NULL,
+  format text NOT NULL DEFAULT 'pdf'::text CHECK (format = ANY (ARRAY['pdf'::text, 'csv'::text, 'excel'::text])),
+  file_url text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT reports_pkey PRIMARY KEY (report_id),
+  CONSTRAINT reports_generated_by_fkey FOREIGN KEY (generated_by) REFERENCES auth.users(id)
 );
-
-ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
-
-
--- ============================================================
--- STEP 19: Automated Provisioning for Fixed Admin User
--- ============================================================
-
--- Function to automatically provision the fixed admin user in public tables
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- If the user is the fixed admin email, insert as admin
-    IF NEW.email = 'admin@lms.com' THEN
-        INSERT INTO public.users (id, email, role, full_name, status)
-        VALUES (NEW.id, NEW.email, 'admin', 'System Admin', 'active')
-        ON CONFLICT (id) DO NOTHING;
-
-        INSERT INTO public.admins (user_id, admin_level)
-        VALUES (NEW.id, 1)
-        ON CONFLICT (user_id) DO NOTHING;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Trigger to run on user creation
-CREATE OR REPLACE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- ============================================================
--- DONE! All 17 new tables + 1 updated table are ready.
--- ============================================================
+ALTER TABLE public.reports DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.users (
+  id uuid NOT NULL,
+  email text NOT NULL,
+  role text NOT NULL DEFAULT 'borrower'::text CHECK (role = ANY (ARRAY['borrower'::text, 'loan_officer'::text, 'manager'::text, 'admin'::text])),
+  full_name text NOT NULL DEFAULT ''::text,
+  mobile_number text NOT NULL DEFAULT ''::text,
+  status text NOT NULL DEFAULT 'active'::text CHECK (status = ANY (ARRAY['active'::text, 'inactive'::text, 'suspended'::text, 'pending'::text])),
+  last_login timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);

@@ -156,27 +156,110 @@ final class AdminStaffService {
         return staffMembers.sorted { $0.fullName.localizedCaseInsensitiveCompare($1.fullName) == .orderedAscending }
     }
     
-    /// Invokes the create-staff-user Edge Function to register a new user in auth.users and public tables.
-    func createStaffMember(payload: CreateStaffPayload) async throws {
-        try await client.functions.invoke(
-            "create-staff-user",
-            options: FunctionInvokeOptions(
-                method: .post,
-                body: payload
-            )
+    private var adminClient: SupabaseClient {
+        SupabaseClient(
+            supabaseURL: AppConfiguration.supabaseURL,
+            supabaseKey: AppConfiguration.supabaseServiceRoleKey
         )
     }
-    
-    /// Invokes the Edge Function with action 'delete' to remove the user from auth.users and all cascading tables.
-    func deleteStaffMember(userId: UUID) async throws {
-        let payload = DeleteStaffPayload(userId: userId)
-        try await client.functions.invoke(
-            "create-staff-user",
-            options: FunctionInvokeOptions(
-                method: .post,
-                body: payload
-            )
+
+    /// Directly calls Supabase Swift SDK Admin API to register a new admin in auth.users, then inserts into public tables.
+    func createAdmin(name: String, email: String, phone: String, password: String) async throws {
+        let attributes = AdminUserAttributes(
+            email: email,
+            emailConfirm: true,
+            password: password,
+            userMetadata: [
+                "full_name": .string(name),
+                "role": .string("admin")
+            ]
         )
+        
+        let newUser = try await adminClient.auth.admin.createUser(attributes: attributes)
+        let newUserId = newUser.id
+        
+        let userInsert: [String: String] = [
+            "id": newUserId.uuidString,
+            "email": email,
+            "role": "admin",
+            "full_name": name,
+            "mobile_number": phone,
+            "status": "active"
+        ]
+        
+        do {
+            try await adminClient.from("users").upsert(userInsert).execute()
+            
+            let adminInsert: [String: String] = [
+                "user_id": newUserId.uuidString,
+                "admin_level": "1"
+            ]
+            try await adminClient.from("admins").upsert(adminInsert, onConflict: "user_id").execute()
+        } catch {
+            try? await deleteStaffMember(userId: newUserId)
+            throw error
+        }
+    }
+
+    /// Directly calls Supabase Swift SDK Admin API to register a new user in auth.users, then inserts into public tables.
+    func createStaffMember(payload: CreateStaffPayload) async throws {
+        // 1. Create auth user via native Supabase Admin API
+        let attributes = AdminUserAttributes(
+            email: payload.email,
+            emailConfirm: true,
+            password: payload.password,
+            
+            userMetadata: [
+                "full_name": .string(payload.fullName),
+                "role": .string(payload.role)
+            ]
+        )
+        
+        let newUser = try await adminClient.auth.admin.createUser(attributes: attributes)
+        let newUserId = newUser.id
+        
+        // 2. Insert into public.users
+        let userInsert: [String: String] = [
+            "id": newUserId.uuidString,
+            "email": payload.email,
+            "role": payload.role,
+            "full_name": payload.fullName,
+            "mobile_number": payload.phoneNumber,
+            "status": "active"
+        ]
+        
+        do {
+            try await adminClient.from("users").upsert(userInsert).execute()
+            
+            // 3. Insert role-specific details
+            if payload.role == "loan_officer" {
+                let officerInsert: [String: String] = [
+                    "user_id": newUserId.uuidString,
+                    "employee_code": payload.employeeCode,
+                    "branch_id": payload.branchId.uuidString,
+                    "designation": payload.designation ?? "Loan Officer"
+                ]
+                try await adminClient.from("loan_officers").insert(officerInsert).execute()
+                
+            } else if payload.role == "manager" {
+                let managerInsert: [String: String] = [
+                    "user_id": newUserId.uuidString,
+                    "employee_code": payload.employeeCode,
+                    "branch_id": payload.branchId.uuidString,
+                    "region": payload.region ?? "General"
+                ]
+                try await adminClient.from("managers").insert(managerInsert).execute()
+            }
+        } catch {
+            // Rollback auth user creation if public insertions fail
+            try? await deleteStaffMember(userId: newUserId)
+            throw error
+        }
+    }
+    
+    /// Directly calls Supabase Swift SDK Admin API to delete the user from auth.users (cascades to public tables).
+    func deleteStaffMember(userId: UUID) async throws {
+        try await adminClient.auth.admin.deleteUser(id: userId)
     }
     
     /// Updates staff member's info in public.users and their role-specific details.

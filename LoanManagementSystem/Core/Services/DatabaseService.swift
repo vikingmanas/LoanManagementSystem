@@ -42,7 +42,28 @@ final class DatabaseService {
         // Save locally first so user's work is not lost
         saveProfileLocally(profile, userId: profile.id)
         
-        // 1. Update profiles table (camelCase)
+        // 1. Ensure user exists in users table first (snake_case) to satisfy foreign key constraint
+        if let userId = UUID(uuidString: profile.id) {
+            let userUpsert: [String: String] = [
+                "id": userId.uuidString,
+                "email": profile.email,
+                "full_name": profile.fullName,
+                "mobile_number": profile.mobileNumber
+            ]
+            print("UPSERT REQUEST - Table: users, ID: \(userId), Payload: \(userUpsert)")
+            do {
+                try await client
+                    .from("users")
+                    .upsert(userUpsert)
+                    .execute()
+                print("UPSERT RESPONSE - Table: users, Status: Success")
+            } catch {
+                print("EXACT SUPABASE ERROR - Table: users, Sync Error: \(error.localizedDescription)")
+                throw error
+            }
+        }
+        
+        // 2. Update profiles table (camelCase)
         print("UPDATE REQUEST - Table: profiles, ID: \(profile.id)")
         do {
             try await client
@@ -53,26 +74,6 @@ final class DatabaseService {
         } catch {
             print("EXACT SUPABASE ERROR - Table: profiles, Error: \(error.localizedDescription)")
             throw error
-        }
-        
-        // 2. Synchronize users table (snake_case)
-        if let userId = UUID(uuidString: profile.id) {
-            let userUpdates: [String: String] = [
-                "full_name": profile.fullName,
-                "mobile_number": profile.mobileNumber
-            ]
-            print("UPDATE REQUEST - Table: users, ID: \(userId), Payload: \(userUpdates)")
-            do {
-                try await client
-                    .from("users")
-                    .update(userUpdates)
-                    .eq("id", value: userId)
-                    .execute()
-                print("UPDATED RESPONSE - Table: users, Status: Success")
-            } catch {
-                print("EXACT SUPABASE ERROR - Table: users, Sync Error: \(error.localizedDescription)")
-                throw error
-            }
         }
     }
     

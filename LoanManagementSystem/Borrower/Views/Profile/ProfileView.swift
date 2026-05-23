@@ -106,9 +106,13 @@ struct ProfileView: View {
                             // Log Out
                             Button(action: {
                                 HapticsManager.triggerImpact(style: .medium)
-                                BorrowerProfileStore.shared.signOut()
-                                appState.logout()
-                                authManager.signOut()
+                                dismiss() // Dismiss the sheet before ripping out the underlying views
+                                
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    BorrowerProfileStore.shared.signOut()
+                                    appState.logout()
+                                    authManager.signOut()
+                                }
                             }) {
                                 HStack(spacing: LMSSpacing.md) {
                                     ZStack {

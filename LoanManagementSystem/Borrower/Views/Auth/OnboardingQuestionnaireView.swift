@@ -70,6 +70,14 @@ struct OnboardingQuestionnaireView: View {
             .lmsScreenBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Sign Out") {
+                        authManager.signOut()
+                    }
+                    .font(LMSFont.subheadline.weight(.medium))
+                    .foregroundStyle(LMSColors.coral) // Red color for sign out
+                    .disabled(isLoading)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Skip", action: handleSkip)
                         .font(LMSFont.subheadline.weight(.semibold))
@@ -649,7 +657,10 @@ struct OnboardingQuestionnaireView: View {
                     isLoading = false
                 }
             } catch {
-                await MainActor.run { isLoading = false }
+                await MainActor.run { 
+                    showError("Failed to skip: \(error.localizedDescription)")
+                    isLoading = false 
+                }
             }
         }
     }
