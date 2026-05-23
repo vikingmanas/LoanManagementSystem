@@ -360,5 +360,32 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
 
 -- ============================================================
+-- STEP 19: Automated Provisioning for Fixed Admin User
+-- ============================================================
+
+-- Function to automatically provision the fixed admin user in public tables
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- If the user is the fixed admin email, insert as admin
+    IF NEW.email = 'admin@lms.com' THEN
+        INSERT INTO public.users (id, email, role, full_name, status)
+        VALUES (NEW.id, NEW.email, 'admin', 'System Admin', 'active')
+        ON CONFLICT (id) DO NOTHING;
+
+        INSERT INTO public.admins (user_id, admin_level)
+        VALUES (NEW.id, 1)
+        ON CONFLICT (user_id) DO NOTHING;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to run on user creation
+CREATE OR REPLACE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ============================================================
 -- DONE! All 17 new tables + 1 updated table are ready.
 -- ============================================================

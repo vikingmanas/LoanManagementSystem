@@ -58,7 +58,7 @@ class SignInViewModel: ObservableObject {
                 switch role {
                 case "admin":
                     appState.selectedRole = .admin
-                case "loan_manager":
+                case "manager", "loan_manager":
                     appState.selectedRole = .bankManager
                 case "loan_officer":
                     appState.selectedRole = .loanOfficer

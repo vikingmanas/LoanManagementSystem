@@ -159,7 +159,7 @@ struct StaffLoginView: View {
         switch appState.selectedRole {
         case .loanOfficer: return "e.g., LO1234"
         case .bankManager: return "e.g., BM1234"
-        case .admin: return "e.g., AD1234"
+        case .admin: return "e.g., admin@lms.com or ADMIN"
         default: return "Branch Employee ID"
         }
     }
@@ -225,7 +225,7 @@ struct StaffLoginView: View {
                     switch role {
                     case "admin":
                         appState.selectedRole = .admin
-                    case "loan_manager":
+                    case "manager", "loan_manager":
                         appState.selectedRole = .bankManager
                     case "loan_officer":
                         appState.selectedRole = .loanOfficer
