@@ -93,6 +93,51 @@ enum PreviewSupport {
         return vm
     }
     
+    // MARK: - Admin
+    
+    static var adminStaffViewModel: AdminStaffViewModel {
+        let vm = AdminStaffViewModel()
+        let branchId1 = UUID()
+        let branchId2 = UUID()
+        vm.branches = [
+            BranchInfo(branchId: branchId1, name: "HQ Branch", code: "HQ01", region: "National"),
+            BranchInfo(branchId: branchId2, name: "Metro Branch", code: "MB02", region: "Delhi")
+        ]
+        vm.staffMembers = [
+            StaffMember(
+                id: UUID(),
+                email: "officer1@lms.com",
+                role: .loanOfficer,
+                fullName: "Arjun Mehta",
+                phoneNumber: "+91 98765 43210",
+                status: .active,
+                createdBy: UUID(),
+                createdAt: Date(),
+                employeeCode: "EMP001",
+                branchId: branchId1,
+                branchName: "HQ Branch",
+                designation: "Senior Loan Underwriter",
+                region: nil
+            ),
+            StaffMember(
+                id: UUID(),
+                email: "manager1@lms.com",
+                role: .bankManager,
+                fullName: "Raman Shastri",
+                phoneNumber: "+91 98765 12345",
+                status: .active,
+                createdBy: UUID(),
+                createdAt: Date(),
+                employeeCode: "EMP002",
+                branchId: branchId2,
+                branchName: "Metro Branch",
+                designation: nil,
+                region: "North India"
+            )
+        ]
+        return vm
+    }
+    
     static var sampleManagerApplicant: ManagerApplicant {
         ManagerMockData.applicants[0]
     }

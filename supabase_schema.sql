@@ -20,10 +20,37 @@ CREATE TABLE IF NOT EXISTS public.users (
     status          TEXT NOT NULL DEFAULT 'active'
         CHECK (status IN ('active', 'inactive', 'suspended', 'pending')),
     last_login      TIMESTAMPTZ,
+    created_by      UUID REFERENCES public.users(id) ON DELETE SET NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+-- Security helper to check if a user is admin (used to avoid infinite recursion in RLS policies)
+CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.users
+        WHERE id = user_id AND role = 'admin'
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- RLS policies for public.users
+CREATE POLICY "Admins can do everything on users" ON public.users
+    FOR ALL TO authenticated
+    USING (public.is_admin(auth.uid()))
+    WITH CHECK (public.is_admin(auth.uid()));
+
+CREATE POLICY "Users can view their own profile" ON public.users
+    FOR SELECT TO authenticated
+    USING (auth.uid() = id);
+
+CREATE POLICY "Users can update their own profile" ON public.users
+    FOR UPDATE TO authenticated
+    USING (auth.uid() = id)
+    WITH CHECK (auth.uid() = id);
 
 
 -- ============================================================
@@ -43,6 +70,21 @@ CREATE TABLE IF NOT EXISTS public.branches (
 );
 
 ALTER TABLE public.branches ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies for public.branches
+CREATE POLICY "Admins can do everything on branches" ON public.branches
+    FOR ALL TO authenticated
+    USING (public.is_admin(auth.uid()))
+    WITH CHECK (public.is_admin(auth.uid()));
+
+CREATE POLICY "Anyone authenticated can view branches" ON public.branches
+    FOR SELECT TO authenticated
+    USING (true);
+
+-- Seed default branch for development and testing
+INSERT INTO public.branches (branch_id, name, code, region, address)
+VALUES ('7b129c78-cf14-411a-8b1e-05fa21d4c2b9', 'Headquarters Branch', 'HQ-001', 'National', '123 Finance Street, New Delhi')
+ON CONFLICT (code) DO NOTHING;
 
 
 -- ============================================================
@@ -82,6 +124,15 @@ CREATE TABLE IF NOT EXISTS public.loan_officers (
 
 ALTER TABLE public.loan_officers ENABLE ROW LEVEL SECURITY;
 
+CREATE POLICY "Admins can do everything on loan_officers" ON public.loan_officers
+    FOR ALL TO authenticated
+    USING (public.is_admin(auth.uid()))
+    WITH CHECK (public.is_admin(auth.uid()));
+
+CREATE POLICY "Loan officers can view their own profile details" ON public.loan_officers
+    FOR SELECT TO authenticated
+    USING (user_id = auth.uid());
+
 
 -- ============================================================
 -- STEP 5: Managers
@@ -99,7 +150,17 @@ CREATE TABLE IF NOT EXISTS public.managers (
 
 ALTER TABLE public.managers ENABLE ROW LEVEL SECURITY;
 
+CREATE POLICY "Admins can do everything on managers" ON public.managers
+    FOR ALL TO authenticated
+    USING (public.is_admin(auth.uid()))
+    WITH CHECK (public.is_admin(auth.uid()));
+
+CREATE POLICY "Managers can view their own profile details" ON public.managers
+    FOR SELECT TO authenticated
+    USING (user_id = auth.uid());
+
 -- Now add the deferred FK on branches.manager_id → managers.manager_id
+ALTER TABLE public.branches DROP CONSTRAINT IF EXISTS fk_branches_manager;
 ALTER TABLE public.branches
     ADD CONSTRAINT fk_branches_manager
     FOREIGN KEY (manager_id) REFERENCES public.managers(manager_id);

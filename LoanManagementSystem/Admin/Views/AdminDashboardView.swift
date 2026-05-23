@@ -31,8 +31,38 @@ struct AuditLogItem: Identifiable {
 }
 
 struct AdminDashboardView: View {
+    @StateObject private var staffViewModel = AdminStaffViewModel()
+    @State private var selectedTab = 0
+    
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            AdminHomeTabView(selectedTab: $selectedTab)
+                .tabItem {
+                    Label("Dashboard", systemImage: "chart.bar.xaxis")
+                }
+                .tag(0)
+            
+            AdminUsersTabView(viewModel: staffViewModel)
+                .tabItem {
+                    Label("Staff", systemImage: "person.2.fill")
+                }
+                .tag(1)
+            
+            AdminSettingsTabView()
+                .tabItem {
+                    Label("Settings", systemImage: "gearshape.fill")
+                }
+                .tag(2)
+        }
+        .tint(LMSColors.brandNavy)
+    }
+}
+
+// MARK: - Admin Home Tab View (System Operations + Configs + Logs)
+struct AdminHomeTabView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
+    @Binding var selectedTab: Int
     
     // Configurable Settings States
     @State private var homeLoanRate: Double = 8.5
@@ -79,7 +109,9 @@ struct AdminDashboardView: View {
                 
                 Button(action: {
                     HapticsManager.triggerImpact(style: .medium)
-                    showProfileSheet = true
+                    withAnimation {
+                        selectedTab = 2 // Redirect to Settings Tab
+                    }
                 }) {
                     ZStack {
                         Circle()
@@ -290,9 +322,6 @@ struct AdminDashboardView: View {
             }
             .background(LMSColors.background)
         }
-        .sheet(isPresented: $showProfileSheet) {
-            AdminProfileView()
-        }
         .alert(isPresented: $showSaveAlert) {
             Alert(
                 title: Text("Thresholds Updated"),
@@ -346,7 +375,7 @@ struct AdminStatusCard: View {
     }
 }
 
-// MARK: - Admin Profile View
+// MARK: - Legacy Admin Profile View
 struct AdminProfileView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
