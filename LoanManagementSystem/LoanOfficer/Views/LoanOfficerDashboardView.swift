@@ -182,7 +182,7 @@ struct CustomTopNavigationBar: View {
         HStack(alignment: .center) {
             // Left Profile Summary
             VStack(alignment: .leading, spacing: 2) {
-                Text("Good Morning, \(LoanOfficerMockData.officerName) 👋")
+                Text("Hi, \(LoanOfficerMockData.officerName) 👋")
                     .font(.system(.title3, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
                 
@@ -410,10 +410,10 @@ struct CustomFloatingTabBar: View {
                 selectedTab = 1
             }
             Spacer()
-            TabBarButton(iconName: "bolt", activeIconName: "bolt.fill", title: "Console", isSelected: selectedTab == 2) {
-                selectedTab = 2
-            }
-            Spacer()
+//            TabBarButton(iconName: "bolt", activeIconName: "bolt.fill", title: "Console", isSelected: selectedTab == 2) {
+//                selectedTab = 2
+//            }
+//            Spacer()
             TabBarButton(iconName: "doc.text.magnifyingglass", activeIconName: "doc.text.magnifyingglass", title: "Registry", isSelected: selectedTab == 3) {
                 selectedTab = 3
             }
