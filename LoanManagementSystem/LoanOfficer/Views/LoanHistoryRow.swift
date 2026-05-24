@@ -9,71 +9,38 @@ struct LoanHistoryRow: View {
     
     var body: some View {
         Button(action: onView) {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 12) {
-                    borrowerAvatar
-
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack(spacing: 6) {
-                            Image(systemName: app.loanType.symbol)
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(app.loanType.themeColor)
-
-                            Text(app.loanType.rawValue)
-                                .font(.system(size: 12, weight: .bold, design: .rounded))
-                                .foregroundColor(app.loanType.themeColor)
-                                .lineLimit(1)
-                        }
-
-                        Text(app.borrowerName)
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundColor(.primary)
-                            .lineLimit(1)
-
-                        Text(app.applicationId)
-                            .font(.system(size: 11, weight: .medium, design: .monospaced))
-                            .foregroundColor(.secondary.opacity(0.75))
-                    }
-
-                    Spacer(minLength: 10)
-
-                    VStack(alignment: .trailing, spacing: 7) {
-                        Text(CurrencyFormatter.shared.format(app.requestedAmount))
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                            .foregroundColor(.primary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-
-                        statusBadge
-                    }
+            HStack(spacing: 16) {
+                // Left: Premium Grayscale Initials Avatar
+                borrowerAvatar
+                
+                // Center Details
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(app.borrowerName)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                    
+                    Text("\(app.loanType.rawValue) Loan · \(app.branch)")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+                    
+                    Text(app.applicationId)
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundColor(.secondary.opacity(0.7))
                 }
-
-                Divider()
-                    .opacity(0.45)
-
-                HStack(spacing: 10) {
-                    detailPill(icon: "mappin.and.ellipse", title: "Branch", value: app.branch)
-                    detailPill(icon: "calendar", title: "Submitted", value: Self.shortDateFormatter.string(from: app.submittedDate))
-                }
-
-                HStack(spacing: 10) {
-                    detailPill(icon: "doc.text.fill", title: "Docs", value: "\(verifiedDocumentCount)/\(app.documents.count) verified")
-
-                    if let cibilScore = app.cibilScore {
-                        detailPill(icon: "gauge.with.dots.needle.67percent", title: "CIBIL", value: "\(cibilScore)")
-                    } else {
-                        detailPill(icon: "gauge.with.dots.needle.67percent", title: "CIBIL", value: "Pending")
-                    }
+                
+                Spacer()
+                
+                // Right Details: large formatted amount & tiny elegant badge
+                VStack(alignment: .trailing, spacing: 6) {
+                    Text(CurrencyFormatter.shared.format(app.requestedAmount))
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                    
+                    statusBadge
                 }
             }
-            .padding(16)
-            .background(AppTheme.neutralSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.03), radius: 8, x: 0, y: 4)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
             .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
@@ -85,7 +52,7 @@ struct LoanHistoryRow: View {
             } label: {
                 Label("View", systemImage: "eye.fill")
             }
-            .tint(AppTheme.actionBlue)
+            .tint(LMSColors.actionBlue)
             
             // Call Action
             Button {
@@ -94,7 +61,7 @@ struct LoanHistoryRow: View {
             } label: {
                 Label("Call", systemImage: "phone.fill")
             }
-            .tint(AppTheme.successGreen)
+            .tint(LMSColors.emerald)
             
             // Flag Action
             Button {
@@ -103,20 +70,10 @@ struct LoanHistoryRow: View {
             } label: {
                 Label("Flag", systemImage: "flag.fill")
             }
-            .tint(AppTheme.criticalRed)
+            .tint(LMSColors.coral)
         }
     }
     
-    private var verifiedDocumentCount: Int {
-        app.documents.filter { $0.status == .verified }.count
-    }
-
-    private static let shortDateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d MMM"
-        return formatter
-    }()
-
     // Grayscale Initials Avatar
     private var borrowerAvatar: some View {
         let initials = app.borrowerName.components(separatedBy: " ")
@@ -127,53 +84,28 @@ struct LoanHistoryRow: View {
         
         return ZStack {
             Circle()
-                .fill(app.loanType.themeColor.opacity(0.13))
-                .frame(width: 48, height: 48)
+                .fill(Color(.secondarySystemBackground))
+                .frame(width: 44, height: 44)
                 .overlay(
                     Circle()
-                        .stroke(app.loanType.themeColor.opacity(0.18), lineWidth: 1)
+                        .stroke(Color.primary.opacity(0.04), lineWidth: 1)
                 )
             
             Text(initials.uppercased())
                 .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundColor(app.loanType.themeColor)
-        }
-    }
-
-    private func detailPill(icon: String, title: String, value: String) -> some View {
-        HStack(spacing: 7) {
-            Image(systemName: icon)
-                .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.secondary)
-                .frame(width: 14)
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title)
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                    .foregroundColor(.secondary.opacity(0.75))
-                    .textCase(.uppercase)
-
-                Text(value)
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color(.systemBackground).opacity(0.72))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
     
     // Simplified status badge colors and tags matching specs
     private var statusDetails: (text: String, color: Color) {
         switch app.status {
         case .pending, .applied, .documentsPending:
-            return ("Pending Verification", .orange)
-        case .underReview, .sentToManager, .finalApprovalPending, .verificationCompleted:
+            return ("Pending", .orange)
+        case .underReview:
             return ("Under Review", .blue)
+        case .sentToManager, .finalApprovalPending, .verificationCompleted:
+            return ("In Review", .purple)
         case .approved, .disbursed:
             return ("Approved", .green)
         case .rejected, .documentsRejected:
@@ -191,16 +123,7 @@ struct LoanHistoryRow: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(details.color.opacity(0.12))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .cornerRadius(6)
     }
 }
 
-#Preview {
-    LoanHistoryRow(
-        app: PreviewSupport.loanOfficerViewModel.applications[0],
-        onView: {},
-        onCall: {},
-        onFlag: {}
-    )
-    .padding()
-}

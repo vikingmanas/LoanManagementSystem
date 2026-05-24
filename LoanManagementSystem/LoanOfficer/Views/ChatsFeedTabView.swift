@@ -1,395 +1,406 @@
 import SwiftUI
 
 struct ChatsFeedTabView: View {
-    enum ChatFilterType {
-        case all
-        case unread
-        case queries
-    }
-    
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
-    @State private var selectedFilter: ChatFilterType = .all
-    
+    @State private var searchText = ""
+    @State private var showUnreadOnly = false
+    @State private var showingCompose = false
+
+    private var conversations: [OfficerConversation] {
+        OfficerConversation.make(from: viewModel.activityFeed)
+            .filter { conversation in
+                let matchesSearch = searchText.isEmpty || conversation.borrowerName.localizedCaseInsensitiveContains(searchText) || conversation.applicationId.localizedCaseInsensitiveContains(searchText) || conversation.loanType.localizedCaseInsensitiveContains(searchText)
+                let matchesUnread = !showUnreadOnly || conversation.unreadCount > 0
+                return matchesSearch && matchesUnread
+            }
+    }
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Custom Native Header for Title and Filter
-                HStack(alignment: .center) {
-                    Text(selectedFilter == .queries ? "Queries" : (selectedFilter == .unread ? "Unread Messages" : "All Messages"))
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                    
-                    Menu {
-                        Section(header: Text("Filter By")) {
-                            Button {
-                                selectedFilter = .all
-                            } label: {
-                                Label("All Messages", systemImage: selectedFilter == .all ? "checkmark" : "")
-                            }
-                            Button {
-                                selectedFilter = .unread
-                            } label: {
-                                Label("Unread", systemImage: selectedFilter == .unread ? "checkmark" : "")
-                            }
-                            Button {
-                                selectedFilter = .queries
-                            } label: {
-                                Label("Queries", systemImage: selectedFilter == .queries ? "checkmark" : "")
-                            }
-                        }
-                        
-                        if viewModel.unreadActivityCount > 0 {
-                            Section {
-                                Button {
-                                    HapticsManager.triggerImpact(style: .medium)
-                                    viewModel.markAllActivityRead()
-                                } label: {
-                                    Label("Mark All as Read", systemImage: "checkmark.circle")
-                                }
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
-                            .font(.system(size: 26))
-                            .foregroundColor(.blue)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
-                .padding(.bottom, 4)
-                
-                // Timeline Content
-                let items = viewModel.activityFeed.filter { item in
-                    switch selectedFilter {
-                    case .all: return true
-                    case .unread: return !item.isRead
-                    case .queries: return item.eventType == .queryRaised
-                    }
-                }
-                
-                if items.isEmpty {
-                    Spacer()
+            List {
+                if conversations.isEmpty {
                     ContentUnavailableView(
-                        selectedFilter == .queries ? "No Active Queries" : (selectedFilter == .unread ? "No Unread Messages" : "No Activities"),
-                        systemImage: selectedFilter == .queries ? "bubble.left.and.bubble.right.fill" : "bell.slash",
-                        description: Text(selectedFilter == .queries ? "Borrowers have not raised any clarification queries." : "Timeline is clean! All alerts processed.")
+                        showUnreadOnly ? "No Unread Messages" : "No Conversations",
+                        systemImage: "message",
+                        description: Text("Borrower conversations and clarification threads appear here.")
                     )
-                    Spacer()
                 } else {
-                    List {
-                        // Quick Action: Mark all read
-                        if viewModel.unreadActivityCount > 0 && selectedFilter != .queries {
-                            Button(action: {
-                                HapticsManager.triggerImpact(style: .medium)
-                                viewModel.markAllActivityRead()
-                            }) {
-                                HStack {
-                                    Spacer()
-                                    Image(systemName: "checkmark.circle.fill")
-                                    Text("Mark All Read")
-                                        .font(.system(.caption, design: .rounded).bold())
-                                    Spacer()
-                                }
-                                .foregroundStyle(AppTheme.actionBlue)
-                                .padding(.vertical, 4)
+                    Section {
+                        ForEach(conversations) { conversation in
+                            NavigationLink {
+                                OfficerMessageThreadView(conversation: conversation, viewModel: viewModel)
+                            } label: {
+                                OfficerConversationRow(conversation: conversation)
                             }
-                            .listRowBackground(Color.clear)
-                        }
-                        
-                        ForEach(items) { item in
-                            NavigationLink(destination: ChatDetailResolverView(item: item)
-                                .onAppear {
-                                    viewModel.markActivityRead(item.id)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    conversation.items.forEach { viewModel.dismissActivity($0.id) }
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
                                 }
-                            ) {
-                                ActivityFeedRow(
-                                    item: item,
-                                    onMarkRead: {
-                                        viewModel.markActivityRead(item.id)
-                                    },
-                                    onDismiss: {
-                                        viewModel.dismissActivity(item.id)
-                                    },
-                                    onActionTapped: { _ in
-                                        HapticsManager.triggerImpact(style: .medium)
-                                        viewModel.markActivityRead(item.id)
-                                    }
-                                )
+
+                                Button {
+                                    conversation.items.forEach { viewModel.markActivityRead($0.id) }
+                                } label: {
+                                    Label("Read", systemImage: "envelope.open")
+                                }
+                                .tint(.blue)
                             }
-                            .listRowInsets(EdgeInsets())
-                            .listRowBackground(Color(.systemBackground))
-                            .listRowSeparator(.visible)
+                            .contextMenu {
+                                Button {
+                                    conversation.items.forEach { viewModel.markActivityRead($0.id) }
+                                } label: {
+                                    Label("Mark as Read", systemImage: "envelope.open")
+                                }
+
+                                Button { } label: {
+                                    Label("Pin", systemImage: "pin")
+                                }
+
+                                Button(role: .destructive) {
+                                    conversation.items.forEach { viewModel.dismissActivity($0.id) }
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                         }
-                    }
-                    .listStyle(.plain)
-                    .refreshable {
-                        await viewModel.fetchDashboardData()
                     }
                 }
             }
-            .background(Color(.systemBackground))
+            .listStyle(.insetGrouped)
+            .navigationTitle("Messages")
+            .searchable(text: $searchText, prompt: "Borrower or application")
+            .toolbar {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button {
+                        showUnreadOnly.toggle()
+                    } label: {
+                        Image(systemName: showUnreadOnly ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                    }
+                    .accessibilityLabel(showUnreadOnly ? "Show all messages" : "Show unread messages")
+
+                    Button {
+                        showingCompose = true
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                    }
+                    .accessibilityLabel("Compose message")
+                }
+            }
+            .refreshable { await viewModel.fetchDashboardData() }
+            .sheet(isPresented: $showingCompose) {
+                OfficerComposeMessageSheet(applications: viewModel.applications)
+            }
         }
-        .toolbar(.hidden, for: .navigationBar)
     }
 }
 
-// Chat helper types
-struct SimulatedChatMessage: Identifiable {
-    let id = UUID()
-    enum Sender {
-        case officer
-        case borrower
-        case system
+struct OfficerConversation: Identifiable, Hashable {
+    let id: String
+    let borrowerName: String
+    let applicationId: String
+    let loanType: String
+    let items: [ActivityFeedItem]
+
+    var unreadCount: Int { items.filter { !$0.isRead }.count }
+    var latestItem: ActivityFeedItem? { items.sorted { $0.timestamp > $1.timestamp }.first }
+    var requiresAction: Bool { items.contains { $0.requiresAction } }
+
+    static func make(from items: [ActivityFeedItem]) -> [OfficerConversation] {
+        Dictionary(grouping: items, by: { $0.applicationId })
+            .compactMap { applicationId, groupedItems in
+                guard let first = groupedItems.sorted(by: { $0.timestamp > $1.timestamp }).first else { return nil }
+                return OfficerConversation(
+                    id: applicationId,
+                    borrowerName: first.borrowerName,
+                    applicationId: applicationId,
+                    loanType: first.loanType,
+                    items: groupedItems.sorted { $0.timestamp < $1.timestamp }
+                )
+            }
+            .sorted { ($0.latestItem?.timestamp ?? .distantPast) > ($1.latestItem?.timestamp ?? .distantPast) }
     }
-    let sender: Sender
-    let text: String
-    let time: String
 }
 
-struct ChatDetailResolverView: View {
-    let item: ActivityFeedItem
-    @State private var chatText = ""
-    @State private var messages: [SimulatedChatMessage] = []
-    
+private struct OfficerConversationRow: View {
+    let conversation: OfficerConversation
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            // Unread indicator (Native iOS Messages style)
+            Circle()
+                .fill(conversation.unreadCount > 0 ? Color.blue : Color.clear)
+                .frame(width: 10, height: 10)
+            
+            OfficerAvatar(name: conversation.borrowerName, tint: conversation.requiresAction ? .orange : .blue)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .top) {
+                    Text(conversation.borrowerName)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    
+                    Spacer()
+                    
+                    if let latest = conversation.latestItem {
+                        Text(RelativeDateFormatter.shared.relativeString(from: latest.timestamp))
+                            .font(.subheadline)
+                            .foregroundStyle(conversation.unreadCount > 0 ? .blue : .secondary)
+                    }
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color(UIColor.tertiaryLabel))
+                }
+
+                Text(conversation.latestItem?.eventDescription ?? "No recent message")
+                    .font(.subheadline)
+                    .foregroundStyle(conversation.unreadCount > 0 ? .primary : .secondary)
+                    .lineLimit(2)
+                
+                HStack(spacing: 6) {
+                    Text("\(conversation.loanType) · \(conversation.applicationId)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.9)
+                    
+                    Spacer()
+                    
+                    if conversation.requiresAction {
+                        Text("Action Required")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(.orange)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.orange.opacity(0.15), in: Capsule())
+                    }
+                }
+                .padding(.top, 2)
+            }
+        }
+        .padding(.vertical, 8)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Conversation with \(conversation.borrowerName), \(conversation.unreadCount) unread messages")
+    }
+}
+
+private struct OfficerMessageThreadView: View {
+    let conversation: OfficerConversation
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+
+    @State private var messageText = ""
+    @State private var messages: [OfficerThreadMessage]
+    @FocusState private var isComposerFocused: Bool
+
+    init(conversation: OfficerConversation, viewModel: LoanOfficerDashboardViewModel) {
+        self.conversation = conversation
+        self.viewModel = viewModel
+        _messages = State(initialValue: OfficerThreadMessage.seed(from: conversation))
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            // Header details
-            HStack(spacing: 12) {
-                Circle()
-                    .fill(AppTheme.brandNavy.opacity(0.1))
-                    .frame(width: 44, height: 44)
-                    .overlay(
-                        Text(String(item.borrowerName.prefix(2)))
-                            .font(.system(.subheadline, design: .rounded).bold())
-                            .foregroundStyle(AppTheme.brandNavy)
-                    )
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.borrowerName)
-                        .font(.system(.subheadline, design: .rounded).bold())
-                    Text("\(item.loanType) · \(item.applicationId)")
-                        .font(.system(.caption, design: .rounded))
-                        .foregroundStyle(LMSColors.textSecondary)
-                }
-                Spacer()
-            }
-            .padding()
-            .background(AppTheme.neutralSurface)
-            
-            // Messages List
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(spacing: 14) {
-                        ForEach(messages) { msg in
-                            ChatMessageBubble(msg: msg)
-                                .id(msg.id)
+                    LazyVStack(spacing: 12) {
+                        ForEach(messages) { message in
+                            OfficerMessageBubble(message: message)
+                                .id(message.id)
                         }
                     }
-                    .padding()
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                 }
+                .background(Color(.systemGroupedBackground))
                 .onChange(of: messages.count) { _, _ in
-                    if let lastId = messages.last?.id {
-                        withAnimation {
-                            proxy.scrollTo(lastId, anchor: .bottom)
+                    if let last = messages.last?.id {
+                        withAnimation(.snappy) {
+                            proxy.scrollTo(last, anchor: .bottom)
                         }
                     }
                 }
             }
-            
-            Divider()
-            
-            // Native Typing Row
-            HStack(spacing: 12) {
-                Button(action: {}) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 20))
-                        .foregroundColor(Color(.systemGray))
-                        .padding(8)
-                        .background(Color(.systemGray5))
-                        .clipShape(Circle())
-                }
-                
-                HStack {
-                    TextField("Message", text: $chatText)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                    
-                    if !chatText.trimmingCharacters(in: .whitespaces).isEmpty {
-                        Button(action: sendChatMessage) {
-                            Image(systemName: "arrow.up.circle.fill")
-                                .font(.system(size: 28))
-                                .foregroundColor(.blue)
-                        }
-                        .padding(.trailing, 4)
-                    } else {
-                        Image(systemName: "mic")
-                            .font(.system(size: 20))
-                            .foregroundColor(.gray)
-                            .padding(.trailing, 12)
-                    }
-                }
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color(.systemGray4), lineWidth: 1)
-                )
-                .background(Color(.systemBackground).clipShape(RoundedRectangle(cornerRadius: 20)))
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
-            .background(Color(.systemGroupedBackground))
+
+            OfficerMessageComposer(text: $messageText, isFocused: $isComposerFocused, onSend: sendMessage)
         }
+        .navigationTitle(conversation.borrowerName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                VStack(spacing: 2) {
-                    ZStack {
-                        Circle().fill(Color(.systemGray5)).frame(width: 32, height: 32)
-                        Text(String(item.borrowerName.prefix(2)).uppercased())
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundColor(Color(.darkGray))
-                    }
-                    Text(item.borrowerName)
-                        .font(.caption)
-                        .bold()
-                }
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button { } label: { Image(systemName: "phone") }
+                    .accessibilityLabel("Call borrower")
+                Button { } label: { Image(systemName: "info.circle") }
+                    .accessibilityLabel("Conversation details")
             }
         }
         .onAppear {
-            loadSimulatedChat()
+            conversation.items.forEach { viewModel.markActivityRead($0.id) }
+        }
+        .toolbar(.hidden, for: .tabBar)
+    }
+
+    private func sendMessage() {
+        let trimmed = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        messages.append(OfficerThreadMessage(sender: .officer, text: trimmed, timestamp: Date()))
+        messageText = ""
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+            messages.append(OfficerThreadMessage(sender: .borrower, text: autoReply(for: trimmed), timestamp: Date()))
         }
     }
-    
-    // Simulate interactive chatting
-    private func loadSimulatedChat() {
-        if messages.isEmpty {
-            messages = [
-                SimulatedChatMessage(
-                    sender: .borrower,
-                    text: "Hello, I received a notification regarding the query on \(item.loanType). Let me know what information is missing.",
-                    time: "2 hours ago"
-                ),
-                SimulatedChatMessage(
-                    sender: .system,
-                    text: "Clarification query raised: \(item.eventDescription)",
-                    time: "1 hour ago"
-                )
-            ]
+
+    private func autoReply(for text: String) -> String {
+        let lower = text.lowercased()
+        if lower.contains("document") || lower.contains("upload") {
+            return "I will upload the corrected document from my borrower portal today."
         }
-    }
-    
-    private func sendChatMessage() {
-        guard !chatText.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        
-        // 1. Append officer message
-        let newMsg = SimulatedChatMessage(sender: .officer, text: chatText, time: "Just now")
-        messages.append(newMsg)
-        let sentText = chatText
-        chatText = ""
-        
-        HapticsManager.triggerImpact(style: .medium)
-        
-        // 2. Simulate user reply after 1.5 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-            HapticsManager.triggerImpact(style: .light)
-            let replyText: String
-            if sentText.lowercased().contains("document") || sentText.lowercased().contains("upload") {
-                replyText = "Understood. I will re-upload the correct self-attested bank statements through my portal right away."
-            } else if sentText.lowercased().contains("cibil") || sentText.lowercased().contains("score") {
-                replyText = "Yes, I had closed an older credit card account last month, which might explain the score discrepancy."
-            } else {
-                replyText = "Thank you, Officer Arjun. I appreciate the guidance and will coordinate the details."
-            }
-            
-            messages.append(SimulatedChatMessage(sender: .borrower, text: replyText, time: "Just now"))
+        if lower.contains("income") || lower.contains("salary") {
+            return "I can share the latest salary proof and bank statement."
         }
+        return "Thank you. I will follow the instructions and update you here."
     }
 }
 
-struct ChatMessageBubble: View {
-    let msg: SimulatedChatMessage
-    
+private struct OfficerMessageComposer: View {
+    @Binding var text: String
+    var isFocused: FocusState<Bool>.Binding
+    let onSend: () -> Void
+
     var body: some View {
-        HStack {
-            if msg.sender == .officer {
-                Spacer()
+        HStack(alignment: .bottom, spacing: 10) {
+            Menu {
+                Button { } label: { Label("Attach Document", systemImage: "paperclip") }
+                Button { } label: { Label("Send EMI Schedule", systemImage: "calendar") }
+                Button { } label: { Label("Request Re-upload", systemImage: "arrow.triangle.2.circlepath") }
+            } label: {
+                Image(systemName: "plus")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.blue)
+                    .frame(width: 34, height: 34)
+                    .background(Color(.tertiarySystemFill), in: Circle())
             }
-            
-            if msg.sender == .system {
-                Spacer()
-                Text(msg.text)
-                    .font(.system(.caption2, design: .rounded).bold())
-                    .foregroundStyle(LMSColors.textSecondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(LMSColors.textPrimary.opacity(0.05))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                Spacer()
-            } else {
-                VStack(alignment: msg.sender == .officer ? .trailing : .leading, spacing: 3) {
-                    Text(msg.text)
-                        .font(.system(.subheadline, design: .rounded))
-                        .foregroundStyle(msg.sender == .officer ? .white : .primary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(msg.sender == .officer ? AppTheme.actionBlue : AppTheme.neutralSurface)
-                        .clipShape(
-                            UnevenRoundedRectangle(
-                                topLeadingRadius: 18,
-                                bottomLeadingRadius: msg.sender == .officer ? 18 : 4,
-                                bottomTrailingRadius: msg.sender == .officer ? 4 : 18,
-                                topTrailingRadius: 18
-                            )
-                        )
-                    
-                    Text(msg.time)
-                        .font(.system(.caption2, design: .rounded))
-                        .foregroundStyle(LMSColors.textSecondary)
-                        .padding(.horizontal, 4)
-                }
+
+            TextField("Message", text: $text, axis: .vertical)
+                .focused(isFocused)
+                .lineLimit(1...5)
+                .textFieldStyle(.plain)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color(.separator).opacity(0.45), lineWidth: 0.5)
+                )
+                .onSubmit(onSend)
+
+            Button(action: onSend) {
+                Image(systemName: text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "mic.fill" : "arrow.up.circle.fill")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.secondary : Color.blue)
             }
-            
-            if msg.sender == .borrower {
-                Spacer()
-            }
+            .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .accessibilityLabel("Send message")
         }
-        .contextMenu {
-            if msg.sender != .system {
-                Button {
-                    // Copy to clipboard
-                    UIPasteboard.general.string = msg.text
-                    HapticsManager.triggerImpact(style: .light)
-                } label: {
-                    Label("Copy", systemImage: "doc.on.doc")
-                }
-                
-                Button {
-                    // Mock Reply Action
-                    HapticsManager.triggerImpact(style: .light)
-                } label: {
-                    Label("Reply", systemImage: "arrowshape.turn.up.left")
-                }
-                
-                Button {
-                    // Mock Translate
-                    HapticsManager.triggerImpact(style: .light)
-                } label: {
-                    Label("Translate", systemImage: "character.book.closed")
-                }
-                
-                Button {
-                    // Mock More
-                    HapticsManager.triggerImpact(style: .light)
-                } label: {
-                    Label("More...", systemImage: "ellipsis.circle")
-                }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.bar)
+    }
+}
+
+private struct OfficerMessageBubble: View {
+    let message: OfficerThreadMessage
+
+    var body: some View {
+        HStack(alignment: .bottom) {
+            if message.sender == .officer { Spacer(minLength: 52) }
+
+            VStack(alignment: message.sender == .officer ? .trailing : .leading, spacing: 4) {
+                Text(message.text)
+                    .font(.body)
+                    .foregroundStyle(message.sender == .officer ? .white : .primary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(message.sender == .officer ? Color.blue : Color(.secondarySystemGroupedBackground), in: UnevenRoundedRectangle(topLeadingRadius: 18, bottomLeadingRadius: message.sender == .officer ? 18 : 5, bottomTrailingRadius: message.sender == .officer ? 5 : 18, topTrailingRadius: 18, style: .continuous))
+
+                Text(message.timestamp, style: .time)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 4)
             }
+            .contextMenu {
+                Button { UIPasteboard.general.string = message.text } label: { Label("Copy", systemImage: "doc.on.doc") }
+                Button { } label: { Label("Reply", systemImage: "arrowshape.turn.up.left") }
+                Button { } label: { Label("Forward", systemImage: "arrowshape.turn.up.right") }
+            }
+
+            if message.sender == .borrower { Spacer(minLength: 52) }
         }
     }
 }
 
-#Preview {
-    ChatsFeedTabView(viewModel: PreviewSupport.loanOfficerViewModel)
-        .previewLoanOfficerEnvironment()
+private struct OfficerThreadMessage: Identifiable, Hashable {
+    enum Sender { case officer, borrower }
+
+    let id = UUID()
+    let sender: Sender
+    let text: String
+    let timestamp: Date
+
+    static func seed(from conversation: OfficerConversation) -> [OfficerThreadMessage] {
+        var seeded: [OfficerThreadMessage] = [
+            OfficerThreadMessage(sender: .borrower, text: "Hello Officer, I’m checking the status of my \(conversation.loanType).", timestamp: Date().addingTimeInterval(-7200))
+        ]
+
+        seeded += conversation.items.map {
+            OfficerThreadMessage(sender: .borrower, text: $0.eventDescription, timestamp: $0.timestamp)
+        }
+
+        seeded.append(
+            OfficerThreadMessage(sender: .officer, text: "I’m reviewing this now. I’ll update you if any document needs correction.", timestamp: Date().addingTimeInterval(-1800))
+        )
+
+        return seeded.sorted { $0.timestamp < $1.timestamp }
+    }
+}
+
+private struct OfficerComposeMessageSheet: View {
+    let applications: [OfficerLoanApplication]
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedApplicationId = ""
+    @State private var message = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Borrower") {
+                    Picker("Application", selection: $selectedApplicationId) {
+                        Text("Select").tag("")
+                        ForEach(applications) { app in
+                            Text("\(app.borrowerName) · \(app.applicationId)").tag(app.applicationId)
+                        }
+                    }
+                }
+
+                Section("Message") {
+                    TextField("Type message", text: $message, axis: .vertical)
+                        .lineLimit(4...8)
+                }
+            }
+            .navigationTitle("New Message")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Send") { dismiss() }
+                        .disabled(selectedApplicationId.isEmpty || message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
 }

@@ -14,15 +14,20 @@ struct ProfileView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color.clear
-
+            Group {
                 if viewModel.isLoading {
-                    ProgressView("Loading Profile...")
-                        .progressViewStyle(CircularProgressViewStyle(tint: LMSColors.brandNavy))
+                    VStack {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                        Text("Loading Profile...")
+                            .font(.system(.subheadline, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 8)
+                    }
                 } else if let profile = viewModel.profile {
-                    ScrollView {
-                        VStack(spacing: LMSSpacing.lg) {
+                    Form {
+                        // MARK: - Header Section
+                        Section {
                             ProfileHeaderView(
                                 name: profile.fullName,
                                 id: profile.id,
@@ -33,141 +38,93 @@ struct ProfileView: View {
                                     viewModel.updateProfileImage(data: data)
                                 }
                             )
-                            .padding(.horizontal, LMSSpacing.xl)
-                            .padding(.top, LMSSpacing.md)
-                            .padding(.bottom, LMSSpacing.xs)
-
-                            // Menu Card Group
-                            VStack(spacing: 0) {
-                                NavigationLink(destination: ProfileInfoDetailView(viewModel: viewModel)) {
-                                    profileRow(title: "Profile Information", icon: "person.fill", iconColor: LMSColors.actionBlue)
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                cardDivider()
-
-                                NavigationLink(destination: SettingsDetailView()) {
-                                    profileRow(title: "Settings", icon: "gearshape.fill", iconColor: LMSColors.textSecondary)
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                cardDivider()
-
-                                NavigationLink(destination: SecurityDetailView()) {
-                                    profileRow(title: "Security", icon: "lock.shield.fill", iconColor: LMSColors.emerald)
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                cardDivider()
-
-                                NavigationLink(destination: ResetPasswordDetailView()) {
-                                    profileRow(title: "Reset/Change Password", icon: "key.fill", iconColor: LMSColors.amber)
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                cardDivider()
-
-                                NavigationLink(destination: NotificationsDetailView()) {
-                                    profileRow(title: "Notifications", icon: "bell.fill", iconColor: LMSColors.coral)
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                cardDivider()
-
-                                NavigationLink(destination: PrivacyControlsDetailView()) {
-                                    profileRow(title: "Privacy Controls", icon: "hand.raised.fill", iconColor: .purple)
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                cardDivider()
-
-                                NavigationLink(destination: LinkedBankAccountsDetailView(viewModel: viewModel)) {
-                                    profileRow(title: "Linked Bank Accounts", icon: "creditcard.fill", iconColor: LMSColors.actionBlue)
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                cardDivider()
-
-                                NavigationLink(destination: KYCStatusDetailView(viewModel: viewModel)) {
-                                    profileRow(title: "KYC Status", icon: "checkmark.seal.fill", iconColor: LMSColors.emerald)
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                cardDivider()
-
-                                NavigationLink(destination: DocumentManagementDetailView(viewModel: viewModel)) {
-                                    profileRow(title: "Document Management", icon: "doc.on.doc.fill", iconColor: .indigo)
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                cardDivider()
-
-                                NavigationLink(destination: HelpSupportDetailView()) {
-                                    profileRow(title: "Help & Support", icon: "questionmark.circle.fill", iconColor: LMSColors.teal)
-                                }
-                                .buttonStyle(PlainButtonStyle())
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets())
+                        }
+                        
+                        // MARK: - Account Information
+                        Section {
+                            NavigationLink(destination: ProfileInfoDetailView(viewModel: viewModel)) {
+                                Label("Profile Information", systemImage: "person.circle")
                             }
-                            .background(LMSColors.surface)
-                            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-                            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
-                            .padding(.horizontal, LMSSpacing.lg)
-
-                            // Log Out
-                            Button(action: {
+                            
+                            NavigationLink(destination: KYCStatusDetailView(viewModel: viewModel)) {
+                                Label("KYC Verification", systemImage: "checkmark.seal")
+                            }
+                            
+                            NavigationLink(destination: LinkedBankAccountsDetailView(viewModel: viewModel)) {
+                                Label("Linked Bank Accounts", systemImage: "building.columns")
+                            }
+                            
+                            NavigationLink(destination: DocumentManagementDetailView(viewModel: viewModel)) {
+                                Label("Document Management", systemImage: "doc.on.doc")
+                            }
+                        } header: {
+                            Text("Account Details")
+                        }
+                        
+                        // MARK: - Security & Privacy
+                        Section {
+                            NavigationLink(destination: SecurityDetailView()) {
+                                Label("Security", systemImage: "lock.shield")
+                            }
+                            
+                            NavigationLink(destination: ResetPasswordDetailView()) {
+                                Label("Change Password", systemImage: "key")
+                            }
+                            
+                            NavigationLink(destination: PrivacyControlsDetailView()) {
+                                Label("Privacy Controls", systemImage: "hand.raised")
+                            }
+                            
+                            NavigationLink(destination: NotificationsDetailView()) {
+                                Label("Notifications", systemImage: "bell")
+                            }
+                        } header: {
+                            Text("Security & Privacy")
+                        }
+                        
+                        // MARK: - Support & General
+                        Section {
+                            NavigationLink(destination: SettingsDetailView()) {
+                                Label("App Settings", systemImage: "gearshape")
+                            }
+                            
+                            NavigationLink(destination: HelpSupportDetailView()) {
+                                Label("Help & Support", systemImage: "questionmark.circle")
+                            }
+                        } header: {
+                            Text("General")
+                        }
+                        
+                        // MARK: - Sign Out
+                        Section {
+                            Button(role: .destructive) {
                                 HapticsManager.triggerImpact(style: .medium)
-                                dismiss() // Dismiss the sheet before ripping out the underlying views
-                                
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                    BorrowerProfileStore.shared.signOut()
-                                    appState.logout()
-                                    authManager.signOut()
-                                }
-                            }) {
-                                HStack(spacing: LMSSpacing.md) {
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous)
-                                            .fill(LMSColors.coral.opacity(0.10))
-                                            .frame(width: 32, height: 32)
-
-                                        Image(systemName: "arrow.left.square.fill")
-                                            .foregroundStyle(LMSColors.coral)
-                                            .font(.system(size: 15, weight: .semibold))
-                                    }
-
-                                    Text("Log Out")
-                                        .font(LMSFont.callout.weight(.semibold))
-                                        .foregroundStyle(LMSColors.coral)
-
+                                BorrowerProfileStore.shared.signOut()
+                                appState.logout()
+                                authManager.signOut()
+                            } label: {
+                                HStack {
+                                    Spacer()
+                                    Text("Sign Out")
+                                        .fontWeight(.semibold)
                                     Spacer()
                                 }
-                                .padding(.vertical, 14)
-                                .padding(.horizontal, LMSSpacing.lg)
                             }
-                            .background(LMSColors.surface)
-                            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-                            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
-                            .padding(.horizontal, LMSSpacing.lg)
-                            .padding(.bottom, LMSSpacing.xxl)
-                        }
-                    }
-                    .onAppear {
-                        if let profile = viewModel.profile {
-                            print("ProfileView appeared. Current Completion: \(profile.profileCompletionPercentage)%")
                         }
                     }
                 }
             }
-            .lmsScreenBackground()
             .navigationTitle("Profile")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbarBackground(LMSColors.background, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
-                        .font(LMSFont.callout.weight(.semibold))
+                        .fontWeight(.semibold)
                 }
             }
         }
-    }
-
-    private func cardDivider() -> some View {
-        LMSGroupedDivider()
-    }
-
-    private func profileRow(title: String, icon: String, iconColor: Color) -> some View {
-        LMSListRow(title: title, icon: icon, iconColor: iconColor)
     }
 }
 

@@ -44,13 +44,10 @@ extension View {
     }
 }
 
-// MARK: - Refined Portfolio Carousel View (TabView Pageable Style)
+// MARK: - Refined Portfolio Carousel View
 public struct PortfolioCarouselView: View {
     @ObservedObject var viewModel: DashboardViewModel
     @State private var currentIndex = 0
-    
-    // Auto-scroll timer publisher
-    @State private var timer = Timer.publish(every: 8, on: .main, in: .common).autoconnect()
     
     let onNavigateToLoan: (DashboardLoanAccount) -> Void
     let onNavigateToBank: (BankAccount) -> Void
@@ -77,87 +74,50 @@ public struct PortfolioCarouselView: View {
     }
     
     public var body: some View {
-        GeometryReader { proxy in
-            let screenWidth = proxy.size.width
-            let cardWidth = screenWidth
-            
-            VStack(spacing: LMSSpacing.md) {
-                if viewModel.isLoading {
-                    // Loading Skeleton state
-                    RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous)
-                        .fill(LMSColors.surfaceElevated)
-                        .frame(width: cardWidth, height: 190)
-                        .shimmer(active: true)
-                        .transition(.opacity.animation(.easeIn(duration: 0.4)))
-                        .frame(width: screenWidth) // Center in TabView space
-                } else {
-                    // TabView carousel matching 190pt card dimensions
-                    TabView(selection: $currentIndex) {
-                        // Card 1: Total Loan Outstanding Summary
+        VStack(spacing: 16) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    if viewModel.isLoading {
+                        RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous)
+                            .fill(LMSColors.surfaceElevated)
+                            .frame(width: 300, height: 180)
+                            .shimmer(active: true)
+                    } else {
+                        // Card 1: Total Loan Outstanding
                         TotalLoanOutstandingCard(viewModel: viewModel)
-                            .frame(width: cardWidth, height: 190)
-                            .tag(0)
+                            .frame(width: 310, height: 185)
                             .onTapGesture {
                                 if let firstLoan = viewModel.loanAccounts.first {
                                     onNavigateToLoan(firstLoan)
                                 }
                             }
                         
-                        // Cards 2...N: Dynamic Linked bank accounts
+                        // Cards 2...N: Bank accounts
                         ForEach(viewModel.bankAccounts.indices, id: \.self) { index in
                             let account = viewModel.bankAccounts[index]
                             BankAccountCardRefined(
                                 account: account,
-                                cardPosition: index + 1,
-                                totalAccountCards: viewModel.bankAccounts.count,
                                 isLowBalance: viewModel.isLowBalance(account),
-                                deficit: viewModel.balanceDeficit(for: account),
-                                linkedLoanTypes: getLinkedLoanTypes(for: account),
                                 onTransfer: { onTransferTap(account) }
                             )
-                            .frame(width: cardWidth, height: 190)
-                            .tag(1 + index)
+                            .frame(width: 310, height: 185)
                             .onTapGesture {
                                 onNavigateToBank(account)
                             }
                         }
                         
-                        // Card Last: Loan Protection
+                        // Card Last: Insurance
                         LoanProtectionCardRefined()
-                            .frame(width: cardWidth, height: 190)
-                            .tag(1 + viewModel.bankAccounts.count)
+                            .frame(width: 310, height: 185)
                             .onTapGesture {
                                 onNavigateToInsurance()
                             }
                     }
-                    .tabViewStyle(.page(indexDisplayMode: .never))
-                    .frame(height: 190)
-                    .onReceive(timer) { _ in
-                        guard !UIAccessibility.isReduceMotionEnabled else { return }
-                        withAnimation(.easeInOut(duration: 0.5)) {
-                            currentIndex = (currentIndex + 1) % totalCardCount
-                        }
-                    }
-                    
-                    // Page Dot Indicator
-                    HStack(spacing: 6) {
-                        ForEach(0..<totalCardCount, id: \.self) { i in
-                            Capsule()
-                                .fill(i == currentIndex ? LMSColors.brandNavy : LMSColors.brandNavy.opacity(0.35))
-                                .frame(width: i == currentIndex ? 20 : 6, height: 6)
-                                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: currentIndex)
-                        }
-                    }
                 }
+                .padding(.horizontal, LMSSpacing.lg)
+                .padding(.vertical, LMSSpacing.xs)
             }
         }
-        .frame(height: 220) // 190 card + dots + spacing
-    }
-    
-    private func getLinkedLoanTypes(for account: BankAccount) -> String {
-        let matchedLoans = viewModel.loanAccounts.filter { $0.linkedBankAccountId == account.id }
-        if matchedLoans.isEmpty { return "None" }
-        return matchedLoans.map(\.loanType).joined(separator: ", ")
     }
 }
 
@@ -166,276 +126,226 @@ struct TotalLoanOutstandingCard: View {
     @ObservedObject var viewModel: DashboardViewModel
     
     var body: some View {
-        LoanCard(
-            title: "Total Loan Outstanding",
-            subtitle: "Across \(viewModel.loanAccounts.count) active loans",
-            outstandingAmount: viewModel.totalOutstanding,
-            repaidFraction: viewModel.repaidFraction,
-            monthlyEMI: viewModel.loanAccounts.map(\.totalEMI).reduce(0, +),
-            nextEMIDateText: (viewModel.loanAccounts.map(\.nextEMIDate).sorted().first ?? Date()).formattedAsDDMMMYYYY(),
-            accent: LMSColors.emerald
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Total Outstanding")
+                        .font(.system(.caption, design: .rounded).bold())
+                        .foregroundStyle(.white.opacity(0.8))
+                    Text(viewModel.totalOutstanding.formattedAsINR())
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+                Spacer()
+                Image(systemName: "chart.pie.fill")
+                    .font(.title2)
+                    .foregroundStyle(.white.opacity(0.9))
+            }
+            
+            Spacer()
+            
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("\(Int(viewModel.repaidFraction * 100))% Repaid")
+                        .font(.system(.caption2, design: .rounded).bold())
+                        .foregroundStyle(.white.opacity(0.9))
+                    Spacer()
+                    Text("\(viewModel.loanAccounts.count) Active Loans")
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+                
+                ProgressView(value: viewModel.repaidFraction)
+                    .tint(.white)
+                    .background(Color.white.opacity(0.2))
+                    .scaleEffect(x: 1, y: 1.5)
+                    .clipShape(Capsule())
+            }
+            
+            Spacer()
+            
+            HStack {
+                Text("Manage Loans")
+                    .font(.system(.caption, design: .rounded).bold())
+                    .foregroundStyle(.white)
+                Spacer()
+                Image(systemName: "chevron.right.circle.fill")
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+        }
+        .padding(LMSSpacing.xl)
+        .background(
+            LinearGradient(
+                colors: [LMSColors.brandNavy, LMSColors.brandNavyLight],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
         )
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Total loan outstanding \(viewModel.totalOutstanding.formattedAsINR()). \(Int(viewModel.repaidFraction*100)) percent repaid out of total approved \(viewModel.totalSanctioned.formattedAsINR()).")
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
+        .shadow(color: LMSColors.brandNavy.opacity(0.25), radius: 12, x: 0, y: 6)
     }
 }
 
-// MARK: - Cards 2...N: Dynamic Refined Bank Account Card
+// MARK: - Bank Account Card
 struct BankAccountCardRefined: View {
     let account: BankAccount
-    let cardPosition: Int
-    let totalAccountCards: Int
     let isLowBalance: Bool
-    let deficit: Double
-    let linkedLoanTypes: String
     let onTransfer: () -> Void
     
-    @State private var pulseScale: CGFloat = 1.0
-    
     var body: some View {
-        ZStack {
-            // Background Gradient depending on accountType
-            LinearGradient(
-                colors: getGradientColors(),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                HStack(spacing: 12) {
+                    Image(systemName: "building.columns.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(LMSColors.brandNavy)
+                        .frame(width: 36, height: 36)
+                        .background(LMSColors.brandNavy.opacity(0.1), in: Circle())
+                    
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(account.bankName)
+                            .font(.system(.subheadline, design: .rounded).bold())
+                        Text(account.accountType.displayName)
+                            .font(.system(.caption2, design: .rounded))
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+                }
+                Spacer()
+                Text("•••• \(account.accountNumber.suffix(4))")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(LMSColors.textSecondary)
+            }
             
-            VStack(alignment: .leading, spacing: 0) {
-                // Top Row
-                HStack(alignment: .top) {
-                    HStack(spacing: LMSSpacing.sm) {
-                        Image(systemName: "building.columns.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(.white)
-                        
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(account.accountType.displayName)
-                                .font(LMSFont.caption2.weight(.semibold))
-                                .foregroundStyle(.white.opacity(0.9))
-                            
-                            Text("•••• \(account.accountNumber.suffix(4))")
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundStyle(.white.opacity(0.70))
-                            
-                            Text(account.bankName)
-                                .font(LMSFont.caption2)
-                                .foregroundStyle(.white.opacity(0.55))
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    Text("\(cardPosition) of \(totalAccountCards)")
-                        .font(LMSFont.caption2)
-                        .foregroundStyle(.white.opacity(0.45))
-                }
-                
-                Spacer()
-                
-                // Center - Balance Block
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Current Balance")
-                        .font(LMSFont.caption)
-                        .foregroundStyle(.white.opacity(0.75))
-                    
-                    HStack(alignment: .center, spacing: LMSSpacing.sm) {
-                        Text(account.availableBalance.formattedAsINR())
-                            .font(.system(.title, design: .rounded).weight(.bold))
-                            .foregroundStyle(.white)
-                        
-                        if isLowBalance {
-                            HStack(spacing: 4) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .font(.system(size: 10))
-                                Text("Low Balance — Top up ₹\(Int(deficit)) to avoid penalty")
-                                    .font(LMSFont.caption2.weight(.medium))
-                            }
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(LMSColors.coral.opacity(0.85))
-                            .clipShape(Capsule())
-                            .scaleEffect(pulseScale)
-                            .onAppear {
-                                withAnimation(Animation.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
-                                    pulseScale = 1.04
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                Spacer()
-                
-                // Bottom Row
-                HStack(alignment: .center) {
-                    // Account Info Chip
+            Spacer()
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Available Balance")
+                    .font(.system(.caption2, design: .rounded).bold())
+                    .foregroundStyle(LMSColors.textSecondary)
+                Text(account.availableBalance.formattedAsINR())
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundStyle(LMSColors.textPrimary)
+            }
+            
+            Spacer()
+            
+            HStack {
+                if isLowBalance {
                     HStack(spacing: 4) {
-                        Image(systemName: getChipIconName())
-                            .font(.system(size: 10))
-                        Text(getChipText())
-                            .font(LMSFont.caption2.weight(.semibold))
+                        Circle().fill(.red).frame(width: 6, height: 6)
+                        Text("Low Balance")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.red)
                     }
-                    .foregroundStyle(LMSColors.brandNavy)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    
-                    Spacer()
-                    
-                    Text("Linked: \(linkedLoanTypes)")
-                        .font(LMSFont.caption2)
-                        .foregroundStyle(.white.opacity(0.65))
-                    
-                    Spacer()
-                    
-                    Button(action: onTransfer) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.up.arrow.down")
-                                .font(.system(size: 10, weight: .bold))
-                            Text("Transfer")
-                                .font(LMSFont.caption2.weight(.semibold))
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.white.opacity(0.2))
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(LMSSpacing.lg)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
-        .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 6)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(account.accountType.displayName). Account ending \(account.accountNumber.suffix(4)). Current balance \(account.availableBalance.formattedAsINR()).\(isLowBalance ? " Warning: Low balance." : "")")
-    }
-    
-    private func getGradientColors() -> [Color] {
-        switch account.accountType {
-        case .savings:
-            return [LMSColors.emerald, LMSColors.emeraldDark]
-        case .overdraft:
-            return [LMSColors.amber, Color(hex: "F4511E")]
-        case .current:
-            return [LMSColors.actionBlue, Color(hex: "5E35B1")]
-        }
-    }
-    
-    private func getChipIconName() -> String {
-        switch account.accountType {
-        case .overdraft:  return "creditcard"
-        case .savings:    return "lock.shield"
-        case .current:    return "checkmark.circle"
-        }
-    }
-    
-    private func getChipText() -> String {
-        switch account.accountType {
-        case .overdraft:  return "OD Limit: ₹\(Int(account.odLimit ?? 50000))"
-        case .savings:    return "Min Bal: ₹\(Int(account.minBalance ?? 5000))"
-        case .current:    return "No Min Balance"
-        }
-    }
-}
-
-// MARK: - Card Last: Refined Loan Protection Card
-struct LoanProtectionCardRefined: View {
-    var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Color(hex: "667EEA"), Color(hex: "F093FB")],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            
-            VStack(alignment: .leading, spacing: 0) {
-                // Top Row
-                HStack(alignment: .top) {
-                    HStack(spacing: LMSSpacing.sm) {
-                        Image(systemName: "shield.lefthalf.filled")
-                            .font(.system(size: 22))
-                            .foregroundStyle(.white)
-                        
-                        Text("LOAN PROTECTION")
-                            .font(LMSFont.caption2.weight(.semibold))
-                            .foregroundStyle(.white.opacity(0.85))
-                    }
-                    
-                    Spacer()
-                }
-                
-                Spacer()
-                
-                // Middle block
-                HStack(spacing: LMSSpacing.xxl) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Coverage Amount")
-                            .font(LMSFont.caption2)
-                            .foregroundStyle(.white.opacity(0.65))
-                        Text("₹ 15,00,000")
-                            .font(.system(.title2, design: .rounded).weight(.bold))
-                            .foregroundStyle(.white)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Monthly Premium")
-                            .font(LMSFont.caption2)
-                            .foregroundStyle(.white.opacity(0.65))
-                        Text("₹ 850 / mo")
-                            .font(.system(.title3, design: .rounded).weight(.bold))
-                            .foregroundStyle(.white)
-                    }
-                }
-                
-                Spacer()
-                
-                // Bottom Row
-                HStack(alignment: .center) {
-                    // Active Badge
+                    .background(Color.red.opacity(0.1), in: Capsule())
+                } else {
                     HStack(spacing: 4) {
-                        Image(systemName: "checkmark.circle.fill")
+                        Image(systemName: "checkmark.shield.fill")
                             .font(.system(size: 10))
-                        Text("Active")
-                            .font(LMSFont.caption2.weight(.bold))
+                        Text("Verified")
+                            .font(.system(size: 10, weight: .bold))
                     }
                     .foregroundStyle(LMSColors.emerald)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    
-                    Spacer()
-                    
-                    Text("Renews: 12 Jan 2026")
-                        .font(LMSFont.caption2)
-                        .foregroundStyle(.white.opacity(0.65))
-                    
-                    Spacer()
-                    
-                    HStack(spacing: 4) {
-                        Text("View Policy")
-                            .font(LMSFont.caption2.weight(.semibold))
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 10, weight: .bold))
-                    }
-                    .foregroundStyle(.white)
+                    .background(LMSColors.emerald.opacity(0.1), in: Capsule())
+                }
+                
+                Spacer()
+                
+                Button(action: onTransfer) {
+                    Text("Add Funds")
+                        .font(.system(.caption, design: .rounded).bold())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(LMSColors.brandNavy, in: Capsule())
                 }
             }
-            .padding(LMSSpacing.lg)
         }
+        .padding(LMSSpacing.xl)
+        .background(LMSColors.surface)
         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
-        .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 6)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Loan Protection Policy. Status Active. Coverage Amount 15 Lakh rupees. Renews 12 January 2026.")
+        .overlay(
+            RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous)
+                .stroke(LMSColors.separatorLight, lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 5)
     }
 }
 
-// MARK: - Legacy PortfolioCardView (For Backward Compatibility with other files)
+// MARK: - Insurance Card
+struct LoanProtectionCardRefined: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                HStack(spacing: 12) {
+                    Image(systemName: "shield.lefthalf.filled")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.white)
+                        .frame(width: 36, height: 36)
+                        .background(.white.opacity(0.2), in: Circle())
+                    
+                    Text("Loan Protection")
+                        .font(.system(.subheadline, design: .rounded).bold())
+                        .foregroundStyle(.white)
+                }
+                Spacer()
+                Text("Active")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, LMSSpacing.sm)
+                    .padding(.vertical, LMSSpacing.xs)
+                    .background(.white.opacity(0.2), in: Capsule())
+            }
+            
+            Spacer()
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Coverage Up To")
+                    .font(.system(.caption2, design: .rounded).bold())
+                    .foregroundStyle(.white.opacity(0.7))
+                Text("₹ 15,00,000")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+            }
+            
+            Spacer()
+            
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Premium")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.6))
+                    Text("₹ 850/mo")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                Spacer()
+                Text("View Policy")
+                    .font(.system(.caption, design: .rounded).bold())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, LMSSpacing.lg)
+                    .padding(.vertical, LMSSpacing.sm)
+                    .background(.white.opacity(0.2), in: Capsule())
+            }
+        }
+        .padding(LMSSpacing.xl)
+        .background(
+            LinearGradient(
+                colors: [Color(hex: "667EEA"), Color(hex: "764BA2")],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
+        .shadow(color: Color(hex: "667EEA").opacity(0.3), radius: 12, x: 0, y: 6)
+    }
+}
+
+// MARK: - Legacy Adapters
 public struct PortfolioCardView: View {
     public enum CardType: Hashable {
         case loan(DashboardLoanAccount)
@@ -459,85 +369,13 @@ public struct PortfolioCardView: View {
         Group {
             switch type {
             case .loan(let loan):
-                LoanOverviewCard(loan: loan)
+                TotalLoanOutstandingCard(viewModel: DashboardViewModel())
             case .bank(let bank):
-                BankAccountCard(bank: bank, isLowBalance: isLowBalance, onTransferTap: onTransferTap)
+                BankAccountCardRefined(account: bank, isLowBalance: isLowBalance, onTransfer: { onTransferTap?() })
             case .insurance:
-                InsuranceCard()
+                LoanProtectionCardRefined()
             }
         }
-        .frame(width: 280, height: 180)
-        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
-        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
-        .shimmer(active: isLoading)
+        .frame(width: 300, height: 180)
     }
-}
-
-struct LoanOverviewCard: View {
-    let loan: DashboardLoanAccount
-    
-    var body: some View {
-        TotalLoanOutstandingCard(viewModel: DashboardViewModel()) // Fallback adapter
-    }
-}
-
-struct RepaidProgressArc: View {
-    let percentage: Double
-    
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.white.opacity(0.15), lineWidth: 4)
-            Circle()
-                .trim(from: 0, to: CGFloat(percentage))
-                .stroke(Color.white, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-            
-            Text("\(Int(percentage * 100))%")
-                .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-        }
-        .frame(width: 36, height: 36)
-    }
-}
-
-struct BankAccountCard: View {
-    let bank: BankAccount
-    let isLowBalance: Bool
-    var onTransferTap: (() -> Void)?
-    
-    var body: some View {
-        BankAccountCardRefined(
-            account: bank,
-            cardPosition: 1,
-            totalAccountCards: 1,
-            isLowBalance: isLowBalance,
-            deficit: 0,
-            linkedLoanTypes: "None",
-            onTransfer: { onTransferTap?() }
-        )
-    }
-}
-
-struct PulsingLowBalanceBadge: View {
-    var body: some View {
-        Text("Low Balance")
-            .font(.system(size: 9, weight: .bold, design: .rounded))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(LMSColors.coral)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-    }
-}
-
-struct InsuranceCard: View {
-    var body: some View {
-        LoanProtectionCardRefined()
-    }
-}
-
-#Preview {
-    TotalLoanOutstandingCard(viewModel: PreviewSupport.dashboardViewModel)
-        .previewBorrowerEnvironment()
 }

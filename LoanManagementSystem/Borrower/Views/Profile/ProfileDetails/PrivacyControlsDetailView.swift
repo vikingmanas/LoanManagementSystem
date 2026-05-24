@@ -7,52 +7,60 @@ struct PrivacyControlsDetailView: View {
     
     var body: some View {
         Form {
-            Section(header: Text("Credit Bureaus"), footer: Text("Disabling this may delay credit limits check and loan dispatch speed.")) {
+            Section {
                 Toggle(isOn: $shareWithBureaus) {
-                    HStack {
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                            .foregroundStyle(Color.AppTheme.primary)
-                        VStack(alignment: .leading) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text("Share Credit Activity")
                             Text("Report loan repayments to major credit bureaus")
-                                .font(Font.AppTheme.caption)
-                                .foregroundStyle(Color.AppTheme.textSecondary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
+                    } icon: {
+                        Image(systemName: "chart.line.uptrend.xyaxis")
                     }
                 }
+            } header: {
+                Text("Credit Bureaus")
+            } footer: {
+                Text("Disabling this may delay credit limits check and loan dispatch speed.")
             }
             
-            Section(header: Text("Diagnostics")) {
+            Section {
                 Toggle(isOn: $trackingEnabled) {
-                    HStack {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                        VStack(alignment: .leading) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text("Diagnostics and Usage")
                             Text("Share anonymous diagnostic data with developers")
-                                .font(Font.AppTheme.caption)
-                                .foregroundStyle(Color.AppTheme.textSecondary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle")
                     }
                 }
+            } header: {
+                Text("Diagnostics")
             }
             
-            Section(header: Text("Personalization")) {
+            Section {
                 Toggle(isOn: $personalizedAds) {
-                    HStack {
-                        Image(systemName: "sparkles")
-                            .foregroundStyle(.purple)
-                        VStack(alignment: .leading) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text("Personalized Loan Offers")
                             Text("Enable matching based on credit profile")
-                                .font(Font.AppTheme.caption)
-                                .foregroundStyle(Color.AppTheme.textSecondary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
+                    } icon: {
+                        Image(systemName: "sparkles")
                     }
                 }
+            } header: {
+                Text("Personalization")
             }
         }
-        .navigationTitle("Privacy Controls")
+        .navigationTitle("Privacy")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

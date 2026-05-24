@@ -13,7 +13,8 @@ struct LoanManagementSystemApp: App {
     /// Shared authentication manager injected into the environment.
     @StateObject private var authManager = AuthManager()
     
-
+    init() {}
+    
     var body: some Scene {
         WindowGroup {
             ContentView()

@@ -134,7 +134,7 @@ struct ContentView: View {
             // MARK: - Splash Delay
             // Skip the splash delay inside SwiftUI Previews for instant canvas rendering.
             let isPreview = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
-            let delay = isPreview ? 3.0 : 5.0
+            let delay = isPreview ? 0.5 : 1.5
             
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 withAnimation(.easeInOut(duration: 0.5)) {

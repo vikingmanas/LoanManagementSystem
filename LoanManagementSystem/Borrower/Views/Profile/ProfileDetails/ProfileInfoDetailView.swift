@@ -2,150 +2,155 @@ import SwiftUI
 
 struct ProfileInfoDetailView: View {
     @ObservedObject var viewModel: BorrowerProfileViewModel
-    @State private var activeSheet: ProfileEditSheet?
+    @State private var showingEditView = false
     
     var body: some View {
         Form {
             if let profile = viewModel.profile {
-                Section(header: Text("Personal Information")) {
-                    DataRowView(label: "Full Name", value: profile.fullName, isVerified: profile.isKYCVerified)
-                    DataRowView(label: "Gender", value: profile.gender)
-                    DataRowView(label: "Marital Status", value: profile.maritalStatus)
-                    DataRowView(label: "Nationality", value: profile.nationality)
-                    DataRowView(label: "Date of Birth", value: viewModel.formatDate(profile.dateOfBirth), isVerified: profile.isKYCVerified)
-                    DataRowView(label: "Aadhaar Number", value: viewModel.maskedAccountNumber(profile.aadhaarNumber), isVerified: profile.kycVerification.aadhaarStatus == .verified)
-                    DataRowView(label: "PAN Number", value: profile.panNumber, isVerified: profile.kycVerification.panStatus == .verified)
+                Section {
+                    LabeledContent("Full Name") {
+                        HStack(spacing: 4) {
+                            Text(profile.fullName)
+                            if profile.isKYCVerified {
+                                Image(systemName: "checkmark.seal.fill")
+                                    .foregroundStyle(.blue)
+                                    .font(.caption)
+                            }
+                        }
+                    }
+                    LabeledContent("Gender", value: profile.gender)
+                    LabeledContent("Marital Status", value: profile.maritalStatus)
+                    LabeledContent("Nationality", value: profile.nationality)
+                    LabeledContent("Date of Birth", value: viewModel.formatDate(profile.dateOfBirth))
+                } header: {
+                    Text("Personal Details")
                 }
                 
-                // 2. Contact Information
-                Section(header: Text("Contact Information")) {
-                    HStack {
-                        DataRowView(label: "Mobile Number", value: profile.mobileNumber)
-                        Spacer()
-                        if profile.isPhoneVerified {
-                            StatusBadgeView(status: "Verified")
-                        } else {
-                            Button(action: {
-                                viewModel.verifyMobile()
-                            }) {
-                                Text("Verify")
-                                    .font(Font.AppTheme.caption)
-                                    .fontWeight(.bold)
-                                    .foregroundStyle(Color.AppTheme.primary)
+                Section {
+                    LabeledContent("Aadhaar Number", value: viewModel.maskedAccountNumber(profile.aadhaarNumber))
+                    LabeledContent("PAN Number", value: profile.panNumber)
+                } header: {
+                    Text("Identity")
+                }
+                
+                Section {
+                    LabeledContent("Mobile Number") {
+                        HStack {
+                            Text(profile.mobileNumber)
+                            if profile.isPhoneVerified {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                            } else {
+                                Button("Verify") {
+                                    viewModel.verifyMobile()
+                                }
+                                .font(.caption.bold())
                             }
                         }
                     }
                     
-                    HStack {
-                        DataRowView(label: "Email Address", value: profile.email)
-                        Spacer()
-                        if profile.isEmailVerified {
-                            StatusBadgeView(status: "Verified")
-                        } else {
-                            Button(action: {
-                                viewModel.verifyEmail()
-                            }) {
-                                Text("Verify")
-                                    .font(Font.AppTheme.caption)
-                                    .fontWeight(.bold)
-                                    .foregroundStyle(Color.AppTheme.primary)
+                    LabeledContent("Email Address") {
+                        HStack {
+                            Text(profile.email)
+                            if profile.isEmailVerified {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                            } else {
+                                Button("Verify") {
+                                    viewModel.verifyEmail()
+                                }
+                                .font(.caption.bold())
                             }
                         }
                     }
                     
                     if let alt = profile.alternateNumber {
-                        DataRowView(label: "Alternate Number", value: alt)
+                        LabeledContent("Alternate Number", value: alt)
                     }
+                } header: {
+                    Text("Contact Details")
                 }
                 
-                // 3. Address Information
-                Section(header: Text("Current Address")) {
-                    DataRowView(label: "Address", value: profile.currentAddress.streetAddress)
-                    DataRowView(label: "City", value: profile.currentAddress.city)
-                    DataRowView(label: "State", value: profile.currentAddress.state)
-                    DataRowView(label: "ZIP Code", value: profile.currentAddress.zipCode)
+                Section {
+                    LabeledContent("Street", value: profile.currentAddress.streetAddress)
+                    LabeledContent("City", value: profile.currentAddress.city)
+                    LabeledContent("State", value: profile.currentAddress.state)
+                    LabeledContent("ZIP Code", value: profile.currentAddress.zipCode)
+                } header: {
+                    Text("Current Address")
                 }
                 
                 if !profile.permanentAddress.isSameAsCurrent {
-                    Section(header: Text("Permanent Address")) {
-                        DataRowView(label: "Address", value: profile.permanentAddress.streetAddress)
-                        DataRowView(label: "City", value: profile.permanentAddress.city)
-                        DataRowView(label: "State", value: profile.permanentAddress.state)
-                        DataRowView(label: "ZIP Code", value: profile.permanentAddress.zipCode)
+                    Section {
+                        LabeledContent("Street", value: profile.permanentAddress.streetAddress)
+                        LabeledContent("City", value: profile.permanentAddress.city)
+                        LabeledContent("State", value: profile.permanentAddress.state)
+                        LabeledContent("ZIP Code", value: profile.permanentAddress.zipCode)
+                    } header: {
+                        Text("Permanent Address")
                     }
                 }
                 
-                // 4. Employment & Income
-                Section(header: Text("Employment & Income")) {
-                    DataRowView(label: "Employment Type", value: profile.employment.employmentType)
-                    DataRowView(label: "Company", value: profile.employment.companyName)
-                    DataRowView(label: "Designation", value: profile.employment.designation)
-                    DataRowView(label: "Monthly Income", value: viewModel.formatCurrency(profile.income.monthlyIncome))
+                Section {
+                    LabeledContent("Employment", value: profile.employment.employmentType)
+                    LabeledContent("Company", value: profile.employment.companyName)
+                    LabeledContent("Designation", value: profile.employment.designation)
+                    LabeledContent("Monthly Income", value: viewModel.formatCurrency(profile.income.monthlyIncome))
+                } header: {
+                    Text("Professional Info")
                 }
                 
-                // 5. Emergency & Nominee
-                Section(header: Text("Emergency Reference Contact")) {
-                    DataRowView(label: "Contact Name", value: profile.emergencyContactName)
-                    DataRowView(label: "Mobile Number", value: profile.emergencyContactNumber)
+                Section {
+                    LabeledContent("Emergency Contact", value: profile.emergencyContactName)
+                    LabeledContent("Mobile", value: profile.emergencyContactNumber)
+                } header: {
+                    Text("Emergency Reference")
                 }
                 
-                Section(header: Text("Nominee Details")) {
-                    DataRowView(label: "Nominee Name", value: profile.nomineeName)
-                    DataRowView(label: "Relationship", value: profile.nomineeRelationship)
-                }
-                
-                // 6. Preferences & Branch
-                Section(header: Text("Bank Preferences")) {
-                    DataRowView(label: "Preferred Branch", value: profile.preferredBranch)
-                    DataRowView(label: "Occupation", value: profile.occupation)
-                    DataRowView(label: "Existing Bank Customer", value: profile.hasExistingBankAccount ? "Yes (\(profile.existingCustomerId ?? "N/A"))" : "No")
+                Section {
+                    LabeledContent("Nominee Name", value: profile.nomineeName)
+                    LabeledContent("Relationship", value: profile.nomineeRelationship)
+                } header: {
+                    Text("Nominee")
                 }
                 
             } else {
-                Text("Loading profile...")
+                ProgressView()
             }
         }
-        .navigationTitle("Profile Information")
+        .navigationTitle("Information")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    Button("Personal Info") { activeSheet = .personal }
-                    Button("Contact Info") { activeSheet = .contact }
-                    Button("Address Info") { activeSheet = .address }
-                    Button("Employment") { activeSheet = .employment }
-                    Button("References & Prefs") { activeSheet = .additional }
-                } label: {
-                    Text("Edit")
-                        .foregroundStyle(Color.AppTheme.primary)
+                Button("Edit") {
+                    showingEditView = true
                 }
             }
         }
-        .sheet(item: $activeSheet) { sheet in
-            switch sheet {
-            case .personal:
-                EditPersonalInfoView(viewModel: viewModel)
-            case .contact:
-                EditContactInfoView(viewModel: viewModel)
-            case .address:
-                EditAddressInfoView(viewModel: viewModel)
-            case .employment:
-                EditEmploymentView(viewModel: viewModel)
-            case .bank:
-                EditBankDetailsView(viewModel: viewModel)
-            case .kyc:
-                EditKYCView(viewModel: viewModel)
-            case .loan:
-                EditLoanOverviewView(viewModel: viewModel)
-            case .additional:
-                EditAdditionalInfoView(viewModel: viewModel)
-            }
+        .navigationDestination(isPresented: $showingEditView) {
+            UnifiedProfileEditScreen(viewModel: viewModel)
         }
     }
 }
 
-#Preview {
-    NavigationStack {
-        ProfileInfoDetailView(viewModel: PreviewSupport.borrowerProfileViewModel)
+// Internal Wrapper for Push-based editing (Non-Modal)
+struct UnifiedProfileEditScreen: View {
+    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        UnifiedProfileEditContentView(viewModel: viewModel)
+            .navigationTitle("Edit Profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        // This triggers the internal save if we were using a single view,
+                        // but since we want "edit and done", we'll ensure the content handles it.
+                        dismiss()
+                    }
+                    .fontWeight(.bold)
+                }
+            }
     }
 }

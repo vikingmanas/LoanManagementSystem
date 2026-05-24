@@ -7,16 +7,166 @@ public enum DashboardRoute: Hashable {
     case insuranceDetails
     case allPendingEMIs
     case schemeDetails(GovernmentScheme)
+    case profileInfo
+    case notifications
 }
 
-public struct DashboardView: View {
-    @EnvironmentObject private var authManager: AuthManager
-    @EnvironmentObject private var appState: AppStateManager
-    @EnvironmentObject private var tabRouter: BorrowerTabRouter
+// MARK: - Native Status Banner Section
+struct StatusBannerSection: View {
     @ObservedObject var viewModel: DashboardViewModel
-    @State private var navigationPath = NavigationPath()
+    @Binding var navigationPath: [DashboardRoute]
+    @Binding var showingProfileSheet: Bool
+
+    var body: some View {
+        VStack(spacing: 12) {
+            // Profile Completion Row (Priority 1)
+            if let profile = BorrowerProfileStore.shared.profile, profile.profileCompletionPercentage < 100 {
+                Button {
+                    showingProfileSheet = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "person.crop.circle.badge.exclamationmark.fill")
+                            .font(.title3)
+                            .foregroundStyle(LMSColors.brandNavy)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Complete Your Profile")
+                                .font(.system(.subheadline, design: .rounded).bold())
+                                .foregroundStyle(LMSColors.textPrimary)
+                            
+                            HStack(spacing: 8) {
+                                ProgressView(value: Double(profile.profileCompletionPercentage), total: 100)
+                                    .tint(LMSColors.brandNavy)
+                                    .frame(width: 60)
+                                
+                                Text("\(profile.profileCompletionPercentage)% done")
+                                    .font(.system(.caption2, design: .rounded))
+                                    .foregroundStyle(LMSColors.textSecondary)
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(LMSColors.textTertiary)
+                    }
+                    .padding(.horizontal, LMSSpacing.lg)
+                    .padding(.vertical, LMSSpacing.md)
+                    .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                }
+                .buttonStyle(DashboardPressableStyle())
+            }
+            
+            // Account Health Status Row (High-Signal Urgent Alert)
+            Button {
+                handleAlertTap()
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: viewModel.isAccountHealthy ? "shield.checkered" : "exclamationmark.shield.fill")
+                        .font(.title3)
+                        .foregroundStyle(viewModel.isAccountHealthy ? LMSColors.emerald : LMSColors.coral) // Premium Coral Red
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(viewModel.isAccountHealthy ? "Account Secure" : "Action Required")
+                            .font(.system(.subheadline, design: .rounded).bold())
+                            .foregroundStyle(LMSColors.textPrimary)
+                        
+                        Text(viewModel.healthStatusMessage)
+                            .font(.system(.caption2, design: .rounded))
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(LMSColors.textTertiary)
+                }
+                .padding(.horizontal, LMSSpacing.lg)
+                .padding(.vertical, LMSSpacing.md)
+                .background(
+                    viewModel.isAccountHealthy ? LMSColors.surface : LMSColors.coral.opacity(0.12), 
+                    in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                        .stroke(viewModel.isAccountHealthy ? Color.clear : LMSColors.coral.opacity(0.3), lineWidth: 1)
+                )
+            }
+            .buttonStyle(DashboardPressableStyle())
+        }
+        .padding(.horizontal, LMSSpacing.lg)
+    }
     
-    // Quick Actions Sheets
+    private func handleAlertTap() {
+        if !viewModel.isAccountHealthy {
+            navigationPath.append(.allPendingEMIs)
+        }
+    }
+}
+
+// MARK: - Native Quick Actions Section
+struct QuickActionGridSection: View {
+    var onPay: () -> Void
+    var onStatement: () -> Void
+    var onForeclosure: () -> Void
+    var onSupport: () -> Void
+    var onTopUp: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("QUICK ACTIONS")
+                .font(.system(.caption, design: .rounded).bold())
+                .foregroundStyle(LMSColors.textSecondary)
+                .padding(.horizontal, LMSSpacing.lg)
+            
+            HStack(spacing: 12) {
+                QuickActionButton(title: "Pay EMI", icon: "indianrupeesign.circle.fill", color: LMSColors.brandNavy, action: onPay)
+                QuickActionButton(title: "Top Up", icon: "plus.circle.fill", color: LMSColors.emerald, action: onTopUp)
+                QuickActionButton(title: "Statement", icon: "doc.text.fill", color: LMSColors.actionBlue, action: onStatement)
+                QuickActionButton(title: "Support", icon: "headphones.circle.fill", color: LMSColors.amber, action: onSupport)
+            }
+            .padding(.horizontal, LMSSpacing.lg)
+        }
+    }
+}
+
+struct QuickActionButton: View {
+    let title: String
+    let icon: String
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 22))
+                    .foregroundStyle(color)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous).stroke(LMSColors.separatorLight, lineWidth: 0.5))
+                
+                Text(title)
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(LMSColors.textPrimary)
+            }
+        }
+        .buttonStyle(DashboardPressableStyle())
+    }
+}
+
+// MARK: - Dashboard View
+
+public struct DashboardView: View {
+    @EnvironmentObject var appState: AppStateManager
+    @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var tabRouter: BorrowerTabRouter
+    @StateObject private var viewModel = DashboardViewModel()
+    
+    @State private var navigationPath = [DashboardRoute]()
     @State private var showingQuickPaySheet = false
     @State private var showingStatementSheet = false
     @State private var showingForeclosureSheet = false
@@ -24,38 +174,92 @@ public struct DashboardView: View {
     @State private var showingTopUpSheet = false
     @State private var showingProfileSheet = false
     
-    private var greetingTitle: String {
-        guard let profile = BorrowerProfileStore.shared.profile else {
-            return "Dashboard"
+    private var greetingSubtitle: String {
+        if let profile = BorrowerProfileStore.shared.profile, !profile.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let firstName = profile.fullName.components(separatedBy: " ").first ?? profile.fullName
+            return "Good morning, \(firstName)"
         }
-        let firstName = profile.fullName.components(separatedBy: " ").first ?? profile.fullName
-        return "Hi, \(firstName)"
+        let authName = authManager.userDisplayName.components(separatedBy: " ").first ?? "User"
+        return "Hi, \(authName)"
     }
     
     public var body: some View {
         NavigationStack(path: $navigationPath) {
-            VStack(spacing: 0) {
-                // 0. CUSTOM TOP BAR (HStack showing navigation title 'Dashboard' and notification/profile toolbar)
-                HStack(alignment: .center) {
-                    Text("Dashboard")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(LMSColors.brandNavy)
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 28) {
                     
-                    Spacer()
+                    HStack {
+                        Text(greetingSubtitle)
+                            .font(.system(.subheadline, design: .rounded).bold())
+                            .foregroundStyle(LMSColors.textSecondary)
+                        Spacer()
+                    }
+                    .padding(.horizontal, LMSSpacing.lg)
+                    .padding(.top, 8)
+
+                    StatusBannerSection(viewModel: viewModel, navigationPath: $navigationPath, showingProfileSheet: $showingProfileSheet)
                     
-                    // Notification & Profile Toolbar Pill
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text("FINANCIAL PORTFOLIO")
+                            .font(.system(.caption, design: .rounded).bold())
+                            .foregroundStyle(LMSColors.textSecondary)
+                            .padding(.horizontal, LMSSpacing.lg)
+                        
+                        PortfolioCarouselView(
+                            viewModel: viewModel,
+                            onNavigateToLoan: { loan in
+                                navigationPath.append(DashboardRoute.loanDetails(loan))
+                            },
+                            onNavigateToBank: { bank in
+                                navigationPath.append(DashboardRoute.bankDetails(bank))
+                            },
+                            onNavigateToInsurance: {
+                                navigationPath.append(DashboardRoute.insuranceDetails)
+                            },
+                            onTransferTap: { bank in
+                                navigationPath.append(DashboardRoute.bankDetails(bank))
+                            }
+                        )
+                    }
+                    
+                    QuickActionGridSection(
+                        onPay: { showingQuickPaySheet = true },
+                        onStatement: { showingStatementSheet = true },
+                        onForeclosure: { showingForeclosureSheet = true },
+                        onSupport: { showingSupportSheet = true },
+                        onTopUp: { showingTopUpSheet = true }
+                    )
+                    
+                    EMITrackerView(viewModel: viewModel) {
+                        viewModel.payNextEMI()
+                    } onViewAllPendingTap: {
+                        navigationPath.append(DashboardRoute.allPendingEMIs)
+                    }
+                    
+                    GovernmentSchemesSection(viewModel: viewModel) { scheme in
+                        navigationPath.append(DashboardRoute.schemeDetails(scheme))
+                    }
+                }
+                .padding(.bottom, LMSSpacing.xxxl)
+            }
+            .refreshable {
+                await viewModel.fetchDashboardData()
+            }
+            .background(LMSColors.background)
+            .navigationTitle("Dashboard")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
                         Button {
                             tabRouter.select(.history)
                         } label: {
-                            Image(systemName: "bell.fill")
-                                .font(.system(size: 18, weight: .semibold))
+                            Image(systemName: "bell.badge")
+                                .symbolRenderingMode(.hierarchical)
+                                .font(.system(size: 17, weight: .semibold))
                                 .foregroundStyle(LMSColors.brandNavy)
-                                .frame(width: 36, height: 36)
                         }
-                        .buttonStyle(LMSPressableStyle())
-                        .accessibilityLabel("Notifications")
-
+                        
                         Button {
                             showingProfileSheet = true
                         } label: {
@@ -66,84 +270,9 @@ public struct DashboardView: View {
                                 )
                             )
                         }
-                        .buttonStyle(LMSPressableStyle())
-                        .accessibilityLabel("Profile")
                     }
-                    .padding(.leading, 12)
-                    .padding(.trailing, 6)
-                    .padding(.vertical, 6)
-                    .background(LMSColors.surface, in: Capsule())
-                    .overlay(
-                        Capsule()
-                            .stroke(LMSColors.separatorLight, lineWidth: 0.5)
-                    )
-                    .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 3)
-                }
-                .padding(.horizontal, LMSSpacing.screenHorizontal)
-                .padding(.top, 12)
-                .padding(.bottom, 12)
-                .background(LMSColors.background) // match screen background
-
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: LMSSpacing.sectionGap) {
-
-                        // 1. CUSTOMER INSIGHT & COMPLETION
-                        if let profile = BorrowerProfileStore.shared.profile {
-                            VStack(spacing: 12) {
-                                if profile.profileCompletionPercentage < 100 {
-                                    ProfileCompletionBanner(percentage: profile.profileCompletionPercentage) {
-                                        showingProfileSheet = true
-                                    }
-                                    .padding(.horizontal, LMSSpacing.screenHorizontal)
-                                }
-                                
-                                if profile.hasExistingBankAccount, profile.existingCustomerId != nil {
-                                    CustomerInsightCardView(profile: profile)
-                                        .padding(.horizontal, LMSSpacing.screenHorizontal)
-                                }
-                            }
-                            .padding(.bottom, 4)
-                        }
-                        
-                        // 2. PORTFOLIO CARDS
-                        PortfolioCardsSection(viewModel: viewModel) { route in
-                            navigationPath.append(route)
-                        }
-                        
-                        // 2b. ACCOUNT HEALTH BANNER (Moved here below Portfolio)
-                        AccountHealthBanner(viewModel: viewModel)
-                        
-                        // 3. QUICK ACTION CHIPS
-                        QuickActionChipsSection(
-                            onPay: { showingQuickPaySheet = true },
-                            onStatement: { showingStatementSheet = true },
-                            onForeclosure: { showingForeclosureSheet = true },
-                            onSupport: { showingSupportSheet = true },
-                            onTopUp: { showingTopUpSheet = true }
-                        )
-                        
-                        // 4. EMI TRACKER SECTION
-                        EMITrackerView(viewModel: viewModel) {
-                            viewModel.payNextEMI()
-                        } onViewAllPendingTap: {
-                            navigationPath.append(DashboardRoute.allPendingEMIs)
-                        }
-                        
-                        // 6. GOVERNMENT SCHEMES SECTION
-                        GovernmentSchemesSection(viewModel: viewModel) { scheme in
-                            navigationPath.append(DashboardRoute.schemeDetails(scheme))
-                        }
-                        
-                    }
-                    .padding(.top, LMSSpacing.sm)
-                    .padding(.bottom, LMSSpacing.xxl)
-                }
-                .refreshable {
-                    await viewModel.fetchDashboardData()
                 }
             }
-            .lmsScreenBackground()
-            .hideNavigationBar()
             .task {
                 await viewModel.fetchDashboardData()
             }
@@ -159,9 +288,12 @@ public struct DashboardView: View {
                     AllPendingEMIsView(viewModel: viewModel)
                 case .schemeDetails(let scheme):
                     SchemeDetailsView(scheme: scheme)
+                case .profileInfo:
+                    ProfileInfoDetailView(viewModel: BorrowerProfileViewModel())
+                case .notifications:
+                    NotificationsDetailView()
                 }
             }
-            // Sheets for Quick Actions
             .sheet(isPresented: $showingQuickPaySheet) {
                 QuickPaySheet(viewModel: viewModel)
             }
@@ -186,15 +318,642 @@ public struct DashboardView: View {
     }
 }
 
-// MARK: - Greeting
-
-private func dashboardFirstName(profileStore: BorrowerProfileStore, authManager: AuthManager) -> String {
-    if let profileName = profileStore.profile?.fullName,
-       !profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-        return profileName.components(separatedBy: " ").first ?? "User"
+// MARK: - Section 6: Govt Schemes
+struct GovernmentSchemesSection: View {
+    @ObservedObject var viewModel: DashboardViewModel
+    let onSchemeTap: (GovernmentScheme) -> Void
+    @State private var showingPlaceholderAlert = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("EXCLUSIVE OFFERS")
+                    .font(.system(.caption, design: .rounded).bold())
+                    .foregroundStyle(LMSColors.textSecondary)
+                Spacer()
+                Button("View All") {
+                    showingPlaceholderAlert = true
+                }
+                .font(.system(.caption, design: .rounded).bold())
+                .foregroundStyle(LMSColors.brandNavy)
+            }
+            .padding(.horizontal, LMSSpacing.lg)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    if viewModel.isLoading {
+                        ForEach(0..<3) { _ in
+                            SchemeCardSkeleton()
+                        }
+                    } else {
+                        ForEach(viewModel.schemes) { scheme in
+                            Button {
+                                onSchemeTap(scheme)
+                            } label: {
+                                SchemeCardView(scheme: scheme) {
+                                    onSchemeTap(scheme)
+                                }
+                            }
+                            .buttonStyle(DashboardPressableStyle())
+                        }
+                    }
+                }
+                .padding(.horizontal, LMSSpacing.lg)
+            }
+            .alert("Coming Soon", isPresented: $showingPlaceholderAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("This feature is currently under development.")
+            }
+        }
     }
-    return authManager.userDisplayName.components(separatedBy: " ").first ?? "User"
 }
+
+// MARK: - Quick Action Action Sheets
+
+struct QuickPaySheet: View {
+    @ObservedObject var viewModel: DashboardViewModel
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    if let nextEMI = viewModel.nextEMI {
+                        VStack(spacing: 16) {
+                            Image(systemName: "indianrupeesign.circle.fill")
+                                .font(.system(size: 64))
+                                .foregroundStyle(LMSColors.brandNavy)
+                            
+                            VStack(spacing: 4) {
+                                Text("Payment Amount")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                Text(nextEMI.amount.formattedAsINR())
+                                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                                    .foregroundStyle(LMSColors.textPrimary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
+                    }
+                }
+                .listRowBackground(Color.clear)
+                
+                Section {
+                    LabeledContent("Deduction Account", value: "•••• \(viewModel.bankAccount.accountNumber.suffix(4))")
+                    LabeledContent("Bank Name", value: viewModel.bankAccount.bankName)
+                    LabeledContent("Available Balance", value: viewModel.bankAccount.availableBalance.formattedAsINR())
+                } header: {
+                    Text("Payment Source")
+                }
+                
+                Section {
+                    Button {
+                        viewModel.payNextEMI()
+                        dismiss()
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Text("Confirm Payment")
+                                .fontWeight(.bold)
+                                .foregroundStyle(.white)
+                            Spacer()
+                        }
+                    }
+                    .listRowBackground(LMSColors.brandNavy)
+                    .disabled(viewModel.bankAccount.availableBalance < (viewModel.nextEMI?.amount ?? 0))
+                } footer: {
+                    if viewModel.bankAccount.availableBalance < (viewModel.nextEMI?.amount ?? 0) {
+                        Text("Insufficient funds. Please top up your account.")
+                            .foregroundStyle(.red)
+                    } else {
+                        Text("Funds will be debited instantly from your linked account.")
+                    }
+                }
+            }
+            .navigationTitle("Pay EMI")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+struct StatementSheet: View {
+    @ObservedObject var viewModel: DashboardViewModel
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(viewModel.transactions) { tx in
+                        HStack(spacing: 16) {
+                            ZStack {
+                                Circle()
+                                    .fill(LMSColors.brandNavy.opacity(0.1))
+                                    .frame(width: 40, height: 40)
+                                Image(systemName: "arrow.up.right.circle.fill")
+                                    .foregroundStyle(LMSColors.brandNavy)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(tx.title)
+                                    .font(.system(.body, design: .rounded).bold())
+                                Text(tx.date.formattedAsDDMMMYYYY())
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Text(tx.amount.formattedAsINR())
+                                .font(.system(.body, design: .rounded).bold())
+                                .foregroundStyle(LMSColors.textPrimary)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                } header: {
+                    Text("Recent Transactions")
+                } footer: {
+                    Text("Showing last 10 transactions.")
+                }
+            }
+            .navigationTitle("E-Statement")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+struct ForeclosureSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var showingToast = false
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    VStack(spacing: 16) {
+                        Image(systemName: "lock.shield.fill")
+                            .font(.system(size: 64))
+                            .foregroundStyle(LMSColors.coral)
+                        
+                        Text("Loan Foreclosure")
+                            .font(.title2.bold())
+                        
+                        Text("Securely close your active loan account before the tenure ends.")
+                            .multilineTextAlignment(.center)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 24)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
+                }
+                .listRowBackground(Color.clear)
+                
+                Section {
+                    Text("Standard foreclosure charges (1-2%) apply on the outstanding principal. Our advisor will walk you through the final steps and calculation.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("Information")
+                }
+                
+                Section {
+                    Button {
+                        showingToast = true
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Text("Schedule Advisor Call")
+                                .fontWeight(.bold)
+                            Spacer()
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Foreclosure")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .alert("Callback Scheduled", isPresented: $showingToast) {
+                Button("OK", role: .cancel) { dismiss() }
+            } message: {
+                Text("An expert will call you within 24 business hours to assist with the closure.")
+            }
+        }
+    }
+}
+
+struct SupportSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var showingToast = false
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Button(action: { showingToast = true }) {
+                        Label("Phone Support", systemImage: "phone.fill")
+                    }
+                    Button(action: { showingToast = true }) {
+                        Label("Email Support", systemImage: "envelope.fill")
+                    }
+                    Button(action: { showingToast = true }) {
+                        Label("Live Chat Assistant", systemImage: "message.fill")
+                    }
+                } header: {
+                    Text("Contact Us")
+                }
+                
+                Section {
+                    Text("Rescheduling EMIs")
+                    Text("Updating Bank Credentials")
+                    Text("Document Retrieval")
+                    Text("Interest Certificate")
+                } header: {
+                    Text("Common Queries")
+                }
+            }
+            .navigationTitle("Customer Care")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Close") { dismiss() }
+                }
+            }
+            .alert("Feature Offline", isPresented: $showingToast) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Live support is currently being integrated.")
+            }
+        }
+    }
+}
+
+struct TopUpSheet: View {
+    @ObservedObject var viewModel: DashboardViewModel
+    @Environment(\.dismiss) var dismiss
+    @State private var topUpAmount = 10000.0
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    VStack(spacing: 20) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 64))
+                            .foregroundStyle(LMSColors.emerald)
+                        
+                        VStack(spacing: 4) {
+                            Text("Top-Up Amount")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Text(topUpAmount.formattedAsINR())
+                                .font(.system(size: 34, weight: .bold, design: .rounded))
+                                .foregroundStyle(LMSColors.textPrimary)
+                        }
+                        
+                        Slider(value: $topUpAmount, in: 5000...100000, step: 5000)
+                            .tint(LMSColors.emerald)
+                            .padding(.horizontal, 24)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
+                }
+                .listRowBackground(Color.clear)
+                
+                Section {
+                    LabeledContent("From Source", value: "Verified Linked Account")
+                    LabeledContent("Account", value: "•••• \(viewModel.bankAccount.accountNumber.suffix(4))")
+                } header: {
+                    Text("Payment Details")
+                }
+                
+                Section {
+                    Button {
+                        viewModel.topUpAccount(amount: topUpAmount)
+                        dismiss()
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Text("Confirm Deposit")
+                                .fontWeight(.bold)
+                                .foregroundStyle(.white)
+                            Spacer()
+                        }
+                    }
+                    .listRowBackground(LMSColors.emerald)
+                } footer: {
+                    Text("The amount will be credited to your available balance immediately.")
+                }
+            }
+            .navigationTitle("Add Funds")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Premium Detail Views
+
+struct LoanDetailsView: View {
+    let loan: DashboardLoanAccount
+    
+    var body: some View {
+        List {
+            Section {
+                VStack(spacing: 24) {
+                    ZStack {
+                        Circle()
+                            .fill(LMSColors.brandNavy.opacity(0.1))
+                            .frame(width: 80, height: 80)
+                        Image(systemName: "house.fill")
+                            .font(.system(size: 34, weight: .bold))
+                            .foregroundStyle(LMSColors.brandNavy)
+                    }
+                    
+                    VStack(spacing: 4) {
+                        Text(loan.principalOutstanding.formattedAsINR())
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                        Text("Outstanding Principal")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    HStack(spacing: 40) {
+                        VStack(spacing: 4) {
+                            Text(loan.totalEMI.formattedAsINR())
+                                .font(.headline)
+                            Text("Monthly EMI")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 4) {
+                            Text("8.65%")
+                                .font(.headline)
+                            Text("Interest Rate")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+            }
+            .listRowBackground(Color.clear)
+            
+            Section {
+                LabeledContent("Account Number", value: loan.accountNumber)
+                LabeledContent("Next EMI Date", value: loan.nextEMIDate.formattedAsDDMMMYYYY())
+                LabeledContent("Total Tenure", value: "\(loan.totalTenureMonths) Months")
+                LabeledContent("Remaining", value: "\(loan.tenureRemainingMonths) Months")
+            } header: {
+                Text("Account Details")
+            }
+            
+            Section {
+                LabeledContent("Loan Type", value: loan.loanType)
+                LabeledContent("Agreement Status", value: "Verified")
+            } header: {
+                Text("Legal")
+            }
+        }
+        .navigationTitle("Loan Overview")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct BankDetailsView: View {
+    let bank: BankAccount
+    @ObservedObject var viewModel: DashboardViewModel
+    
+    var body: some View {
+        List {
+            Section {
+                VStack(spacing: 24) {
+                    ZStack {
+                        Circle()
+                            .fill(LMSColors.emerald.opacity(0.1))
+                            .frame(width: 80, height: 80)
+                        Image(systemName: "building.columns.fill")
+                            .font(.system(size: 34, weight: .bold))
+                            .foregroundStyle(LMSColors.emerald)
+                    }
+                    
+                    VStack(spacing: 4) {
+                        Text(bank.availableBalance.formattedAsINR())
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                        Text("Available Balance")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+            }
+            .listRowBackground(Color.clear)
+            
+            Section {
+                LabeledContent("Bank Name", value: bank.bankName)
+                LabeledContent("Account Type", value: bank.accountType.rawValue)
+                LabeledContent("Account Number", value: "•••• \(bank.accountNumber.suffix(4))")
+            } header: {
+                Text("Account Details")
+            }
+            
+            Section {
+                Button("+ ₹10,000") { viewModel.topUpAccount(amount: 10000) }
+                Button("+ ₹20,000") { viewModel.topUpAccount(amount: 20000) }
+                Button("+ ₹50,000") { viewModel.topUpAccount(amount: 50000) }
+            } header: {
+                Text("Quick Deposit")
+            }
+        }
+        .navigationTitle(bank.bankName)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct InsuranceDetailsView: View {
+    var body: some View {
+        List {
+            Section {
+                VStack(spacing: 20) {
+                    Image(systemName: "shield.lefthalf.filled")
+                        .font(.system(size: 64))
+                        .foregroundStyle(LMSColors.actionBlue)
+                    Text("Loan Protection Plan")
+                        .font(.title2.bold())
+                    Text("Active Policy")
+                        .font(.caption.bold())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(LMSColors.emerald, in: Capsule())
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+            }
+            .listRowBackground(Color.clear)
+            
+            Section {
+                LabeledContent("Coverage Amount", value: "₹ 15,00,000")
+                LabeledContent("Policy Number", value: "LMS-9982-AX")
+                LabeledContent("Insurer", value: "Brand General Insurance")
+            } header: {
+                Text("Coverage Summary")
+            }
+            
+            Section {
+                LabeledContent("Monthly Premium", value: "₹ 850")
+                LabeledContent("Renewal Date", value: "12 Jan 2026")
+            } header: {
+                Text("Premium Information")
+            }
+        }
+        .navigationTitle("Insurance")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+
+struct AllPendingEMIsView: View {
+    @ObservedObject var viewModel: DashboardViewModel
+    
+    var body: some View {
+        List {
+            Section {
+                ForEach(viewModel.pendingEMIs.filter { $0.status != .paid }) { emi in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(emi.loanType)
+                                .font(.system(.body, design: .rounded).bold())
+                            Text("Due: \(emi.dueDate.formattedAsDDMMMYYYY())")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Text(emi.amount.formattedAsINR())
+                            .font(.system(.body, design: .rounded).bold())
+                    }
+                    .padding(.vertical, 4)
+                }
+            } header: {
+                Text("Upcoming Payments")
+            }
+        }
+        .navigationTitle("All Pending EMIs")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct SchemeDetailsView: View {
+    let scheme: GovernmentScheme
+    @State private var appSubmitted = false
+    
+    var body: some View {
+        List {
+            Section {
+                VStack(spacing: 20) {
+                    ZStack {
+                        Circle()
+                            .fill(LMSColors.brandNavy.opacity(0.1))
+                            .frame(width: 80, height: 80)
+                        Image(systemName: "gift.fill")
+                            .font(.system(size: 34, weight: .bold))
+                            .foregroundStyle(LMSColors.brandNavy)
+                    }
+                    
+                    VStack(spacing: 8) {
+                        Text(scheme.title)
+                            .font(.title2.bold())
+                            .multilineTextAlignment(.center)
+                        Text(scheme.category.rawValue)
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 4)
+                            .background(Color.secondary.opacity(0.1), in: Capsule())
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+            }
+            .listRowBackground(Color.clear)
+            
+            Section {
+                Text(scheme.description)
+                    .font(.body)
+                    .foregroundStyle(LMSColors.textPrimary)
+            } header: {
+                Text("About Scheme")
+            }
+            
+            Section {
+                HStack {
+                    Text("Benefit")
+                        .font(.headline)
+                    Spacer()
+                    Text(scheme.benefitSummary)
+                        .foregroundStyle(LMSColors.emerald)
+                        .fontWeight(.bold)
+                }
+                LabeledContent("Valid Until", value: scheme.validTill.formattedAsDDMMMYYYY())
+            } header: {
+                Text("Benefits & Validity")
+            }
+            
+            Section {
+                if appSubmitted {
+                    HStack {
+                        Spacer()
+                        Label("Application Submitted", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(LMSColors.emerald)
+                            .font(.headline)
+                        Spacer()
+                    }
+                    .padding()
+                } else {
+                    Button {
+                        appSubmitted = true
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Text("Apply for Benefit")
+                                .fontWeight(.bold)
+                                .foregroundStyle(.white)
+                            Spacer()
+                        }
+                    }
+                    .listRowBackground(LMSColors.brandNavy)
+                }
+            }
+        }
+        .navigationTitle("Scheme Details")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - Helpers
 
 private func dashboardInitials(viewModel: DashboardViewModel, authManager: AuthManager) -> String {
     let profileStore = BorrowerProfileStore.shared
@@ -208,27 +967,6 @@ private func dashboardInitials(viewModel: DashboardViewModel, authManager: AuthM
         }
     }
     return authManager.userInitials
-}
-
-struct DashboardToolbarTitle: View {
-    let firstName: String
-    var customerID: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.xs) {
-            Text("Hello, \(firstName)")
-                .font(LMSFont.subheadline.weight(.semibold))
-                .foregroundStyle(LMSColors.textPrimary)
-            if let customerID {
-                Label(customerID, systemImage: "number")
-                    .font(LMSFont.caption.monospacedDigit().weight(.semibold))
-                    .foregroundStyle(LMSColors.brandNavy)
-                    .padding(.horizontal, LMSSpacing.sm)
-                    .padding(.vertical, 3)
-                    .background(LMSColors.brandNavy.opacity(0.10), in: Capsule())
-            }
-        }
-    }
 }
 
 struct DashboardAvatar: View {
@@ -252,664 +990,4 @@ struct DashboardAvatar: View {
                     .stroke(Color.white.opacity(0.25), lineWidth: 1)
             )
     }
-}
-
-// MARK: - Section 1b: Health Banner Component (Positioned below Portfolio)
-struct AccountHealthBanner: View {
-    @ObservedObject var viewModel: DashboardViewModel
-
-    var body: some View {
-        Button {
-            viewModel.toggleBalanceMockMode()
-        } label: {
-            Group {
-                if viewModel.isLoading {
-                    RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
-                        .fill(LMSColors.surfaceElevated)
-                        .frame(height: 56)
-                        .shimmer(active: true)
-                } else if viewModel.isLowBalance {
-                    LMSBanner(
-                        message: "Low balance — top up ₹\(Int(viewModel.balanceDeficit)) before 5 Jun to avoid penalty",
-                        style: .error,
-                        icon: "exclamationmark.triangle.fill"
-                    )
-                } else {
-                    LMSBanner(
-                        message: "Account balance is sufficient for your next EMI",
-                        style: .success,
-                        icon: "checkmark.circle.fill"
-                    )
-                }
-            }
-            .padding(.horizontal, LMSSpacing.screenHorizontal)
-        }
-        .buttonStyle(DashboardPressableStyle())
-        .accessibilityLabel("Account balance health. Tap to toggle demo state.")
-        .accessibilityAddTraits(.isButton)
-    }
-}
-
-// MARK: - Section 1c: Profile Completion Banner
-struct ProfileCompletionBanner: View {
-    let percentage: Int
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: LMSSpacing.lg) {
-                ZStack {
-                    Circle()
-                        .stroke(Color.white.opacity(0.25), lineWidth: 4)
-                    Circle()
-                        .trim(from: 0, to: CGFloat(percentage) / 100.0)
-                        .stroke(LMSColors.emerald, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                    Text("\(percentage)%")
-                        .font(LMSFont.caption2.weight(.bold))
-                        .foregroundStyle(.white)
-                }
-                .frame(width: 44, height: 44)
-
-                VStack(alignment: .leading, spacing: LMSSpacing.xs) {
-                    Text("Complete Your Profile")
-                        .font(LMSFont.callout.weight(.bold))
-                        .foregroundStyle(.white)
-                    Text("Unlock all features by finishing setup")
-                        .font(LMSFont.caption)
-                        .foregroundStyle(.white.opacity(0.8))
-                }
-
-                Spacer(minLength: 0)
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.7))
-            }
-            .padding(LMSSpacing.lg)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                LinearGradient(
-                    colors: [LMSColors.brandNavy, LMSColors.brandNavyLight],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
-            )
-        }
-        .buttonStyle(DashboardPressableStyle())
-    }
-}
-
-// MARK: - Section 2: Portfolio
-struct PortfolioCardsSection: View {
-    @ObservedObject var viewModel: DashboardViewModel
-    let onNavigate: (DashboardRoute) -> Void
-    @State private var showingPlaceholderAlert = false
-    
-    var body: some View {
-        SectionContainer(title: "My Portfolio") {
-//            FintechSectionLink(title: "See All") {
-//                showingPlaceholderAlert = true
-//            }
-        } content: {
-            PortfolioCarouselView(
-                viewModel: viewModel,
-                onNavigateToLoan: { loan in
-                    onNavigate(.loanDetails(loan))
-                },
-                onNavigateToBank: { bank in
-                    onNavigate(.bankDetails(bank))
-                },
-                onNavigateToInsurance: {
-                    onNavigate(.insuranceDetails)
-                },
-                onTransferTap: { bank in
-                    onNavigate(.bankDetails(bank))
-                }
-            )
-        }
-    }
-}
-
-// MARK: - Section 3: Quick Action Chips
-struct QuickActionChipsSection: View {
-    let onPay: () -> Void
-    let onStatement: () -> Void
-    let onForeclosure: () -> Void
-    let onSupport: () -> Void
-    let onTopUp: () -> Void
-
-    var body: some View {
-        SectionContainer(title: "Quick Actions", subtitle: "Pay, transfer, and manage your loan") {
-            FintechQuickActionGrid(items: [
-                FintechQuickActionItem(icon: "indianrupeesign.circle.fill", title: "Pay EMI", tint: LMSColors.brandNavy, action: onPay),
-                FintechQuickActionItem(icon: "doc.text.fill", title: "Statement", tint: LMSColors.actionBlue, action: onStatement),
-                FintechQuickActionItem(icon: "chart.line.downtrend.xyaxis", title: "Foreclose", tint: LMSColors.teal, action: onForeclosure),
-                FintechQuickActionItem(icon: "headphones", title: "Support", tint: LMSColors.amber, action: onSupport),
-                FintechQuickActionItem(icon: "plus.circle.fill", title: "Top-Up", tint: LMSColors.emerald, action: onTopUp)
-            ])
-        }
-    }
-}
-
-
-
-// MARK: - Section 6: Govt Schemes
-struct GovernmentSchemesSection: View {
-    @ObservedObject var viewModel: DashboardViewModel
-    let onSchemeTap: (GovernmentScheme) -> Void
-    @State private var showingPlaceholderAlert = false
-    
-    var body: some View {
-        SectionContainer(title: "Active Schemes & Offers", subtitle: "Government + partner-backed opportunities") {
-            FintechSectionLink(title: "Explore All") {
-                showingPlaceholderAlert = true
-            }
-            .alert("Coming Soon", isPresented: $showingPlaceholderAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text("This feature is currently under development.")
-            }
-        } content: {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    if viewModel.isLoading {
-                        ForEach(0..<3) { _ in
-                            SchemeCardSkeleton()
-                        }
-                    } else {
-                        ForEach(viewModel.schemes) { scheme in
-                            Button {
-                                onSchemeTap(scheme)
-                            } label: {
-                                SchemeCardView(scheme: scheme) {
-                                    onSchemeTap(scheme)
-                                }
-                            }
-                            .buttonStyle(DashboardPressableStyle())
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Quick Action Action Sheets & Details Views (Compilable Stubs)
-
-struct QuickPaySheet: View {
-    @ObservedObject var viewModel: DashboardViewModel
-    @Environment(\.dismiss) var dismiss
-    
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                if let nextEMI = viewModel.nextEMI {
-                    Image(systemName: "indianrupeesign.circle.fill")
-                        .font(.system(size: 60))
-                        .foregroundStyle(LMSColors.brandNavy)
-                    
-                    Text("Confirm EMI Payment")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    
-                    VStack(spacing: 12) {
-                        HStack {
-                            Text("EMI Amount")
-                            Spacer()
-                            Text(nextEMI.amount.formattedAsINR()).fontWeight(.bold)
-                        }
-                        HStack {
-                            Text("Account Number")
-                            Spacer()
-                            Text(viewModel.bankAccount.accountNumber)
-                        }
-                        HStack {
-                            Text("Current Balance")
-                            Spacer()
-                            Text(viewModel.bankAccount.availableBalance.formattedAsINR())
-                        }
-                    }
-                    .padding()
-                    .background(LMSColors.surfaceElevated)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    
-                    Button {
-                        viewModel.payNextEMI()
-                        dismiss()
-                    } label: {
-                        Text("Pay Now")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(LMSColors.brandNavy)
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    }
-                    .disabled(viewModel.bankAccount.availableBalance < nextEMI.amount)
-                    
-                } else {
-                    AllCaughtUpCard()
-                }
-            }
-            .padding(24)
-            .navigationTitle("Pay EMI")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-struct StatementSheet: View {
-    @ObservedObject var viewModel: DashboardViewModel
-    @Environment(\.dismiss) var dismiss
-    
-    var body: some View {
-        NavigationStack {
-            List(viewModel.transactions) { tx in
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text(tx.title).font(.headline)
-                        Text(tx.date.formattedAsDDMMMYYYY()).font(.subheadline).foregroundStyle(LMSColors.textSecondary)
-                    }
-                    Spacer()
-                    Text(tx.amount.formattedAsINR()).fontWeight(.bold)
-                }
-            }
-            .navigationTitle("Account Statement")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-struct ForeclosureSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @State private var showingToast = false
-    
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                Image(systemName: "exclamationmark.shield.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(LMSColors.coral)
-                
-                Text("Request Foreclosure")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                
-                Text("Foreclosing your home loan will trigger a 1% processing fee of the remaining outstanding amount. Do you wish to schedule a callback with our credit advisor?")
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(LMSColors.textSecondary)
-                    .padding()
-                
-                Button {
-                    showingToast = true
-                } label: {
-                    Text("Schedule Callback")
-                        .foregroundStyle(.white)
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(LMSColors.brandNavy)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                }
-            }
-            .padding(24)
-            .navigationTitle("Foreclosure")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-            .alert("Callback Scheduled", isPresented: $showingToast) {
-                Button("OK", role: .cancel) { dismiss() }
-            } message: {
-                Text("A credit advisor will call you within 24 hours.")
-            }
-        }
-    }
-}
-
-struct SupportSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @State private var showingToast = false
-    
-    var body: some View {
-        NavigationStack {
-            List {
-                Section(header: Text("Contact Channels")) {
-                    Button(action: { showingToast = true }) {
-                        Label("Call Support: 1800-BANK-LOAN", systemImage: "phone.fill")
-                    }
-                    .foregroundStyle(.primary)
-                    Button(action: { showingToast = true }) {
-                        Label("Email: support@brandbank.com", systemImage: "envelope.fill")
-                    }
-                    .foregroundStyle(.primary)
-                    Button(action: { showingToast = true }) {
-                        Label("Live chat assistant", systemImage: "message.fill")
-                    }
-                    .foregroundStyle(.primary)
-                }
-                Section(header: Text("FAQs")) {
-                    Text("How to reschedule EMIs?")
-                    Text("What if an EMI auto-debit fails?")
-                    Text("How to update bank accounts?")
-                }
-            }
-            .navigationTitle("Support Desk")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
-                }
-            }
-            .alert("Connecting...", isPresented: $showingToast) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text("Support services are currently offline in this mock environment.")
-            }
-        }
-    }
-}
-
-struct TopUpSheet: View {
-    @ObservedObject var viewModel: DashboardViewModel
-    @Environment(\.dismiss) var dismiss
-    @State private var topUpAmount = 10000.0
-    
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(LMSColors.emerald)
-                
-                Text("Top-Up Account Balance")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                
-                Slider(value: $topUpAmount, in: 5000...50000, step: 5000)
-                
-                Text("Amount to Add: \(topUpAmount.formattedAsINR())")
-                    .font(.headline)
-                    .foregroundStyle(LMSColors.emerald)
-                
-                Button {
-                    viewModel.topUpAccount(amount: topUpAmount)
-                    dismiss()
-                } label: {
-                    Text("Confirm Deposit")
-                        .foregroundStyle(.white)
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(LMSColors.emerald)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                }
-            }
-            .padding(24)
-            .navigationTitle("Top-Up Balance")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Premium Detail Views
-
-struct LoanDetailsView: View {
-    let loan: DashboardLoanAccount
-    
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                // Header block
-                ZStack {
-                    LinearGradient(colors: [LMSColors.brandNavy, LMSColors.brandNavy], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    
-                    VStack(spacing: 12) {
-                        Text(loan.loanType.uppercased())
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundStyle(.white.opacity(0.8))
-                        
-                        Text(loan.principalOutstanding.formattedAsINR())
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                        
-                        Text("Outstanding Principal")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.7))
-                    }
-                    .padding(.vertical, 32)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .padding(.horizontal, 20)
-                
-                // Detailed Stats Grid
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("LOAN METRICS")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundStyle(LMSColors.textSecondary)
-                    
-                    Group {
-                        DetailMetricRow(label: "Account Number", value: loan.accountNumber)
-                        DetailMetricRow(label: "Monthly EMI", value: loan.totalEMI.formattedAsINR())
-                        DetailMetricRow(label: "Next EMI Date", value: loan.nextEMIDate.formattedAsDDMMMYYYY())
-                        DetailMetricRow(label: "Total Tenure", value: "\(loan.totalTenureMonths) Months")
-                        DetailMetricRow(label: "Remaining Tenure", value: "\(loan.tenureRemainingMonths) Months")
-                        DetailMetricRow(label: "Rate of Interest", value: "8.65% p.a. (Floating)")
-                    }
-                }
-                .padding(20)
-                .background(LMSColors.surfaceElevated)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .padding(.horizontal, 20)
-            }
-        }
-        .navigationTitle("Home Loan Details")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-struct BankDetailsView: View {
-    let bank: BankAccount
-    @ObservedObject var viewModel: DashboardViewModel
-    @State private var depositAmountStr = ""
-    
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                // Header Card
-                ZStack {
-                    LinearGradient(colors: [LMSColors.emerald, LMSColors.emeraldDark], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    
-                    VStack(spacing: 12) {
-                        Text(bank.accountType.rawValue.uppercased())
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundStyle(.white.opacity(0.8))
-                        
-                        Text(bank.availableBalance.formattedAsINR())
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                        
-                        Text("Available balance")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.7))
-                    }
-                    .padding(.vertical, 32)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .padding(.horizontal, 20)
-                
-                // Top-up Section inside details
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("ADD FUNDS")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundStyle(LMSColors.textSecondary)
-                    
-                    HStack(spacing: 12) {
-                        Button("+ ₹5,000") { viewModel.topUpAccount(amount: 5000) }
-                            .buttonStyle(.borderedProminent)
-                            .tint(LMSColors.emerald)
-                        
-                        Button("+ ₹10,000") { viewModel.topUpAccount(amount: 10000) }
-                            .buttonStyle(.borderedProminent)
-                            .tint(LMSColors.emerald)
-                        
-                        Button("+ ₹20,000") { viewModel.topUpAccount(amount: 20000) }
-                            .buttonStyle(.borderedProminent)
-                            .tint(LMSColors.emerald)
-                    }
-                }
-                .padding(20)
-                .background(LMSColors.surfaceElevated)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .padding(.horizontal, 20)
-            }
-        }
-        .navigationTitle("Bank Account")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-struct InsuranceDetailsView: View {
-    var body: some View {
-        List {
-            Section(header: Text("Coverage Overview")) {
-                DetailMetricRow(label: "Policy Status", value: "Active")
-                DetailMetricRow(label: "Coverage Amount", value: "₹ 15,00,000")
-                DetailMetricRow(label: "Coverage Type", value: "Loan Protection Plan")
-            }
-            Section(header: Text("Premium details")) {
-                DetailMetricRow(label: "Monthly Premium", value: "₹850")
-                DetailMetricRow(label: "Renewal Date", value: "12 Jan 2026")
-            }
-        }
-        .navigationTitle("Loan Protection Plan")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-
-struct AllPendingEMIsView: View {
-    @ObservedObject var viewModel: DashboardViewModel
-    
-    var body: some View {
-        List(viewModel.pendingEMIs.filter { $0.status != .paid }) { emi in
-            HStack {
-                VStack(alignment: .leading) {
-                    Text(emi.loanType).font(.headline)
-                    Text("Due Date: \(emi.dueDate.formattedAsDDMMMYYYY())").font(.caption).foregroundStyle(LMSColors.textSecondary)
-                }
-                Spacer()
-                Text(emi.amount.formattedAsINR()).fontWeight(.bold)
-            }
-        }
-        .navigationTitle("All Pending EMIs")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-struct SchemeDetailsView: View {
-    let scheme: GovernmentScheme
-    @State private var appSubmitted = false
-    
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text(scheme.title)
-                    .font(.title)
-                    .fontWeight(.bold)
-                
-                Text("Category: \(scheme.category.rawValue)")
-                    .foregroundStyle(LMSColors.textSecondary)
-                
-                Text(scheme.description)
-                    .font(.body)
-                
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Benefit Summary").font(.headline)
-                    Text(scheme.benefitSummary).foregroundStyle(LMSColors.emerald).fontWeight(.bold)
-                }
-                
-                Divider()
-                
-                if appSubmitted {
-                    Text("🎉 Application Submitted Successfully! Our relationship manager will contact you in 24 hours.")
-                        .foregroundStyle(LMSColors.emerald)
-                        .fontWeight(.bold)
-                        .multilineTextAlignment(.center)
-                        .padding()
-                } else {
-                    Button {
-                        appSubmitted = true
-                    } label: {
-                        Text("Apply Now")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(LMSColors.brandNavy)
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    }
-                }
-            }
-            .padding(24)
-        }
-        .navigationTitle("Scheme Details")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-struct DetailMetricRow: View {
-    let label: String
-    let value: String
-    
-    var body: some View {
-        HStack {
-            Text(label)
-                .font(.system(.body, design: .rounded))
-                .foregroundStyle(LMSColors.textSecondary)
-            Spacer()
-            Text(value)
-                .font(.system(.body, design: .rounded))
-                .fontWeight(.bold)
-                .foregroundStyle(LMSColors.textPrimary)
-        }
-        .padding(.vertical, 4)
-    }
-}
-
-#Preview("Dashboard") {
-    NavigationStack {
-        DashboardView(viewModel: PreviewSupport.dashboardViewModel)
-    }
-    .environmentObject(PreviewSupport.appState(role: .customer))
-    .environmentObject(PreviewSupport.authManager)
-    .environmentObject(PreviewSupport.borrowerTabRouter)
-}
-
-#Preview("Toolbar Title") {
-    DashboardToolbarTitle(firstName: "Rahul", customerID: "C-109482")
-        .padding()
 }

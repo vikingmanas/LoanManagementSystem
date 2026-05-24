@@ -102,15 +102,9 @@ final class AuthService {
         print("[Supabase Auth] Auth signup returned UID: \(user.id)")
         
         // 3. Detect Supabase's obfuscated/fake user responses
-        //    When a duplicate email signup is attempted, Supabase GoTrue may return
-        //    a fake user with a random email like "test_XXXXX@test.com" and display
-        //    name "Test Diagnostic" instead of throwing an error.
         let returnedEmail = (user.email ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if returnedEmail != cleanEmail {
             print("[Supabase Auth] ⚠️ Obfuscated signup detected!")
-            print("[Supabase Auth]   Input email:    \(cleanEmail)")
-            print("[Supabase Auth]   Returned email: \(returnedEmail)")
-            print("[Supabase Auth]   Skipping public.users insert to prevent dummy user creation.")
             throw AuthServiceError.obfuscatedSignUpDetected
         }
         
@@ -127,7 +121,6 @@ final class AuthService {
             print("[Supabase DB] Insert into public.users succeeded!")
         } catch {
             print("[Supabase DB] Failed to insert profile into public.users: \(error.localizedDescription)")
-            print("[Supabase DB] Debug error info: \(String(describing: error))")
             throw error
         }
         
@@ -153,7 +146,6 @@ final class AuthService {
             .value
         
         guard let userRole = results.first?.role else {
-            // Default fallback if record does not exist
             return "borrower"
         }
         return userRole

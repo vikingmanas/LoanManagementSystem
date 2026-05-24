@@ -6,12 +6,12 @@ struct KPIGridView: View {
     var onCardSelected: (ApplicationStatus?) -> Void
     
     var body: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: LMSSpacing.md), GridItem(.flexible(), spacing: LMSSpacing.md)], spacing: LMSSpacing.md) {
             
             // Card A1: Total Applications
             KPICard(
                 symbol: "doc.text.fill",
-                symbolColor: AppTheme.actionBlue,
+                symbolColor: LMSColors.actionBlue,
                 value: "\(viewModel.totalApplications)",
                 label: "Total Applications",
                 sub: "This Month",
@@ -19,10 +19,10 @@ struct KPIGridView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(AppTheme.successGreen)
+                            .foregroundStyle(LMSColors.emerald)
                         Text("+12%")
                             .font(.system(.caption2, design: .rounded).bold())
-                            .foregroundStyle(AppTheme.successGreen)
+                            .foregroundStyle(LMSColors.emerald)
                         Text("vs last month")
                             .font(.system(.caption2, design: .rounded))
                             .foregroundStyle(LMSColors.textSecondary)
@@ -38,14 +38,14 @@ struct KPIGridView: View {
             // Card A2: Pending Review
             KPICard(
                 symbol: "hourglass.circle.fill",
-                symbolColor: AppTheme.warningAmber,
+                symbolColor: LMSColors.amber,
                 value: "\(viewModel.pendingCount)",
                 label: "Pending Review",
                 sub: "Awaiting your action",
                 bottomContent: AnyView(
                     Text("Oldest: 3 days ago")
                         .font(.system(.caption2, design: .rounded).weight(.semibold))
-                        .foregroundStyle(AppTheme.criticalRed)
+                        .foregroundStyle(LMSColors.coral)
                 ),
                 accessibilityLabel: "Pending Review: \(viewModel.pendingCount). Awaiting action. Oldest submitted three days ago."
             )
@@ -57,14 +57,14 @@ struct KPIGridView: View {
             // Card A3: Approved
             KPICard(
                 symbol: "checkmark.circle.fill",
-                symbolColor: AppTheme.successGreen,
+                symbolColor: LMSColors.emerald,
                 value: "\(viewModel.approvedCount)",
                 label: "Approved",
                 sub: "Sent to Manager",
                 bottomContent: AnyView(
                     Text("₹ 4.2 Cr disbursed")
                         .font(.system(.caption2, design: .rounded).weight(.semibold))
-                        .foregroundStyle(AppTheme.successGreen)
+                        .foregroundStyle(LMSColors.emerald)
                 ),
                 accessibilityLabel: "Approved Applications: \(viewModel.approvedCount). Sent to Manager. Four point two Crore Rupees disbursed."
             )
@@ -76,7 +76,7 @@ struct KPIGridView: View {
             // Card A4: Rejected / On Hold
             KPICard(
                 symbol: "xmark.circle.fill",
-                symbolColor: AppTheme.criticalRed,
+                symbolColor: LMSColors.coral,
                 value: "\(viewModel.rejectedOrHoldCount)",
                 label: "Rejected / On Hold",
                 sub: "Requires re-evaluation",
@@ -139,10 +139,10 @@ struct KPICard: View {
             
             bottomContent
         }
-        .padding(16)
+        .padding(LMSSpacing.lg)
         .frame(minHeight: 125)
-        .background(AppTheme.neutralSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(LMSColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
         .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 3)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
