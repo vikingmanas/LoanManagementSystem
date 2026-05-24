@@ -16,10 +16,10 @@ struct DocumentQueueView: View {
                     
                     Text("\(viewModel.pendingDocumentCount) Pending")
                         .font(.system(.caption2, design: .rounded).bold())
-                        .foregroundStyle(AppTheme.warningAmber)
+                        .foregroundStyle(LMSColors.amber)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(AppTheme.warningAmber.opacity(0.12))
+                        .background(LMSColors.amber.opacity(0.12))
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 
@@ -31,7 +31,7 @@ struct DocumentQueueView: View {
                 }) {
                     Text("See All")
                         .font(.system(.caption, design: .rounded).weight(.bold))
-                        .foregroundStyle(AppTheme.actionBlue)
+                        .foregroundStyle(LMSColors.actionBlue)
                 }
                 .accessibilityLabel("View all documents in the verification queue")
             }
@@ -60,7 +60,7 @@ struct DocumentQueueView: View {
                     }
                 }
             }
-            .background(AppTheme.neutralSurface)
+            .background(LMSColors.surface)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 3)
         }
@@ -100,10 +100,10 @@ struct DocumentStatusRow: View {
             // Status Badge
             Text(statusLabel(for: item.status))
                 .font(.system(.caption2, design: .rounded).bold())
-                .foregroundStyle(item.status == .pending ? AppTheme.warningAmber : .white)
+                .foregroundStyle(item.status == .pending ? LMSColors.amber : .white)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(item.status == .pending ? AppTheme.warningAmber.opacity(0.15) : item.status.themeColor)
+                .background(item.status == .pending ? LMSColors.amber.opacity(0.15) : item.status.themeColor)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             
             // Action review CTA
@@ -118,10 +118,10 @@ struct DocumentStatusRow: View {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 8, weight: .bold))
                     }
-                    .foregroundStyle(AppTheme.actionBlue)
+                    .foregroundStyle(LMSColors.actionBlue)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(AppTheme.actionBlue.opacity(0.1))
+                    .background(LMSColors.actionBlue.opacity(0.1))
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(PlainButtonStyle())

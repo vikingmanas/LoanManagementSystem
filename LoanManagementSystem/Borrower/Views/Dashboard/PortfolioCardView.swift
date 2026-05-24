@@ -78,7 +78,7 @@ public struct PortfolioCarouselView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
                     if viewModel.isLoading {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous)
                             .fill(LMSColors.surfaceElevated)
                             .frame(width: 300, height: 180)
                             .shimmer(active: true)
@@ -114,8 +114,8 @@ public struct PortfolioCarouselView: View {
                             }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 4)
+                .padding(.horizontal, LMSSpacing.lg)
+                .padding(.vertical, LMSSpacing.xs)
             }
         }
     }
@@ -173,7 +173,7 @@ struct TotalLoanOutstandingCard: View {
                     .foregroundStyle(.white.opacity(0.5))
             }
         }
-        .padding(20)
+        .padding(LMSSpacing.xl)
         .background(
             LinearGradient(
                 colors: [LMSColors.brandNavy, LMSColors.brandNavyLight],
@@ -181,7 +181,7 @@ struct TotalLoanOutstandingCard: View {
                 endPoint: .bottomTrailing
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
         .shadow(color: LMSColors.brandNavy.opacity(0.25), radius: 12, x: 0, y: 6)
     }
 }
@@ -265,11 +265,11 @@ struct BankAccountCardRefined: View {
                 }
             }
         }
-        .padding(20)
+        .padding(LMSSpacing.xl)
         .background(LMSColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous)
                 .stroke(LMSColors.separatorLight, lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 5)
@@ -296,8 +296,8 @@ struct LoanProtectionCardRefined: View {
                 Text("Active")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, LMSSpacing.sm)
+                    .padding(.vertical, LMSSpacing.xs)
                     .background(.white.opacity(0.2), in: Capsule())
             }
             
@@ -327,12 +327,12 @@ struct LoanProtectionCardRefined: View {
                 Text("View Policy")
                     .font(.system(.caption, design: .rounded).bold())
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, LMSSpacing.lg)
+                    .padding(.vertical, LMSSpacing.sm)
                     .background(.white.opacity(0.2), in: Capsule())
             }
         }
-        .padding(20)
+        .padding(LMSSpacing.xl)
         .background(
             LinearGradient(
                 colors: [Color(hex: "667EEA"), Color(hex: "764BA2")],
@@ -340,7 +340,7 @@ struct LoanProtectionCardRefined: View {
                 endPoint: .bottomTrailing
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
         .shadow(color: Color(hex: "667EEA").opacity(0.3), radius: 12, x: 0, y: 6)
     }
 }

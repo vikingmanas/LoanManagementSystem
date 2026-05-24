@@ -41,7 +41,7 @@ struct PortfolioMetricsSheet: View {
                         
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: "exclamationmark.circle.fill")
-                                .foregroundStyle(AppTheme.warningAmber)
+                                .foregroundStyle(LMSColors.amber)
                             Text("Pending Review items require KYC verification and document checks before forwarding to the manager.")
                                 .font(.system(.caption, design: .rounded))
                                 .foregroundStyle(LMSColors.textSecondary)
@@ -49,14 +49,14 @@ struct PortfolioMetricsSheet: View {
                         
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: "checkmark.seal.fill")
-                                .foregroundStyle(AppTheme.successGreen)
+                                .foregroundStyle(LMSColors.emerald)
                             Text("Approved items are cleared and sent to management for final disbursement approval.")
                                 .font(.system(.caption, design: .rounded))
                                 .foregroundStyle(LMSColors.textSecondary)
                         }
                     }
                     .padding(16)
-                    .background(AppTheme.neutralSurface)
+                    .background(LMSColors.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .padding(.horizontal, 16)
                     .padding(.top, 10)

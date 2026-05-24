@@ -101,7 +101,7 @@ private struct LoanOfficerTodayView: View {
             .padding(.horizontal, LMSSpacing.screenHorizontal)
             .padding(.bottom, LMSSpacing.xxl)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(LMSColors.background)
         .navigationTitle("Dashboard")
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
@@ -139,7 +139,7 @@ private struct LoanOfficerTodayView: View {
     // MARK: - Workload KPI Strip
 
     private var workloadStrip: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: LMSSpacing.md) {
             OfficerMetricPill(title: "Pending", value: "\(viewModel.pendingCount)", icon: "clock", tint: .orange) {
                 HapticsManager.triggerImpact(style: .light)
                 routeRegistry(.pending)
@@ -202,7 +202,7 @@ private struct LoanOfficerTodayView: View {
     // MARK: - Review Snapshot
 
     private var reviewSnapshot: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
             SectionTitle("Review queue", subtitle: "Newest uploads and re-uploads")
 
             NativeGlassCard(padding: 0) {
@@ -247,7 +247,7 @@ private struct LoanOfficerTodayView: View {
     private var escalationsSection: some View {
         let needsClarification = viewModel.sentToManagerApps.filter { $0.managerStatus == .needsClarification }
 
-        return VStack(alignment: .leading, spacing: 10) {
+        return VStack(alignment: .leading, spacing: LMSSpacing.md) {
             SectionTitle("Escalations", subtitle: "Manager clarifications & approval status")
 
             NativeGlassCard(padding: 0) {
@@ -287,10 +287,10 @@ private struct LoanOfficerTodayView: View {
     // MARK: - Tools Grid
 
     private var toolsGrid: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
             SectionTitle("Officer tools", subtitle: "Quick utilities")
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: LMSSpacing.md) {
                 OfficerToolCard(title: "Review docs", icon: "doc.text.magnifyingglass", tint: .blue) { selectedTab = .review }
                 OfficerToolCard(title: "Messages", icon: "message.badge", tint: .teal) { selectedTab = .messages }
                 OfficerToolCard(title: "Reports", icon: "chart.bar.xaxis", tint: .purple) { showingReportConfirmation = true }
@@ -467,8 +467,8 @@ private struct OfficerMetricPill: View {
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .nativeOfficerGlass(cornerRadius: 18, interactive: true)
+            .padding(LMSSpacing.lg)
+            .nativeOfficerGlass(cornerRadius: LMSRadius.xl, interactive: true)
         }
         .buttonStyle(.plain)
     }
@@ -495,8 +495,8 @@ private struct OfficerToolCard: View {
                     .foregroundStyle(.primary)
                 Spacer()
             }
-            .padding(14)
-            .nativeOfficerGlass(cornerRadius: 18, interactive: true)
+            .padding(LMSSpacing.lg)
+            .nativeOfficerGlass(cornerRadius: LMSRadius.xl, interactive: true)
         }
         .buttonStyle(.plain)
     }
@@ -513,7 +513,7 @@ struct OfficerDocumentRow: View {
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(item.docType.iconColor)
                 .frame(width: 44, height: 44)
-                .background(item.docType.iconColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(item.docType.iconColor.opacity(0.12), in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.borrowerName)
@@ -601,7 +601,7 @@ struct OfficerAvatar: View {
 
 extension View {
     @ViewBuilder
-    func nativeOfficerGlass(cornerRadius: CGFloat = 20, interactive: Bool = false) -> some View {
+    func nativeOfficerGlass(cornerRadius: CGFloat = LMSRadius.xl, interactive: Bool = false) -> some View {
         if #available(iOS 26.0, *) {
             self.glassEffect(interactive ? .regular.interactive() : .regular, in: .rect(cornerRadius: cornerRadius))
         } else {
@@ -628,25 +628,47 @@ struct NotificationsFeedSheet: View {
                     ContentUnavailableView("No Notifications", systemImage: "bell.slash", description: Text("All priority work is clear."))
                 } else {
                     ForEach(viewModel.activityFeed) { item in
-                        HStack(spacing: 12) {
+                        HStack(alignment: .top, spacing: 14) {
+                            if !item.isRead {
+                                Circle()
+                                    .fill(Color.blue)
+                                    .frame(width: 10, height: 10)
+                                    .padding(.top, 12)
+                            } else {
+                                Circle()
+                                    .fill(Color.clear)
+                                    .frame(width: 10, height: 10)
+                                    .padding(.top, 12)
+                            }
+                            
                             Image(systemName: item.eventType.symbol)
-                                .font(.headline.weight(.semibold))
+                                .font(.title3)
                                 .foregroundStyle(item.eventType.themeColor)
                                 .frame(width: 36, height: 36)
-                                .background(item.eventType.themeColor.opacity(0.12), in: Circle())
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(item.borrowerName)
-                                    .font(.body.weight(.semibold))
+                                .background(item.eventType.themeColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(item.borrowerName)
+                                        .font(.subheadline.weight(.semibold))
+                                    Spacer()
+                                    Text(RelativeDateFormatter.shared.relativeString(from: item.timestamp))
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
                                 Text(item.eventDescription)
                                     .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(2)
+                                    .foregroundStyle(!item.isRead ? .primary : .secondary)
+                                    .lineLimit(3)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, 6)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 4, bottom: 8, trailing: 16))
                     }
                 }
             }
+            .listStyle(.plain)
             .navigationTitle("Notifications")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

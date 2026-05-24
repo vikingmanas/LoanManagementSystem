@@ -52,7 +52,7 @@ struct LoanHistoryRow: View {
             } label: {
                 Label("View", systemImage: "eye.fill")
             }
-            .tint(AppTheme.actionBlue)
+            .tint(LMSColors.actionBlue)
             
             // Call Action
             Button {
@@ -61,7 +61,7 @@ struct LoanHistoryRow: View {
             } label: {
                 Label("Call", systemImage: "phone.fill")
             }
-            .tint(AppTheme.successGreen)
+            .tint(LMSColors.emerald)
             
             // Flag Action
             Button {
@@ -70,7 +70,7 @@ struct LoanHistoryRow: View {
             } label: {
                 Label("Flag", systemImage: "flag.fill")
             }
-            .tint(AppTheme.criticalRed)
+            .tint(LMSColors.coral)
         }
     }
     

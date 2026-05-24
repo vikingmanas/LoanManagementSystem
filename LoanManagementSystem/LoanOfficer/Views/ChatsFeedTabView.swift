@@ -126,53 +126,61 @@ private struct OfficerConversationRow: View {
     let conversation: OfficerConversation
 
     var body: some View {
-        HStack(spacing: 12) {
-            ZStack(alignment: .topTrailing) {
-                OfficerAvatar(name: conversation.borrowerName, tint: conversation.requiresAction ? .orange : .blue)
-                if conversation.unreadCount > 0 {
-                    Circle()
-                        .fill(.blue)
-                        .frame(width: 11, height: 11)
-                        .overlay(Circle().stroke(Color(.systemGroupedBackground), lineWidth: 2))
-                        .offset(x: 1, y: -1)
-                }
-            }
+        HStack(alignment: .center, spacing: 12) {
+            // Unread indicator (Native iOS Messages style)
+            Circle()
+                .fill(conversation.unreadCount > 0 ? Color.blue : Color.clear)
+                .frame(width: 10, height: 10)
+            
+            OfficerAvatar(name: conversation.borrowerName, tint: conversation.requiresAction ? .orange : .blue)
 
             VStack(alignment: .leading, spacing: 4) {
-                HStack {
+                HStack(alignment: .top) {
                     Text(conversation.borrowerName)
-                        .font(.body.weight(conversation.unreadCount > 0 ? .bold : .semibold))
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    
                     Spacer()
+                    
                     if let latest = conversation.latestItem {
                         Text(RelativeDateFormatter.shared.relativeString(from: latest.timestamp))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.subheadline)
+                            .foregroundStyle(conversation.unreadCount > 0 ? .blue : .secondary)
                     }
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color(UIColor.tertiaryLabel))
                 }
 
                 Text(conversation.latestItem?.eventDescription ?? "No recent message")
                     .font(.subheadline)
                     .foregroundStyle(conversation.unreadCount > 0 ? .primary : .secondary)
                     .lineLimit(2)
-
+                
                 HStack(spacing: 6) {
-                    Text(conversation.loanType)
-                    Text("·")
-                    Text(conversation.applicationId)
+                    Text("\(conversation.loanType) · \(conversation.applicationId)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.9)
+                    
+                    Spacer()
+                    
                     if conversation.requiresAction {
-                        Text("Action")
-                            .font(.caption2.weight(.semibold))
+                        Text("Action Required")
+                            .font(.caption2.weight(.bold))
                             .foregroundStyle(.orange)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(.orange.opacity(0.12), in: Capsule())
+                            .background(Color.orange.opacity(0.15), in: Capsule())
                     }
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .padding(.top, 2)
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Conversation with \(conversation.borrowerName), \(conversation.unreadCount) unread messages")
     }

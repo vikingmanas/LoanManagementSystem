@@ -51,9 +51,9 @@ struct StatusBannerSection: View {
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(LMSColors.textTertiary)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
-                    .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .padding(.horizontal, LMSSpacing.lg)
+                    .padding(.vertical, LMSSpacing.md)
+                    .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
                 }
                 .buttonStyle(DashboardPressableStyle())
             }
@@ -65,7 +65,7 @@ struct StatusBannerSection: View {
                 HStack(spacing: 12) {
                     Image(systemName: viewModel.isAccountHealthy ? "shield.checkered" : "exclamationmark.shield.fill")
                         .font(.title3)
-                        .foregroundStyle(viewModel.isAccountHealthy ? LMSColors.emerald : Color(hex: "FF5A5F")) // Premium Coral Red
+                        .foregroundStyle(viewModel.isAccountHealthy ? LMSColors.emerald : LMSColors.coral) // Premium Coral Red
                     
                     VStack(alignment: .leading, spacing: 2) {
                         Text(viewModel.isAccountHealthy ? "Account Secure" : "Action Required")
@@ -83,20 +83,20 @@ struct StatusBannerSection: View {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(LMSColors.textTertiary)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
+                .padding(.horizontal, LMSSpacing.lg)
+                .padding(.vertical, LMSSpacing.md)
                 .background(
-                    viewModel.isAccountHealthy ? LMSColors.surface : Color(hex: "FF5A5F").opacity(0.12), 
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    viewModel.isAccountHealthy ? LMSColors.surface : LMSColors.coral.opacity(0.12), 
+                    in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(viewModel.isAccountHealthy ? Color.clear : Color(hex: "FF5A5F").opacity(0.3), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                        .stroke(viewModel.isAccountHealthy ? Color.clear : LMSColors.coral.opacity(0.3), lineWidth: 1)
                 )
             }
             .buttonStyle(DashboardPressableStyle())
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, LMSSpacing.lg)
     }
     
     private func handleAlertTap() {
@@ -119,15 +119,15 @@ struct QuickActionGridSection: View {
             Text("QUICK ACTIONS")
                 .font(.system(.caption, design: .rounded).bold())
                 .foregroundStyle(LMSColors.textSecondary)
-                .padding(.horizontal, 16)
+                .padding(.horizontal, LMSSpacing.lg)
             
             HStack(spacing: 12) {
                 QuickActionButton(title: "Pay EMI", icon: "indianrupeesign.circle.fill", color: LMSColors.brandNavy, action: onPay)
                 QuickActionButton(title: "Top Up", icon: "plus.circle.fill", color: LMSColors.emerald, action: onTopUp)
                 QuickActionButton(title: "Statement", icon: "doc.text.fill", color: LMSColors.actionBlue, action: onStatement)
-                QuickActionButton(title: "Support", icon: "headphones.circle.fill", color: Color.orange, action: onSupport)
+                QuickActionButton(title: "Support", icon: "headphones.circle.fill", color: LMSColors.amber, action: onSupport)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, LMSSpacing.lg)
         }
     }
 }
@@ -146,8 +146,8 @@ struct QuickActionButton: View {
                     .foregroundStyle(color)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
-                    .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(LMSColors.separatorLight, lineWidth: 0.5))
+                    .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous).stroke(LMSColors.separatorLight, lineWidth: 0.5))
                 
                 Text(title)
                     .font(.system(size: 11, weight: .bold, design: .rounded))
@@ -194,7 +194,7 @@ public struct DashboardView: View {
                             .foregroundStyle(LMSColors.textSecondary)
                         Spacer()
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, LMSSpacing.lg)
                     .padding(.top, 8)
 
                     StatusBannerSection(viewModel: viewModel, navigationPath: $navigationPath, showingProfileSheet: $showingProfileSheet)
@@ -203,7 +203,7 @@ public struct DashboardView: View {
                         Text("FINANCIAL PORTFOLIO")
                             .font(.system(.caption, design: .rounded).bold())
                             .foregroundStyle(LMSColors.textSecondary)
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, LMSSpacing.lg)
                         
                         PortfolioCarouselView(
                             viewModel: viewModel,
@@ -240,7 +240,7 @@ public struct DashboardView: View {
                         navigationPath.append(DashboardRoute.schemeDetails(scheme))
                     }
                 }
-                .padding(.bottom, 40)
+                .padding(.bottom, LMSSpacing.xxxl)
             }
             .refreshable {
                 await viewModel.fetchDashboardData()
@@ -337,7 +337,7 @@ struct GovernmentSchemesSection: View {
                 .font(.system(.caption, design: .rounded).bold())
                 .foregroundStyle(LMSColors.brandNavy)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, LMSSpacing.lg)
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
@@ -358,7 +358,7 @@ struct GovernmentSchemesSection: View {
                         }
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, LMSSpacing.lg)
             }
             .alert("Coming Soon", isPresented: $showingPlaceholderAlert) {
                 Button("OK", role: .cancel) { }

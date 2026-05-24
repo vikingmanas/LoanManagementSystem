@@ -209,7 +209,7 @@ struct LoanApplicationReviewDetailView: View {
                 HStack {
                     Text("\(Int(completionPct * 100))% Complete")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppTheme.actionBlue)
+                        .foregroundStyle(LMSColors.actionBlue)
                     Spacer()
                     Text("\(verifiedCount) of \(totalDocs) verified")
                         .font(.caption)
@@ -217,7 +217,7 @@ struct LoanApplicationReviewDetailView: View {
                 }
                 
                 ProgressView(value: completionPct)
-                    .tint(completionPct >= 1.0 ? AppTheme.successGreen : AppTheme.actionBlue)
+                    .tint(completionPct >= 1.0 ? LMSColors.emerald : LMSColors.actionBlue)
             }
             .padding(.vertical, 4)
         }
@@ -271,7 +271,7 @@ struct LoanApplicationReviewDetailView: View {
             if isRunningAIAudit {
                 HStack(spacing: 12) {
                     ProgressView()
-                        .tint(AppTheme.actionBlue)
+                        .tint(LMSColors.actionBlue)
                     Text(aiStatusText)
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
@@ -280,7 +280,7 @@ struct LoanApplicationReviewDetailView: View {
             } else if aiAuditRun {
                 Label("OCR Audit Completed", systemImage: "cpu.fill")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.successGreen)
+                    .foregroundStyle(LMSColors.emerald)
                 
                 AIFindingRow(
                     type: .warning,
@@ -350,7 +350,7 @@ struct LoanApplicationReviewDetailView: View {
                         if let reason = doc.rejectionReason {
                             Text(reason)
                                 .font(.caption)
-                                .foregroundStyle(AppTheme.criticalRed)
+                                .foregroundStyle(LMSColors.coral)
                                 .lineLimit(1)
                         } else {
                             Text(doc.status.rawValue)
@@ -366,7 +366,7 @@ struct LoanApplicationReviewDetailView: View {
                     } label: {
                         Image(systemName: "eye")
                             .font(.body)
-                            .foregroundStyle(AppTheme.actionBlue)
+                            .foregroundStyle(LMSColors.actionBlue)
                     }
                     .buttonStyle(.plain)
                     
@@ -464,9 +464,9 @@ struct LoanApplicationReviewDetailView: View {
     }
     
     private func cibilColor(for score: Int) -> Color {
-        if score >= 750 { return AppTheme.successGreen }
-        if score >= 650 { return AppTheme.warningAmber }
-        return AppTheme.criticalRed
+        if score >= 750 { return LMSColors.emerald }
+        if score >= 650 { return LMSColors.amber }
+        return LMSColors.coral
     }
 }
 
@@ -503,9 +503,9 @@ enum AIFindingsType {
     
     var color: Color {
         switch self {
-        case .success: return AppTheme.successGreen
-        case .warning: return AppTheme.warningAmber
-        case .critical: return AppTheme.criticalRed
+        case .success: return LMSColors.emerald
+        case .warning: return LMSColors.amber
+        case .critical: return LMSColors.coral
         }
     }
 }
@@ -549,7 +549,7 @@ struct DocumentChecklistItemRow: View {
                     
                     if doc.status == .verified {
                         Circle()
-                            .fill(AppTheme.successGreen)
+                            .fill(LMSColors.emerald)
                             .frame(width: 14, height: 14)
                         Image(systemName: "checkmark")
                             .font(.system(size: 8, weight: .bold))
@@ -557,11 +557,11 @@ struct DocumentChecklistItemRow: View {
                     } else if doc.status == .rejectFlag {
                         Image(systemName: "xmark")
                             .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(AppTheme.criticalRed)
+                            .foregroundStyle(LMSColors.coral)
                     } else if doc.status == .pending {
                         Image(systemName: "questionmark")
                             .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(AppTheme.warningAmber)
+                            .foregroundStyle(LMSColors.amber)
                     }
                 }
             }
@@ -574,7 +574,7 @@ struct DocumentChecklistItemRow: View {
                 if let reason = doc.rejectionReason {
                     Text("Correction: \(reason)")
                         .font(.system(size: 9))
-                        .foregroundStyle(AppTheme.criticalRed)
+                        .foregroundStyle(LMSColors.coral)
                         .lineLimit(1)
                 } else {
                     Text(doc.status.rawValue)
@@ -592,10 +592,10 @@ struct DocumentChecklistItemRow: View {
                     Text("Preview")
                         .font(.caption2.weight(.bold))
                 }
-                .foregroundStyle(AppTheme.actionBlue)
+                .foregroundStyle(LMSColors.actionBlue)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(AppTheme.actionBlue.opacity(0.08))
+                .background(LMSColors.actionBlue.opacity(0.08))
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(PlainButtonStyle())

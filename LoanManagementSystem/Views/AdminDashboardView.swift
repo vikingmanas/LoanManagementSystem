@@ -134,10 +134,10 @@ struct AdminDashboardView: View {
                                     Spacer()
                                     Text(String(format: "%.2f%%", homeLoanRate))
                                         .font(.system(.footnote, design: .monospaced).bold())
-                                        .foregroundStyle(Color.AppTheme.primary)
+                                        .foregroundStyle(LMSColors.actionBlue)
                                 }
                                 Slider(value: $homeLoanRate, in: 5.0...15.0, step: 0.05)
-                                    .tint(Color.AppTheme.primary)
+                                    .tint(LMSColors.actionBlue)
                             }
                             
                             // Personal Loan Rate Slider
@@ -148,10 +148,10 @@ struct AdminDashboardView: View {
                                     Spacer()
                                     Text(String(format: "%.2f%%", personalLoanRate))
                                         .font(.system(.footnote, design: .monospaced).bold())
-                                        .foregroundStyle(Color.AppTheme.primary)
+                                        .foregroundStyle(LMSColors.actionBlue)
                                 }
                                 Slider(value: $personalLoanRate, in: 8.0...20.0, step: 0.05)
-                                    .tint(Color.AppTheme.primary)
+                                    .tint(LMSColors.actionBlue)
                             }
                             
                             // Business Loan Rate Slider
@@ -162,10 +162,10 @@ struct AdminDashboardView: View {
                                     Spacer()
                                     Text(String(format: "%.2f%%", businessLoanRate))
                                         .font(.system(.footnote, design: .monospaced).bold())
-                                        .foregroundStyle(Color.AppTheme.primary)
+                                        .foregroundStyle(LMSColors.actionBlue)
                                 }
                                 Slider(value: $businessLoanRate, in: 10.0...25.0, step: 0.05)
-                                    .tint(Color.AppTheme.primary)
+                                    .tint(LMSColors.actionBlue)
                             }
                             
                             Divider()
@@ -205,7 +205,7 @@ struct AdminDashboardView: View {
                                     .foregroundStyle(.white)
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 44)
-                                    .background(Color.AppTheme.primary)
+                                    .background(LMSColors.actionBlue)
                                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
                         }
@@ -420,10 +420,10 @@ struct AdminProfileView: View {
                     }) {
                         Text("Sign Out Admin Console")
                             .font(.system(.subheadline, design: .rounded).bold())
-                            .foregroundStyle(Color.AppTheme.error)
+                            .foregroundStyle(LMSColors.coral)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(Color.AppTheme.error.opacity(0.08))
+                            .background(LMSColors.coral.opacity(0.08))
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
                     .padding(.horizontal, 16)
@@ -440,5 +440,24 @@ struct AdminProfileView: View {
                 }
             }
         }
+    }
+}
+
+struct ProfileDetailRow: View {
+    let label: String
+    let value: String
+    
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .foregroundStyle(LMSColors.textSecondary)
+            Spacer()
+            Text(value)
+                .font(.system(.footnote, design: .rounded).bold())
+                .foregroundStyle(LMSColors.textPrimary)
+        }
+        .padding(.vertical, 14)
+        .padding(.horizontal, 16)
     }
 }

@@ -59,7 +59,7 @@ struct QuickConsoleTabView: View {
                             title: "New Application",
                             desc: "Onboard new customer",
                             symbol: "person.crop.circle.badge.plus",
-                            color: AppTheme.successGreen
+                            color: LMSColors.emerald
                         ) {
                             onActionSelected("new_application")
                         }
@@ -68,7 +68,7 @@ struct QuickConsoleTabView: View {
                             title: "Verify Documents",
                             desc: "Review pending KYC",
                             symbol: "doc.text.magnifyingglass",
-                            color: AppTheme.actionBlue
+                            color: LMSColors.actionBlue
                         ) {
                             onActionSelected("verify_documents")
                         }
@@ -77,7 +77,7 @@ struct QuickConsoleTabView: View {
                             title: "Compliance Audit",
                             desc: "Check RBI compliance",
                             symbol: "shield.checkerboard",
-                            color: AppTheme.brandNavy
+                            color: LMSColors.brandNavy
                         ) {
                             onActionSelected("compliance_audit")
                         }
@@ -104,7 +104,7 @@ struct QuickConsoleTabView: View {
                             title: "Escalate Case",
                             desc: "Submit query to manager",
                             symbol: "arrow.up.circle.fill",
-                            color: AppTheme.criticalRed
+                            color: LMSColors.coral
                         ) {
                             onActionSelected("escalate_case")
                         }
@@ -129,7 +129,7 @@ struct QuickConsoleTabView: View {
                                 
                                 Text(CurrencyFormatter.shared.format(calculatedEMI))
                                     .font(.system(.title, design: .rounded).bold())
-                                    .foregroundStyle(AppTheme.actionBlue)
+                                    .foregroundStyle(LMSColors.actionBlue)
                             }
                             
                             Spacer()
@@ -145,7 +145,7 @@ struct QuickConsoleTabView: View {
                             }
                         }
                         .padding()
-                        .background(AppTheme.actionBlue.opacity(0.06))
+                        .background(LMSColors.actionBlue.opacity(0.06))
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         
                         // Sliders Form
@@ -158,11 +158,11 @@ struct QuickConsoleTabView: View {
                                     Spacer()
                                     Text(CurrencyFormatter.shared.format(principalAmount))
                                         .font(.system(.caption, design: .rounded).bold())
-                                        .foregroundStyle(AppTheme.actionBlue)
+                                        .foregroundStyle(LMSColors.actionBlue)
                                 }
                                 
                                 Slider(value: $principalAmount, in: 500000...10000000, step: 100000)
-                                    .tint(AppTheme.actionBlue)
+                                    .tint(LMSColors.actionBlue)
                             }
                             
                             // 2. Interest Rate Slider
@@ -173,11 +173,11 @@ struct QuickConsoleTabView: View {
                                     Spacer()
                                     Text(String(format: "%.2f %%", interestRate))
                                         .font(.system(.caption, design: .rounded).bold())
-                                        .foregroundStyle(AppTheme.actionBlue)
+                                        .foregroundStyle(LMSColors.actionBlue)
                                 }
                                 
                                 Slider(value: $interestRate, in: 5.0...15.0, step: 0.05)
-                                    .tint(AppTheme.actionBlue)
+                                    .tint(LMSColors.actionBlue)
                             }
                             
                             // 3. Tenure Slider
@@ -188,16 +188,16 @@ struct QuickConsoleTabView: View {
                                     Spacer()
                                     Text("\(Int(tenureYears)) Years")
                                         .font(.system(.caption, design: .rounded).bold())
-                                        .foregroundStyle(AppTheme.actionBlue)
+                                        .foregroundStyle(LMSColors.actionBlue)
                                 }
                                 
                                 Slider(value: $tenureYears, in: 1...30, step: 1)
-                                    .tint(AppTheme.actionBlue)
+                                    .tint(LMSColors.actionBlue)
                             }
                         }
                     }
                     .padding(16)
-                    .background(AppTheme.neutralSurface)
+                    .background(LMSColors.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 3)
                     .padding(.horizontal, 16)
@@ -251,7 +251,7 @@ struct ConsoleGridCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
-            .background(AppTheme.neutralSurface)
+            .background(LMSColors.surface)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .shadow(color: .black.opacity(0.02), radius: 3, x: 0, y: 2)
             .overlay(

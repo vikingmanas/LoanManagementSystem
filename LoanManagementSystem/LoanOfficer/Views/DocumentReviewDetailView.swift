@@ -27,7 +27,12 @@ struct DocumentReviewDetailView: View {
             borrowerSection
             documentPreviewSection
             documentMetadataSection
-            actionsSection
+            
+            Section {
+                actionsSection
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 16, trailing: 0))
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Document Review")
@@ -158,20 +163,22 @@ struct DocumentReviewDetailView: View {
     // MARK: - Actions
     
     private var actionsSection: some View {
-        Section {
+        VStack(spacing: 12) {
             Button {
                 HapticsManager.triggerImpact(style: .heavy)
                 viewModel.updateDocumentStatus(applicationId: item.applicationId, docId: item.id, newStatus: .verified)
                 dismiss()
             } label: {
                 Text("Verify & Approve")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.blue)
+                    .font(.body.weight(.bold))
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .multilineTextAlignment(.center)
+                    .padding(.vertical, 14)
+                    .background(Color.blue)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             
-            Button(role: .destructive) {
+            Button {
                 HapticsManager.triggerImpact(style: .medium)
                 showingRejectionAlert = true
             } label: {
@@ -179,17 +186,17 @@ struct DocumentReviewDetailView: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity)
-                    .multilineTextAlignment(.center)
+                    .padding(.vertical, 14)
+                    .background(Color.red.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
-        } header: {
-            Text("Verification Actions")
         }
     }
     
     private func cibilColor(for score: Int) -> Color {
-        if score >= 750 { return AppTheme.successGreen }
-        if score >= 650 { return AppTheme.warningAmber }
-        return AppTheme.criticalRed
+        if score >= 750 { return LMSColors.emerald }
+        if score >= 650 { return LMSColors.amber }
+        return LMSColors.coral
     }
 }
 
@@ -279,7 +286,7 @@ struct DocumentGraphicMockView: View {
                 ledgerRow("HRA Allowance", "₹ 15,000.00")
                 ledgerRow("PF Deductions", "- ₹ 5,500.00", isDebit: true)
                 Divider()
-                ledgerRow("NET DISBURSED AMOUNT", "₹ 94,500.00", isBold: true, creditColor: AppTheme.successGreen)
+                ledgerRow("NET DISBURSED AMOUNT", "₹ 94,500.00", isBold: true, creditColor: LMSColors.emerald)
             }
             .font(.system(size: 9, design: .monospaced))
         }
@@ -290,7 +297,7 @@ struct DocumentGraphicMockView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Image(systemName: "building.columns.fill")
-                    .foregroundStyle(AppTheme.actionBlue)
+                    .foregroundStyle(LMSColors.actionBlue)
                 Text("SECURE HDFC BANK STATEMENT")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                 Spacer()
@@ -303,9 +310,9 @@ struct DocumentGraphicMockView: View {
             Divider()
             
             VStack(spacing: 6) {
-                ledgerRow("12 Apr · UPI Credit", "+ ₹ 12,000", creditColor: AppTheme.successGreen)
+                ledgerRow("12 Apr · UPI Credit", "+ ₹ 12,000", creditColor: LMSColors.emerald)
                 ledgerRow("15 Apr · AutoDebit EMI", "- ₹ 8,500", isDebit: true)
-                ledgerRow("28 Apr · Salary Credited", "+ ₹ 94,500", creditColor: AppTheme.successGreen)
+                ledgerRow("28 Apr · Salary Credited", "+ ₹ 94,500", creditColor: LMSColors.emerald)
                 Divider()
                 ledgerRow("CLOSING ACCOUNT BALANCE", "₹ 1,12,300.00", isBold: true)
             }
@@ -318,7 +325,7 @@ struct DocumentGraphicMockView: View {
         VStack(spacing: 8) {
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 26))
-                .foregroundStyle(AppTheme.successGreen)
+                .foregroundStyle(LMSColors.emerald)
             
             Text("FORM GST REG-06")
                 .font(.system(size: 10, weight: .bold, design: .rounded))
@@ -351,7 +358,7 @@ struct DocumentGraphicMockView: View {
         VStack(spacing: 12) {
             Image(systemName: "doc.text.fill")
                 .font(.system(size: 40))
-                .foregroundStyle(AppTheme.actionBlue)
+                .foregroundStyle(LMSColors.actionBlue)
             
             Text("Uploaded Document Scan")
                 .font(.subheadline.weight(.semibold))

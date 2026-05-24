@@ -126,7 +126,7 @@ struct PortfolioSummaryCard: View {
                             .frame(height: 6)
                         
                         RoundedRectangle(cornerRadius: 3)
-                            .fill(AppTheme.successGreen)
+                            .fill(LMSColors.emerald)
                             .frame(width: geo.size.width * CGFloat(Double(progressPercentage) / 100.0), height: 6)
                     }
                 }
@@ -139,10 +139,10 @@ struct PortfolioSummaryCard: View {
                     HStack(spacing: 4) {
                         if progressPercentage >= 80 {
                             Text("🎯 On Track")
-                                .foregroundStyle(AppTheme.successGreen)
+                                .foregroundStyle(LMSColors.emerald)
                         } else {
                             Text("⚠️ Behind Target")
-                                .foregroundStyle(AppTheme.warningAmber)
+                                .foregroundStyle(LMSColors.amber)
                         }
                     }
                     .font(.system(.caption2, design: .rounded).bold())

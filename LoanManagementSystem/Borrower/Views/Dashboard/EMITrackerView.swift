@@ -31,7 +31,7 @@ public struct EMITrackerView: View {
                         .background(LMSColors.amber, in: Capsule())
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, LMSSpacing.lg)
             
             if viewModel.isLoading {
                 LoadingTrackerSkeleton()
@@ -55,11 +55,11 @@ public struct EMITrackerView: View {
                                     }
                                 }
                                 if emi.id != unpaidEMIs.prefix(2).last?.id {
-                                    Divider().padding(.leading, 16)
+                                    Divider().padding(.leading, LMSSpacing.lg)
                                 }
                             }
                         }
-                        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
                         
                         if unpaidEMIs.count > 2 {
                             Button {
@@ -78,7 +78,7 @@ public struct EMITrackerView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, LMSSpacing.lg)
             }
         }
     }
@@ -157,10 +157,10 @@ struct UpcomingEMICard: View {
             .disabled(!isSufficient && !isOverdue)
             .buttonStyle(DashboardPressableStyle())
         }
-        .padding(20)
-        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .padding(LMSSpacing.xl)
+        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous)
                 .stroke(LMSColors.separatorLight, lineWidth: 1)
         )
     }
@@ -185,8 +185,8 @@ struct AllCaughtUpCard: View {
             }
             Spacer()
         }
-        .padding(16)
-        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(LMSSpacing.lg)
+        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
     }
 }
 
@@ -217,8 +217,8 @@ struct PendingEMIRow: View {
                     .foregroundStyle(emi.status == .overdue ? LMSColors.coral : LMSColors.amber)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 16)
+        .padding(.horizontal, LMSSpacing.lg)
+        .padding(.vertical, LMSSpacing.lg)
         .contentShape(Rectangle()) 
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button {
