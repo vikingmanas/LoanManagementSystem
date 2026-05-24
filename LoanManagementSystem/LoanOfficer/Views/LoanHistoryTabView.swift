@@ -107,12 +107,8 @@ struct LoanHistoryTabView: View {
             Text("Loan Registry")
                 .font(.system(size: 34, weight: .bold, design: .rounded))
                 .foregroundColor(.primary)
-
-            Text("Good Morning, Arjun 👋")
-                .font(.system(size: 15, weight: .medium, design: .rounded))
-                .foregroundColor(.secondary)
         }
-        .padding(.bottom, 10)
+//        .padding(.bottom, 10)
     }
 
     private var emptyState: some View {
