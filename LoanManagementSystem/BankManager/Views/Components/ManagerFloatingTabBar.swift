@@ -46,7 +46,7 @@ struct ManagerFloatingTabBar: View {
         .background(
             VisualEffectView(effect: UIBlurEffect(style: .systemChromeMaterial))
                 .clipShape(Capsule())
-                .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 5)
+                .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 5)
         )
         .overlay(
             Capsule()
@@ -102,4 +102,14 @@ private struct ManagerTabBarButton: View {
     @Previewable @State var tab = 0
     ManagerFloatingTabBar(selectedTab: $tab, unreadChatCount: 2)
         .padding()
+}
+
+struct VisualEffectView: UIViewRepresentable {
+    var effect: UIVisualEffect?
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        UIVisualEffectView()
+    }
+    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
+        uiView.effect = effect
+    }
 }

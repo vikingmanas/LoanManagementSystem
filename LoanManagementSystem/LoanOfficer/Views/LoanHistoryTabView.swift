@@ -14,10 +14,10 @@ struct LoanHistoryTabView: View {
     
     enum FilterOption: String, CaseIterable, Identifiable {
         case all = "All"
-        case pending = "Pending"
+        case pendingVerification = "Pending Verification"
         case underReview = "Under Review"
-        case inReview = "In Review"
         case approved = "Approved"
+        case rejected = "Rejected"
         
         var id: String { self.rawValue }
     }
@@ -86,13 +86,13 @@ struct LoanHistoryTabView: View {
             if let status = newStatus {
                 switch status {
                 case .pending, .applied, .documentsPending:
-                    selectedFilter = .pending
-                case .underReview:
+                    selectedFilter = .pendingVerification
+                case .underReview, .sentToManager, .finalApprovalPending, .verificationCompleted:
                     selectedFilter = .underReview
-                case .sentToManager, .finalApprovalPending, .verificationCompleted:
-                    selectedFilter = .inReview
                 case .approved, .disbursed:
                     selectedFilter = .approved
+                case .rejected, .documentsRejected:
+                    selectedFilter = .rejected
                 default:
                     selectedFilter = .all
                 }
@@ -148,14 +148,14 @@ struct LoanHistoryTabView: View {
         switch selectedFilter {
         case .all:
             break
-        case .pending:
+        case .pendingVerification:
             list = list.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending }
         case .underReview:
-            list = list.filter { $0.status == .underReview }
-        case .inReview:
-            list = list.filter { $0.status == .sentToManager || $0.status == .finalApprovalPending || $0.status == .verificationCompleted }
+            list = list.filter { $0.status == .underReview || $0.status == .sentToManager || $0.status == .finalApprovalPending || $0.status == .verificationCompleted }
         case .approved:
             list = list.filter { $0.status == .approved || $0.status == .disbursed }
+        case .rejected:
+            list = list.filter { $0.status == .rejected || $0.status == .documentsRejected }
         }
         
         return list
