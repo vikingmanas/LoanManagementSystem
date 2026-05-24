@@ -171,11 +171,9 @@ struct LoanHistoryRow: View {
     private var statusDetails: (text: String, color: Color) {
         switch app.status {
         case .pending, .applied, .documentsPending:
-            return ("Pending", .orange)
-        case .underReview:
+            return ("Pending Verification", .orange)
+        case .underReview, .sentToManager, .finalApprovalPending, .verificationCompleted:
             return ("Under Review", .blue)
-        case .sentToManager, .finalApprovalPending, .verificationCompleted:
-            return ("In Review", .purple)
         case .approved, .disbursed:
             return ("Approved", .green)
         case .rejected, .documentsRejected:

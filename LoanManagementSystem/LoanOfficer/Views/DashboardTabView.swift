@@ -9,6 +9,7 @@ struct DashboardTabView: View {
     var onQuickActionTapped: (String) -> Void
     
     @State private var showingPortfolioMetrics = false
+    @State private var showingAnalyticsSheet = false
     @State private var selectedDocumentForReview: DocumentQueueItem? = nil
     
     var body: some View {
@@ -41,6 +42,12 @@ struct DashboardTabView: View {
                             }
                             .id("portfolio_card")
                             .padding(.horizontal, 16)
+                            
+                            LoanOfficerChartView(viewModel: viewModel) {
+                                showingAnalyticsSheet = true
+                            }
+                                .id("applications_chart")
+                                .padding(.horizontal, 16)
                             
                             OfficerQuickActionsView(
                                 viewModel: viewModel,
@@ -81,6 +88,9 @@ struct DashboardTabView: View {
         }
         .sheet(isPresented: $showingPortfolioMetrics) {
             PortfolioMetricsSheet(viewModel: viewModel)
+        }
+        .sheet(isPresented: $showingAnalyticsSheet) {
+            LoanOfficerDetailedAnalyticsSheet(viewModel: viewModel)
         }
         .sheet(item: $selectedDocumentForReview) { docItem in
             DocumentReviewDetailView(item: docItem, viewModel: viewModel)

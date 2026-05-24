@@ -28,66 +28,60 @@ struct LoanOfficerDashboardView: View {
                 )
             }
             
-            // 3. CUSTOM TRANS-TAB CONTAINER WITH FLOATING TAB BAR
-            ZStack(alignment: .bottom) {
-                // Tab Content Switcher
-                ZStack {
-                    switch viewModel.selectedTab {
-                    case 0:
-                        ScrollViewReader { proxy in
-                            DashboardTabView(
-                                viewModel: viewModel,
-                                onDocumentSeeAllTapped: {
-                                    handleAlertDeepLink(.pendingDocuments)
-                                },
-                                onManagerRespondTapped: { app in
-                                    HapticsManager.triggerImpact(style: .medium)
-                                    selectedAppForReview = app
-                                },
-                                onQuickActionTapped: { actionIdentifier in
-                                    handleOverviewQuickAction(actionIdentifier)
-                                }
-                            )
-                            .onChange(of: scrollTargetID) { _, newID in
-                                if let newID = newID {
-                                    withAnimation(.spring()) {
-                                        proxy.scrollTo(newID, anchor: .top)
-                                    }
-                                    scrollTargetID = nil
-                                }
-                            }
-                        }
-                        .background(AppTheme.background)
-                        
-                    case 1:
-                        ChatsFeedTabView(viewModel: viewModel)
-                            .background(AppTheme.background)
-                            
-                    case 2:
-                        QuickConsoleTabView(viewModel: viewModel) { actionIdentifier in
+            // 3. NATIVE TAB BAR
+            TabView(selection: $viewModel.selectedTab) {
+                ScrollViewReader { proxy in
+                    DashboardTabView(
+                        viewModel: viewModel,
+                        onDocumentSeeAllTapped: {
+                            handleAlertDeepLink(.pendingDocuments)
+                        },
+                        onManagerRespondTapped: { app in
+                            HapticsManager.triggerImpact(style: .medium)
+                            selectedAppForReview = app
+                        },
+                        onQuickActionTapped: { actionIdentifier in
                             handleOverviewQuickAction(actionIdentifier)
                         }
-                        .background(AppTheme.background)
-                        
-                    case 3:
-                        LoanHistoryTabView(viewModel: viewModel)
-                            .background(AppTheme.background)
-                            
-                    default:
-                        EmptyView()
+                    )
+                    .onChange(of: scrollTargetID) { _, newID in
+                        if let newID = newID {
+                            withAnimation(.spring()) {
+                                proxy.scrollTo(newID, anchor: .top)
+                            }
+                            scrollTargetID = nil
+                        }
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .safeAreaInset(edge: .bottom) {
-                    Spacer().frame(height: 80) // Prevents active scrolling content from being clipped by tab bar
+                .background(AppTheme.background)
+                .tabItem {
+                    Label("Overview", systemImage: "house")
                 }
+                .tag(0)
                 
-                // Floating iOS translucent tab bar capsule
-                CustomFloatingTabBar(selectedTab: $viewModel.selectedTab)
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 12)
+                ChatsFeedTabView(viewModel: viewModel)
+                    .background(AppTheme.background)
+                    .tabItem {
+                        Label("Chats", systemImage: "bubble.left")
+                    }
+                    .tag(1)
+                    
+                QuickConsoleTabView(viewModel: viewModel) { actionIdentifier in
+                    handleOverviewQuickAction(actionIdentifier)
+                }
+                .background(AppTheme.background)
+                .tabItem {
+                    Label("Console", systemImage: "bolt")
+                }
+                .tag(2)
+                    
+                LoanHistoryTabView(viewModel: viewModel)
+                    .background(AppTheme.background)
+                    .tabItem {
+                        Label("Registry", systemImage: "doc.text.magnifyingglass")
+                    }
+                    .tag(3)
             }
-            .edgesIgnoringSafeArea(.bottom)
         }
         .task {
             // Simulated pull on load
@@ -182,7 +176,7 @@ struct CustomTopNavigationBar: View {
         HStack(alignment: .center) {
             // Left Profile Summary
             VStack(alignment: .leading, spacing: 2) {
-                Text("Hi, \(LoanOfficerMockData.officerName) 👋")
+                Text("Good Morning, \(LoanOfficerMockData.officerName) 👋")
                     .font(.system(.title3, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
                 
@@ -396,79 +390,6 @@ struct NotificationsFeedSheet: View {
     }
 }
 
-// MARK: - Premium Custom Floating iOS Tab Bar
-struct CustomFloatingTabBar: View {
-    @Binding var selectedTab: Int
-    
-    var body: some View {
-        HStack {
-            TabBarButton(iconName: "house", activeIconName: "house.fill", title: "Overview", isSelected: selectedTab == 0) {
-                selectedTab = 0
-            }
-            Spacer()
-            TabBarButton(iconName: "bubble.left", activeIconName: "bubble.left.fill", title: "Chats", isSelected: selectedTab == 1) {
-                selectedTab = 1
-            }
-            Spacer()
-//            TabBarButton(iconName: "bolt", activeIconName: "bolt.fill", title: "Console", isSelected: selectedTab == 2) {
-//                selectedTab = 2
-//            }
-//            Spacer()
-            TabBarButton(iconName: "doc.text.magnifyingglass", activeIconName: "doc.text.magnifyingglass", title: "Registry", isSelected: selectedTab == 3) {
-                selectedTab = 3
-            }
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 8)
-        .background(
-            VisualEffectView(effect: UIBlurEffect(style: .systemChromeMaterial))
-                .clipShape(Capsule())
-                .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 5)
-        )
-        .overlay(
-            Capsule()
-                .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
-        )
-    }
-}
-
-struct TabBarButton: View {
-    let iconName: String
-    let activeIconName: String
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: {
-            HapticsManager.triggerImpact(style: .light)
-            action()
-        }) {
-            VStack(spacing: 4) {
-                Image(systemName: isSelected ? activeIconName : iconName)
-                    .font(.system(size: 20, weight: isSelected ? .bold : .medium))
-                    .foregroundColor(isSelected ? AppTheme.actionBlue : .secondary)
-                    .frame(height: 24)
-                
-                Text(title)
-                    .font(.system(size: 10, weight: isSelected ? .bold : .semibold, design: .rounded))
-                    .foregroundColor(isSelected ? AppTheme.actionBlue : .secondary)
-            }
-            .frame(width: 60)
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
-struct VisualEffectView: UIViewRepresentable {
-    var effect: UIVisualEffect?
-    func makeUIView(context: Context) -> UIVisualEffectView {
-        UIVisualEffectView()
-    }
-    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
-        uiView.effect = effect
-    }
-}
 
 #Preview {
     LoanOfficerDashboardView()
