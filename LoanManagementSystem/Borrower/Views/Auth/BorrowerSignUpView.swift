@@ -11,151 +11,157 @@ struct MockSignUpView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel = SignUpViewModel()
-
+    
     var body: some View {
-        ZStack {
-            Color.AppTheme.background.ignoresSafeArea()
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-
-
+        NavigationStack {
+            Form {
+                // Header Information
+                Section {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Create Account")
-                            .font(Font.AppTheme.title)
-                            .foregroundStyle(Color.AppTheme.textPrimary)
-
-                        Text("Create your borrower account securely.")
-                            .font(Font.AppTheme.subtitle)
-                            .foregroundStyle(Color.AppTheme.textSecondary)
+                            .font(.system(.largeTitle, design: .rounded).bold())
+                            .foregroundStyle(LMSColors.brandNavy)
+                        
+                        Text("Join our platform to manage your loans securely and easily.")
+                            .font(.system(.subheadline, design: .rounded))
+                            .foregroundStyle(.secondary)
                     }
-                    .padding(.top, 20)
-                    .padding(.bottom, 10)
-
-
-                    if !viewModel.generalError.isEmpty {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                            Text(viewModel.generalError)
-                                .font(Font.AppTheme.caption)
-                            Spacer()
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 10, leading: 0, bottom: 20, trailing: 0))
+                }
+                
+                // Personal Information
+                Section(header: Text("Personal Details")) {
+                    LabeledContent("Name") {
+                        TextField("Full Name", text: $viewModel.fullName)
+                            .textContentType(.name)
+                    }
+                    
+                    LabeledContent("Email") {
+                        TextField("example@mail.com", text: $viewModel.email)
+                            .textContentType(.emailAddress)
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                    }
+                    
+                    LabeledContent("Mobile") {
+                        TextField("Phone Number", text: $viewModel.phone)
+                            .textContentType(.telephoneNumber)
+                            .keyboardType(.phonePad)
+                    }
+                }
+                
+                // Additional Information (Optional)
+                Section(header: Text("Optional Details")) {
+                    LabeledContent("Alt. Mobile") {
+                        TextField("Optional", text: $viewModel.alternatePhone)
+                            .keyboardType(.phonePad)
+                    }
+                    
+                    LabeledContent("Referral") {
+                        TextField("Code", text: $viewModel.referralCode)
+                            .textInputAutocapitalization(.characters)
+                    }
+                }
+                
+                // Security
+                Section(header: Text("Security"), footer: passwordRequirementsFooter) {
+                    SecureField("Password", text: $viewModel.password)
+                        .textContentType(.newPassword)
+                    
+                    SecureField("Confirm Password", text: $viewModel.confirmPassword)
+                        .textContentType(.newPassword)
+                }
+                
+                // Agreements
+                Section {
+                    Toggle("Accept Terms & Conditions", isOn: $viewModel.acceptedTerms)
+                        .tint(LMSColors.brandNavy)
+                    Toggle("Agree to Privacy Policy", isOn: $viewModel.acceptedPrivacy)
+                        .tint(LMSColors.brandNavy)
+                }
+                
+                // Action
+                Section {
+                    Button {
+                        Task {
+                            HapticsManager.triggerImpact(style: .medium)
+                            await viewModel.signUp(authManager: authManager)
                         }
-                        .padding()
-                        .background(Color.AppTheme.error.opacity(0.1))
-                        .foregroundStyle(Color.AppTheme.error)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    }
-
-
-                    VStack(spacing: 16) {
-                        CustomTextField(
-                            icon: "person",
-                            placeholder: "Full Name",
-                            text: $viewModel.fullName
-                        )
-
-                        CustomTextField(
-                            icon: "envelope",
-                            placeholder: "Email Address",
-                            text: $viewModel.email
-                        )
-
-                        CustomTextField(
-                            icon: "phone",
-                            placeholder: "Mobile Number",
-                            text: $viewModel.phone
-                        )
-
-                        CustomTextField(
-                            icon: "phone.fill",
-                            placeholder: "Alternate Mobile Number (Optional)",
-                            text: $viewModel.alternatePhone
-                        )
-                        .keyboardType(.phonePad)
-
-                        CustomTextField(
-                            icon: "tag",
-                            placeholder: "Referral Code (Optional)",
-                            text: $viewModel.referralCode
-                        )
-                        .textInputAutocapitalization(.characters)
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            SecureInputField(
-                                placeholder: "Password",
-                                text: $viewModel.password
-                            )
-
-
-                            if !viewModel.password.isEmpty {
-                                PasswordStrengthView(
-                                    isMinLength: viewModel.isMinLength,
-                                    hasUppercase: viewModel.hasUppercase,
-                                    hasNumber: viewModel.hasNumber,
-                                    hasSpecialChar: viewModel.hasSpecialChar
-                                )
-                                .padding(.horizontal, 4)
-                            }
+                    } label: {
+                        if viewModel.isLoading {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text("Create Account")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity)
                         }
-
-                        SecureInputField(
-                            placeholder: "Confirm Password",
-                            text: $viewModel.confirmPassword
-                        )
                     }
-
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        CheckboxView(isChecked: $viewModel.acceptedTerms, label: "I accept the Terms and Conditions")
-                        CheckboxView(isChecked: $viewModel.acceptedPrivacy, label: "I agree to the Privacy Policy")
+                    .disabled(!viewModel.isFormValid || viewModel.isLoading)
+                    .listRowBackground(viewModel.isFormValid ? LMSColors.brandNavy : Color.gray.opacity(0.3))
+                    .foregroundStyle(.white)
+                }
+                
+                // Error Section
+                if !viewModel.generalError.isEmpty {
+                    Section {
+                        Label(viewModel.generalError, systemImage: "exclamationmark.triangle.fill")
+                            .font(.system(.footnote, design: .rounded))
+                            .foregroundStyle(.red)
                     }
-                    .padding(.top, 8)
-
-
-                    PrimaryButton(
-                        title: "Create Account",
-                        isLoading: viewModel.isLoading,
-                        isDisabled: !viewModel.isFormValid,
-                        action: {
-                            Task {
-                                await viewModel.signUp(authManager: authManager)
-                            }
-                        }
-                    )
-                    .padding(.top, 16)
-
-                    Spacer(minLength: 40)
-
-
+                }
+                
+                // Footer
+                Section {
                     HStack {
                         Spacer()
                         Text("Already have an account?")
-                            .font(Font.AppTheme.body)
-                            .foregroundStyle(Color.AppTheme.textSecondary)
-
-                        Button(action: {
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        
+                        Button("Sign In") {
                             dismiss()
-                        }) {
-                            Text("Sign In")
-                                .font(Font.AppTheme.body)
-                                .fontWeight(.bold)
-                                .foregroundStyle(Color.AppTheme.primary)
                         }
+                        .font(.subheadline.bold())
+                        .foregroundStyle(LMSColors.brandNavy)
                         Spacer()
                     }
-                    .padding(.bottom, 20)
+                    .listRowBackground(Color.clear)
                 }
-                .padding(.horizontal, 24)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Image(systemName: "indianrupeesign.circle.fill")
+                        .foregroundStyle(LMSColors.brandNavy)
+                }
+                
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
             }
         }
-        .hideNavigationBar()
         .onChange(of: viewModel.showSuccess) { _, success in
             if success {
                 appState.login()
             }
         }
     }
+    
+    private var passwordRequirementsFooter: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            RequirementRow(isMet: viewModel.isMinLength, text: "At least 8 characters")
+            RequirementRow(isMet: viewModel.hasUppercase, text: "One uppercase letter")
+            RequirementRow(isMet: viewModel.hasNumber, text: "One number")
+            RequirementRow(isMet: viewModel.hasSpecialChar, text: "One special character")
+        }
+        .padding(.top, 4)
+    }
 }
+
 #Preview("BorrowerSignUpView") {
     BorrowerSignUpView()
         .environmentObject(AppStateManager())
@@ -167,4 +173,3 @@ struct MockSignUpView: View {
         .environmentObject(AppStateManager())
         .environmentObject(AuthManager())
 }
-

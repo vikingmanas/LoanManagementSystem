@@ -16,10 +16,10 @@ struct ProcessedLoansView: View {
 
                     Text("This Week")
                         .font(.system(.caption2, design: .rounded).bold())
-                        .foregroundStyle(AppTheme.actionBlue)
+                        .foregroundStyle(LMSColors.actionBlue)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(AppTheme.actionBlue.opacity(0.12))
+                        .background(LMSColors.actionBlue.opacity(0.12))
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
 
@@ -50,7 +50,7 @@ struct ProcessedLoansView: View {
                     }
                 }
             }
-            .background(AppTheme.neutralSurface)
+            .background(LMSColors.surface)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 3)
         }
@@ -99,10 +99,10 @@ struct ProcessedLoanRow: View {
                 VStack(alignment: .trailing, spacing: 6) {
                     Text(status.rawValue)
                         .font(.system(.caption2, design: .rounded).bold())
-                        .foregroundStyle(status == .underReview ? AppTheme.warningAmber : .white)
+                        .foregroundStyle(status == .underReview ? LMSColors.amber : .white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(status == .underReview ? AppTheme.warningAmber.opacity(0.15) : status.themeColor)
+                        .background(status == .underReview ? LMSColors.amber.opacity(0.15) : status.themeColor)
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                     if status == .needsClarification {
@@ -112,10 +112,10 @@ struct ProcessedLoanRow: View {
                         }) {
                             Text("Respond")
                                 .font(.system(.caption2, design: .rounded).bold())
-                                .foregroundStyle(AppTheme.criticalRed)
+                                .foregroundStyle(LMSColors.coral)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 5)
-                                .background(AppTheme.criticalRed.opacity(0.12))
+                                .background(LMSColors.coral.opacity(0.12))
                                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                         }
                         .buttonStyle(PlainButtonStyle())

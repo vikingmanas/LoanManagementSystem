@@ -8,7 +8,7 @@ struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $tabRouter.selectedTab) {
-            DashboardView(viewModel: dashboardViewModel)
+            DashboardView()
                 .tabItem {
                     Label("Dashboard", systemImage: "house.fill")
                 }

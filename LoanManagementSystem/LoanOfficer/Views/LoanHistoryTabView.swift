@@ -1,249 +1,200 @@
 import SwiftUI
-import UIKit
 
 struct LoanHistoryTabView: View {
-    typealias LoanApplication = OfficerLoanApplication
-    typealias LoanType = OfficerLoanType
-    typealias ApplicationStatus = OfficerApplicationStatus
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
-
-    @State private var selectedFilter: FilterOption = .all
-    @State private var showingExportAlert = false
-    @State private var activeDetailApp: LoanApplication? = nil
+    @State private var selectedFilter: RegistryFilter = .all
+    @State private var sortOrder: HistorySortOrder = .newest
+    @State private var activeDetailApp: OfficerLoanApplication?
+    @State private var showingCallAlert = false
+    @State private var showingFlagAlert = false
     @State private var alertMessage = ""
 
-    enum FilterOption: String, CaseIterable, Identifiable {
-        case all = "All"
-        case pendingVerification = "Pending Verification"
-        case underReview = "Under Review"
-        case approved = "Approved"
-        case rejected = "Rejected"
-
-        var id: String { self.rawValue }
-    }
-
-    var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            LazyVStack(alignment: .leading, spacing: 16) {
-                registryHeader
-
-                searchAndFilterHeader
-
-                HStack {
-                    Text("Showing \(localFilteredApplications.count) of \(viewModel.totalApplications) loans")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundColor(.secondary)
-
-                    Spacer()
-                }
-                .padding(.top, 2)
-
-                if localFilteredApplications.isEmpty {
-                    emptyState
-                } else {
-                    LazyVStack(spacing: 12) {
-                        ForEach(localFilteredApplications) { app in
-                            LoanHistoryRow(
-                                app: app,
-                                onView: {
-                                    activeDetailApp = app
-                                },
-                                onCall: {
-                                    alertMessage = "Calling borrower \(app.borrowerName) at verified registration number..."
-                                    showingExportAlert = true
-                                },
-                                onFlag: {
-                                    alertMessage = "Flagged application \(app.applicationId) for compliance audit."
-                                    showingExportAlert = true
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
-            .padding(.bottom, 112)
-        }
-        .background(Color(.systemBackground))
-        .refreshable {
-            await viewModel.fetchDashboardData()
-        }
-        .sheet(item: $activeDetailApp) { app in
-            LoanApplicationReviewDetailView(applicationId: app.applicationId, viewModel: viewModel)
-        }
-        .alert(isPresented: $showingExportAlert) {
-            Alert(
-                title: Text("System Alert"),
-                message: Text(alertMessage.isEmpty ? "Export action triggered." : alertMessage),
-                dismissButton: .default(Text("OK")) {
-                    alertMessage = ""
-                }
-            )
-        }
-
-        .onChange(of: viewModel.historyFilter) { _, newStatus in
-            if let status = newStatus {
-                switch status {
-                case .pending, .applied, .documentsPending:
-                    selectedFilter = .pendingVerification
-                case .underReview, .sentToManager, .finalApprovalPending, .verificationCompleted:
-                    selectedFilter = .underReview
-                case .approved, .disbursed:
-                    selectedFilter = .approved
-                case .rejected, .documentsRejected:
-                    selectedFilter = .rejected
-                default:
-                    selectedFilter = .all
-                }
-            } else {
-                selectedFilter = .all
-            }
-        }
-    }
-
-    private var registryHeader: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Loan Registry")
-                .font(.system(size: 34, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
-        }
-
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "doc.text.magnifyingglass")
-                .font(.system(size: 44))
-                .foregroundColor(.secondary.opacity(0.6))
-                .padding(.top, 32)
-
-            Text("No Loans Found")
-                .font(.system(size: 17, weight: .bold, design: .rounded))
-
-            Text("Try adjusting your filters or search terms.")
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-        .background(AppTheme.neutralSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-        )
-    }
-
-
-    private var localFilteredApplications: [OfficerLoanApplication] {
+    private var filteredApplications: [OfficerLoanApplication] {
         var list = viewModel.filteredApplications
 
         switch selectedFilter {
         case .all:
             break
-        case .pendingVerification:
-            list = list.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending }
-        case .underReview:
-            list = list.filter { $0.status == .underReview || $0.status == .sentToManager || $0.status == .finalApprovalPending || $0.status == .verificationCompleted }
-        case .approved:
-            list = list.filter { $0.status == .approved || $0.status == .disbursed }
-        case .rejected:
-            list = list.filter { $0.status == .rejected || $0.status == .documentsRejected }
+        case .pending:
+            list = list.filter { [.pending, .applied, .documentsPending, .documentsRejected].contains($0.status) }
+        case .review:
+            list = list.filter { [.underReview, .verificationCompleted].contains($0.status) }
+        case .manager:
+            list = list.filter { [.sentToManager, .finalApprovalPending].contains($0.status) || $0.sentToManagerDate != nil }
+        case .closed:
+            list = list.filter { [.approved, .disbursed, .rejected].contains($0.status) }
+        }
+
+        switch sortOrder {
+        case .newest:
+            list.sort { $0.submittedDate > $1.submittedDate }
+        case .oldest:
+            list.sort { $0.submittedDate < $1.submittedDate }
+        case .amountAsc:
+            list.sort { $0.requestedAmount < $1.requestedAmount }
+        case .amountDesc:
+            list.sort { $0.requestedAmount > $1.requestedAmount }
         }
 
         return list
     }
 
-
-    private var searchAndFilterHeader: some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary.opacity(0.8))
-                    .font(.system(size: 16, weight: .semibold))
-
-                TextField("Search loans, customers, application ID", text: $viewModel.historySearchQuery)
-                    .font(.system(size: 15, design: .rounded))
-                    .foregroundColor(.primary)
-                    .autocorrectionDisabled()
-
-                if !viewModel.historySearchQuery.isEmpty {
-                    Button(action: {
-                        viewModel.historySearchQuery = ""
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
-                            .font(.system(size: 15))
+    var body: some View {
+        List {
+            Section {
+                Picker("Stage", selection: $selectedFilter) {
+                    ForEach(RegistryFilter.allCases) { filter in
+                        Text(filter.title).tag(filter)
                     }
                 }
+                .pickerStyle(.segmented)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(.systemBackground))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-            )
+            .listRowBackground(Color.clear)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(FilterOption.allCases, id: \.self) { option in
-                        FilterChip(
-                            title: option.rawValue,
-                            isSelected: selectedFilter == option
-                        ) {
-                            HapticsManager.triggerImpact(style: .light)
-                            withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
-                                selectedFilter = option
+            Section {
+                ForEach(filteredApplications) { app in
+                    Button {
+                        activeDetailApp = app
+                    } label: {
+                        RegistryApplicationRow(app: app)
+                    }
+                    .buttonStyle(.plain)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button {
+                            alertMessage = "Calling \(app.borrowerName) at the verified phone number."
+                            showingCallAlert = true
+                        } label: {
+                            Label("Call", systemImage: "phone")
+                        }
+                        .tint(.green)
+
+                        Button {
+                            alertMessage = "\(app.applicationId) is flagged for compliance review."
+                            showingFlagAlert = true
+                        } label: {
+                            Label("Flag", systemImage: "flag")
+                        }
+                        .tint(.orange)
+                    }
+                }
+            } header: {
+                HStack {
+                    Text("\(filteredApplications.count) Applications")
+                    Spacer()
+                    Menu {
+                        Picker("Sort", selection: $sortOrder) {
+                            ForEach(HistorySortOrder.allCases, id: \.self) { order in
+                                Text(order.rawValue).tag(order)
                             }
                         }
+                    } label: {
+                        Label(sortOrder.rawValue, systemImage: "arrow.up.arrow.down")
                     }
+                    .textCase(nil)
                 }
             }
         }
-        .padding(14)
-        .background(
-            AppTheme.neutralSurface,
-            in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-        )
+        .listStyle(.insetGrouped)
+        .navigationTitle("Registry")
+        .searchable(text: $viewModel.historySearchQuery, prompt: "Borrower, ID, branch")
+        .refreshable { await viewModel.fetchDashboardData() }
+        .sheet(item: $activeDetailApp) { app in
+            LoanApplicationReviewDetailView(applicationId: app.applicationId, viewModel: viewModel)
+        }
+        .alert("Call", isPresented: $showingCallAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(alertMessage)
+        }
+        .alert("Flagged", isPresented: $showingFlagAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(alertMessage)
+        }
+        .onAppear {
+            syncFilterFromViewModel()
+        }
+        .onChange(of: viewModel.historyFilter) { _, _ in syncFilterFromViewModel() }
+    }
+
+    private func syncFilterFromViewModel() {
+        guard let status = viewModel.historyFilter else {
+            selectedFilter = .all
+            return
+        }
+
+        switch status {
+        case .pending, .applied, .documentsPending, .documentsRejected:
+            selectedFilter = .pending
+        case .underReview, .verificationCompleted:
+            selectedFilter = .review
+        case .sentToManager, .finalApprovalPending:
+            selectedFilter = .manager
+        case .approved, .disbursed, .rejected:
+            selectedFilter = .closed
+        default:
+            selectedFilter = .all
+        }
     }
 }
 
+private enum RegistryFilter: String, CaseIterable, Identifiable {
+    case all
+    case pending
+    case review
+    case manager
+    case closed
 
-struct FilterChip: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .all: return "All"
+        case .pending: return "Pending"
+        case .review: return "Review"
+        case .manager: return "Manager"
+        case .closed: return "Closed"
+        }
+    }
+}
+
+private struct RegistryApplicationRow: View {
+    let app: OfficerLoanApplication
 
     var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(isSelected ? Color.blue : Color(.systemGray6))
-                )
-                .foregroundColor(isSelected ? .white : .secondary)
-                .scaleEffect(isSelected ? 1.02 : 1.0)
+        HStack(spacing: 12) {
+            OfficerAvatar(name: app.borrowerName, tint: app.loanType.themeColor)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(app.borrowerName)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Text(CurrencyFormatter.shared.format(app.requestedAmount))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                }
+
+                Text("\(app.loanType.rawValue) · \(app.branch)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 8) {
+                    Text(app.applicationId)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    Text(app.status.rawValue)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(app.status.themeColor)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(app.status.themeColor.opacity(0.12), in: Capsule())
+                }
+            }
         }
-        .buttonStyle(PlainButtonStyle())
+        .padding(.vertical, 8)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(app.borrowerName), \(app.loanType.rawValue), \(app.status.rawValue), amount \(CurrencyFormatter.shared.format(app.requestedAmount))")
     }
 }
-
-#Preview {
-    LoanHistoryTabView(viewModel: PreviewSupport.loanOfficerViewModel)
-        .previewLoanOfficerEnvironment()
-}
-

@@ -105,6 +105,49 @@ struct BorrowerProfile: Codable, Equatable {
         let percentage = (Double(completedScore) / Double(totalPossible)) * 100
         return min(100, max(0, Int(percentage)))
     }
+    
+    static func empty() -> BorrowerProfile {
+        BorrowerProfile(
+            id: "",
+            fullName: "",
+            email: "",
+            mobileNumber: "",
+            alternateNumber: nil,
+            dateOfBirth: Date(),
+            gender: "",
+            maritalStatus: "",
+            nationality: "",
+            aadhaarNumber: "",
+            panNumber: "",
+            isEmailVerified: false,
+            isPhoneVerified: false,
+            currentAddress: AddressInfo(streetAddress: "", city: "", state: "", zipCode: "", country: "", isSameAsCurrent: false),
+            permanentAddress: AddressInfo(streetAddress: "", city: "", state: "", zipCode: "", country: "", isSameAsCurrent: false),
+            employment: EmploymentInfo(employmentType: "", companyName: "", designation: "", workExperienceYears: 0, employerAddress: ""),
+            income: IncomeInfo(monthlyIncome: 0, annualIncome: 0, existingEMIs: 0, creditScore: 0, incomeSource: ""),
+            bankDetails: BankDetails(bankName: "", accountHolderName: "", accountNumber: "", ifscCode: "", upiID: nil, isVerified: false),
+            kycVerification: KYCVerification(aadhaarStatus: .pending, panStatus: .pending, addressProofStatus: .pending, selfieStatus: .pending),
+            loanOverview: LoanOverview(activeLoans: 0, loanHistoryCount: 0, nextEmiDueDate: nil, remainingBalance: 0, currentLoanStatus: "None"),
+            occupation: "",
+            industry: "",
+            yearsOfExperience: 0,
+            hasExistingBankAccount: false,
+            existingCustomerId: nil,
+            preferredBranch: "",
+            existingLoansCount: 0,
+            existingCreditCardsCount: 0,
+            bankingRelationshipDuration: "",
+            averageMonthlyBalance: 0,
+            emergencyContactName: "",
+            emergencyContactNumber: "",
+            emergencyContactAlternateNumber: "",
+            emergencyContactAddress: "",
+            emergencyContactRelationship: "",
+            nomineeName: "",
+            nomineeRelationship: "",
+            isOnboardingCompleted: false
+        )
+    }
 }
 
 struct AddressInfo: Codable, Equatable {

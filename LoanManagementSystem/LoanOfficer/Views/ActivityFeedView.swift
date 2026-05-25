@@ -22,7 +22,7 @@ struct ActivityFeedView: View {
                     }) {
                         Text("Mark All Read")
                             .font(.system(.caption, design: .rounded).weight(.bold))
-                            .foregroundStyle(AppTheme.actionBlue)
+                            .foregroundStyle(LMSColors.actionBlue)
                     }
                     .accessibilityLabel("Mark all notifications as read")
                 }
@@ -38,7 +38,7 @@ struct ActivityFeedView: View {
                         description: Text("All borrower queries and documents are processed.")
                     )
                     .frame(height: 180)
-                    .background(AppTheme.neutralSurface)
+                    .background(LMSColors.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 } else {
 
@@ -80,7 +80,7 @@ struct ActivityFeedView: View {
                             Spacer()
                             Text("View All Activity (\(viewModel.activityFeed.count))")
                                 .font(.system(.callout, design: .rounded).weight(.bold))
-                                .foregroundStyle(AppTheme.actionBlue)
+                                .foregroundStyle(LMSColors.actionBlue)
                             Spacer()
                         }
                         .padding(.vertical, 14)
@@ -90,7 +90,7 @@ struct ActivityFeedView: View {
                     .accessibilityLabel("View all activity feeds")
                 }
             }
-            .background(AppTheme.neutralSurface)
+            .background(LMSColors.surface)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 3)
         }

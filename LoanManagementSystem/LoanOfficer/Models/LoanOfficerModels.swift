@@ -162,6 +162,23 @@ enum OfficerDocumentType: String, CaseIterable, Codable, Hashable {
         case .photograph: return "photo"
         }
     }
+    
+    var iconColor: Color {
+        switch self {
+        case .aadhaar, .pan:
+            return .blue
+        case .salarySlip, .bankStatement, .incomeTaxReturn:
+            return .green
+        case .propertyDoc:
+            return .purple
+        case .gstCertificate:
+            return .orange
+        case .admissionLetter:
+            return .teal
+        case .photograph:
+            return .pink
+        }
+    }
 }
 
 

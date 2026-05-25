@@ -96,7 +96,7 @@ public enum LMSSpacing {
     public static let xl: CGFloat = 20
     public static let xxl: CGFloat = 24
     public static let xxxl: CGFloat = 32
-    public static let screenHorizontal: CGFloat = 20
+    public static let screenHorizontal: CGFloat = 16
     public static let sectionGap: CGFloat = 16
 }
 

@@ -3,151 +3,117 @@ import SwiftUI
 public struct SchemeCardView: View {
     let scheme: GovernmentScheme
     var onApplyTap: (() -> Void)? = nil
-
+    
     public init(scheme: GovernmentScheme, onApplyTap: (() -> Void)? = nil) {
         self.scheme = scheme
         self.onApplyTap = onApplyTap
     }
-
+    
     public var body: some View {
-        ZStack {
-
-            LinearGradient(
-                colors: gradientColors,
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
-            VStack(alignment: .leading, spacing: 8) {
-
-                HStack(alignment: .center) {
-
-                    Text(categoryBadgeText)
-                        .font(.system(size: 8, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(categoryBadgeBgColor)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-
-                    Spacer()
-
-
-                    Image(systemName: iconName)
-                        .font(.system(size: 16))
-                        .foregroundStyle(.white)
-                }
-
-
-                Text(scheme.title)
-                    .font(LMSFont.callout.weight(.bold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-
-
-                Text(scheme.description)
-                    .font(LMSFont.caption2)
-                    .foregroundStyle(.white.opacity(0.85))
-                    .lineLimit(2)
-                    .frame(height: 30, alignment: .topLeading)
-
+        VStack(alignment: .leading, spacing: 14) {
+            // Top Row: Category badge & Icon
+            HStack(alignment: .center) {
+                Text(categoryBadgeText)
+                    .font(.system(size: 9, weight: .black, design: .rounded))
+                    .foregroundStyle(categoryColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(categoryColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                
                 Spacer()
-
-
-                HStack {
-                    Text("Valid: \(scheme.validTill.formattedAsDDMMMYYYY())")
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.75))
-
-                    Spacer()
-
-
-                    Button {
-                        onApplyTap?()
-                    } label: {
-                        Text("Apply →")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.white.opacity(0.2))
-                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
+                
+                Image(systemName: iconName)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(categoryColor)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(scheme.title)
+                    .font(.system(.subheadline, design: .rounded).bold())
+                    .foregroundStyle(LMSColors.textPrimary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                
+                Text(scheme.description)
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundStyle(LMSColors.textSecondary)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            
+            Spacer(minLength: 0)
+            
+            // Bottom Row
+            HStack {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("VALID UNTIL")
+                        .font(.system(size: 8, weight: .bold, design: .rounded))
+                        .foregroundStyle(LMSColors.textTertiary)
+                    Text(scheme.validTill.formattedAsDDMMMYYYY())
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(LMSColors.textPrimary)
+                }
+                
+                Spacer()
+                
+                Button {
+                    onApplyTap?()
+                } label: {
+                    Text("Explore")
+                        .font(.system(.caption2, design: .rounded).bold())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(LMSColors.brandNavy, in: Capsule())
                 }
             }
-            .padding(14)
         }
-        .frame(width: 240, height: 140)
-        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
-        .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
+        .padding(16)
+        .frame(width: 240, height: 180)
+        .background(LMSColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(LMSColors.separatorLight, lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 4)
     }
-
-
-    private var gradientColors: [Color] {
+    
+    // MARK: - Category Helpers
+    private var categoryColor: Color {
         switch scheme.category {
-        case .businessLoan:
-
-            return [Color(hex: "#FF8C00"), Color(hex: "#FF5E00")]
-        case .homeLoan:
-
-            return [Color(hex: "#3F51B5"), Color(hex: "#1A237E")]
-        case .agriculture:
-
-            return [Color(hex: "#4CAF50"), Color(hex: "#2E7D32")]
-        case .education:
-
-            return [Color(hex: "#E91E63"), Color(hex: "#C2185B")]
+        case .businessLoan: return LMSColors.brandNavy
+        case .homeLoan:     return LMSColors.actionBlue
+        case .agriculture:  return LMSColors.emerald
+        case .education:    return LMSColors.coral
         }
     }
-
+    
     private var categoryBadgeText: String {
         switch scheme.category {
-        case .businessLoan, .agriculture:
-            return "Govt. Scheme"
-        case .homeLoan, .education:
-            return "Bank Offer"
+        case .businessLoan, .agriculture: return "GOVT SCHEME"
+        case .homeLoan, .education:       return "BANK OFFER"
         }
     }
-
-    private var categoryBadgeBgColor: Color {
-        switch scheme.category {
-        case .businessLoan, .agriculture:
-
-            return Color(hex: "#E05A00").opacity(0.85)
-        case .homeLoan, .education:
-
-            return LMSColors.brandNavy.opacity(0.8)
-        }
-    }
-
+    
     private var iconName: String {
         switch scheme.category {
         case .businessLoan: return "briefcase.fill"
-        case .agriculture: return "leaf.fill"
-        case .homeLoan: return "house.fill"
-        case .education: return "graduationcap.fill"
+        case .agriculture:  return "leaf.fill"
+        case .homeLoan:     return "house.fill"
+        case .education:    return "graduationcap.fill"
         }
     }
 }
 
-
+// MARK: - Scheme Skeleton Card
 public struct SchemeCardSkeleton: View {
     public init() {}
-
+    
     public var body: some View {
-        RoundedRectangle(cornerRadius: LMSRadius.card)
+        RoundedRectangle(cornerRadius: 22)
             .fill(LMSColors.surfaceElevated)
-            .frame(width: 240, height: 140)
+            .frame(width: 240, height: 180)
             .shimmer(active: true)
     }
 }
-
-#Preview("Scheme Card") {
-    SchemeCardView(scheme: MockData.sampleSchemes[0])
-}
-
-#Preview("Scheme Skeleton") {
-    SchemeCardSkeleton()
-}
-

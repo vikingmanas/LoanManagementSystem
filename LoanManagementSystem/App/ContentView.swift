@@ -1,26 +1,26 @@
 import SwiftUI
 
-
-
-
+// MARK: - ContentView (Auth Router)
+/// Root view that switches between authentication and dashboard flows
+/// based on the current Supabase auth state.
 struct ContentView: View {
 
-
+    // Supabase/Auth Manager
     @EnvironmentObject private var authManager: AuthManager
 
-
+    // App State Manager
     @StateObject private var appState = AppStateManager()
 
-
+    // Observed Profile Store
     @ObservedObject private var profileStore = BorrowerProfileStore.shared
 
-
+    // Splash control
     @State private var showSplash = true
 
     var body: some View {
         ZStack {
 
-
+            // MARK: - Splash Screen
             if showSplash || !authManager.isAuthStateResolved {
 
                 splashView
@@ -39,7 +39,7 @@ struct ContentView: View {
 
                 Group {
 
-
+                    // MARK: - Authenticated Flow
                     if isCurrentRoleAuthenticated {
 
                         switch appState.selectedRole {
@@ -89,7 +89,7 @@ struct ContentView: View {
 
                     } else {
 
-
+                        // MARK: - Authentication Flow
                         if appState.selectedRole == .customer {
                             SignInView()
                                 .environmentObject(authManager)
@@ -131,11 +131,11 @@ struct ContentView: View {
             authManager.configure()
             syncBorrowerProfileIfNeeded()
 
-
-
+            // MARK: - Splash Delay
+            // Skip the splash delay inside SwiftUI Previews for instant canvas rendering.
             let isPreview = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
-            let delay = isPreview ? 3.0 : 5.0
-
+            let delay = isPreview ? 0.5 : 1.5
+            
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 withAnimation(.easeInOut(duration: 0.5)) {
                     showSplash = false
@@ -167,10 +167,10 @@ struct ContentView: View {
         )
     }
 
-
+    // MARK: - Splash View
     private var splashView: some View {
         ZStack {
-
+            
             LinearGradient(
                 colors: [
                     Color.brandNavy,
@@ -180,24 +180,24 @@ struct ContentView: View {
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
-
+            
             VStack(spacing: 20) {
-
+                
                 Image(systemName: "indianrupeesign.circle.fill")
                     .font(.system(size: 60))
                     .foregroundColor(.white)
-
+                
                 Text("Loan Manager")
                     .font(.system(.title, design: .rounded))
                     .fontWeight(.bold)
                     .foregroundColor(.white)
-
+                
                 ProgressView()
                     .progressViewStyle(.circular)
                     .tint(.white.opacity(0.8))
                     .scaleEffect(1.1)
             }
-
+            
         }
     }
 }
@@ -206,4 +206,3 @@ struct ContentView: View {
     ContentView()
         .environmentObject(AuthManager())
 }
-

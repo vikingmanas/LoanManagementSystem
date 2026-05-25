@@ -13,12 +13,12 @@ struct QuickActionRowView: View {
     var onActionTapped: (String) -> Void
 
     private let actions = [
-        QuickActionItem(title: "New App", symbol: "plus.circle.fill", color: AppTheme.brandNavy, identifier: "new_app"),
-        QuickActionItem(title: "Verify Docs", symbol: "doc.text.magnifyingglass", color: AppTheme.actionBlue, identifier: "verify_docs"),
+        QuickActionItem(title: "New App", symbol: "plus.circle.fill", color: LMSColors.brandNavy, identifier: "new_app"),
+        QuickActionItem(title: "Verify Docs", symbol: "doc.text.magnifyingglass", color: LMSColors.actionBlue, identifier: "verify_docs"),
         QuickActionItem(title: "Messages", symbol: "bubble.left.and.bubble.right.fill", color: Color.teal, identifier: "messages"),
         QuickActionItem(title: "Reports", symbol: "chart.bar.fill", color: Color.purple, identifier: "reports"),
-        QuickActionItem(title: "Borrowers", symbol: "person.2.fill", color: AppTheme.successGreen, identifier: "borrowers"),
-        QuickActionItem(title: "Escalate", symbol: "arrow.up.forward.circle.fill", color: AppTheme.warningAmber, identifier: "escalate")
+        QuickActionItem(title: "Borrowers", symbol: "person.2.fill", color: LMSColors.emerald, identifier: "borrowers"),
+        QuickActionItem(title: "Escalate", symbol: "arrow.up.forward.circle.fill", color: LMSColors.amber, identifier: "escalate")
     ]
 
     var body: some View {
