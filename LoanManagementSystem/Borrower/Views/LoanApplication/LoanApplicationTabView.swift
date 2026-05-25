@@ -54,6 +54,7 @@ struct LoanApplicationTabView: View {
                     }
                 case .combinedApplication:
                     CombinedApplicationScreen(viewModel: viewModel) {
+                        viewModel.runBulkVerification()
                         navigationPath.append(LoanApplicationRoute.verificationResult)
                     }
                 case .verificationResult:
@@ -343,6 +344,8 @@ private struct CombinedApplicationScreen: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let onVerify: () -> Void
     @Environment(\.dismiss) private var dismiss
+    
+    @State private var activeUploadDocument: BorrowerLoanDocumentItem? = nil
 
     var body: some View {
         Form {
@@ -420,12 +423,34 @@ private struct CombinedApplicationScreen: View {
             }
 
             ForEach(BorrowerDocumentCategory.allCases) { category in
-                let categoryDocs = viewModel.documents(for: category)
-                if !categoryDocs.isEmpty {
+                if category == .loanSpecific {
+                    let categoryDocs = viewModel.documents(for: category)
+                    if !categoryDocs.isEmpty {
+                        Section {
+                            ForEach(categoryDocs, id: \.id) { document in
+                                DocumentRow(document: document) {
+                                    activeUploadDocument = document
+                                }
+                            }
+                        } header: {
+                            Text(category.rawValue)
+                        }
+                    }
+                } else {
                     Section {
-                        ForEach(categoryDocs) { document in
+                        Picker("Select Document", selection: Binding(
+                            get: { viewModel.selectedDocumentType(for: category) },
+                            set: { viewModel.changeDocumentType(for: category, to: $0) }
+                        )) {
+                            ForEach(viewModel.availableDocumentTypes(for: category), id: \.self) { docType in
+                                Text(docType).tag(docType)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        
+                        if let document = viewModel.document(for: category) {
                             DocumentRow(document: document) {
-                                viewModel.uploadDocument(document.id)
+                                activeUploadDocument = document
                             }
                         }
                     } header: {
@@ -448,6 +473,11 @@ private struct CombinedApplicationScreen: View {
         }
         .navigationTitle("Application")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $activeUploadDocument) { document in
+            DocumentUploadSheet(documentName: document.name) { fileName, source in
+                viewModel.uploadDocument(document.id, fileName: fileName, source: source)
+            }
+        }
     }
 }
 
@@ -485,6 +515,8 @@ private struct DocumentVerificationResultView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let onSubmit: () -> Void
     @Environment(\.dismiss) private var dismiss
+    
+    @State private var activeUploadDocument: BorrowerLoanDocumentItem? = nil
 
     var body: some View {
         List {
@@ -508,11 +540,9 @@ private struct DocumentVerificationResultView: View {
             .listRowBackground(Color.clear)
 
             Section {
-                ForEach(viewModel.documents) { doc in
-                    LabeledContent(doc.name) {
-                        Text(doc.status.rawValue)
-                            .font(.caption.bold())
-                            .foregroundStyle(doc.status.tintColor)
+                ForEach(viewModel.documents, id: \.id) { doc in
+                    DocumentRow(document: doc) {
+                        activeUploadDocument = doc
                     }
                 }
             } header: {
@@ -531,12 +561,33 @@ private struct DocumentVerificationResultView: View {
                 .disabled(!viewModel.canSubmitApplication)
             } footer: {
                 if !viewModel.canSubmitApplication {
-                    Text("Please resolve document issues before submitting.")
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Please resolve the following issues before submitting:")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(LMSColors.coral)
+                            .padding(.bottom, 2)
+                        
+                        ForEach(viewModel.blockingSubmissionIssues, id: \.self) { issue in
+                            HStack(alignment: .top, spacing: 4) {
+                                Text("•")
+                                Text(issue)
+                            }
+                            .font(.system(size: 10))
+                            .foregroundStyle(LMSColors.coral.opacity(0.85))
+                        }
+                    }
+                    .padding(.vertical, 4)
                 }
             }
         }
         .navigationTitle("Verification")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $activeUploadDocument) { document in
+            DocumentUploadSheet(documentName: document.name) { fileName, source in
+                viewModel.uploadDocument(document.id, fileName: fileName, source: source)
+                viewModel.runBulkVerification()
+            }
+        }
     }
 }
 
