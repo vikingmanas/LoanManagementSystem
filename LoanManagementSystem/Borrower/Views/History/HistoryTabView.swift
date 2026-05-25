@@ -245,6 +245,11 @@ struct HistoryTabView: View {
             .refreshable {
                 await viewModel.fetchDashboardData()
             }
+            .task {
+                if viewModel.isLoading {
+                    await viewModel.fetchDashboardData()
+                }
+            }
         }
     }
     

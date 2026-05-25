@@ -79,58 +79,69 @@ public final class DashboardViewModel: ObservableObject {
     public func fetchDashboardData() async {
         isLoading = true
         
-        // Simulate a 1.5s network latency delay
+        // Simulate a 0.8s network latency delay
         do {
-            try await Task.sleep(nanoseconds: 1_500_000_000)
+            try await Task.sleep(nanoseconds: 800_000_000)
             try Task.checkCancellation()
         } catch {
             return
         }
         
-        // Prepopulate data
-        self.loanAccounts = [
-            MockData.home,
-            MockData.business,
-            MockData.car
-        ]
+        // Load bank account from user profile
+        if let profile = BorrowerProfileStore.shared.profile {
+            let bank = profile.bankDetails
+            let bankName = bank.bankName.isEmpty ? "My Main Bank" : bank.bankName
+            let acctNum = bank.accountNumber.isEmpty ? "0000000000" : bank.accountNumber
+            
+            if self.bankAccount.bankName.isEmpty || self.bankAccount.accountNumber == "XXXX 7890" {
+                self.bankAccount = BankAccount(
+                    id: UUID(),
+                    accountNumber: acctNum,
+                    bankName: bankName,
+                    accountType: .savings,
+                    availableBalance: 0.0
+                )
+            } else {
+                self.bankAccount.bankName = bankName
+                self.bankAccount.accountNumber = acctNum
+            }
+            self.bankAccounts = [self.bankAccount]
+        } else {
+            self.bankAccount = BankAccount(accountNumber: "XXXX 0000", bankName: "Default Bank", accountType: .savings, availableBalance: 0.0)
+            self.bankAccounts = [self.bankAccount]
+        }
         
-        // Base bank account balance depends on mockup state
-        let sbiBalance = forceLowBalanceMockState ? 12300.0 : 42300.0
+        // Load loan accounts from approved/disbursed applications in CentralLoanRepository
+        let approvedApps = CentralLoanRepository.shared.applications.filter {
+            $0.currentStage == .approved || $0.currentStage == .disbursed
+        }
         
-        let sbiAcc = BankAccount(
-            id: MockData.uuid1,
-            accountNumber: "XXXXXX7890",
-            bankName: "State Bank of India",
-            accountType: .savings,
-            availableBalance: sbiBalance,
-            minBalance: 5000.0,
-            linkedLoanIds: [MockData.loanId1]
-        )
+        self.loanAccounts = approvedApps.map { app in
+            let totalEMI = app.formData.requestedAmountValue / Double(max(1, app.formData.preferredTenureMonths))
+            return DashboardLoanAccount(
+                id: app.id,
+                accountNumber: app.applicationId ?? "L-\(app.id.uuidString.prefix(6).uppercased())",
+                loanType: app.product.type.title,
+                sanctionedAmount: app.formData.requestedAmountValue,
+                principalOutstanding: app.formData.requestedAmountValue,
+                totalEMI: totalEMI,
+                nextEMIDate: Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date(),
+                tenureRemainingMonths: app.formData.preferredTenureMonths,
+                totalTenureMonths: app.formData.preferredTenureMonths,
+                repaidPercentage: 0.0
+            )
+        }
         
-        let hdfcAcc = BankAccount(
-            id: MockData.uuid2,
-            accountNumber: "XXXXXX3421",
-            bankName: "HDFC Bank",
-            accountType: .overdraft,
-            availableBalance: 15000.0,
-            odLimit: 50000.0,
-            linkedLoanIds: [MockData.loanId2]
-        )
+        // Dynamically populate pending EMIs based on active loans
+        self.pendingEMIs = self.loanAccounts.compactMap { loan in
+            EMIRecord(
+                dueDate: loan.nextEMIDate,
+                amount: loan.totalEMI,
+                loanType: loan.loanType,
+                status: .dueSoon
+            )
+        }
         
-        let axisAcc = BankAccount(
-            id: MockData.uuid3,
-            accountNumber: "XXXXXX9910",
-            bankName: "Axis Bank",
-            accountType: .current,
-            availableBalance: 2800.0,
-            linkedLoanIds: [MockData.loanId3]
-        )
-        
-        self.bankAccounts = [sbiAcc, hdfcAcc, axisAcc]
-        self.bankAccount = sbiAcc
-        
-        self.pendingEMIs = MockData.samplePendingEMIs
-        self.transactions = MockData.sampleTransactions
         self.schemes = MockData.sampleSchemes
         
         self.isLoading = false

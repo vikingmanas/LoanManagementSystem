@@ -20,6 +20,16 @@ final class ManagerDashboardViewModel: ObservableObject {
     @Published var conversations: [ManagerChatConversation] = []
     @Published var branchOverview: BranchOverview = ManagerMockData.branchOverview
     @Published var auditEvents: [ManagerAuditEvent] = []
+    
+    private var cancellables = Set<AnyCancellable>()
+    
+    init() {
+        CentralLoanRepository.shared.$applications
+            .map { apps in
+                apps.compactMap { CentralLoanRepository.shared.toManagerApplicant(from: $0) }
+            }
+            .assign(to: &$applicants)
+    }
 
     // MARK: - Filters (Applicants Tab)
     @Published var applicantSearchQuery: String = ""
@@ -149,7 +159,7 @@ final class ManagerDashboardViewModel: ObservableObject {
         // Simulate API call
         try? await Task.sleep(nanoseconds: 600_000_000)
 
-        applicants = ManagerMockData.applicants
+        // Sync from Central Repository, ignore static mocks for applicants
         officers = ManagerMockData.officers
         kpis = ManagerMockData.kpis
         notifications = ManagerMockData.notifications
@@ -168,29 +178,17 @@ final class ManagerDashboardViewModel: ObservableObject {
     // MARK: - Applicant Actions
 
     func approveApplicant(_ id: UUID, remarks: String) {
-        guard let index = applicants.firstIndex(where: { $0.id == id }) else { return }
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-            applicants[index].status = .approved
-            applicants[index].managerRemarks = remarks.isEmpty ? "Approved by Branch Manager." : remarks
-        }
+        CentralLoanRepository.shared.approveApplication(id: id, remarks: remarks)
         HapticsManager.triggerNotification(type: .success)
     }
 
     func rejectApplicant(_ id: UUID, remarks: String) {
-        guard let index = applicants.firstIndex(where: { $0.id == id }) else { return }
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-            applicants[index].status = .rejected
-            applicants[index].managerRemarks = remarks.isEmpty ? "Rejected by Branch Manager." : remarks
-        }
+        CentralLoanRepository.shared.rejectApplication(id: id, remarks: remarks)
         HapticsManager.triggerNotification(type: .error)
     }
 
     func sendBackApplicant(_ id: UUID, remarks: String) {
-        guard let index = applicants.firstIndex(where: { $0.id == id }) else { return }
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-            applicants[index].status = .needsClarification
-            applicants[index].managerRemarks = remarks
-        }
+        CentralLoanRepository.shared.sendBackApplication(id: id, remarks: remarks)
         HapticsManager.triggerImpact(style: .medium)
     }
 

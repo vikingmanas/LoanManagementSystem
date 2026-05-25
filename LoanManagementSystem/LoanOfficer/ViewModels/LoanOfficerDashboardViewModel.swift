@@ -21,6 +21,16 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     @Published var hasError: Bool = false
     @Published var selectedTab: Int = 0              // 0=Dashboard, 1=History
     
+    private var cancellables = Set<AnyCancellable>()
+    
+    init() {
+        CentralLoanRepository.shared.$applications
+            .map { apps in
+                apps.compactMap { CentralLoanRepository.shared.toOfficerApplication(from: $0) }
+            }
+            .assign(to: &$applications)
+    }
+    
     // Tab 2 History Filter parameters
     @Published var historyFilter: ApplicationStatus? = nil
     @Published var historyLoanTypeFilter: LoanType? = nil
@@ -176,13 +186,12 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         isLoading = true
         hasError = false
         
-        // Simulate 1.5s network delay
+        // Simulate 0.8s network delay
         do {
-            try await Task.sleep(nanoseconds: 1_500_000_000)
+            try await Task.sleep(nanoseconds: 800_000_000)
             
-            // Set mock dataset
-            self.applications = LoanOfficerMockData.createApplications()
-            self.activityFeed = LoanOfficerMockData.createActivityFeed()
+            // Starts empty to remove mock feed items
+            self.activityFeed = []
             
             updateUnreadCount()
             isLoading = false
@@ -222,44 +231,18 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
     
     func updateDocumentStatus(applicationId: String, docId: UUID, newStatus: DocumentStatus, rejectionReason: String? = nil) {
-        if let appIndex = applications.firstIndex(where: { $0.applicationId == applicationId }) {
-            let app = applications[appIndex]
-            if let docIndex = app.documents.firstIndex(where: { $0.id == docId }) {
-                applications[appIndex].documents[docIndex].status = newStatus
-                applications[appIndex].documents[docIndex].rejectionReason = rejectionReason
-                
-                // Add timeline activity log
-                let docName = app.documents[docIndex].docType.rawValue
-                let logMsg: String
-                let logType: ActivityEventType
-                
-                switch newStatus {
-                case .verified:
-                    logMsg = "\(docName) verified successfully by Officer Arjun."
-                    logType = .consentGiven
-                case .rejectFlag:
-                    logMsg = "\(docName) rejected: \(rejectionReason ?? "Incorrect format.")"
-                    logType = .queryRaised
-                case .pending:
-                    logMsg = "\(docName) marked as missing. Correction requested."
-                    logType = .queryRaised
-                default:
-                    logMsg = "\(docName) status updated to \(newStatus.rawValue)."
-                    logType = .profileUpdated
-                }
-                
-                logActivity(
-                    borrowerName: app.borrowerName,
-                    applicationId: app.applicationId,
-                    loanType: app.loanType.rawValue,
-                    eventType: logType,
-                    description: logMsg
-                )
-                
-                // Automatically recompute application status based on doc statuses
-                recomputeApplicationStatus(applicationId: applicationId)
-                updateUnreadCount()
-            }
+        CentralLoanRepository.shared.updateDocumentStatus(applicationId: applicationId, docId: docId, status: newStatus, reason: rejectionReason)
+        
+        if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }),
+           let doc = applications[idx].documents.first(where: { $0.id == docId }) {
+            let docName = doc.docType.rawValue
+            logActivity(
+                borrowerName: applications[idx].borrowerName,
+                applicationId: applicationId,
+                loanType: applications[idx].loanType.rawValue,
+                eventType: newStatus == .verified ? .consentGiven : .queryRaised,
+                description: newStatus == .verified ? "\(docName) verified successfully by Officer Arjun." : "\(docName) rejected: \(rejectionReason ?? "Incorrect format.")"
+            )
         }
     }
     
@@ -279,12 +262,8 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
     
     func sendForFinalApproval(applicationId: String) {
+        CentralLoanRepository.shared.sendForFinalApproval(applicationId: applicationId)
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }) {
-            applications[idx].status = .finalApprovalPending
-            applications[idx].managerStatus = .underReview
-            applications[idx].sentToManagerDate = Date()
-            applications[idx].lastUpdatedDate = Date()
-            
             logActivity(
                 borrowerName: applications[idx].borrowerName,
                 applicationId: applicationId,
