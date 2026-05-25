@@ -1,21 +1,21 @@
-import SwiftUI
+ import SwiftUI
 
 struct LoanOfficerDashboardView: View {
     typealias LoanApplication = OfficerLoanApplication
     @StateObject private var viewModel = LoanOfficerDashboardViewModel()
     @State private var scrollTargetID: String? = nil
-    
-    // Notifications toggle
+
+
     @State private var showNotificationSheet = false
     @State private var showingAlert = false
     @State private var selectedAlertMessage: String? = nil
     @State private var selectedAppForReview: LoanApplication? = nil
     @State private var showProfileSheet = false
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            
-            // 1. CUSTOM TOP NAVIGATION BAR (Fixed) - Hidden for Chats (1) and Registry (3); each has its own header
+
+
             if viewModel.selectedTab != 3 && viewModel.selectedTab != 1 {
                 CustomTopNavigationBar(
                     viewModel: viewModel,
@@ -27,8 +27,8 @@ struct LoanOfficerDashboardView: View {
                     }
                 )
             }
-            
-            // 3. NATIVE TAB BAR
+
+
             TabView(selection: $viewModel.selectedTab) {
                 ScrollViewReader { proxy in
                     DashboardTabView(
@@ -58,14 +58,14 @@ struct LoanOfficerDashboardView: View {
                     Label("Overview", systemImage: "house")
                 }
                 .tag(0)
-                
+
                 ChatsFeedTabView(viewModel: viewModel)
                     .background(AppTheme.background)
                     .tabItem {
                         Label("Chats", systemImage: "bubble.left")
                     }
                     .tag(1)
-                    
+
                 QuickConsoleTabView(viewModel: viewModel) { actionIdentifier in
                     handleOverviewQuickAction(actionIdentifier)
                 }
@@ -74,7 +74,7 @@ struct LoanOfficerDashboardView: View {
                     Label("Console", systemImage: "bolt")
                 }
                 .tag(2)
-                    
+
                 LoanHistoryTabView(viewModel: viewModel)
                     .background(AppTheme.background)
                     .tabItem {
@@ -84,7 +84,7 @@ struct LoanOfficerDashboardView: View {
             }
         }
         .task {
-            // Simulated pull on load
+
             await viewModel.fetchDashboardData()
         }
         .sheet(isPresented: $showNotificationSheet) {
@@ -106,7 +106,7 @@ struct LoanOfficerDashboardView: View {
             )
         }
     }
-    
+
     private func handleOverviewQuickAction(_ actionIdentifier: String) {
         switch actionIdentifier {
         case "verify_docs", "verify_documents":
@@ -125,36 +125,36 @@ struct LoanOfficerDashboardView: View {
             showingAlert = true
         }
     }
-    
-    // Deep Link router to native bottom tabs
+
+
     private func handleAlertDeepLink(_ type: AlertChipType) {
         HapticsManager.triggerImpact(style: .light)
         switch type {
         case .overdueEMI:
-            // EMI Alerts -> Switch to Registry (Tab 4), filter by On Hold
+
             viewModel.historyFilter = .onHold
             viewModel.historySearchQuery = ""
             withAnimation {
                 viewModel.selectedTab = 3
             }
-            
+
         case .pendingDocuments:
-            // Document Queue -> Switch to Overview (Tab 1), scroll to doc queue
+
             withAnimation {
                 viewModel.selectedTab = 0
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 scrollTargetID = "doc_queue"
             }
-            
+
         case .borrowerQueries:
-            // Borrower Queries -> Switch directly to Chats & Feed (Tab 2)
+
             withAnimation {
                 viewModel.selectedTab = 1
             }
-            
+
         case .readyForManager:
-            // Ready for Manager -> Switch to Overview (Tab 1), scroll to manager queue
+
             withAnimation {
                 viewModel.selectedTab = 0
             }
@@ -165,31 +165,31 @@ struct LoanOfficerDashboardView: View {
     }
 }
 
-// MARK: - Navigation Subcomponents
+
 
 struct CustomTopNavigationBar: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onNotificationPressed: () -> Void
     var onProfilePressed: () -> Void
-    
+
     var body: some View {
         HStack(alignment: .center) {
-            // Left Profile Summary
+
             VStack(alignment: .leading, spacing: 2) {
                 Text("Good Morning, \(LoanOfficerMockData.officerName) 👋")
                     .font(.system(.title3, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
-                
+
                 Text("Loan Officer · Branch: \(LoanOfficerMockData.branchName)")
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(LMSColors.textSecondary)
             }
-            
+
             Spacer()
-            
-            // Right Control Stack
+
+
             HStack(spacing: 12) {
-                // Notifications icon
+
                 Button(action: {
                     HapticsManager.triggerImpact(style: .light)
                     onNotificationPressed()
@@ -199,7 +199,7 @@ struct CustomTopNavigationBar: View {
                             .font(.system(size: 18))
                             .foregroundStyle(LMSColors.textPrimary)
                             .symbolRenderingMode(.multicolor)
-                        
+
                         if viewModel.unreadActivityCount > 0 {
                             Text("\(viewModel.unreadActivityCount)")
                                 .font(.system(size: 8, design: .rounded).bold())
@@ -212,8 +212,8 @@ struct CustomTopNavigationBar: View {
                     }
                 }
                 .accessibilityLabel("System notifications. \(viewModel.unreadActivityCount) unread alerts.")
-                
-                // Avatar badge Button to open Profile Sheet
+
+
                 Button(action: {
                     HapticsManager.triggerImpact(style: .medium)
                     onProfilePressed()
@@ -222,7 +222,7 @@ struct CustomTopNavigationBar: View {
                         Circle()
                             .fill(AppTheme.brandNavy)
                             .frame(width: 32, height: 32)
-                        
+
                         Text("AK")
                             .font(.system(.caption, design: .rounded).bold())
                             .foregroundStyle(.white)
@@ -238,13 +238,13 @@ struct CustomTopNavigationBar: View {
     }
 }
 
-// MARK: - Priority Alerts Bar
+
 enum AlertChipType: CaseIterable {
     case overdueEMI
     case pendingDocuments
     case borrowerQueries
     case readyForManager
-    
+
     var symbol: String {
         switch self {
         case .overdueEMI: return "exclamationmark.triangle.fill"
@@ -253,7 +253,7 @@ enum AlertChipType: CaseIterable {
         case .readyForManager: return "checkmark.seal.fill"
         }
     }
-    
+
     var color: Color {
         switch self {
         case .overdueEMI: return AppTheme.criticalRed
@@ -262,7 +262,7 @@ enum AlertChipType: CaseIterable {
         case .readyForManager: return AppTheme.successGreen
         }
     }
-    
+
     func title(count: Int) -> String {
         switch self {
         case .overdueEMI: return "\(count) Overdue EMI Alerts"
@@ -276,35 +276,35 @@ enum AlertChipType: CaseIterable {
 struct PriorityAlertStrip: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onChipPressed: (AlertChipType) -> Void
-    
+
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
-                // Only render chips that have counts > 0
-                
-                // 🔴 Overdue EMI
+
+
+
                 let emiCount = 4
                 AlertChip(type: .overdueEMI, count: emiCount, title: "4 Overdue EMI Alerts") {
                     onChipPressed(.overdueEMI)
                 }
-                
-                // 🟡 Pending Documents
+
+
                 let docsCount = viewModel.pendingDocumentCount
                 if docsCount > 0 {
                     AlertChip(type: .pendingDocuments, count: docsCount, title: "\(docsCount) Documents Pending") {
                         onChipPressed(.pendingDocuments)
                     }
                 }
-                
-                // 🔵 Borrower Queries
+
+
                 let queriesCount = viewModel.activityFeed.filter { $0.eventType == .queryRaised && !$0.isRead }.count
                 if queriesCount > 0 {
                     AlertChip(type: .borrowerQueries, count: queriesCount, title: "\(queriesCount) Borrower Queries") {
                         onChipPressed(.borrowerQueries)
                     }
                 }
-                
-                // 🟢 Ready for Manager
+
+
                 let managerReadyCount = 2
                 AlertChip(type: .readyForManager, count: managerReadyCount, title: "2 Ready for Manager") {
                     onChipPressed(.readyForManager)
@@ -322,14 +322,14 @@ struct AlertChip: View {
     let count: Int
     let title: String
     var onTap: () -> Void
-    
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 6) {
                 Image(systemName: type.symbol)
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(type.color)
-                
+
                 Text(title)
                     .font(.system(.caption, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
@@ -349,12 +349,12 @@ struct AlertChip: View {
     }
 }
 
-// MARK: - Sheet Subviews
+
 
 struct NotificationsFeedSheet: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) var dismiss
-    
+
     var body: some View {
         NavigationStack {
             List {
@@ -366,7 +366,7 @@ struct NotificationsFeedSheet: View {
                             Image(systemName: item.eventType.symbol)
                                 .foregroundStyle(item.eventType.themeColor)
                                 .font(LMSFont.title3)
-                            
+
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(item.borrowerName)
                                     .font(.system(.callout, design: .rounded).bold())
@@ -395,3 +395,4 @@ struct NotificationsFeedSheet: View {
     LoanOfficerDashboardView()
         .previewLoanOfficerEnvironment()
 }
+

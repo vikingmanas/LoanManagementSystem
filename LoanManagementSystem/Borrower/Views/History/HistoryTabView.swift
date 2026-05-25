@@ -4,11 +4,11 @@ struct HistoryTabView: View {
     @ObservedObject var viewModel: DashboardViewModel
     @State private var transactionFilter: TransactionType? = nil
     @State private var selectedBankAccountId: UUID? = nil
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Custom Top Bar (HorizontalStack)
+
                 HStack(alignment: .center) {
                     Text("History")
                         .font(.system(size: 28, weight: .bold, design: .rounded))
@@ -19,15 +19,15 @@ struct HistoryTabView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 8)
                 .background(LMSColors.background)
-                
-                // Account Selector Section (Horizontal Scroll Chips)
+
+
                 if !viewModel.bankAccounts.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 12) {
-                            // "All Accounts" Chip
+
                             let totalBalance = viewModel.bankAccounts.map(\.availableBalance).reduce(0, +)
                             let isAllSelected = selectedBankAccountId == nil
-                            
+
                             Button {
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                                     selectedBankAccountId = nil
@@ -37,12 +37,12 @@ struct HistoryTabView: View {
                                     Image(systemName: "square.stack.3d.up.fill")
                                         .font(.system(size: 16))
                                         .foregroundStyle(isAllSelected ? .white : LMSColors.brandNavy)
-                                    
+
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("All Accounts")
                                             .font(.system(size: 11, weight: .bold))
                                             .foregroundStyle(isAllSelected ? .white.opacity(0.8) : LMSColors.brandNavy.opacity(0.6))
-                                        
+
                                         Text(totalBalance.formattedAsINR())
                                             .font(.system(size: 14, weight: .bold, design: .rounded))
                                             .foregroundStyle(isAllSelected ? .white : LMSColors.brandNavy)
@@ -75,12 +75,12 @@ struct HistoryTabView: View {
                                 .shadow(color: isAllSelected ? LMSColors.brandNavy.opacity(0.18) : Color.clear, radius: 8, x: 0, y: 4)
                             }
                             .buttonStyle(.plain)
-                            
-                            // Dynamic Account Chips
+
+
                             ForEach(viewModel.bankAccounts) { account in
                                 let isSelected = selectedBankAccountId == account.id
                                 let signatureColor = getSignatureColor(for: account.accountType)
-                                
+
                                 Button {
                                     withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                                         selectedBankAccountId = account.id
@@ -90,7 +90,7 @@ struct HistoryTabView: View {
                                         Image(systemName: getAccountIconName(for: account.accountType))
                                             .font(.system(size: 16))
                                             .foregroundStyle(isSelected ? .white : signatureColor)
-                                        
+
                                         VStack(alignment: .leading, spacing: 2) {
                                             HStack(spacing: 4) {
                                                 Text(account.bankName)
@@ -99,7 +99,7 @@ struct HistoryTabView: View {
                                                     .font(.system(size: 9, design: .monospaced))
                                             }
                                             .foregroundStyle(isSelected ? .white.opacity(0.8) : LMSColors.brandNavy.opacity(0.6))
-                                            
+
                                             Text(account.availableBalance.formattedAsINR())
                                                 .font(.system(size: 14, weight: .bold, design: .rounded))
                                                 .foregroundStyle(isSelected ? .white : LMSColors.brandNavy)
@@ -141,15 +141,15 @@ struct HistoryTabView: View {
                     .background(LMSColors.background)
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
-                
-                // Recent Transactions Header & Filter Button Stack
+
+
                 HStack(alignment: .center) {
                     Text("Recent Transactions")
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundStyle(LMSColors.brandNavy)
-                    
+
                     Spacer()
-                    
+
                     Menu {
                         Button("All Transactions") { transactionFilter = nil }
                         Divider()
@@ -175,7 +175,7 @@ struct HistoryTabView: View {
                 .padding(.top, 16)
                 .padding(.bottom, 8)
                 .background(LMSColors.background)
-                
+
                 if viewModel.isLoading {
                     ScrollView {
                         VStack(spacing: 0) {
@@ -202,7 +202,7 @@ struct HistoryTabView: View {
                         }
                         return true
                     }
-                    
+
                     if filtered.isEmpty {
                         ContentUnavailableView(
                             "No transactions found",
@@ -212,7 +212,7 @@ struct HistoryTabView: View {
                     } else {
                         ScrollView {
                             let dateGroups = groupTransactionsByDate(filtered)
-                            
+
                             LazyVStack(alignment: .leading, spacing: 16) {
                                 ForEach(dateGroups) { group in
                                     VStack(alignment: .leading, spacing: 8) {
@@ -221,7 +221,7 @@ struct HistoryTabView: View {
                                             .foregroundStyle(LMSColors.brandNavy.opacity(0.45))
                                             .padding(.horizontal, LMSSpacing.screenHorizontal + 4)
                                             .padding(.top, 4)
-                                        
+
                                         VStack(spacing: 0) {
                                             ForEach(group.transactions) { tx in
                                                 TransactionRowView(transaction: tx)
@@ -247,9 +247,9 @@ struct HistoryTabView: View {
             }
         }
     }
-    
-    // MARK: - Date Grouping Helpers
-    
+
+
+
     private func groupTransactionsByDate(_ txs: [Transaction]) -> [DateGroup] {
         let calendar = Calendar.current
         let grouped = Dictionary(grouping: txs) { tx in
@@ -261,7 +261,7 @@ struct HistoryTabView: View {
         }
         .sorted { $0.id > $1.id }
     }
-    
+
     private func formatDateHeader(_ date: Date) -> String {
         let calendar = Calendar.current
         if calendar.isDateInToday(date) {
@@ -274,9 +274,9 @@ struct HistoryTabView: View {
             return formatter.string(from: date)
         }
     }
-    
-    // MARK: - Helper Methods for Styling Selector Chips
-    
+
+
+
     private func getGradientColors(for type: DashboardAccountType?) -> [Color] {
         guard let type = type else {
             return [LMSColors.brandNavy, LMSColors.brandNavyLight]
@@ -290,7 +290,7 @@ struct HistoryTabView: View {
             return [LMSColors.actionBlue, Color(hex: "5E35B1")]
         }
     }
-    
+
     private func getSignatureColor(for type: DashboardAccountType?) -> Color {
         guard let type = type else {
             return LMSColors.brandNavy
@@ -301,7 +301,7 @@ struct HistoryTabView: View {
         case .current:    return LMSColors.actionBlue
         }
     }
-    
+
     private func getAccountIconName(for type: DashboardAccountType) -> String {
         switch type {
         case .savings:    return "building.columns.fill"
@@ -311,7 +311,7 @@ struct HistoryTabView: View {
     }
 }
 
-// MARK: - Date Grouping Model
+
 struct DateGroup: Identifiable {
     let id: Date
     let transactions: [Transaction]
@@ -321,3 +321,4 @@ struct DateGroup: Identifiable {
     HistoryTabView(viewModel: PreviewSupport.dashboardViewModel)
         .previewBorrowerEnvironment()
 }
+

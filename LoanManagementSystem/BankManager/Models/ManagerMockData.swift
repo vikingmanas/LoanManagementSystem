@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Manager Mock Data
+
 enum ManagerMockData {
 
     static let managerName = "Ramanathan Swamy"
@@ -9,7 +9,7 @@ enum ManagerMockData {
     static let branchCode = "BC-490"
     static let employeeId = "BM-490"
 
-    // MARK: - Officers
+
     static let officers: [ManagerOfficer] = [
         ManagerOfficer(
             id: UUID(uuidString: "A0000001-0000-0000-0000-000000000001")!,
@@ -57,7 +57,7 @@ enum ManagerMockData {
         )
     ]
 
-    // MARK: - Applicants
+
     static let applicants: [ManagerApplicant] = [
         ManagerApplicant(
             id: UUID(uuidString: "B0000001-0000-0000-0000-000000000001")!,
@@ -221,7 +221,7 @@ enum ManagerMockData {
         )
     ]
 
-    // MARK: - Document Sets
+
     private static let sampleDocumentsComplete: [ManagerDocument] = [
         ManagerDocument(id: UUID(), name: "Aadhaar Card", type: "Identity", status: .verified),
         ManagerDocument(id: UUID(), name: "PAN Card", type: "Identity", status: .verified),
@@ -246,7 +246,7 @@ enum ManagerMockData {
         ManagerDocument(id: UUID(), name: "ITR (2 Years)", type: "Income", status: .pending)
     ]
 
-    // MARK: - KPIs
+
     static let kpis: [ManagerKPI] = [
         ManagerKPI(title: "TOTAL DISBURSED", value: "₹4.8 Cr", subtitle: "Goal: ₹6.0 Cr", icon: "indianrupeesign.circle.fill", tint: LMSColors.emerald, trend: .up, trendValue: "+12.4%", progress: 0.80),
         ManagerKPI(title: "APPROVAL RATE", value: "92.4%", subtitle: "Target: >90%", icon: "checkmark.seal.fill", tint: LMSColors.actionBlue, trend: .up, trendValue: "+2.1%", progress: 0.924),
@@ -256,7 +256,7 @@ enum ManagerMockData {
         ManagerKPI(title: "ACTIVE LOANS", value: "247", subtitle: "Across all types", icon: "doc.text.fill", tint: LMSColors.brandNavy, trend: .up, trendValue: "+18", progress: 0.72)
     ]
 
-    // MARK: - Branch Overview
+
     static let branchOverview = BranchOverview(
         name: "Bengaluru Central",
         code: "BC-490",
@@ -270,7 +270,7 @@ enum ManagerMockData {
         monthlyTarget: 60_000_000
     )
 
-    // MARK: - Notifications
+
     static let notifications: [ManagerNotificationItem] = [
         ManagerNotificationItem(
             id: UUID(), title: "High Value Loan Pending",
@@ -300,7 +300,7 @@ enum ManagerMockData {
         )
     ]
 
-    // MARK: - Chat Conversations
+
     static let conversations: [ManagerChatConversation] = [
         ManagerChatConversation(
             id: UUID(), officerName: "Aarav Patel", officerInitials: "AP",
@@ -353,7 +353,7 @@ enum ManagerMockData {
         )
     ]
 
-    // MARK: - Analytics Data
+
 
     static let monthlyDisbursements: [(String, Double)] = [
         ("Jan", 62), ("Feb", 78), ("Mar", 85), ("Apr", 72), ("May", 94), ("Jun", 88)
@@ -371,3 +371,4 @@ enum ManagerMockData {
         approved: 187, rejected: 15, pending: 45
     )
 }
+

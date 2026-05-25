@@ -1,14 +1,14 @@
-//
-//  LoanApplicationTabView.swift
-//  LoanManagementSystem
-//
-//  Redesigned: Grid Catalog → Detail → Apply → Verify → Submit
-//
+
+
+
+
+
+
 
 import SwiftUI
 import PhotosUI
 
-// MARK: - Navigation Route
+
 
 private enum LoanApplicationRoute: Hashable {
     case overview(UUID)
@@ -17,7 +17,7 @@ private enum LoanApplicationRoute: Hashable {
     case tracking(UUID)
 }
 
-// MARK: - Main Tab View
+
 
 struct LoanApplicationTabView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
@@ -26,12 +26,12 @@ struct LoanApplicationTabView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
-                // Custom Top Bar (HorizontalStack)
+
                 HStack(alignment: .center) {
                     Text("Loans")
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundStyle(LMSColors.brandNavy)
-                    
+
                     Spacer()
                 }
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
@@ -39,7 +39,7 @@ struct LoanApplicationTabView: View {
                 .padding(.bottom, 8)
                 .background(Color(.systemGroupedBackground))
 
-                // Segmented Control
+
                 Picker("", selection: $viewModel.selectedSegment) {
                     ForEach(LoanHubSegment.allCases) { segment in
                         Text(segment.rawValue).tag(segment)
@@ -50,7 +50,7 @@ struct LoanApplicationTabView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 4)
 
-                // Content
+
                 switch viewModel.selectedSegment {
                 case .discover:
                     LoanTypesGridSection(viewModel: viewModel) { productID in
@@ -101,7 +101,7 @@ struct LoanApplicationTabView: View {
     }
 }
 
-// MARK: - Loan Types Grid
+
 
 private struct LoanTypesGridSection: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
@@ -115,7 +115,7 @@ private struct LoanTypesGridSection: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // Header
+
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Explore Loan Products")
                         .font(.title3.weight(.bold))
@@ -125,7 +125,7 @@ private struct LoanTypesGridSection: View {
                 }
                 .padding(.horizontal, 4)
 
-                // Grid
+
                 LazyVGrid(columns: columns, spacing: 14) {
                     ForEach(viewModel.products) { product in
                         LoanProductGridCard(product: product)
@@ -142,7 +142,7 @@ private struct LoanTypesGridSection: View {
     }
 }
 
-// MARK: - Grid Card
+
 
 private struct LoanProductGridCard: View {
     let product: BorrowerLoanProduct
@@ -170,7 +170,7 @@ private struct LoanProductGridCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Icon circle
+
             ZStack {
                 Circle()
                     .fill(accentGradient)
@@ -193,7 +193,7 @@ private struct LoanProductGridCard: View {
 
             Spacer(minLength: 0)
 
-            // Interest rate badge
+
             HStack(spacing: 4) {
                 Image(systemName: "percent")
                     .font(.system(size: 9, weight: .bold))
@@ -214,7 +214,7 @@ private struct LoanProductGridCard: View {
     }
 }
 
-// MARK: - Loan Overview / Detail Screen
+
 
 private struct LoanOverviewScreen: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
@@ -239,27 +239,27 @@ private struct LoanOverviewScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                // Hero Header
+
                 heroHeader
 
-                // Quick Info Cards
+
                 quickInfoGrid
 
-                // Benefits
+
                 benefitsSection
 
-                // Eligibility
+
                 eligibilitySection
 
-                // Required Documents
+
                 documentsSection
 
-                // FAQs
+
                 if !product.faqs.isEmpty {
                     faqsSection
                 }
 
-                // Apply Button
+
                 applyButton
             }
             .padding(16)
@@ -270,7 +270,7 @@ private struct LoanOverviewScreen: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    // MARK: Hero Header
+
     private var heroHeader: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
@@ -300,7 +300,7 @@ private struct LoanOverviewScreen: View {
                 .font(.subheadline)
                 .foregroundColor(.secondary)
 
-            // Accent divider
+
             Rectangle()
                 .fill(accentColor.opacity(0.3))
                 .frame(height: 2)
@@ -312,7 +312,7 @@ private struct LoanOverviewScreen: View {
         .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
     }
 
-    // MARK: Quick Info
+
     private var quickInfoGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
             quickInfoTile(
@@ -361,7 +361,7 @@ private struct LoanOverviewScreen: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
-    // MARK: Benefits
+
     private var benefitsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Key Benefits", systemImage: "star.fill")
@@ -385,7 +385,7 @@ private struct LoanOverviewScreen: View {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    // MARK: Eligibility
+
     private var eligibilitySection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Eligibility Criteria", systemImage: "person.badge.shield.checkmark.fill")
@@ -415,7 +415,7 @@ private struct LoanOverviewScreen: View {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    // MARK: Required Documents
+
     private var documentsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Required Documents", systemImage: "doc.on.doc.fill")
@@ -458,7 +458,7 @@ private struct LoanOverviewScreen: View {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    // MARK: FAQs
+
     private var faqsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Frequently Asked Questions", systemImage: "questionmark.circle.fill")
@@ -502,7 +502,7 @@ private struct LoanOverviewScreen: View {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    // MARK: Apply Button
+
     private var applyButton: some View {
         Button(action: onApply) {
             HStack(spacing: 10) {
@@ -527,7 +527,7 @@ private struct LoanOverviewScreen: View {
     }
 }
 
-// MARK: - Combined Application Screen (Form + Document Upload)
+
 
 private struct CombinedApplicationScreen: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
@@ -535,8 +535,8 @@ private struct CombinedApplicationScreen: View {
 
     @FocusState private var isInputActive: Bool
     @State private var previewDocument: BorrowerLoanDocumentItem?
-    
-    // Photo picker states
+
+
     @State private var isPhotoPickerPresented = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var activeUploadingDocID: UUID?
@@ -544,33 +544,33 @@ private struct CombinedApplicationScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                // Progress header
+
                 applicationProgressHeader
 
-                // Personal Information
+
                 personalInfoSection
 
-                // Employment Information
+
                 employmentSection
 
-                // Financial Information
+
                 financialSection
 
-                // Loan Details
+
                 loanDetailsSection
 
-                // Additional Information
+
                 additionalInfoSection
 
-                // Document Upload Section
+
                 documentUploadSection
 
-                // Validation warnings
+
                 if !viewModel.formValidationErrors.isEmpty {
                     validationWarningsSection
                 }
 
-                // Verify Button
+
                 verifyButton
             }
             .padding(16)
@@ -611,7 +611,7 @@ private struct CombinedApplicationScreen: View {
         }
     }
 
-    // MARK: Progress Header
+
     private var applicationProgressHeader: some View {
         VStack(alignment: .leading, spacing: 10) {
             if let product = viewModel.selectedProduct {
@@ -656,7 +656,7 @@ private struct CombinedApplicationScreen: View {
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: Personal Info
+
     private var personalInfoSection: some View {
         formCard("Personal Information", icon: "person.fill") {
             formField("Full Name", text: $viewModel.formData.fullName, validation: .fullName)
@@ -668,7 +668,7 @@ private struct CombinedApplicationScreen: View {
         }
     }
 
-    // MARK: Employment
+
     private var employmentSection: some View {
         formCard("Employment Details", icon: "briefcase.fill") {
             formField("Occupation", text: $viewModel.formData.occupation, validation: .occupation)
@@ -692,7 +692,7 @@ private struct CombinedApplicationScreen: View {
         }
     }
 
-    // MARK: Financial
+
     private var financialSection: some View {
         formCard("Financial Information", icon: "indianrupeesign.circle.fill") {
             formField("Monthly Income (₹)", text: $viewModel.formData.monthlyIncome, validation: .monthlyIncome, keyboard: .numberPad)
@@ -703,7 +703,7 @@ private struct CombinedApplicationScreen: View {
         }
     }
 
-    // MARK: Loan Details
+
     private var loanDetailsSection: some View {
         formCard("Loan Details", icon: "doc.text.fill") {
             formField("Loan Amount (₹)", text: $viewModel.formData.loanAmountRequested, validation: .loanAmountRequested, keyboard: .numberPad)
@@ -757,7 +757,7 @@ private struct CombinedApplicationScreen: View {
         }
     }
 
-    // MARK: Additional Info
+
     private var additionalInfoSection: some View {
         formCard("Additional Information", icon: "person.2.fill") {
             Toggle("Include Co-applicant", isOn: $viewModel.formData.hasCoApplicant)
@@ -774,7 +774,7 @@ private struct CombinedApplicationScreen: View {
         }
     }
 
-    // MARK: Document Upload Section
+
     private var documentUploadSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -790,10 +790,10 @@ private struct CombinedApplicationScreen: View {
                     .background(Color.brandEmerald.opacity(0.1), in: Capsule())
             }
 
-            // Upload source picker
+
             uploadSourcePicker
 
-            // Documents grouped by category
+
             ForEach(BorrowerDocumentCategory.allCases) { category in
                 let categoryDocs = viewModel.documents(for: category)
                 if !categoryDocs.isEmpty {
@@ -850,7 +850,7 @@ private struct CombinedApplicationScreen: View {
         }
     }
 
-    // MARK: Validation Warnings
+
     private var validationWarningsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Validation Issues", systemImage: "exclamationmark.triangle.fill")
@@ -867,7 +867,7 @@ private struct CombinedApplicationScreen: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
-    // MARK: Verify Button
+
     private var verifyButton: some View {
         Button {
             viewModel.verifyAndShowResult()
@@ -894,7 +894,7 @@ private struct CombinedApplicationScreen: View {
         }
     }
 
-    // MARK: Helpers
+
     @ViewBuilder
     private func formCard<Content: View>(_ title: String, icon: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -928,7 +928,7 @@ private struct CombinedApplicationScreen: View {
     }
 }
 
-// MARK: - Inline Document Card
+
 
 private struct InlineDocumentCard: View {
     let document: BorrowerLoanDocumentItem
@@ -947,7 +947,7 @@ private struct InlineDocumentCard: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            // Status icon
+
             Image(systemName: document.status.iconName)
                 .font(.system(size: 16))
                 .foregroundColor(document.status.tintColor)
@@ -955,7 +955,7 @@ private struct InlineDocumentCard: View {
                 .background(document.status.tintColor.opacity(0.12))
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
-            // Name and status
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(document.name)
                     .font(.subheadline.weight(.medium))
@@ -967,7 +967,7 @@ private struct InlineDocumentCard: View {
 
             Spacer()
 
-            // Actions
+
             if !document.isLocked {
                 HStack(spacing: 6) {
                     Button(action: onPreview) {
@@ -1003,13 +1003,13 @@ private struct InlineDocumentCard: View {
     }
 }
 
-// MARK: - Document Verification Result View
+
 
 private struct DocumentVerificationResultView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let onSubmit: () -> Void
-    
-    // Photo picker states
+
+
     @State private var isPhotoPickerPresented = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var activeUploadingDocID: UUID?
@@ -1017,26 +1017,26 @@ private struct DocumentVerificationResultView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                // Status header
+
                 verificationStatusHeader
 
-                // Document results
+
                 documentResultsList
 
-                // Rejected documents warning
+
                 if !viewModel.rejectedDocuments.isEmpty {
                     rejectedDocumentsSection
                 }
 
-                // Pre-submission warnings
+
                 if !viewModel.preSubmissionWarnings.isEmpty {
                     warningsSection
                 }
 
-                // Review summary
+
                 reviewSummary
 
-                // Submit button or re-verify
+
                 actionButtons
             }
             .padding(16)
@@ -1283,7 +1283,7 @@ private struct DocumentVerificationResultView: View {
     }
 }
 
-// MARK: - Borrower Applications Section (Preserved)
+
 
 private struct BorrowerApplicationsSection: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
@@ -1292,10 +1292,10 @@ private struct BorrowerApplicationsSection: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // Metrics row
+
                 metricsRow
 
-                // Filter
+
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(BorrowerApplicationFilter.allCases) { filter in
@@ -1319,7 +1319,7 @@ private struct BorrowerApplicationsSection: View {
                     }
                 }
 
-                // Draft applications
+
                 if !viewModel.draftApplications.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Drafts")
@@ -1334,7 +1334,7 @@ private struct BorrowerApplicationsSection: View {
                     }
                 }
 
-                // Submitted applications
+
                 if viewModel.filteredSubmittedApplications.isEmpty {
                     VStack(spacing: 12) {
                         Image(systemName: "doc.text.magnifyingglass")
@@ -1394,7 +1394,7 @@ private struct BorrowerApplicationsSection: View {
     }
 }
 
-// MARK: - Application List Card
+
 
 private struct ApplicationListCard: View {
     let application: BorrowerLoanApplication
@@ -1440,7 +1440,7 @@ private struct ApplicationListCard: View {
     }
 }
 
-// MARK: - Stage Badge (Preserved)
+
 
 private struct StageBadge: View {
     let stage: BorrowerApplicationStage
@@ -1459,7 +1459,7 @@ private struct StageBadge: View {
     }
 }
 
-// MARK: - Document Preview Sheet (Preserved)
+
 
 private struct DocumentPreviewSheet: View {
     let document: BorrowerLoanDocumentItem
@@ -1485,7 +1485,7 @@ private struct DocumentPreviewSheet: View {
     }
 }
 
-// MARK: - Application Tracking Screen (Preserved)
+
 
 private enum TimelineNodeState {
     case completed
@@ -1662,7 +1662,7 @@ private struct LoanApplicationTrackingScreen: View {
     }
 }
 
-// MARK: - Context Help Sheet (Preserved)
+
 
 private struct ContextHelpSheetView: View {
     let item: BorrowerContextHelpItem
@@ -1709,3 +1709,4 @@ private struct ContextHelpSheetView: View {
     LoanApplicationTabView(viewModel: PreviewSupport.loanApplicationViewModel)
         .previewBorrowerEnvironment()
 }
+

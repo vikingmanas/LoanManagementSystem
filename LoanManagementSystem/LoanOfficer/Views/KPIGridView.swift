@@ -4,11 +4,11 @@ struct KPIGridView: View {
     typealias ApplicationStatus = OfficerApplicationStatus
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onCardSelected: (ApplicationStatus?) -> Void
-    
+
     var body: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-            
-            // Card A1: Total Applications
+
+
             KPICard(
                 symbol: "doc.text.fill",
                 symbolColor: AppTheme.actionBlue,
@@ -32,10 +32,10 @@ struct KPIGridView: View {
             )
             .onTapGesture {
                 HapticsManager.triggerImpact(style: .light)
-                onCardSelected(nil) // Shows all history
+                onCardSelected(nil)
             }
-            
-            // Card A2: Pending Review
+
+
             KPICard(
                 symbol: "hourglass.circle.fill",
                 symbolColor: AppTheme.warningAmber,
@@ -51,10 +51,10 @@ struct KPIGridView: View {
             )
             .onTapGesture {
                 HapticsManager.triggerImpact(style: .light)
-                onCardSelected(.pending) // Filter history to Pending
+                onCardSelected(.pending)
             }
-            
-            // Card A3: Approved
+
+
             KPICard(
                 symbol: "checkmark.circle.fill",
                 symbolColor: AppTheme.successGreen,
@@ -70,10 +70,10 @@ struct KPIGridView: View {
             )
             .onTapGesture {
                 HapticsManager.triggerImpact(style: .light)
-                onCardSelected(.approved) // Filter history to Approved
+                onCardSelected(.approved)
             }
-            
-            // Card A4: Rejected / On Hold
+
+
             KPICard(
                 symbol: "xmark.circle.fill",
                 symbolColor: AppTheme.criticalRed,
@@ -89,7 +89,7 @@ struct KPIGridView: View {
             )
             .onTapGesture {
                 HapticsManager.triggerImpact(style: .light)
-                onCardSelected(.onHold) // Filter history to On Hold
+                onCardSelected(.onHold)
             }
         }
     }
@@ -103,7 +103,7 @@ struct KPICard: View {
     let sub: String
     let bottomContent: AnyView
     let accessibilityLabel: String
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
@@ -115,28 +115,28 @@ struct KPICard: View {
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(Color(.placeholderText))
             }
-            
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(value)
                     .font(.system(.title, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
-                
+
                 Text(label)
                     .font(.system(.callout, design: .rounded).weight(.semibold))
                     .foregroundStyle(LMSColors.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-                
+
                 Text(sub)
                     .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(LMSColors.textSecondary)
             }
-            
+
             Spacer(minLength: 4)
-            
+
             Divider()
                 .padding(.vertical, 2)
-            
+
             bottomContent
         }
         .padding(16)
@@ -160,3 +160,4 @@ struct KPICard: View {
     .padding()
     .previewLoanOfficerEnvironment()
 }
+

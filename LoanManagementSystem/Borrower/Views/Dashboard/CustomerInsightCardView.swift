@@ -2,35 +2,35 @@ import SwiftUI
 
 struct CustomerInsightCardView: View {
     var profile: BorrowerProfile
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            // Top Section: Identity & Branch
+
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(profile.fullName)
                         .font(LMSFont.headline)
                         .foregroundStyle(.white)
-                    
+
                     Text("Customer ID: \(profile.id)")
                         .font(LMSFont.subheadline)
                         .foregroundStyle(.white.opacity(0.8))
                         .fontDesign(.monospaced)
                 }
-                
+
                 Spacer()
-                
+
                 Image(systemName: "checkmark.seal.fill")
                     .font(.title2)
                     .foregroundStyle(LMSColors.emerald)
                     .opacity(profile.isKYCVerified ? 1 : 0)
             }
             .padding(LMSSpacing.xl)
-            
+
             Divider()
                 .background(Color.white.opacity(0.15))
-            
-            // Middle Section: Account Info
+
+
             VStack(spacing: LMSSpacing.lg) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -51,7 +51,7 @@ struct CustomerInsightCardView: View {
                             .foregroundStyle(.white)
                     }
                 }
-                
+
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Relationship Since")
@@ -74,32 +74,32 @@ struct CustomerInsightCardView: View {
             }
             .padding(LMSSpacing.xl)
             .background(Color.white.opacity(0.05))
-            
+
             Divider()
                 .background(Color.white.opacity(0.15))
-            
-            // Bottom Section: Summary
+
+
             HStack(spacing: LMSSpacing.xl) {
                 InsightSummaryItem(
                     title: "Active Loans",
                     value: "\(profile.existingLoansCount)",
                     icon: "dollarsign.arrow.circlepath"
                 )
-                
+
                 Divider()
                     .background(Color.white.opacity(0.15))
                     .frame(height: 40)
-                
+
                 InsightSummaryItem(
                     title: "Credit Cards",
                     value: "\(profile.existingCreditCardsCount)",
                     icon: "creditcard.fill"
                 )
-                
+
                 Divider()
                     .background(Color.white.opacity(0.15))
                     .frame(height: 40)
-                
+
                 InsightSummaryItem(
                     title: "KYC Status",
                     value: profile.isKYCVerified ? "Verified" : "Pending",
@@ -129,7 +129,7 @@ struct CustomerInsightCardView: View {
         )
         .shadow(color: Color.black.opacity(0.12), radius: 14, x: 0, y: 8)
     }
-    
+
     private func maskedAccount(_ account: String) -> String {
         guard account.count > 4 else { return account }
         let suffix = account.suffix(4)
@@ -141,17 +141,17 @@ struct InsightSummaryItem: View {
     let title: String
     let value: String
     let icon: String
-    
+
     var body: some View {
         VStack(spacing: 6) {
             Image(systemName: icon)
                 .font(.system(size: 14))
                 .foregroundStyle(.white.opacity(0.9))
-            
+
             Text(value)
                 .font(LMSFont.body.weight(.bold))
                 .foregroundStyle(.white)
-            
+
             Text(title)
                 .font(LMSFont.caption2)
                 .foregroundStyle(.white.opacity(0.65))
@@ -164,3 +164,4 @@ struct InsightSummaryItem: View {
     CustomerInsightCardView(profile: PreviewSupport.sampleBorrowerProfile)
         .padding()
 }
+

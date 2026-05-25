@@ -5,7 +5,7 @@ struct NotificationsDetailView: View {
     @State private var paymentReminders = true
     @State private var securityAlerts = true
     @State private var promoOffers = false
-    
+
     var body: some View {
         Form {
             Section(header: Text("Loan Activity")) {
@@ -21,7 +21,7 @@ struct NotificationsDetailView: View {
                         }
                     }
                 }
-                
+
                 Toggle(isOn: $paymentReminders) {
                     HStack {
                         Image(systemName: "calendar.badge.clock")
@@ -35,7 +35,7 @@ struct NotificationsDetailView: View {
                     }
                 }
             }
-            
+
             Section(header: Text("Security")) {
                 Toggle(isOn: $securityAlerts) {
                     HStack {
@@ -50,7 +50,7 @@ struct NotificationsDetailView: View {
                     }
                 }
             }
-            
+
             Section(header: Text("Offers & Updates")) {
                 Toggle(isOn: $promoOffers) {
                     HStack {
@@ -76,3 +76,4 @@ struct NotificationsDetailView: View {
         NotificationsDetailView()
     }
 }
+

@@ -7,9 +7,9 @@ public enum PortalRole: String, CaseIterable, Identifiable {
     case loanOfficer = "Loan Officer"
     case bankManager = "Bank Manager"
     case admin = "Admin (Head Manager)"
-    
+
     public var id: String { self.rawValue }
-    
+
     public var icon: String {
         switch self {
         case .customer: return "person.fill"
@@ -18,7 +18,7 @@ public enum PortalRole: String, CaseIterable, Identifiable {
         case .admin: return "shield.fill"
         }
     }
-    
+
     public var description: String {
         switch self {
         case .customer: return "Apply for and manage your personal loans"
@@ -33,16 +33,17 @@ class AppStateManager: ObservableObject {
     @Published var isAuthenticated: Bool = false
     @Published var selectedRole: PortalRole = .customer
     @Published var showRoleSelection: Bool = true
-    
-    // Mock user details could be stored here later
-    
+
+
+
     func login() {
         isAuthenticated = true
     }
-    
+
     func logout() {
         isAuthenticated = false
         showRoleSelection = true
     }
 }
+
 

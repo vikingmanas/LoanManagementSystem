@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Manager KPI Cards View
+
 struct ManagerKPICardsView: View {
     let kpis: [ManagerKPI]
 
@@ -23,14 +23,14 @@ struct ManagerKPICardsView: View {
     }
 }
 
-// MARK: - Individual KPI Card
+
 private struct ManagerKPICard: View {
     let kpi: ManagerKPI
     @State private var animatedProgress: Double = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
-            // Header
+
             HStack(spacing: 6) {
                 Image(systemName: kpi.icon)
                     .font(.system(size: 11, weight: .bold))
@@ -43,14 +43,14 @@ private struct ManagerKPICard: View {
                 Spacer()
             }
 
-            // Value
+
             Text(kpi.value)
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(LMSColors.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
 
-            // Progress Bar
+
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
@@ -63,7 +63,7 @@ private struct ManagerKPICard: View {
             }
             .frame(height: 4)
 
-            // Subtitle + Trend
+
             HStack(spacing: 4) {
                 Text(kpi.subtitle)
                     .font(.system(size: 10, weight: .semibold, design: .rounded))
@@ -97,3 +97,4 @@ private struct ManagerKPICard: View {
     ManagerKPICardsView(kpis: PreviewSupport.managerViewModel.kpis)
         .previewManagerEnvironment()
 }
+

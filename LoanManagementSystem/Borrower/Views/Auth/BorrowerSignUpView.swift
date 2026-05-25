@@ -11,28 +11,28 @@ struct MockSignUpView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel = SignUpViewModel()
-    
+
     var body: some View {
         ZStack {
             Color.AppTheme.background.ignoresSafeArea()
-            
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    
-                    // Header Section
+
+
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Create Account")
                             .font(Font.AppTheme.title)
                             .foregroundStyle(Color.AppTheme.textPrimary)
-                        
+
                         Text("Create your borrower account securely.")
                             .font(Font.AppTheme.subtitle)
                             .foregroundStyle(Color.AppTheme.textSecondary)
                     }
                     .padding(.top, 20)
                     .padding(.bottom, 10)
-                    
-                    // Error Banner
+
+
                     if !viewModel.generalError.isEmpty {
                         HStack {
                             Image(systemName: "exclamationmark.triangle.fill")
@@ -45,48 +45,48 @@ struct MockSignUpView: View {
                         .foregroundStyle(Color.AppTheme.error)
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
-                    
-                    // Input Fields
+
+
                     VStack(spacing: 16) {
                         CustomTextField(
                             icon: "person",
                             placeholder: "Full Name",
                             text: $viewModel.fullName
                         )
-                        
+
                         CustomTextField(
                             icon: "envelope",
                             placeholder: "Email Address",
                             text: $viewModel.email
                         )
-                        
+
                         CustomTextField(
                             icon: "phone",
                             placeholder: "Mobile Number",
                             text: $viewModel.phone
                         )
-                        
+
                         CustomTextField(
                             icon: "phone.fill",
                             placeholder: "Alternate Mobile Number (Optional)",
                             text: $viewModel.alternatePhone
                         )
                         .keyboardType(.phonePad)
-                        
+
                         CustomTextField(
                             icon: "tag",
                             placeholder: "Referral Code (Optional)",
                             text: $viewModel.referralCode
                         )
                         .textInputAutocapitalization(.characters)
-                        
+
                         VStack(alignment: .leading, spacing: 12) {
                             SecureInputField(
                                 placeholder: "Password",
                                 text: $viewModel.password
                             )
-                            
-                            // Password Strength Indicator
+
+
                             if !viewModel.password.isEmpty {
                                 PasswordStrengthView(
                                     isMinLength: viewModel.isMinLength,
@@ -97,21 +97,21 @@ struct MockSignUpView: View {
                                 .padding(.horizontal, 4)
                             }
                         }
-                        
+
                         SecureInputField(
                             placeholder: "Confirm Password",
                             text: $viewModel.confirmPassword
                         )
                     }
-                    
-                    // Checkboxes
+
+
                     VStack(alignment: .leading, spacing: 12) {
                         CheckboxView(isChecked: $viewModel.acceptedTerms, label: "I accept the Terms and Conditions")
                         CheckboxView(isChecked: $viewModel.acceptedPrivacy, label: "I agree to the Privacy Policy")
                     }
                     .padding(.top, 8)
-                    
-                    // Sign Up Button
+
+
                     PrimaryButton(
                         title: "Create Account",
                         isLoading: viewModel.isLoading,
@@ -123,16 +123,16 @@ struct MockSignUpView: View {
                         }
                     )
                     .padding(.top, 16)
-                    
+
                     Spacer(minLength: 40)
-                    
-                    // Footer
+
+
                     HStack {
                         Spacer()
                         Text("Already have an account?")
                             .font(Font.AppTheme.body)
                             .foregroundStyle(Color.AppTheme.textSecondary)
-                        
+
                         Button(action: {
                             dismiss()
                         }) {
@@ -167,3 +167,4 @@ struct MockSignUpView: View {
         .environmentObject(AppStateManager())
         .environmentObject(AuthManager())
 }
+

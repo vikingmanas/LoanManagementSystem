@@ -7,7 +7,7 @@ enum OfficerQuickActionID: String, Hashable, CaseIterable {
     case branchReports = "branch_reports"
     case clientDirectory = "client_directory"
     case escalateCase = "escalate_case"
-    
+
     var shortTitle: String {
         switch self {
         case .newApplication: return "New App"
@@ -18,7 +18,7 @@ enum OfficerQuickActionID: String, Hashable, CaseIterable {
         case .escalateCase: return "Escalate"
         }
     }
-    
+
     var symbol: String {
         switch self {
         case .newApplication: return "person.crop.circle.badge.plus"
@@ -29,7 +29,7 @@ enum OfficerQuickActionID: String, Hashable, CaseIterable {
         case .escalateCase: return "arrow.up.circle.fill"
         }
     }
-    
+
     var tint: Color {
         switch self {
         case .newApplication: return AppTheme.successGreen
@@ -45,13 +45,13 @@ enum OfficerQuickActionID: String, Hashable, CaseIterable {
 struct OfficerQuickActionsView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onSystemAction: (String) -> Void
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
             Text("Quick Actions")
                 .font(LMSFont.title3)
                 .foregroundStyle(LMSColors.textPrimary)
-            
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: LMSSpacing.md) {
                     ForEach(OfficerQuickActionID.allCases, id: \.self) { action in
@@ -64,20 +64,20 @@ struct OfficerQuickActionsView: View {
             }
         }
     }
-    
+
     private func quickActionTile(_ action: OfficerQuickActionID) -> some View {
         VStack(spacing: LMSSpacing.sm) {
             ZStack {
                 RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
                     .fill(action.tint.opacity(0.14))
                     .frame(width: 52, height: 52)
-                
+
                 Image(systemName: action.symbol)
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(action.tint)
                     .symbolRenderingMode(.hierarchical)
             }
-            
+
             Text(action.shortTitle)
                 .font(LMSFont.caption2.weight(.semibold))
                 .foregroundStyle(LMSColors.textPrimary)
@@ -92,7 +92,7 @@ struct OfficerQuickActionsView: View {
     }
 }
 
-// MARK: - Detail Router
+
 
 @ViewBuilder
 func officerQuickActionDetail(
@@ -116,18 +116,18 @@ func officerQuickActionDetail(
     }
 }
 
-// MARK: - New Application
+
 
 struct OfficerNewApplicationDetailView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
-    
+
     private let steps = [
         ("person.text.rectangle", "Capture KYC", "Aadhaar, PAN, and address proof"),
         ("briefcase.fill", "Employment & Income", "Salary slips and bank statements"),
         ("house.fill", "Loan Selection", "Home, personal, or business product"),
         ("checkmark.seal.fill", "Submit for Review", "Officer verification queue")
     ]
-    
+
     var body: some View {
         List {
             Section {
@@ -140,7 +140,7 @@ struct OfficerNewApplicationDetailView: View {
                 }
                 .padding(.vertical, LMSSpacing.xs)
             }
-            
+
             Section("Application Pipeline") {
                 ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
                     Label {
@@ -163,7 +163,7 @@ struct OfficerNewApplicationDetailView: View {
                     .badge(index + 1)
                 }
             }
-            
+
             Section {
                 Button {
                     HapticsManager.triggerImpact(style: .medium)
@@ -178,12 +178,12 @@ struct OfficerNewApplicationDetailView: View {
     }
 }
 
-// MARK: - Verify Documents
+
 
 struct OfficerVerifyDocumentsDetailView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onOpenQueue: () -> Void
-    
+
     var body: some View {
         List {
             Section {
@@ -203,7 +203,7 @@ struct OfficerVerifyDocumentsDetailView: View {
                 }
                 .padding(.vertical, LMSSpacing.xs)
             }
-            
+
             Section("Priority Queue") {
                 if viewModel.todayDocumentQueueList.isEmpty {
                     ContentUnavailableView("All Clear", systemImage: "checkmark.circle", description: Text("No documents uploaded today."))
@@ -228,7 +228,7 @@ struct OfficerVerifyDocumentsDetailView: View {
                     }
                 }
             }
-            
+
             Section {
                 Button(action: onOpenQueue) {
                     Label("Open Full Document Queue", systemImage: "arrow.down.doc")
@@ -240,7 +240,7 @@ struct OfficerVerifyDocumentsDetailView: View {
     }
 }
 
-// MARK: - Compliance Audit
+
 
 struct OfficerComplianceAuditDetailView: View {
     private let checks: [(String, String, String, Bool)] = [
@@ -250,7 +250,7 @@ struct OfficerComplianceAuditDetailView: View {
         ("Income Verification", "Salary credits match declared income", "indianrupeesign.bank.building", true),
         ("Collateral Docs", "Property papers attested and indexed", "doc.richtext", false)
     ]
-    
+
     var body: some View {
         List {
             Section {
@@ -258,7 +258,7 @@ struct OfficerComplianceAuditDetailView: View {
                     .font(LMSFont.footnote)
                     .foregroundStyle(LMSColors.textSecondary)
             }
-            
+
             Section("Audit Items") {
                 ForEach(Array(checks.enumerated()), id: \.offset) { _, check in
                     HStack(spacing: LMSSpacing.md) {
@@ -278,7 +278,7 @@ struct OfficerComplianceAuditDetailView: View {
                     }
                 }
             }
-            
+
             Section {
                 Button {
                     HapticsManager.triggerNotification(type: .success)
@@ -292,18 +292,18 @@ struct OfficerComplianceAuditDetailView: View {
     }
 }
 
-// MARK: - Branch Reports
+
 
 struct OfficerBranchReportsDetailView: View {
     var onDownload: () -> Void
-    
+
     private let reports = [
         ("Monthly Performance", "May 2026 · Disbursements & targets", "chart.bar.doc.horizontal"),
         ("Portfolio Quality", "NPA, PAR-30, and recovery rates", "chart.pie"),
         ("Officer Productivity", "Approvals, TAT, and query resolution", "person.3.sequence"),
         ("Regulatory Filing", "RBI quarterly branch submission pack", "doc.zipper")
     ]
-    
+
     var body: some View {
         List {
             Section("Bengaluru Branch") {
@@ -326,7 +326,7 @@ struct OfficerBranchReportsDetailView: View {
                     }
                 }
             }
-            
+
             Section {
                 Button(action: onDownload) {
                     Label("Download All Reports (PDF)", systemImage: "square.and.arrow.down")
@@ -338,12 +338,12 @@ struct OfficerBranchReportsDetailView: View {
     }
 }
 
-// MARK: - Client Directory
+
 
 struct OfficerClientDirectoryDetailView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @State private var searchText = ""
-    
+
     private var filteredApps: [OfficerLoanApplication] {
         guard !searchText.isEmpty else { return viewModel.applications }
         return viewModel.applications.filter {
@@ -351,7 +351,7 @@ struct OfficerClientDirectoryDetailView: View {
             $0.applicationId.localizedCaseInsensitiveContains(searchText)
         }
     }
-    
+
     var body: some View {
         List {
             Section {
@@ -363,7 +363,7 @@ struct OfficerClientDirectoryDetailView: View {
                         .foregroundStyle(LMSColors.textSecondary)
                 }
             }
-            
+
             Section("Clients") {
                 ForEach(filteredApps) { app in
                     HStack(spacing: LMSSpacing.md) {
@@ -396,17 +396,17 @@ struct OfficerClientDirectoryDetailView: View {
     }
 }
 
-// MARK: - Escalate Case
+
 
 struct OfficerEscalateCaseDetailView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onSubmit: () -> Void
-    
+
     @State private var selectedAppId = ""
     @State private var escalationReason = ""
     @State private var priority = "High"
     private let priorities = ["High", "Medium", "Low"]
-    
+
     var body: some View {
         Form {
             Section {
@@ -414,7 +414,7 @@ struct OfficerEscalateCaseDetailView: View {
                     .font(LMSFont.footnote)
                     .foregroundStyle(LMSColors.textSecondary)
             }
-            
+
             Section("Case Details") {
                 Picker("Application", selection: $selectedAppId) {
                     Text("Select application").tag("")
@@ -422,15 +422,15 @@ struct OfficerEscalateCaseDetailView: View {
                         Text("\(app.borrowerName) · \(app.applicationId)").tag(app.applicationId)
                     }
                 }
-                
+
                 Picker("Priority", selection: $priority) {
                     ForEach(priorities, id: \.self) { Text($0).tag($0) }
                 }
-                
+
                 TextField("Reason for escalation", text: $escalationReason, axis: .vertical)
                     .lineLimit(4...8)
             }
-            
+
             Section {
                 Button {
                     HapticsManager.triggerNotification(type: .warning)
@@ -461,3 +461,4 @@ struct OfficerEscalateCaseDetailView: View {
     }
     .previewLoanOfficerEnvironment()
 }
+

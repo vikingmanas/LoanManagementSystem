@@ -412,10 +412,10 @@ final class LoanApplicationViewModel: ObservableObject {
             }
             let userId = session.user.id.uuidString
             let path = "\(userId)/\(documentID.uuidString).jpg"
-            
-            // Upload to Supabase Storage
+
+
             let publicUrl = try await StorageService.shared.uploadDocument(data: imageData, bucket: "documents", path: path)
-            
+
             await MainActor.run {
                 let now = Date()
                 documents[index].status = .uploaded
@@ -423,7 +423,7 @@ final class LoanApplicationViewModel: ObservableObject {
                 documents[index].lastUpdated = now
                 documents[index].fileName = "\(documentID.uuidString).jpg"
                 documents[index].fileUrl = publicUrl.absoluteString
-                
+
                 autosaveDraft()
             }
         } catch {
@@ -807,3 +807,4 @@ final class LoanApplicationViewModel: ObservableObject {
         ]
     }
 }
+

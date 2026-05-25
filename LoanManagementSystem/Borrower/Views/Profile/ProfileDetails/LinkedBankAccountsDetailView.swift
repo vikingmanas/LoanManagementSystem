@@ -3,7 +3,7 @@ import SwiftUI
 struct LinkedBankAccountsDetailView: View {
     @ObservedObject var viewModel: BorrowerProfileViewModel
     @State private var showingEditSheet = false
-    
+
     var body: some View {
         Form {
             if let bank = viewModel.profile?.bankDetails {
@@ -17,7 +17,7 @@ struct LinkedBankAccountsDetailView: View {
                     } else {
                         DataRowView(label: "UPI ID", value: "Not Linked", valueColor: .gray)
                     }
-                    
+
                     HStack {
                         Text("Status")
                             .font(Font.AppTheme.body)
@@ -48,7 +48,7 @@ struct LinkedBankAccountsDetailView: View {
             EditBankDetailsView(viewModel: viewModel)
         }
     }
-    
+
     private func maskAccountNumber(_ number: String) -> String {
         guard number.count > 4 else { return number }
         let suffix = number.suffix(4)
@@ -61,3 +61,4 @@ struct LinkedBankAccountsDetailView: View {
         LinkedBankAccountsDetailView(viewModel: PreviewSupport.borrowerProfileViewModel)
     }
 }
+

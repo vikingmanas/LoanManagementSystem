@@ -3,7 +3,7 @@ import SwiftUI
 struct ProfileInfoDetailView: View {
     @ObservedObject var viewModel: BorrowerProfileViewModel
     @State private var activeSheet: ProfileEditSheet?
-    
+
     var body: some View {
         Form {
             if let profile = viewModel.profile {
@@ -16,8 +16,8 @@ struct ProfileInfoDetailView: View {
                     DataRowView(label: "Aadhaar Number", value: viewModel.maskedAccountNumber(profile.aadhaarNumber), isVerified: profile.kycVerification.aadhaarStatus == .verified)
                     DataRowView(label: "PAN Number", value: profile.panNumber, isVerified: profile.kycVerification.panStatus == .verified)
                 }
-                
-                // 2. Contact Information
+
+
                 Section(header: Text("Contact Information")) {
                     HStack {
                         DataRowView(label: "Mobile Number", value: profile.mobileNumber)
@@ -35,7 +35,7 @@ struct ProfileInfoDetailView: View {
                             }
                         }
                     }
-                    
+
                     HStack {
                         DataRowView(label: "Email Address", value: profile.email)
                         Spacer()
@@ -52,20 +52,20 @@ struct ProfileInfoDetailView: View {
                             }
                         }
                     }
-                    
+
                     if let alt = profile.alternateNumber {
                         DataRowView(label: "Alternate Number", value: alt)
                     }
                 }
-                
-                // 3. Address Information
+
+
                 Section(header: Text("Current Address")) {
                     DataRowView(label: "Address", value: profile.currentAddress.streetAddress)
                     DataRowView(label: "City", value: profile.currentAddress.city)
                     DataRowView(label: "State", value: profile.currentAddress.state)
                     DataRowView(label: "ZIP Code", value: profile.currentAddress.zipCode)
                 }
-                
+
                 if !profile.permanentAddress.isSameAsCurrent {
                     Section(header: Text("Permanent Address")) {
                         DataRowView(label: "Address", value: profile.permanentAddress.streetAddress)
@@ -74,33 +74,33 @@ struct ProfileInfoDetailView: View {
                         DataRowView(label: "ZIP Code", value: profile.permanentAddress.zipCode)
                     }
                 }
-                
-                // 4. Employment & Income
+
+
                 Section(header: Text("Employment & Income")) {
                     DataRowView(label: "Employment Type", value: profile.employment.employmentType)
                     DataRowView(label: "Company", value: profile.employment.companyName)
                     DataRowView(label: "Designation", value: profile.employment.designation)
                     DataRowView(label: "Monthly Income", value: viewModel.formatCurrency(profile.income.monthlyIncome))
                 }
-                
-                // 5. Emergency & Nominee
+
+
                 Section(header: Text("Emergency Reference Contact")) {
                     DataRowView(label: "Contact Name", value: profile.emergencyContactName)
                     DataRowView(label: "Mobile Number", value: profile.emergencyContactNumber)
                 }
-                
+
                 Section(header: Text("Nominee Details")) {
                     DataRowView(label: "Nominee Name", value: profile.nomineeName)
                     DataRowView(label: "Relationship", value: profile.nomineeRelationship)
                 }
-                
-                // 6. Preferences & Branch
+
+
                 Section(header: Text("Bank Preferences")) {
                     DataRowView(label: "Preferred Branch", value: profile.preferredBranch)
                     DataRowView(label: "Occupation", value: profile.occupation)
                     DataRowView(label: "Existing Bank Customer", value: profile.hasExistingBankAccount ? "Yes (\(profile.existingCustomerId ?? "N/A"))" : "No")
                 }
-                
+
             } else {
                 Text("Loading profile...")
             }
@@ -149,3 +149,4 @@ struct ProfileInfoDetailView: View {
         ProfileInfoDetailView(viewModel: PreviewSupport.borrowerProfileViewModel)
     }
 }
+

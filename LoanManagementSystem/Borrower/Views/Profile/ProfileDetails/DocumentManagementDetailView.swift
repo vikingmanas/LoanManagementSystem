@@ -4,7 +4,7 @@ struct DocumentManagementDetailView: View {
     @ObservedObject var viewModel: BorrowerProfileViewModel
     @State private var showingAlert = false
     @State private var alertMessage = ""
-    
+
     var body: some View {
         Form {
             if let kyc = viewModel.profile?.kycVerification {
@@ -23,7 +23,7 @@ struct DocumentManagementDetailView: View {
             Alert(title: Text("Document Viewer"), message: Text(alertMessage), dismissButton: .default(Text("Dismiss")))
         }
     }
-    
+
     @ViewBuilder
     private func documentRow(title: String, fileName: String?) -> some View {
         HStack {
@@ -31,7 +31,7 @@ struct DocumentManagementDetailView: View {
                 .foregroundStyle(fileName != nil ? Color.AppTheme.primary : Color.gray)
                 .font(.system(size: 24))
                 .frame(width: 32)
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(Font.AppTheme.body)
@@ -46,9 +46,9 @@ struct DocumentManagementDetailView: View {
                         .foregroundStyle(Color.AppTheme.error)
                 }
             }
-            
+
             Spacer()
-            
+
             if let fileName = fileName {
                 Button(action: {
                     alertMessage = "Simulating secure decryption & display for \(fileName)."
@@ -58,11 +58,11 @@ struct DocumentManagementDetailView: View {
                         .foregroundStyle(Color.AppTheme.primary)
                 }
                 .buttonStyle(BorderlessButtonStyle())
-                
+
                 Divider()
                     .frame(height: 20)
                     .padding(.horizontal, 4)
-                
+
                 Button(action: {
                     alertMessage = "Simulating secure download of \(fileName) in encrypted PDF format."
                     showingAlert = true
@@ -82,3 +82,4 @@ struct DocumentManagementDetailView: View {
         DocumentManagementDetailView(viewModel: PreviewSupport.borrowerProfileViewModel)
     }
 }
+

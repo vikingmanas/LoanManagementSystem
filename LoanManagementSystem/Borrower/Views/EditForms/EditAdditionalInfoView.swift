@@ -3,7 +3,7 @@ import SwiftUI
 struct EditAdditionalInfoView: View {
     @Environment(\.presentationMode) var presentationMode
     @ObservedObject var viewModel: BorrowerProfileViewModel
-    
+
     @State private var occupation: String
     @State private var hasExistingBankAccount: Bool
     @State private var existingCustomerId: String
@@ -21,14 +21,14 @@ struct EditAdditionalInfoView: View {
         "Delhi Connaught Place Branch",
         "Bengaluru Whitefield Branch"
     ]
-    
+
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var alertTitle = ""
-    
+
     init(viewModel: BorrowerProfileViewModel) {
         self.viewModel = viewModel
-        
+
         let p = viewModel.profile
         _occupation = State(initialValue: p?.occupation ?? "")
         _hasExistingBankAccount = State(initialValue: p?.hasExistingBankAccount ?? false)
@@ -39,7 +39,7 @@ struct EditAdditionalInfoView: View {
         _nomineeName = State(initialValue: p?.nomineeName ?? "")
         _nomineeRelationship = State(initialValue: p?.nomineeRelationship ?? "Spouse")
     }
-    
+
     var body: some View {
         NavigationStack {
             Form {
@@ -51,7 +51,7 @@ struct EditAdditionalInfoView: View {
                         TextField("Enter Contact Full Name", text: $emergencyContactName)
                             .font(Font.AppTheme.input)
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Emergency Contact Mobile Number")
                             .font(Font.AppTheme.caption)
@@ -61,7 +61,7 @@ struct EditAdditionalInfoView: View {
                             .font(Font.AppTheme.input)
                     }
                 }
-                
+
                 Section(header: Text("Nominee Details")) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Nominee Full Name")
@@ -70,7 +70,7 @@ struct EditAdditionalInfoView: View {
                         TextField("Enter Nominee Full Name", text: $nomineeName)
                             .font(Font.AppTheme.input)
                     }
-                    
+
                     Picker("Nominee Relationship", selection: $nomineeRelationship) {
                         ForEach(relationships, id: \.self) { rel in
                             Text(rel).tag(rel)
@@ -78,7 +78,7 @@ struct EditAdditionalInfoView: View {
                     }
                     .font(Font.AppTheme.body)
                 }
-                
+
                 Section(header: Text("Bank Preferences")) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Occupation / Designation")
@@ -87,10 +87,10 @@ struct EditAdditionalInfoView: View {
                         TextField("Occupation", text: $occupation)
                             .font(Font.AppTheme.input)
                     }
-                    
+
                     Toggle("Existing Bank Account", isOn: $hasExistingBankAccount)
                         .font(Font.AppTheme.body)
-                    
+
                     if hasExistingBankAccount {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Existing Bank Customer ID")
@@ -100,7 +100,7 @@ struct EditAdditionalInfoView: View {
                                 .font(Font.AppTheme.input)
                         }
                     }
-                    
+
                     Picker("Preferred Home Branch", selection: $preferredBranch) {
                         ForEach(branches, id: \.self) { branch in
                             Text(branch).tag(branch)
@@ -140,13 +140,13 @@ struct EditAdditionalInfoView: View {
             }
         }
     }
-    
+
     private func saveChanges() {
         if emergencyContactName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             showError("Emergency contact name cannot be empty.")
             return
         }
-        
+
         let cleanPhone = emergencyContactNumber.replacingOccurrences(of: " ", with: "")
             .replacingOccurrences(of: "-", with: "")
             .replacingOccurrences(of: "+91", with: "")
@@ -156,13 +156,13 @@ struct EditAdditionalInfoView: View {
             showError("Emergency phone number must be exactly 10 digits.")
             return
         }
-        
+
         if nomineeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             showError("Nominee name cannot be empty.")
             return
         }
-        
-        // Save
+
+
         viewModel.updateAdditionalInfo(
             occupation: occupation,
             hasExistingBankAccount: hasExistingBankAccount,
@@ -173,10 +173,10 @@ struct EditAdditionalInfoView: View {
             nomineeName: nomineeName,
             nomineeRelationship: nomineeRelationship
         )
-        
+
         presentationMode.wrappedValue.dismiss()
     }
-    
+
     private func showError(_ message: String) {
         alertTitle = "Validation Error"
         alertMessage = message
@@ -187,3 +187,4 @@ struct EditAdditionalInfoView: View {
 #Preview {
     EditAdditionalInfoView(viewModel: BorrowerProfileViewModel())
 }
+

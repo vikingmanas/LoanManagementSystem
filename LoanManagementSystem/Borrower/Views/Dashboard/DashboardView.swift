@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Navigation Destinations
+
 public enum DashboardRoute: Hashable {
     case loanDetails(DashboardLoanAccount)
     case bankDetails(BankAccount)
@@ -15,15 +15,15 @@ public struct DashboardView: View {
     @EnvironmentObject private var tabRouter: BorrowerTabRouter
     @ObservedObject var viewModel: DashboardViewModel
     @State private var navigationPath = NavigationPath()
-    
-    // Quick Actions Sheets
+
+
     @State private var showingQuickPaySheet = false
     @State private var showingStatementSheet = false
     @State private var showingForeclosureSheet = false
     @State private var showingSupportSheet = false
     @State private var showingTopUpSheet = false
     @State private var showingProfileSheet = false
-    
+
     private var greetingTitle: String {
         guard let profile = BorrowerProfileStore.shared.profile else {
             return "Dashboard"
@@ -31,19 +31,19 @@ public struct DashboardView: View {
         let firstName = profile.fullName.components(separatedBy: " ").first ?? profile.fullName
         return "Hi, \(firstName)"
     }
-    
+
     public var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
-                // 0. CUSTOM TOP BAR (HStack showing navigation title 'Dashboard' and notification/profile toolbar)
+
                 HStack(alignment: .center) {
                     Text("Dashboard")
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundStyle(LMSColors.brandNavy)
-                    
+
                     Spacer()
-                    
-                    // Notification & Profile Toolbar Pill
+
+
                     HStack(spacing: 12) {
                         Button {
                             tabRouter.select(.history)
@@ -82,12 +82,12 @@ public struct DashboardView: View {
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
                 .padding(.top, 12)
                 .padding(.bottom, 12)
-                .background(LMSColors.background) // match screen background
+                .background(LMSColors.background)
 
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: LMSSpacing.sectionGap) {
 
-                        // 1. CUSTOMER INSIGHT & COMPLETION
+
                         if let profile = BorrowerProfileStore.shared.profile {
                             VStack(spacing: 12) {
                                 if profile.profileCompletionPercentage < 100 {
@@ -96,7 +96,7 @@ public struct DashboardView: View {
                                     }
                                     .padding(.horizontal, LMSSpacing.screenHorizontal)
                                 }
-                                
+
                                 if profile.hasExistingBankAccount, profile.existingCustomerId != nil {
                                     CustomerInsightCardView(profile: profile)
                                         .padding(.horizontal, LMSSpacing.screenHorizontal)
@@ -104,16 +104,16 @@ public struct DashboardView: View {
                             }
                             .padding(.bottom, 4)
                         }
-                        
-                        // 2. PORTFOLIO CARDS
+
+
                         PortfolioCardsSection(viewModel: viewModel) { route in
                             navigationPath.append(route)
                         }
-                        
-                        // 2b. ACCOUNT HEALTH BANNER (Moved here below Portfolio)
+
+
                         AccountHealthBanner(viewModel: viewModel)
-                        
-                        // 3. QUICK ACTION CHIPS
+
+
                         QuickActionChipsSection(
                             onPay: { showingQuickPaySheet = true },
                             onStatement: { showingStatementSheet = true },
@@ -121,19 +121,19 @@ public struct DashboardView: View {
                             onSupport: { showingSupportSheet = true },
                             onTopUp: { showingTopUpSheet = true }
                         )
-                        
-                        // 4. EMI TRACKER SECTION
+
+
                         EMITrackerView(viewModel: viewModel) {
                             viewModel.payNextEMI()
                         } onViewAllPendingTap: {
                             navigationPath.append(DashboardRoute.allPendingEMIs)
                         }
-                        
-                        // 6. GOVERNMENT SCHEMES SECTION
+
+
                         GovernmentSchemesSection(viewModel: viewModel) { scheme in
                             navigationPath.append(DashboardRoute.schemeDetails(scheme))
                         }
-                        
+
                     }
                     .padding(.top, LMSSpacing.sm)
                     .padding(.bottom, LMSSpacing.xxl)
@@ -161,7 +161,7 @@ public struct DashboardView: View {
                     SchemeDetailsView(scheme: scheme)
                 }
             }
-            // Sheets for Quick Actions
+
             .sheet(isPresented: $showingQuickPaySheet) {
                 QuickPaySheet(viewModel: viewModel)
             }
@@ -186,7 +186,7 @@ public struct DashboardView: View {
     }
 }
 
-// MARK: - Greeting
+
 
 private func dashboardFirstName(profileStore: BorrowerProfileStore, authManager: AuthManager) -> String {
     if let profileName = profileStore.profile?.fullName,
@@ -254,7 +254,7 @@ struct DashboardAvatar: View {
     }
 }
 
-// MARK: - Section 1b: Health Banner Component (Positioned below Portfolio)
+
 struct AccountHealthBanner: View {
     @ObservedObject var viewModel: DashboardViewModel
 
@@ -290,7 +290,7 @@ struct AccountHealthBanner: View {
     }
 }
 
-// MARK: - Section 1c: Profile Completion Banner
+
 struct ProfileCompletionBanner: View {
     let percentage: Int
     let action: () -> Void
@@ -341,17 +341,17 @@ struct ProfileCompletionBanner: View {
     }
 }
 
-// MARK: - Section 2: Portfolio
+
 struct PortfolioCardsSection: View {
     @ObservedObject var viewModel: DashboardViewModel
     let onNavigate: (DashboardRoute) -> Void
     @State private var showingPlaceholderAlert = false
-    
+
     var body: some View {
         SectionContainer(title: "My Portfolio") {
-//            FintechSectionLink(title: "See All") {
-//                showingPlaceholderAlert = true
-//            }
+
+
+
         } content: {
             PortfolioCarouselView(
                 viewModel: viewModel,
@@ -372,7 +372,7 @@ struct PortfolioCardsSection: View {
     }
 }
 
-// MARK: - Section 3: Quick Action Chips
+
 struct QuickActionChipsSection: View {
     let onPay: () -> Void
     let onStatement: () -> Void
@@ -395,12 +395,12 @@ struct QuickActionChipsSection: View {
 
 
 
-// MARK: - Section 6: Govt Schemes
+
 struct GovernmentSchemesSection: View {
     @ObservedObject var viewModel: DashboardViewModel
     let onSchemeTap: (GovernmentScheme) -> Void
     @State private var showingPlaceholderAlert = false
-    
+
     var body: some View {
         SectionContainer(title: "Active Schemes & Offers", subtitle: "Government + partner-backed opportunities") {
             FintechSectionLink(title: "Explore All") {
@@ -436,12 +436,12 @@ struct GovernmentSchemesSection: View {
     }
 }
 
-// MARK: - Quick Action Action Sheets & Details Views (Compilable Stubs)
+
 
 struct QuickPaySheet: View {
     @ObservedObject var viewModel: DashboardViewModel
     @Environment(\.dismiss) var dismiss
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
@@ -449,11 +449,11 @@ struct QuickPaySheet: View {
                     Image(systemName: "indianrupeesign.circle.fill")
                         .font(.system(size: 60))
                         .foregroundStyle(LMSColors.brandNavy)
-                    
+
                     Text("Confirm EMI Payment")
                         .font(.title2)
                         .fontWeight(.bold)
-                    
+
                     VStack(spacing: 12) {
                         HStack {
                             Text("EMI Amount")
@@ -474,7 +474,7 @@ struct QuickPaySheet: View {
                     .padding()
                     .background(LMSColors.surfaceElevated)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    
+
                     Button {
                         viewModel.payNextEMI()
                         dismiss()
@@ -488,7 +488,7 @@ struct QuickPaySheet: View {
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     .disabled(viewModel.bankAccount.availableBalance < nextEMI.amount)
-                    
+
                 } else {
                     AllCaughtUpCard()
                 }
@@ -508,7 +508,7 @@ struct QuickPaySheet: View {
 struct StatementSheet: View {
     @ObservedObject var viewModel: DashboardViewModel
     @Environment(\.dismiss) var dismiss
-    
+
     var body: some View {
         NavigationStack {
             List(viewModel.transactions) { tx in
@@ -535,23 +535,23 @@ struct StatementSheet: View {
 struct ForeclosureSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var showingToast = false
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
                 Image(systemName: "exclamationmark.shield.fill")
                     .font(.system(size: 60))
                     .foregroundStyle(LMSColors.coral)
-                
+
                 Text("Request Foreclosure")
                     .font(.title2)
                     .fontWeight(.bold)
-                
+
                 Text("Foreclosing your home loan will trigger a 1% processing fee of the remaining outstanding amount. Do you wish to schedule a callback with our credit advisor?")
                     .multilineTextAlignment(.center)
                     .foregroundStyle(LMSColors.textSecondary)
                     .padding()
-                
+
                 Button {
                     showingToast = true
                 } label: {
@@ -584,7 +584,7 @@ struct ForeclosureSheet: View {
 struct SupportSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var showingToast = false
-    
+
     var body: some View {
         NavigationStack {
             List {
@@ -628,24 +628,24 @@ struct TopUpSheet: View {
     @ObservedObject var viewModel: DashboardViewModel
     @Environment(\.dismiss) var dismiss
     @State private var topUpAmount = 10000.0
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
                 Image(systemName: "plus.circle.fill")
                     .font(.system(size: 60))
                     .foregroundStyle(LMSColors.emerald)
-                
+
                 Text("Top-Up Account Balance")
                     .font(.title2)
                     .fontWeight(.bold)
-                
+
                 Slider(value: $topUpAmount, in: 5000...50000, step: 5000)
-                
+
                 Text("Amount to Add: \(topUpAmount.formattedAsINR())")
                     .font(.headline)
                     .foregroundStyle(LMSColors.emerald)
-                
+
                 Button {
                     viewModel.topUpAccount(amount: topUpAmount)
                     dismiss()
@@ -671,28 +671,28 @@ struct TopUpSheet: View {
     }
 }
 
-// MARK: - Premium Detail Views
+
 
 struct LoanDetailsView: View {
     let loan: DashboardLoanAccount
-    
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // Header block
+
                 ZStack {
                     LinearGradient(colors: [LMSColors.brandNavy, LMSColors.brandNavy], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    
+
                     VStack(spacing: 12) {
                         Text(loan.loanType.uppercased())
                             .font(.caption)
                             .fontWeight(.bold)
                             .foregroundStyle(.white.opacity(0.8))
-                        
+
                         Text(loan.principalOutstanding.formattedAsINR())
                             .font(.system(size: 36, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
-                        
+
                         Text("Outstanding Principal")
                             .font(.caption)
                             .foregroundStyle(.white.opacity(0.7))
@@ -701,14 +701,14 @@ struct LoanDetailsView: View {
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .padding(.horizontal, 20)
-                
-                // Detailed Stats Grid
+
+
                 VStack(alignment: .leading, spacing: 16) {
                     Text("LOAN METRICS")
                         .font(.caption)
                         .fontWeight(.bold)
                         .foregroundStyle(LMSColors.textSecondary)
-                    
+
                     Group {
                         DetailMetricRow(label: "Account Number", value: loan.accountNumber)
                         DetailMetricRow(label: "Monthly EMI", value: loan.totalEMI.formattedAsINR())
@@ -733,24 +733,24 @@ struct BankDetailsView: View {
     let bank: BankAccount
     @ObservedObject var viewModel: DashboardViewModel
     @State private var depositAmountStr = ""
-    
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Header Card
+
                 ZStack {
                     LinearGradient(colors: [LMSColors.emerald, LMSColors.emeraldDark], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    
+
                     VStack(spacing: 12) {
                         Text(bank.accountType.rawValue.uppercased())
                             .font(.caption)
                             .fontWeight(.bold)
                             .foregroundStyle(.white.opacity(0.8))
-                        
+
                         Text(bank.availableBalance.formattedAsINR())
                             .font(.system(size: 36, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
-                        
+
                         Text("Available balance")
                             .font(.caption)
                             .foregroundStyle(.white.opacity(0.7))
@@ -759,23 +759,23 @@ struct BankDetailsView: View {
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .padding(.horizontal, 20)
-                
-                // Top-up Section inside details
+
+
                 VStack(alignment: .leading, spacing: 16) {
                     Text("ADD FUNDS")
                         .font(.caption)
                         .fontWeight(.bold)
                         .foregroundStyle(LMSColors.textSecondary)
-                    
+
                     HStack(spacing: 12) {
                         Button("+ ₹5,000") { viewModel.topUpAccount(amount: 5000) }
                             .buttonStyle(.borderedProminent)
                             .tint(LMSColors.emerald)
-                        
+
                         Button("+ ₹10,000") { viewModel.topUpAccount(amount: 10000) }
                             .buttonStyle(.borderedProminent)
                             .tint(LMSColors.emerald)
-                        
+
                         Button("+ ₹20,000") { viewModel.topUpAccount(amount: 20000) }
                             .buttonStyle(.borderedProminent)
                             .tint(LMSColors.emerald)
@@ -813,7 +813,7 @@ struct InsuranceDetailsView: View {
 
 struct AllPendingEMIsView: View {
     @ObservedObject var viewModel: DashboardViewModel
-    
+
     var body: some View {
         List(viewModel.pendingEMIs.filter { $0.status != .paid }) { emi in
             HStack {
@@ -833,27 +833,27 @@ struct AllPendingEMIsView: View {
 struct SchemeDetailsView: View {
     let scheme: GovernmentScheme
     @State private var appSubmitted = false
-    
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 Text(scheme.title)
                     .font(.title)
                     .fontWeight(.bold)
-                
+
                 Text("Category: \(scheme.category.rawValue)")
                     .foregroundStyle(LMSColors.textSecondary)
-                
+
                 Text(scheme.description)
                     .font(.body)
-                
+
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Benefit Summary").font(.headline)
                     Text(scheme.benefitSummary).foregroundStyle(LMSColors.emerald).fontWeight(.bold)
                 }
-                
+
                 Divider()
-                
+
                 if appSubmitted {
                     Text("🎉 Application Submitted Successfully! Our relationship manager will contact you in 24 hours.")
                         .foregroundStyle(LMSColors.emerald)
@@ -884,7 +884,7 @@ struct SchemeDetailsView: View {
 struct DetailMetricRow: View {
     let label: String
     let value: String
-    
+
     var body: some View {
         HStack {
             Text(label)
@@ -913,3 +913,4 @@ struct DetailMetricRow: View {
     DashboardToolbarTitle(firstName: "Rahul", customerID: "C-109482")
         .padding()
 }
+

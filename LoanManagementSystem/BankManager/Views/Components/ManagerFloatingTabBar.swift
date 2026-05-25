@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Manager Floating Tab Bar (3 Tabs)
+
 struct ManagerFloatingTabBar: View {
     @Binding var selectedTab: Int
     var unreadChatCount: Int = 0
@@ -55,7 +55,7 @@ struct ManagerFloatingTabBar: View {
     }
 }
 
-// MARK: - Tab Bar Button
+
 private struct ManagerTabBarButton: View {
     let iconName: String
     let activeIconName: String
@@ -113,3 +113,4 @@ struct VisualEffectView: UIViewRepresentable {
         uiView.effect = effect
     }
 }
+

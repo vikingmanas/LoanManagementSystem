@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Manager Profile View
+
 struct ManagerProfileView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var appState: AppStateManager
@@ -11,7 +11,7 @@ struct ManagerProfileView: View {
             ScrollView {
                 VStack(spacing: LMSSpacing.xl) {
 
-                    // MARK: 1 — Profile Header Card
+
                     VStack(spacing: LMSSpacing.md) {
                         ZStack {
                             Circle()
@@ -49,7 +49,7 @@ struct ManagerProfileView: View {
                     .background(LMSColors.surfaceElevated)
                     .clipShape(RoundedRectangle(cornerRadius: LMSRadius.xl, style: .continuous))
 
-                    // MARK: 2 — Employee Details
+
                     ManagerProfileSection(title: "Employee Information") {
                         ManagerProfileDetailRow(label: "EMPLOYEE ID", value: ManagerMockData.employeeId)
                         Divider().padding(.leading, LMSSpacing.lg)
@@ -62,14 +62,14 @@ struct ManagerProfileView: View {
                         ManagerProfileDetailRow(label: "APPROVAL AUTHORITY", value: "Up to ₹1 Cr")
                     }
 
-                    // MARK: 3 — Contact Details
+
                     ManagerProfileSection(title: "Contact Information") {
                         ManagerProfileDetailRow(label: "OFFICIAL EMAIL", value: "ramanathan.swamy@astrabank.com")
                         Divider().padding(.leading, LMSSpacing.lg)
                         ManagerProfileDetailRow(label: "WORK PHONE", value: "+91 80 4112 9900")
                     }
 
-                    // MARK: 4 — Branch Performance Stats
+
                     ManagerProfileSection(title: "Branch Performance") {
                         Grid(horizontalSpacing: LMSSpacing.md, verticalSpacing: LMSSpacing.md) {
                             GridRow {
@@ -85,7 +85,7 @@ struct ManagerProfileView: View {
                         .padding(.vertical, LMSSpacing.sm)
                     }
 
-                    // MARK: 5 — Role Switch
+
                     ManagerProfileSection(title: "System Settings") {
                         Button(action: {
                             HapticsManager.triggerImpact(style: .heavy)
@@ -122,7 +122,7 @@ struct ManagerProfileView: View {
                         }
                     }
 
-                    // MARK: 6 — Logout
+
                     Button(action: {
                         HapticsManager.triggerImpact(style: .medium)
                         dismiss()
@@ -157,7 +157,7 @@ struct ManagerProfileView: View {
     }
 }
 
-// MARK: - Profile Section Container
+
 private struct ManagerProfileSection<Content: View>: View {
     let title: String
     @ViewBuilder let content: Content
@@ -178,7 +178,7 @@ private struct ManagerProfileSection<Content: View>: View {
     }
 }
 
-// MARK: - Profile Detail Row
+
 private struct ManagerProfileDetailRow: View {
     let label: String
     let value: String
@@ -198,7 +198,7 @@ private struct ManagerProfileDetailRow: View {
     }
 }
 
-// MARK: - Profile Stat Box
+
 private struct ManagerStatBox: View {
     let title: String
     let value: String
@@ -227,3 +227,4 @@ private struct ManagerStatBox: View {
     ManagerProfileView()
         .previewManagerEnvironment()
 }
+

@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Manager Dashboard Tab View (Tab 0)
+
 struct ManagerDashboardTabView: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
     var onSelectApplicant: (ManagerApplicant) -> Void
@@ -9,15 +9,15 @@ struct ManagerDashboardTabView: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: LMSSpacing.xl) {
 
-                // MARK: 1 — Branch Overview Card
+
                 BranchOverviewCard(overview: viewModel.branchOverview)
                     .padding(.horizontal, LMSSpacing.screenHorizontal)
                     .padding(.top, LMSSpacing.md)
 
-                // MARK: 2 — KPI Cards
+
                 ManagerKPICardsView(kpis: viewModel.kpis)
 
-                // MARK: 3 — Approval Queue
+
                 ManagerApprovalQueueView(
                     viewModel: viewModel,
                     onViewAll: {
@@ -26,7 +26,7 @@ struct ManagerDashboardTabView: View {
                     onSelectApplicant: onSelectApplicant
                 )
 
-                // MARK: 4 — Analytics Charts
+
                 VStack(alignment: .leading, spacing: LMSSpacing.md) {
                     Text("Loan Analytics")
                         .font(.system(.footnote, design: .rounded).bold())
@@ -36,16 +36,16 @@ struct ManagerDashboardTabView: View {
                     ManagerAnalyticsView()
                 }
 
-                // MARK: 5 — Risk Monitoring
+
                 ManagerRiskPanelView(viewModel: viewModel)
 
-                // MARK: 6 — Officer Performance
+
                 OfficerPerformanceSection(officers: viewModel.officers)
 
-                // MARK: 7 — Reports & AI Insights
+
                 ManagerReportsView()
 
-                // MARK: 8 — Notifications Summary
+
                 NotificationsSummarySection(
                     notifications: Array(viewModel.notifications.prefix(3)),
                     unreadCount: viewModel.unreadNotificationCount
@@ -62,7 +62,7 @@ struct ManagerDashboardTabView: View {
     }
 }
 
-// MARK: - Branch Overview Card
+
 private struct BranchOverviewCard: View {
     let overview: BranchOverview
 
@@ -120,7 +120,7 @@ private struct BranchMetricPill: View {
     }
 }
 
-// MARK: - Officer Performance Section
+
 private struct OfficerPerformanceSection: View {
     let officers: [ManagerOfficer]
 
@@ -153,7 +153,7 @@ private struct OfficerPerformanceRow: View {
 
     var body: some View {
         HStack(spacing: LMSSpacing.md) {
-            // Avatar
+
             ZStack {
                 Circle()
                     .fill(LMSColors.brandNavy.opacity(0.10))
@@ -208,7 +208,7 @@ private struct OfficerPerformanceRow: View {
     }
 }
 
-// MARK: - Notifications Summary
+
 private struct NotificationsSummarySection: View {
     let notifications: [ManagerNotificationItem]
     let unreadCount: Int
@@ -284,3 +284,4 @@ private struct NotificationsSummarySection: View {
     )
     .previewManagerEnvironment()
 }
+

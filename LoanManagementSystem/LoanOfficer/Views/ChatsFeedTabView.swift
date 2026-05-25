@@ -6,21 +6,21 @@ struct ChatsFeedTabView: View {
         case unread
         case queries
     }
-    
+
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @State private var selectedFilter: ChatFilterType = .all
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Custom Native Header for Title and Filter
+
                 HStack(alignment: .center) {
                     Text(selectedFilter == .queries ? "Queries" : (selectedFilter == .unread ? "Unread Messages" : "All Messages"))
                         .font(.system(size: 34, weight: .bold, design: .rounded))
                         .foregroundColor(.primary)
-                    
+
                     Spacer()
-                    
+
                     Menu {
                         Section(header: Text("Filter By")) {
                             Button {
@@ -39,7 +39,7 @@ struct ChatsFeedTabView: View {
                                 Label("Queries", systemImage: selectedFilter == .queries ? "checkmark" : "")
                             }
                         }
-                        
+
                         if viewModel.unreadActivityCount > 0 {
                             Section {
                                 Button {
@@ -59,8 +59,8 @@ struct ChatsFeedTabView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
                 .padding(.bottom, 4)
-                
-                // Timeline Content
+
+
                 let items = viewModel.activityFeed.filter { item in
                     switch selectedFilter {
                     case .all: return true
@@ -68,7 +68,7 @@ struct ChatsFeedTabView: View {
                     case .queries: return item.eventType == .queryRaised
                     }
                 }
-                
+
                 if items.isEmpty {
                     Spacer()
                     ContentUnavailableView(
@@ -79,7 +79,7 @@ struct ChatsFeedTabView: View {
                     Spacer()
                 } else {
                     List {
-                        // Quick Action: Mark all read
+
                         if viewModel.unreadActivityCount > 0 && selectedFilter != .queries {
                             Button(action: {
                                 HapticsManager.triggerImpact(style: .medium)
@@ -97,7 +97,7 @@ struct ChatsFeedTabView: View {
                             }
                             .listRowBackground(Color.clear)
                         }
-                        
+
                         ForEach(items) { item in
                             NavigationLink(destination: ChatDetailResolverView(item: item)
                                 .onAppear {
@@ -135,7 +135,7 @@ struct ChatsFeedTabView: View {
     }
 }
 
-// Chat helper types
+
 struct SimulatedChatMessage: Identifiable {
     let id = UUID()
     enum Sender {
@@ -152,10 +152,10 @@ struct ChatDetailResolverView: View {
     let item: ActivityFeedItem
     @State private var chatText = ""
     @State private var messages: [SimulatedChatMessage] = []
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            // Header details
+
             HStack(spacing: 12) {
                 Circle()
                     .fill(AppTheme.brandNavy.opacity(0.1))
@@ -165,7 +165,7 @@ struct ChatDetailResolverView: View {
                             .font(.system(.subheadline, design: .rounded).bold())
                             .foregroundStyle(AppTheme.brandNavy)
                     )
-                
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.borrowerName)
                         .font(.system(.subheadline, design: .rounded).bold())
@@ -177,8 +177,8 @@ struct ChatDetailResolverView: View {
             }
             .padding()
             .background(AppTheme.neutralSurface)
-            
-            // Messages List
+
+
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 14) {
@@ -197,10 +197,10 @@ struct ChatDetailResolverView: View {
                     }
                 }
             }
-            
+
             Divider()
-            
-            // Native Typing Row
+
+
             HStack(spacing: 12) {
                 Button(action: {}) {
                     Image(systemName: "plus")
@@ -210,12 +210,12 @@ struct ChatDetailResolverView: View {
                         .background(Color(.systemGray5))
                         .clipShape(Circle())
                 }
-                
+
                 HStack {
                     TextField("Message", text: $chatText)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
-                    
+
                     if !chatText.trimmingCharacters(in: .whitespaces).isEmpty {
                         Button(action: sendChatMessage) {
                             Image(systemName: "arrow.up.circle.fill")
@@ -260,8 +260,8 @@ struct ChatDetailResolverView: View {
             loadSimulatedChat()
         }
     }
-    
-    // Simulate interactive chatting
+
+
     private func loadSimulatedChat() {
         if messages.isEmpty {
             messages = [
@@ -278,19 +278,19 @@ struct ChatDetailResolverView: View {
             ]
         }
     }
-    
+
     private func sendChatMessage() {
         guard !chatText.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        
-        // 1. Append officer message
+
+
         let newMsg = SimulatedChatMessage(sender: .officer, text: chatText, time: "Just now")
         messages.append(newMsg)
         let sentText = chatText
         chatText = ""
-        
+
         HapticsManager.triggerImpact(style: .medium)
-        
-        // 2. Simulate user reply after 1.5 seconds
+
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
             HapticsManager.triggerImpact(style: .light)
             let replyText: String
@@ -301,7 +301,7 @@ struct ChatDetailResolverView: View {
             } else {
                 replyText = "Thank you, Officer Arjun. I appreciate the guidance and will coordinate the details."
             }
-            
+
             messages.append(SimulatedChatMessage(sender: .borrower, text: replyText, time: "Just now"))
         }
     }
@@ -309,13 +309,13 @@ struct ChatDetailResolverView: View {
 
 struct ChatMessageBubble: View {
     let msg: SimulatedChatMessage
-    
+
     var body: some View {
         HStack {
             if msg.sender == .officer {
                 Spacer()
             }
-            
+
             if msg.sender == .system {
                 Spacer()
                 Text(msg.text)
@@ -342,14 +342,14 @@ struct ChatMessageBubble: View {
                                 topTrailingRadius: 18
                             )
                         )
-                    
+
                     Text(msg.time)
                         .font(.system(.caption2, design: .rounded))
                         .foregroundStyle(LMSColors.textSecondary)
                         .padding(.horizontal, 4)
                 }
             }
-            
+
             if msg.sender == .borrower {
                 Spacer()
             }
@@ -357,29 +357,29 @@ struct ChatMessageBubble: View {
         .contextMenu {
             if msg.sender != .system {
                 Button {
-                    // Copy to clipboard
+
                     UIPasteboard.general.string = msg.text
                     HapticsManager.triggerImpact(style: .light)
                 } label: {
                     Label("Copy", systemImage: "doc.on.doc")
                 }
-                
+
                 Button {
-                    // Mock Reply Action
+
                     HapticsManager.triggerImpact(style: .light)
                 } label: {
                     Label("Reply", systemImage: "arrowshape.turn.up.left")
                 }
-                
+
                 Button {
-                    // Mock Translate
+
                     HapticsManager.triggerImpact(style: .light)
                 } label: {
                     Label("Translate", systemImage: "character.book.closed")
                 }
-                
+
                 Button {
-                    // Mock More
+
                     HapticsManager.triggerImpact(style: .light)
                 } label: {
                     Label("More...", systemImage: "ellipsis.circle")
@@ -393,3 +393,4 @@ struct ChatMessageBubble: View {
     ChatsFeedTabView(viewModel: PreviewSupport.loanOfficerViewModel)
         .previewLoanOfficerEnvironment()
 }
+

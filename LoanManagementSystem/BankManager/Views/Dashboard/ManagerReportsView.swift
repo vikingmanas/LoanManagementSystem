@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Manager Reports & AI Insights View
+
 struct ManagerReportsView: View {
     @State private var showExportSheet = false
     @State private var showAuditLog = false
@@ -14,7 +14,7 @@ struct ManagerReportsView: View {
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
 
             VStack(spacing: LMSSpacing.md) {
-                // Quick Action Buttons
+
                 HStack(spacing: LMSSpacing.md) {
                     ReportButton(
                         icon: "doc.text.fill",
@@ -51,7 +51,7 @@ struct ManagerReportsView: View {
                     }
                 }
 
-                // AI Insight Placeholder
+
                 AIInsightCard()
             }
             .padding(.horizontal, LMSSpacing.screenHorizontal)
@@ -83,7 +83,7 @@ struct ManagerReportsView: View {
     }
 }
 
-// MARK: - Report Button
+
 private struct ReportButton: View {
     let icon: String
     let title: String
@@ -111,7 +111,7 @@ private struct ReportButton: View {
     }
 }
 
-// MARK: - AI Insight Card
+
 private struct AIInsightCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: LMSSpacing.md) {
@@ -158,7 +158,7 @@ private struct AIInsightCard: View {
     }
 }
 
-// MARK: - Report Export Sheet
+
 private struct ManagerReportExportSheet: View {
     @Environment(\.dismiss) var dismiss
     @Binding var isExporting: Bool
@@ -212,7 +212,7 @@ private struct ManagerReportExportSheet: View {
     }
 }
 
-// MARK: - Audit Log Sheet
+
 private struct ManagerAuditLogSheet: View {
     @Environment(\.dismiss) var dismiss
 
@@ -272,3 +272,4 @@ private struct ManagerAuditLogSheet: View {
     .padding()
     .previewManagerEnvironment()
 }
+

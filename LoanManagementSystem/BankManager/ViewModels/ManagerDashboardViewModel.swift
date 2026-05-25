@@ -1,18 +1,18 @@
 import SwiftUI
 import Combine
 
-// MARK: - Manager Dashboard ViewModel
+
 @MainActor
 final class ManagerDashboardViewModel: ObservableObject {
 
-    // MARK: - Tab State
+
     @Published var selectedTab: Int = 0
 
-    // MARK: - Loading
+
     @Published var isLoading: Bool = false
     @Published var isRefreshing: Bool = false
 
-    // MARK: - Data
+
     @Published var applicants: [ManagerApplicant] = []
     @Published var officers: [ManagerOfficer] = []
     @Published var kpis: [ManagerKPI] = []
@@ -21,7 +21,7 @@ final class ManagerDashboardViewModel: ObservableObject {
     @Published var branchOverview: BranchOverview = ManagerMockData.branchOverview
     @Published var auditEvents: [ManagerAuditEvent] = []
 
-    // MARK: - Filters (Applicants Tab)
+
     @Published var applicantSearchQuery: String = ""
     @Published var selectedStatusFilter: ManagerApplicantStatus? = nil
     @Published var selectedOfficerFilter: UUID? = nil
@@ -37,7 +37,7 @@ final class ManagerDashboardViewModel: ObservableObject {
         case riskDesc = "Highest Risk"
     }
 
-    // MARK: - Communication
+
     @Published var chatSearchQuery: String = ""
     @Published var selectedChatFilter: ChatFilterMode = .all
 
@@ -47,7 +47,7 @@ final class ManagerDashboardViewModel: ObservableObject {
         case announcements = "Announcements"
     }
 
-    // MARK: - Computed Properties
+
 
     var unreadNotificationCount: Int {
         notifications.filter { !$0.isRead }.count
@@ -64,27 +64,27 @@ final class ManagerDashboardViewModel: ObservableObject {
     var filteredApplicants: [ManagerApplicant] {
         var result = applicants
 
-        // Status filter
+
         if let status = selectedStatusFilter {
             result = result.filter { $0.status == status }
         }
 
-        // Officer filter
+
         if let officerId = selectedOfficerFilter {
             result = result.filter { $0.assignedOfficerId == officerId }
         }
 
-        // Risk filter
+
         if let risk = selectedRiskFilter {
             result = result.filter { $0.riskLevel == risk }
         }
 
-        // Loan type filter
+
         if let loanType = selectedLoanTypeFilter {
             result = result.filter { $0.loanType == loanType }
         }
 
-        // Search
+
         let query = applicantSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         if !query.isEmpty {
             result = result.filter {
@@ -94,7 +94,7 @@ final class ManagerDashboardViewModel: ObservableObject {
             }
         }
 
-        // Sort
+
         switch applicantSortOrder {
         case .dateDesc:
             result.sort { $0.submissionDate > $1.submissionDate }
@@ -129,11 +129,11 @@ final class ManagerDashboardViewModel: ObservableObject {
         case .escalations:
             result = result.filter { $0.priority == .urgent }
         case .announcements:
-            // placeholder — no announcements filter yet
+
             break
         }
 
-        // Pinned first, then by timestamp
+
         result.sort { lhs, rhs in
             if lhs.isPinned != rhs.isPinned { return lhs.isPinned }
             return lhs.timestamp > rhs.timestamp
@@ -142,11 +142,11 @@ final class ManagerDashboardViewModel: ObservableObject {
         return result
     }
 
-    // MARK: - Data Fetching
+
 
     func fetchDashboardData() async {
         isLoading = true
-        // Simulate API call
+
         try? await Task.sleep(nanoseconds: 600_000_000)
 
         applicants = ManagerMockData.applicants
@@ -165,7 +165,7 @@ final class ManagerDashboardViewModel: ObservableObject {
         isRefreshing = false
     }
 
-    // MARK: - Applicant Actions
+
 
     func approveApplicant(_ id: UUID, remarks: String) {
         guard let index = applicants.firstIndex(where: { $0.id == id }) else { return }
@@ -213,7 +213,7 @@ final class ManagerDashboardViewModel: ObservableObject {
         HapticsManager.triggerImpact(style: .medium)
     }
 
-    // MARK: - Notification Actions
+
 
     func markNotificationRead(_ id: UUID) {
         guard let index = notifications.firstIndex(where: { $0.id == id }) else { return }
@@ -230,7 +230,7 @@ final class ManagerDashboardViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Chat Actions
+
 
     func sendMessage(_ text: String, toConversation conversationId: UUID) {
         guard let index = conversations.firstIndex(where: { $0.id == conversationId }),
@@ -251,7 +251,7 @@ final class ManagerDashboardViewModel: ObservableObject {
 
         HapticsManager.triggerImpact(style: .light)
 
-        // Simulate officer reply
+
         let convIdx = index
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
             guard let self = self else { return }
@@ -275,7 +275,7 @@ final class ManagerDashboardViewModel: ObservableObject {
         conversations[index].unreadCount = 0
     }
 
-    // MARK: - Navigate to Applicants Tab with Filter
+
 
     func navigateToApplicantsWithPending() {
         selectedStatusFilter = .sentToManager
@@ -293,3 +293,4 @@ final class ManagerDashboardViewModel: ObservableObject {
         applicantSortOrder = .dateDesc
     }
 }
+

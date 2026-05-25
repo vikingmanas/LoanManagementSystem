@@ -4,13 +4,13 @@ struct LoanOfficerProfileView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
-    
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    
-                    // 1. OFFICER PROFILE HEADER CARD
+
+
                     VStack(spacing: 12) {
                         ZStack {
                             Circle()
@@ -21,21 +21,21 @@ struct LoanOfficerProfileView: View {
                                 ))
                                 .frame(width: 80, height: 80)
                                 .shadow(color: AppTheme.actionBlue.opacity(0.2), radius: 8, x: 0, y: 4)
-                            
+
                             Text("AK")
                                 .font(.system(size: 32, weight: .bold, design: .rounded))
                                 .foregroundStyle(.white)
                         }
-                        
+
                         VStack(spacing: 4) {
                             Text("Arjun Kashyap")
                                 .font(.system(.title3, design: .rounded).bold())
                                 .foregroundStyle(LMSColors.textPrimary)
-                            
+
                             Text("Senior Loan Officer")
                                 .font(.system(.subheadline, design: .rounded).weight(.semibold))
                                 .foregroundStyle(AppTheme.actionBlue)
-                            
+
                             Text("Bengaluru Central Branch (ID: BR-492)")
                                 .font(.system(.caption, design: .rounded))
                                 .foregroundStyle(LMSColors.textSecondary)
@@ -46,14 +46,14 @@ struct LoanOfficerProfileView: View {
                     .background(AppTheme.neutralSurface)
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .padding(.horizontal, 16)
-                    
-                    // 2. EMPLOYEE DETAILS SECTION
+
+
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Employee Information")
                             .font(.system(.caption, design: .rounded).bold())
                             .foregroundStyle(LMSColors.textSecondary)
                             .padding(.leading, 20)
-                        
+
                         VStack(spacing: 0) {
                             ProfileDetailRow(label: "EMPLOYEE ID", value: "EMP-2024-9021")
                             Divider().padding(.leading, 16)
@@ -67,14 +67,14 @@ struct LoanOfficerProfileView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .padding(.horizontal, 16)
                     }
-                    
-                    // 3. CONTACT DETAILS SECTION
+
+
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Contact Information")
                             .font(.system(.caption, design: .rounded).bold())
                             .foregroundStyle(LMSColors.textSecondary)
                             .padding(.leading, 20)
-                        
+
                         VStack(spacing: 0) {
                             ProfileDetailRow(label: "OFFICIAL EMAIL", value: "arjun.kashyap@astrabank.com")
                             Divider().padding(.leading, 16)
@@ -84,14 +84,14 @@ struct LoanOfficerProfileView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .padding(.horizontal, 16)
                     }
-                    
-                    // 4. PERFORMANCE STATS SECTION
+
+
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Performance & Operations")
                             .font(.system(.caption, design: .rounded).bold())
                             .foregroundStyle(LMSColors.textSecondary)
                             .padding(.leading, 20)
-                        
+
                         Grid(horizontalSpacing: 12, verticalSpacing: 12) {
                             GridRow {
                                 MetricBox(title: "LOANS VERIFIED", value: "482", subtitle: "Year to Date")
@@ -104,14 +104,14 @@ struct LoanOfficerProfileView: View {
                         }
                         .padding(.horizontal, 16)
                     }
-                    
-                    // 5. ROLE CONFIGURATION & ACTIONS (SWITCH TO BORROWER)
+
+
                     VStack(alignment: .leading, spacing: 12) {
                         Text("System Settings")
                             .font(.system(.caption, design: .rounded).bold())
                             .foregroundStyle(LMSColors.textSecondary)
                             .padding(.leading, 20)
-                        
+
                         VStack(spacing: 0) {
                             Button(action: {
                                 HapticsManager.triggerImpact(style: .heavy)
@@ -123,12 +123,12 @@ struct LoanOfficerProfileView: View {
                                         Circle()
                                             .fill(AppTheme.actionBlue.opacity(0.12))
                                             .frame(width: 36, height: 36)
-                                        
+
                                         Image(systemName: "arrow.left.arrow.right.circle.fill")
                                             .foregroundStyle(AppTheme.actionBlue)
                                             .font(LMSFont.title3)
                                     }
-                                    
+
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("Switch to Borrower Mode")
                                             .font(.system(.subheadline, design: .rounded).bold())
@@ -137,9 +137,9 @@ struct LoanOfficerProfileView: View {
                                             .font(.system(size: 10))
                                             .foregroundStyle(LMSColors.textSecondary)
                                     }
-                                    
+
                                     Spacer()
-                                    
+
                                     Image(systemName: "chevron.right")
                                         .font(LMSFont.caption.bold())
                                         .foregroundStyle(LMSColors.textSecondary)
@@ -152,8 +152,8 @@ struct LoanOfficerProfileView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .padding(.horizontal, 16)
                     }
-                    
-                    // 6. LOGOUT BUTTON
+
+
                     Button(action: {
                         HapticsManager.triggerImpact(style: .medium)
                         dismiss()
@@ -170,7 +170,7 @@ struct LoanOfficerProfileView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
-                    
+
                     Spacer()
                         .frame(height: 16)
                 }
@@ -188,12 +188,12 @@ struct LoanOfficerProfileView: View {
     }
 }
 
-// Sub-components
+
 
 struct ProfileDetailRow: View {
     let label: String
     let value: String
-    
+
     var body: some View {
         HStack {
             Text(label)
@@ -213,17 +213,17 @@ struct MetricBox: View {
     let title: String
     let value: String
     let subtitle: String
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.system(size: 8, weight: .bold, design: .rounded))
                 .foregroundStyle(LMSColors.textSecondary)
-            
+
             Text(value)
                 .font(.system(.title2, design: .rounded).bold())
                 .foregroundStyle(AppTheme.brandNavy)
-            
+
             Text(subtitle)
                 .font(.system(size: 9))
                 .foregroundStyle(LMSColors.textSecondary)
@@ -239,3 +239,4 @@ struct MetricBox: View {
     LoanOfficerProfileView()
         .previewLoanOfficerEnvironment()
 }
+

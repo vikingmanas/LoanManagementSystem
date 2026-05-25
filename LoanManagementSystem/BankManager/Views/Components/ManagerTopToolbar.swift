@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Manager Top Toolbar
+
 struct ManagerTopToolbar: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
     var onNotificationPressed: () -> Void
@@ -10,7 +10,7 @@ struct ManagerTopToolbar: View {
 
     var body: some View {
         HStack(alignment: .center) {
-            // Left — Greeting + Branch
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(greetingText)
                     .font(.system(.title3, design: .rounded).bold())
@@ -23,9 +23,9 @@ struct ManagerTopToolbar: View {
 
             Spacer()
 
-            // Right — Action Buttons
+
             HStack(spacing: 10) {
-                // Search
+
                 ToolbarCircleButton(
                     icon: "magnifyingglass",
                     action: {
@@ -34,7 +34,7 @@ struct ManagerTopToolbar: View {
                     }
                 )
 
-                // Notifications
+
                 ToolbarCircleButton(
                     icon: "bell.fill",
                     badge: viewModel.unreadNotificationCount,
@@ -45,7 +45,7 @@ struct ManagerTopToolbar: View {
                 )
                 .accessibilityLabel("Notifications. \(viewModel.unreadNotificationCount) unread.")
 
-                // Settings
+
                 ToolbarCircleButton(
                     icon: "gearshape.fill",
                     action: {
@@ -54,7 +54,7 @@ struct ManagerTopToolbar: View {
                     }
                 )
 
-                // Profile Avatar
+
                 Button(action: {
                     HapticsManager.triggerImpact(style: .medium)
                     onProfilePressed()
@@ -100,7 +100,7 @@ struct ManagerTopToolbar: View {
     }
 }
 
-// MARK: - Toolbar Circle Button
+
 private struct ToolbarCircleButton: View {
     let icon: String
     var badge: Int = 0
@@ -145,3 +145,4 @@ private struct ToolbarCircleButton: View {
         onSearchPressed: {}
     )
 }
+

@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Manager Risk Panel View
+
 struct ManagerRiskPanelView: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
 
@@ -16,7 +16,7 @@ struct ManagerRiskPanelView: View {
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
 
             VStack(spacing: LMSSpacing.md) {
-                // NPL + Risk Summary Row
+
                 HStack(spacing: LMSSpacing.md) {
                     RiskGaugeCard(
                         title: "NPL Rate",
@@ -35,7 +35,7 @@ struct ManagerRiskPanelView: View {
                     )
                 }
 
-                // High-Risk Loans
+
                 if !highRiskApplicants.isEmpty {
                     VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                         HStack {
@@ -85,7 +85,7 @@ struct ManagerRiskPanelView: View {
     }
 }
 
-// MARK: - Risk Gauge Card
+
 private struct RiskGaugeCard: View {
     let title: String
     let value: String
@@ -101,7 +101,7 @@ private struct RiskGaugeCard: View {
                 .foregroundStyle(LMSColors.textSecondary)
 
             HStack(spacing: LMSSpacing.sm) {
-                // Mini ring
+
                 ZStack {
                     Circle()
                         .stroke(tint.opacity(0.15), lineWidth: 4)
@@ -140,3 +140,4 @@ private struct RiskGaugeCard: View {
     ManagerRiskPanelView(viewModel: PreviewSupport.managerViewModel)
         .previewManagerEnvironment()
 }
+

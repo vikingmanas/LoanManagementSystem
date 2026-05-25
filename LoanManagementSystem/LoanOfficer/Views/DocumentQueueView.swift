@@ -3,13 +3,13 @@ import SwiftUI
 struct DocumentQueueView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onReviewTapped: (DocumentQueueItem) -> Void
-    
+
     @State private var showingTodayQueue = false
-    
+
     private var todayItems: [DocumentQueueItem] {
         Array(viewModel.todayDocumentQueueList.prefix(5))
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -105,19 +105,19 @@ struct DocumentQueueView: View {
     }
 }
 
-// MARK: - Full today's queue
+
 
 struct TodayDocumentReviewQueueView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onReviewTapped: (DocumentQueueItem) -> Void
     @Environment(\.dismiss) private var dismiss
-    
+
     private var todayDateLabel: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE, d MMM yyyy"
         return formatter.string(from: Date())
     }
-    
+
     var body: some View {
         NavigationStack {
             Group {
@@ -134,7 +134,7 @@ struct TodayDocumentReviewQueueView: View {
                                 .font(LMSFont.footnote)
                                 .foregroundStyle(LMSColors.textSecondary)
                         }
-                        
+
                         Section("Needs Review") {
                             let needsReview = viewModel.todayDocumentQueueList.filter {
                                 $0.status == .uploaded || $0.status == .reUploaded || $0.status == .underReview
@@ -149,7 +149,7 @@ struct TodayDocumentReviewQueueView: View {
                                 }
                             }
                         }
-                        
+
                         let completed = viewModel.todayDocumentQueueList.filter { $0.status == .verified }
                         if !completed.isEmpty {
                             Section("Reviewed Today") {
@@ -171,7 +171,7 @@ struct TodayDocumentReviewQueueView: View {
             }
         }
     }
-    
+
     private func todayQueueRow(_ item: DocumentQueueItem) -> some View {
         Button {
             HapticsManager.triggerImpact(style: .medium)
@@ -185,7 +185,7 @@ struct TodayDocumentReviewQueueView: View {
                     Image(systemName: item.docType.symbol)
                         .foregroundStyle(item.status.themeColor)
                 }
-                
+
                 VStack(alignment: .leading, spacing: 3) {
                     Text(item.borrowerName)
                         .font(LMSFont.subheadline.weight(.semibold))
@@ -197,9 +197,9 @@ struct TodayDocumentReviewQueueView: View {
                         .font(LMSFont.caption2)
                         .foregroundStyle(LMSColors.actionBlue)
                 }
-                
+
                 Spacer()
-                
+
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(LMSColors.textTertiary)
@@ -209,17 +209,17 @@ struct TodayDocumentReviewQueueView: View {
     }
 }
 
-// MARK: - Row
+
 
 struct DocumentStatusRow: View {
     typealias DocumentStatus = OfficerDocumentStatus
     let item: DocumentQueueItem
     var onReview: () -> Void
-    
+
     private var canReview: Bool {
         item.status == .uploaded || item.status == .reUploaded || item.status == .underReview || item.status == .verified
     }
-    
+
     var body: some View {
         Button {
             guard canReview else { return }
@@ -231,28 +231,28 @@ struct DocumentStatusRow: View {
                     Circle()
                         .fill(item.status.themeColor.opacity(0.12))
                         .frame(width: 38, height: 38)
-                    
+
                     Image(systemName: item.docType.symbol)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(item.status.themeColor)
                 }
-                
+
                 VStack(alignment: .leading, spacing: 3) {
                     Text(item.borrowerName)
                         .font(.system(.caption, design: .rounded).bold())
                         .foregroundStyle(LMSColors.textPrimary)
-                    
+
                     Text(item.docType.rawValue)
                         .font(.system(.caption2, design: .rounded).weight(.semibold))
                         .foregroundStyle(LMSColors.textSecondary)
-                    
+
                     Text("Uploaded \(RelativeDateFormatter.shared.relativeString(from: item.submittedDate))")
                         .font(.system(.caption2, design: .rounded))
                         .foregroundStyle(LMSColors.actionBlue)
                 }
-                
+
                 Spacer()
-                
+
                 Text(statusLabel(for: item.status))
                     .font(.system(.caption2, design: .rounded).bold())
                     .foregroundStyle(item.status == .pending ? AppTheme.warningAmber : .white)
@@ -260,7 +260,7 @@ struct DocumentStatusRow: View {
                     .padding(.vertical, 4)
                     .background(item.status == .pending ? AppTheme.warningAmber.opacity(0.15) : item.status.themeColor)
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                
+
                 if needsReviewAction {
                     HStack(spacing: 2) {
                         Text("Review")
@@ -284,11 +284,11 @@ struct DocumentStatusRow: View {
         .accessibilityLabel("\(item.borrowerName), \(item.docType.rawValue), uploaded \(RelativeDateFormatter.shared.relativeString(from: item.submittedDate)). \(statusLabel(for: item.status)).")
         .accessibilityHint(canReview ? "Opens document review." : "")
     }
-    
+
     private var needsReviewAction: Bool {
         item.status == .uploaded || item.status == .reUploaded || item.status == .underReview
     }
-    
+
     private func statusLabel(for status: DocumentStatus) -> String {
         switch status {
         case .pending: return "Awaiting Upload"
@@ -308,3 +308,4 @@ struct DocumentStatusRow: View {
     )
     .padding()
 }
+

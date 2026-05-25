@@ -1,11 +1,11 @@
 import SwiftUI
 
-// MARK: - Manager Analytics View
+
 struct ManagerAnalyticsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.xl) {
 
-            // MARK: 1 — Monthly Disbursement Chart
+
             VStack(alignment: .leading, spacing: LMSSpacing.md) {
                 HStack {
                     Text("Monthly Disbursements")
@@ -24,7 +24,7 @@ struct ManagerAnalyticsView: View {
             .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
             .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
 
-            // MARK: 2 — Approval vs Rejection Donut
+
             VStack(alignment: .leading, spacing: LMSSpacing.md) {
                 Text("Approval vs Rejection")
                     .font(.system(.footnote, design: .rounded).bold())
@@ -37,7 +37,7 @@ struct ManagerAnalyticsView: View {
             .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
             .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
 
-            // MARK: 3 — Portfolio Distribution
+
             VStack(alignment: .leading, spacing: LMSSpacing.md) {
                 Text("Portfolio Distribution")
                     .font(.system(.footnote, design: .rounded).bold())
@@ -67,7 +67,7 @@ struct ManagerAnalyticsView: View {
     }
 }
 
-// MARK: - Monthly Bar Chart
+
 private struct MonthlyBarChart: View {
     let data: [(String, Double)]
     @State private var animated = false
@@ -110,7 +110,7 @@ private struct MonthlyBarChart: View {
     }
 }
 
-// MARK: - Approval Donut Chart
+
 private struct ApprovalDonutChart: View {
     let stats: (approved: Int, rejected: Int, pending: Int)
     @State private var animated = false
@@ -122,26 +122,26 @@ private struct ApprovalDonutChart: View {
     var body: some View {
         HStack(spacing: LMSSpacing.xl) {
             ZStack {
-                // Background ring
+
                 Circle()
                     .stroke(LMSColors.separatorLight, lineWidth: 10)
                     .frame(width: 90, height: 90)
 
-                // Approved
+
                 Circle()
                     .trim(from: 0, to: animated ? Double(stats.approved) / total : 0)
                     .stroke(LMSColors.emerald, style: StrokeStyle(lineWidth: 10, lineCap: .round))
                     .frame(width: 90, height: 90)
                     .rotationEffect(.degrees(-90))
 
-                // Rejected
+
                 Circle()
                     .trim(from: Double(stats.approved) / total, to: animated ? Double(stats.approved + stats.rejected) / total : Double(stats.approved) / total)
                     .stroke(LMSColors.coral, style: StrokeStyle(lineWidth: 10, lineCap: .round))
                     .frame(width: 90, height: 90)
                     .rotationEffect(.degrees(-90))
 
-                // Center text
+
                 VStack(spacing: 1) {
                     Text("\(Int(Double(stats.approved) / total * 100))%")
                         .font(.system(size: 18, weight: .bold, design: .rounded))
@@ -188,7 +188,7 @@ private struct DonutLegendItem: View {
     }
 }
 
-// MARK: - Portfolio Distribution Bar
+
 private struct PortfolioDistributionBar: View {
     let data: [(String, Double, Color)]
 
@@ -214,3 +214,4 @@ private struct PortfolioDistributionBar: View {
     }
     .previewManagerEnvironment()
 }
+

@@ -3,7 +3,7 @@ import SwiftUI
 struct SecurityDetailView: View {
     @State private var biometricEnabled = true
     @State private var doubleAuthEnabled = false
-    
+
     var body: some View {
         Form {
             Section(header: Text("Biometrics")) {
@@ -15,7 +15,7 @@ struct SecurityDetailView: View {
                     }
                 }
             }
-            
+
             Section(header: Text("Two-Factor Authentication")) {
                 Toggle(isOn: $doubleAuthEnabled) {
                     HStack {
@@ -25,7 +25,7 @@ struct SecurityDetailView: View {
                     }
                 }
             }
-            
+
             Section(header: Text("Device Management")) {
                 HStack {
                     VStack(alignment: .leading) {
@@ -57,3 +57,4 @@ struct SecurityDetailView: View {
         SecurityDetailView()
     }
 }
+

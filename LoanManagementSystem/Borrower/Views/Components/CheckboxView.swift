@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// iOS-native checkbox with animated SF Symbol toggle and brand styling.
+
 struct CheckboxView: View {
     @Binding var isChecked: Bool
     var label: String
@@ -35,3 +35,4 @@ struct CheckboxView: View {
     CheckboxView(isChecked: .constant(true), label: "I agree to the Terms and Conditions")
         .padding()
 }
+

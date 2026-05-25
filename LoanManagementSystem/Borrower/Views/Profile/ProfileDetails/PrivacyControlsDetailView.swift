@@ -4,7 +4,7 @@ struct PrivacyControlsDetailView: View {
     @State private var shareWithBureaus = true
     @State private var trackingEnabled = false
     @State private var personalizedAds = false
-    
+
     var body: some View {
         Form {
             Section(header: Text("Credit Bureaus"), footer: Text("Disabling this may delay credit limits check and loan dispatch speed.")) {
@@ -21,7 +21,7 @@ struct PrivacyControlsDetailView: View {
                     }
                 }
             }
-            
+
             Section(header: Text("Diagnostics")) {
                 Toggle(isOn: $trackingEnabled) {
                     HStack {
@@ -36,7 +36,7 @@ struct PrivacyControlsDetailView: View {
                     }
                 }
             }
-            
+
             Section(header: Text("Personalization")) {
                 Toggle(isOn: $personalizedAds) {
                     HStack {
@@ -62,3 +62,4 @@ struct PrivacyControlsDetailView: View {
         PrivacyControlsDetailView()
     }
 }
+

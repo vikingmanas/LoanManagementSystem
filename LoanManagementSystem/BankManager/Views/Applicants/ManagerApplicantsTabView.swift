@@ -1,15 +1,15 @@
 import SwiftUI
 
-// MARK: - Manager Applicants Tab View (Tab 1)
+
 struct ManagerApplicantsTabView: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
     var onSelectApplicant: (ManagerApplicant) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
-            // MARK: — Search & Filters
+
             VStack(spacing: LMSSpacing.md) {
-                // Search Bar
+
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(LMSColors.textSecondary)
@@ -28,7 +28,7 @@ struct ManagerApplicantsTabView: View {
                 .background(LMSColors.surfaceElevated)
                 .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
 
-                // Status Filter Chips
+
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: LMSSpacing.sm) {
                         ManagerFilterChip(
@@ -47,9 +47,9 @@ struct ManagerApplicantsTabView: View {
                     }
                 }
 
-                // Secondary Filters
+
                 HStack(spacing: LMSSpacing.sm) {
-                    // Risk filter
+
                     Menu {
                         Button("All Risks") { viewModel.selectedRiskFilter = nil }
                         ForEach(ManagerRiskLevel.allCases, id: \.self) { risk in
@@ -63,7 +63,7 @@ struct ManagerApplicantsTabView: View {
                         )
                     }
 
-                    // Loan type filter
+
                     Menu {
                         Button("All Types") { viewModel.selectedLoanTypeFilter = nil }
                         ForEach(ManagerLoanType.allCases, id: \.self) { type in
@@ -77,7 +77,7 @@ struct ManagerApplicantsTabView: View {
                         )
                     }
 
-                    // Officer filter
+
                     Menu {
                         Button("All Officers") { viewModel.selectedOfficerFilter = nil }
                         ForEach(viewModel.officers) { officer in
@@ -95,7 +95,7 @@ struct ManagerApplicantsTabView: View {
 
                     Spacer()
 
-                    // Sort
+
                     Menu {
                         ForEach(ManagerDashboardViewModel.ApplicantSortOrder.allCases, id: \.self) { order in
                             Button(order.rawValue) {
@@ -112,7 +112,7 @@ struct ManagerApplicantsTabView: View {
                     }
                 }
 
-                // Active filters clear button
+
                 if viewModel.selectedStatusFilter != nil || viewModel.selectedRiskFilter != nil ||
                    viewModel.selectedLoanTypeFilter != nil || viewModel.selectedOfficerFilter != nil {
                     Button(action: {
@@ -135,7 +135,7 @@ struct ManagerApplicantsTabView: View {
 
             Divider()
 
-            // MARK: — Applicants List
+
             let filtered = viewModel.filteredApplicants
 
             if filtered.isEmpty {
@@ -159,7 +159,7 @@ struct ManagerApplicantsTabView: View {
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: LMSSpacing.sm) {
-                        // Results count
+
                         Text("\(filtered.count) applicant\(filtered.count == 1 ? "" : "s")")
                             .font(.system(.caption2, design: .rounded).bold())
                             .foregroundStyle(LMSColors.textTertiary)
@@ -185,7 +185,7 @@ struct ManagerApplicantsTabView: View {
     }
 }
 
-// MARK: - Filter Chip
+
 private struct ManagerFilterChip: View {
     let title: String
     let isSelected: Bool
@@ -212,7 +212,7 @@ private struct ManagerFilterChip: View {
     }
 }
 
-// MARK: - Secondary Filter Label
+
 private struct SecondaryFilterLabel: View {
     let icon: String
     let text: String
@@ -238,13 +238,13 @@ private struct SecondaryFilterLabel: View {
     }
 }
 
-// MARK: - Applicant List Card
+
 private struct ApplicantListCard: View {
     let applicant: ManagerApplicant
 
     var body: some View {
         HStack(spacing: LMSSpacing.md) {
-            // Status icon
+
             ZStack {
                 RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
                     .fill(applicant.status.themeColor.opacity(0.12))
@@ -255,7 +255,7 @@ private struct ApplicantListCard: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                // Name + Amount
+
                 HStack {
                     Text(applicant.borrowerName)
                         .font(.system(.callout, design: .rounded).bold())
@@ -266,7 +266,7 @@ private struct ApplicantListCard: View {
                         .foregroundStyle(LMSColors.textPrimary)
                 }
 
-                // App ID + Loan Type
+
                 HStack {
                     Text(applicant.applicationId)
                         .font(.system(.caption2, design: .monospaced))
@@ -277,7 +277,7 @@ private struct ApplicantListCard: View {
                         .foregroundStyle(LMSColors.textSecondary)
                 }
 
-                // Status + Risk + CIBIL
+
                 HStack {
                     Text("CIBIL: \(applicant.cibilScore)")
                         .font(.system(.caption2, design: .rounded).bold())
@@ -328,3 +328,4 @@ private struct ApplicantListCard: View {
     )
     .previewManagerEnvironment()
 }
+

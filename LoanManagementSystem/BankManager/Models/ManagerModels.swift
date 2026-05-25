@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Manager Applicant Status
+
 enum ManagerApplicantStatus: String, CaseIterable, Codable, Hashable {
     case sentToManager = "Sent to Manager"
     case needsClarification = "Needs Clarification"
@@ -34,7 +34,7 @@ enum ManagerApplicantStatus: String, CaseIterable, Codable, Hashable {
     }
 }
 
-// MARK: - Risk Level
+
 enum ManagerRiskLevel: String, CaseIterable, Codable, Hashable {
     case low = "Low"
     case medium = "Medium"
@@ -60,7 +60,7 @@ enum ManagerRiskLevel: String, CaseIterable, Codable, Hashable {
     }
 }
 
-// MARK: - Manager Loan Type (mirrors Officer's but self-contained)
+
 enum ManagerLoanType: String, CaseIterable, Codable, Hashable {
     case home = "Home Loan"
     case personal = "Personal Loan"
@@ -89,7 +89,7 @@ enum ManagerLoanType: String, CaseIterable, Codable, Hashable {
     }
 }
 
-// MARK: - Manager Applicant
+
 struct ManagerApplicant: Identifiable, Hashable {
     let id: UUID
     var applicationId: String
@@ -106,12 +106,12 @@ struct ManagerApplicant: Identifiable, Hashable {
     var documents: [ManagerDocument]
     var officerRemarks: String
     var managerRemarks: String
-    var verificationProgress: Double  // 0.0 – 1.0
-    var tenure: Int  // months
-    var interestRate: Double  // percentage
+    var verificationProgress: Double
+    var tenure: Int
+    var interestRate: Double
 }
 
-// MARK: - Manager Document
+
 struct ManagerDocument: Identifiable, Hashable {
     let id: UUID
     var name: String
@@ -144,7 +144,7 @@ enum ManagerDocStatus: String, CaseIterable, Codable, Hashable {
     }
 }
 
-// MARK: - Manager Officer
+
 struct ManagerOfficer: Identifiable, Hashable {
     let id: UUID
     var name: String
@@ -152,9 +152,9 @@ struct ManagerOfficer: Identifiable, Hashable {
     var activeCases: Int
     var maxCapacity: Int
     var rating: Double
-    var performance: Double  // 0.0 – 1.0
+    var performance: Double
     var loansProcessedYTD: Int
-    var approvalRate: Double  // percentage
+    var approvalRate: Double
 
     var initials: String {
         let parts = name.components(separatedBy: " ")
@@ -175,7 +175,7 @@ struct ManagerOfficer: Identifiable, Hashable {
     }
 }
 
-// MARK: - KPI Card Data
+
 struct ManagerKPI: Identifiable, Hashable {
     let id = UUID()
     var title: String
@@ -185,7 +185,7 @@ struct ManagerKPI: Identifiable, Hashable {
     var tint: Color
     var trend: KPITrend
     var trendValue: String
-    var progress: Double  // 0.0 – 1.0
+    var progress: Double
 
     enum KPITrend: String, Hashable {
         case up, down, neutral
@@ -208,7 +208,7 @@ struct ManagerKPI: Identifiable, Hashable {
     }
 }
 
-// MARK: - Manager Notification
+
 struct ManagerNotificationItem: Identifiable, Hashable {
     let id: UUID
     var title: String
@@ -241,7 +241,7 @@ struct ManagerNotificationItem: Identifiable, Hashable {
     }
 }
 
-// MARK: - Chat Conversation
+
 struct ManagerChatConversation: Identifiable, Hashable {
     let id: UUID
     var officerName: String
@@ -267,7 +267,7 @@ struct ManagerChatConversation: Identifiable, Hashable {
     }
 }
 
-// MARK: - Chat Message
+
 struct ManagerChatMessage: Identifiable, Hashable {
     let id: UUID
     var senderName: String
@@ -279,7 +279,7 @@ struct ManagerChatMessage: Identifiable, Hashable {
     var referencedApplicantName: String?
 }
 
-// MARK: - Branch Overview
+
 struct BranchOverview: Hashable {
     var name: String
     var code: String
@@ -293,7 +293,7 @@ struct BranchOverview: Hashable {
     var monthlyTarget: Double
 }
 
-// MARK: - Audit Event
+
 struct ManagerAuditEvent: Identifiable, Hashable {
     let id: UUID
     var timestamp: Date
@@ -323,3 +323,4 @@ struct ManagerAuditEvent: Identifiable, Hashable {
         }
     }
 }
+

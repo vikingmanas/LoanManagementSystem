@@ -1,10 +1,10 @@
 import SwiftUI
 
-// MARK: - Manager Dashboard View (Root Container)
+
 struct ManagerDashboardView: View {
     @StateObject private var viewModel = ManagerDashboardViewModel()
 
-    // Sheet states
+
     @State private var showProfileSheet = false
     @State private var showSettingsSheet = false
     @State private var showNotificationSheet = false
@@ -13,7 +13,7 @@ struct ManagerDashboardView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // MARK: — Top Toolbar
+
             ManagerTopToolbar(
                 viewModel: viewModel,
                 onNotificationPressed: { showNotificationSheet = true },
@@ -24,7 +24,7 @@ struct ManagerDashboardView: View {
 
             Divider()
 
-            // MARK: — Tab Content
+
             ZStack(alignment: .bottom) {
                 ZStack {
                     switch viewModel.selectedTab {
@@ -59,7 +59,7 @@ struct ManagerDashboardView: View {
                     Spacer().frame(height: 80)
                 }
 
-                // MARK: — Floating Tab Bar
+
                 ManagerFloatingTabBar(
                     selectedTab: $viewModel.selectedTab,
                     unreadChatCount: viewModel.unreadChatCount
@@ -73,7 +73,7 @@ struct ManagerDashboardView: View {
             await viewModel.fetchDashboardData()
         }
 
-        // MARK: — Sheet Presentations
+
         .sheet(isPresented: $showProfileSheet) {
             ManagerProfileView()
         }
@@ -95,7 +95,7 @@ struct ManagerDashboardView: View {
     }
 }
 
-// MARK: - Global Search Sheet
+
 private struct ManagerSearchSheet: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
     var onSelectApplicant: (ManagerApplicant) -> Void
@@ -115,7 +115,7 @@ private struct ManagerSearchSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Search Bar
+
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(LMSColors.textSecondary)
@@ -214,3 +214,4 @@ private struct ManagerSearchSheet: View {
     ManagerDashboardView()
         .previewManagerEnvironment()
 }
+

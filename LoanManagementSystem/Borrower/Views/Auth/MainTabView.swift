@@ -38,3 +38,4 @@ struct MainTabView: View {
         .environmentObject(AppStateManager())
         .environmentObject(AuthManager())
 }
+

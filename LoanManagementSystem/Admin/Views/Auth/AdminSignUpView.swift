@@ -3,28 +3,28 @@ import SwiftUI
 struct AdminSignUpView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = AdminSignUpViewModel()
-    
+
     var body: some View {
         ZStack {
             Color.AppTheme.background.ignoresSafeArea()
-            
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    
-                    // Header Section
+
+
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Create Admin Account")
                             .font(Font.AppTheme.title)
                             .foregroundStyle(Color.AppTheme.textPrimary)
-                        
+
                         Text("Register a new system administrator.")
                             .font(Font.AppTheme.subtitle)
                             .foregroundStyle(Color.AppTheme.textSecondary)
                     }
                     .padding(.top, 20)
                     .padding(.bottom, 10)
-                    
-                    // Error Banner
+
+
                     if !viewModel.generalError.isEmpty {
                         HStack {
                             Image(systemName: "exclamationmark.triangle.fill")
@@ -37,8 +37,8 @@ struct AdminSignUpView: View {
                         .foregroundStyle(Color.AppTheme.error)
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
-                    
-                    // Success Banner
+
+
                     if viewModel.showSuccess {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
@@ -51,35 +51,35 @@ struct AdminSignUpView: View {
                         .foregroundStyle(LMSColors.emerald)
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
-                    
-                    // Input Fields
+
+
                     VStack(spacing: 16) {
                         CustomTextField(
                             icon: "person",
                             placeholder: "Full Name",
                             text: $viewModel.fullName
                         )
-                        
+
                         CustomTextField(
                             icon: "envelope",
                             placeholder: "Email Address",
                             text: $viewModel.email
                         )
-                        
+
                         CustomTextField(
                             icon: "phone",
                             placeholder: "Mobile Number",
                             text: $viewModel.phone
                         )
                         .keyboardType(.phonePad)
-                        
+
                         VStack(alignment: .leading, spacing: 12) {
                             SecureInputField(
                                 placeholder: "Password",
                                 text: $viewModel.password
                             )
-                            
-                            // Password Strength Indicator
+
+
                             if !viewModel.password.isEmpty {
                                 PasswordStrengthView(
                                     isMinLength: viewModel.isMinLength,
@@ -90,14 +90,14 @@ struct AdminSignUpView: View {
                                 .padding(.horizontal, 4)
                             }
                         }
-                        
+
                         SecureInputField(
                             placeholder: "Confirm Password",
                             text: $viewModel.confirmPassword
                         )
                     }
-                    
-                    // Sign Up Button
+
+
                     PrimaryButton(
                         title: "Create Admin",
                         isLoading: viewModel.isLoading,
@@ -109,10 +109,10 @@ struct AdminSignUpView: View {
                         }
                     )
                     .padding(.top, 16)
-                    
+
                     Spacer(minLength: 40)
-                    
-                    // Footer
+
+
                     HStack {
                         Spacer()
                         Button(action: {
@@ -137,3 +137,4 @@ struct AdminSignUpView: View {
 #Preview {
     AdminSignUpView()
 }
+

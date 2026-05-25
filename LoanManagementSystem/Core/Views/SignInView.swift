@@ -11,7 +11,7 @@ struct SignInView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: LMSSpacing.xxl) {
 
-                        // Back to roles
+
                         Button(action: {
                             HapticsManager.triggerImpact(style: .medium)
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
@@ -27,7 +27,7 @@ struct SignInView: View {
                         }
                         .padding(.top, LMSSpacing.lg)
 
-                        // Header
+
                         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                             Text("Welcome Back")
                                 .font(LMSFont.largeTitle)
@@ -39,7 +39,7 @@ struct SignInView: View {
                         }
                         .padding(.bottom, LMSSpacing.sm)
 
-                        // Error banner
+
                         if !viewModel.generalError.isEmpty {
                             HStack(alignment: .top, spacing: LMSSpacing.sm) {
                                 Image(systemName: "exclamationmark.triangle.fill")
@@ -55,7 +55,7 @@ struct SignInView: View {
                             .transition(.move(edge: .top).combined(with: .opacity))
                         }
 
-                        // Fields
+
                         VStack(spacing: LMSSpacing.lg) {
                             CustomTextField(
                                 icon: "envelope",
@@ -74,7 +74,7 @@ struct SignInView: View {
                             )
                         }
 
-                        // Secondary actions
+
                         HStack {
                             CheckboxView(isChecked: $viewModel.rememberMe, label: "Remember Me")
 
@@ -87,7 +87,7 @@ struct SignInView: View {
                             }
                         }
 
-                        // Sign In
+
                         PrimaryButton(
                             title: "Sign In",
                             icon: "arrow.right",
@@ -101,7 +101,7 @@ struct SignInView: View {
                         )
                         .padding(.top, LMSSpacing.sm)
 
-                        // Divider
+
                         HStack(spacing: LMSSpacing.md) {
                             Rectangle()
                                 .fill(LMSColors.separator)
@@ -114,7 +114,7 @@ struct SignInView: View {
                                 .frame(height: 0.5)
                         }
 
-                        // Sign Up link
+
                         HStack {
                             Spacer()
                             Text("Don't have an account?")
@@ -150,3 +150,4 @@ struct SignInView: View {
         .environmentObject(AppStateManager())
         .environmentObject(AuthManager())
 }
+

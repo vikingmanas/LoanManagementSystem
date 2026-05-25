@@ -3,7 +3,7 @@ import SwiftUI
 struct KYCStatusDetailView: View {
     @ObservedObject var viewModel: BorrowerProfileViewModel
     @State private var showingEditSheet = false
-    
+
     var body: some View {
         Form {
             if let kyc = viewModel.profile?.kycVerification {
@@ -16,7 +16,7 @@ struct KYCStatusDetailView: View {
                         StatusBadgeView(status: kyc.overallStatus.rawValue)
                     }
                 }
-                
+
                 Section(header: Text("Documents Status")) {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -32,7 +32,7 @@ struct KYCStatusDetailView: View {
                         Spacer()
                         StatusBadgeView(status: kyc.aadhaarStatus.rawValue)
                     }
-                    
+
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("PAN Card")
@@ -47,7 +47,7 @@ struct KYCStatusDetailView: View {
                         Spacer()
                         StatusBadgeView(status: kyc.panStatus.rawValue)
                     }
-                    
+
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Address Proof")
@@ -86,3 +86,4 @@ struct KYCStatusDetailView: View {
         KYCStatusDetailView(viewModel: PreviewSupport.borrowerProfileViewModel)
     }
 }
+

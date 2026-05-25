@@ -4,7 +4,7 @@ struct SettingsDetailView: View {
     @State private var isDarkMode = false
     @State private var selectedLanguage = "English"
     let languages = ["English", "Hindi", "Marathi", "Gujarati"]
-    
+
     var body: some View {
         Form {
             Section(header: Text("Appearance")) {
@@ -16,7 +16,7 @@ struct SettingsDetailView: View {
                     }
                 }
             }
-            
+
             Section(header: Text("Localization")) {
                 Picker(selection: $selectedLanguage, label: HStack {
                     Image(systemName: "globe")
@@ -28,7 +28,7 @@ struct SettingsDetailView: View {
                     }
                 }
             }
-            
+
             Section(header: Text("App Version")) {
                 HStack {
                     Text("Version")
@@ -48,3 +48,4 @@ struct SettingsDetailView: View {
         SettingsDetailView()
     }
 }
+

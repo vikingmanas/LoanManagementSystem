@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Manager Communication Tab View (Tab 2)
+
 struct ManagerCommunicationTabView: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
 
@@ -9,9 +9,9 @@ struct ManagerCommunicationTabView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // MARK: — Search + Filters
+
             VStack(spacing: LMSSpacing.md) {
-                // Search Bar
+
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(LMSColors.textSecondary)
@@ -30,7 +30,7 @@ struct ManagerCommunicationTabView: View {
                 .background(LMSColors.surfaceElevated)
                 .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
 
-                // Segmented Filter
+
                 Picker("Filter", selection: $viewModel.selectedChatFilter) {
                     ForEach(ManagerDashboardViewModel.ChatFilterMode.allCases, id: \.self) { mode in
                         Text(mode.rawValue).tag(mode)
@@ -44,7 +44,7 @@ struct ManagerCommunicationTabView: View {
 
             Divider()
 
-            // MARK: — Conversations List
+
             let filtered = viewModel.filteredConversations
 
             if filtered.isEmpty {
@@ -84,7 +84,7 @@ struct ManagerCommunicationTabView: View {
         }
         .background(LMSColors.background)
         .overlay(alignment: .bottomTrailing) {
-            // Broadcast FAB
+
             Button(action: {
                 HapticsManager.triggerImpact(style: .medium)
                 showBroadcastSheet = true
@@ -107,7 +107,7 @@ struct ManagerCommunicationTabView: View {
                 }
             }
             .padding(.trailing, LMSSpacing.xl)
-            .padding(.bottom, 100) // above tab bar
+            .padding(.bottom, 100)
         }
         .sheet(item: $activeConversation) { conversation in
             ManagerChatDetailView(
@@ -121,13 +121,13 @@ struct ManagerCommunicationTabView: View {
     }
 }
 
-// MARK: - Conversation Row
+
 private struct ConversationRow: View {
     let conversation: ManagerChatConversation
 
     var body: some View {
         HStack(spacing: LMSSpacing.md) {
-            // Avatar with priority indicator
+
             ZStack(alignment: .bottomTrailing) {
                 Circle()
                     .fill(LMSColors.brandNavy.opacity(0.10))
@@ -196,7 +196,7 @@ private struct ConversationRow: View {
     }
 }
 
-// MARK: - Chat Detail View
+
 private struct ManagerChatDetailView: View {
     let conversation: ManagerChatConversation
     @ObservedObject var viewModel: ManagerDashboardViewModel
@@ -211,7 +211,7 @@ private struct ManagerChatDetailView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Officer Header
+
                 HStack(spacing: LMSSpacing.md) {
                     ZStack(alignment: .bottomTrailing) {
                         Circle()
@@ -244,7 +244,7 @@ private struct ManagerChatDetailView: View {
 
                 Divider()
 
-                // Messages
+
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(spacing: LMSSpacing.md) {
@@ -266,7 +266,7 @@ private struct ManagerChatDetailView: View {
 
                 Divider()
 
-                // Input Bar
+
                 HStack(spacing: 10) {
                     TextField("Type a message…", text: $chatText, axis: .vertical)
                         .font(.system(.subheadline, design: .rounded))
@@ -303,7 +303,7 @@ private struct ManagerChatDetailView: View {
     }
 }
 
-// MARK: - Chat Message Bubble
+
 private struct ManagerChatBubble: View {
     let message: ManagerChatMessage
 
@@ -361,7 +361,7 @@ private struct ManagerChatBubble: View {
     }
 }
 
-// MARK: - Broadcast Announcement Sheet
+
 private struct BroadcastAnnouncementSheet: View {
     let officers: [ManagerOfficer]
     @Environment(\.dismiss) var dismiss
@@ -373,7 +373,7 @@ private struct BroadcastAnnouncementSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: LMSSpacing.xl) {
-                // Icon
+
                 ZStack {
                     Circle()
                         .fill(
@@ -462,3 +462,4 @@ private struct BroadcastAnnouncementSheet: View {
     ManagerCommunicationTabView(viewModel: PreviewSupport.managerViewModel)
         .previewManagerEnvironment()
 }
+

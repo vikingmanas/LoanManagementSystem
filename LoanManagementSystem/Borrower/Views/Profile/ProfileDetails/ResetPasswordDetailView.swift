@@ -8,18 +8,18 @@ struct ResetPasswordDetailView: View {
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var isSuccess = false
-    
+
     var body: some View {
         Form {
             Section(header: Text("Current Password")) {
                 SecureField("Enter current password", text: $currentPassword)
             }
-            
+
             Section(header: Text("New Password"), footer: Text("Password must be at least 8 characters long and contain numbers and symbols.")) {
                 SecureField("Enter new password", text: $newPassword)
                 SecureField("Confirm new password", text: $confirmPassword)
             }
-            
+
             Section {
                 Button(action: savePassword) {
                     HStack {
@@ -47,7 +47,7 @@ struct ResetPasswordDetailView: View {
             )
         }
     }
-    
+
     private func savePassword() {
         guard !currentPassword.isEmpty, !newPassword.isEmpty, !confirmPassword.isEmpty else {
             alertMessage = "All fields are required."
@@ -55,21 +55,21 @@ struct ResetPasswordDetailView: View {
             showAlert = true
             return
         }
-        
+
         guard newPassword.count >= 8 else {
             alertMessage = "New password must be at least 8 characters long."
             isSuccess = false
             showAlert = true
             return
         }
-        
+
         guard newPassword == confirmPassword else {
             alertMessage = "New passwords do not match."
             isSuccess = false
             showAlert = true
             return
         }
-        
+
         alertMessage = "Your password has been changed securely."
         isSuccess = true
         showAlert = true
@@ -81,3 +81,4 @@ struct ResetPasswordDetailView: View {
         ResetPasswordDetailView()
     }
 }
+

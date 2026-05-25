@@ -13,7 +13,7 @@ final class SupabaseManager {
         dbDecoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let string = try container.decode(String.self)
-            
+
             let formatters = [
                 "yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ",
                 "yyyy-MM-dd'T'HH:mm:ss.SSS",
@@ -21,19 +21,19 @@ final class SupabaseManager {
                 "yyyy-MM-dd'T'HH:mm:ss",
                 "yyyy-MM-dd"
             ]
-            
+
             let dateFormatter = DateFormatter()
             dateFormatter.calendar = Calendar(identifier: .iso8601)
             dateFormatter.locale = Locale(identifier: "en_US_POSIX")
             dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
-            
+
             for format in formatters {
                 dateFormatter.dateFormat = format
                 if let date = dateFormatter.date(from: string) {
                     return date
                 }
             }
-            
+
             throw DecodingError.dataCorruptedError(
                 in: container,
                 debugDescription: "Invalid date format: \(string)"
@@ -62,3 +62,4 @@ final class SupabaseManager {
         )
     }
 }
+

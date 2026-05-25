@@ -37,7 +37,7 @@ struct ProfileView: View {
                             .padding(.top, LMSSpacing.md)
                             .padding(.bottom, LMSSpacing.xs)
 
-                            // Menu Card Group
+
                             VStack(spacing: 0) {
                                 NavigationLink(destination: ProfileInfoDetailView(viewModel: viewModel)) {
                                     profileRow(title: "Profile Information", icon: "person.fill", iconColor: LMSColors.actionBlue)
@@ -103,11 +103,11 @@ struct ProfileView: View {
                             .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
                             .padding(.horizontal, LMSSpacing.lg)
 
-                            // Log Out
+
                             Button(action: {
                                 HapticsManager.triggerImpact(style: .medium)
-                                dismiss() // Dismiss the sheet before ripping out the underlying views
-                                
+                                dismiss()
+
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                                     BorrowerProfileStore.shared.signOut()
                                     appState.logout()
@@ -176,3 +176,4 @@ struct ProfileView: View {
         .environmentObject(AppStateManager())
         .environmentObject(AuthManager())
 }
+

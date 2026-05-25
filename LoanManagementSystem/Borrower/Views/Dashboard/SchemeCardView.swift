@@ -3,25 +3,25 @@ import SwiftUI
 public struct SchemeCardView: View {
     let scheme: GovernmentScheme
     var onApplyTap: (() -> Void)? = nil
-    
+
     public init(scheme: GovernmentScheme, onApplyTap: (() -> Void)? = nil) {
         self.scheme = scheme
         self.onApplyTap = onApplyTap
     }
-    
+
     public var body: some View {
         ZStack {
-            // Category gradient
+
             LinearGradient(
                 colors: gradientColors,
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            
+
             VStack(alignment: .leading, spacing: 8) {
-                // Top Row: Category badge & Icon
+
                 HStack(alignment: .center) {
-                    // Category Badge
+
                     Text(categoryBadgeText)
                         .font(.system(size: 8, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
@@ -29,39 +29,39 @@ public struct SchemeCardView: View {
                         .padding(.vertical, 4)
                         .background(categoryBadgeBgColor)
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    
+
                     Spacer()
-                    
-                    // Category Icon
+
+
                     Image(systemName: iconName)
                         .font(.system(size: 16))
                         .foregroundStyle(.white)
                 }
-                
-                // Title
+
+
                 Text(scheme.title)
                     .font(LMSFont.callout.weight(.bold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
-                
-                // Description (2-line limit)
+
+
                 Text(scheme.description)
                     .font(LMSFont.caption2)
                     .foregroundStyle(.white.opacity(0.85))
                     .lineLimit(2)
                     .frame(height: 30, alignment: .topLeading)
-                
+
                 Spacer()
-                
-                // Bottom Row
+
+
                 HStack {
                     Text("Valid: \(scheme.validTill.formattedAsDDMMMYYYY())")
                         .font(.system(size: 9, weight: .medium, design: .rounded))
                         .foregroundStyle(.white.opacity(0.75))
-                    
+
                     Spacer()
-                    
-                    // Apply button link
+
+
                     Button {
                         onApplyTap?()
                     } label: {
@@ -82,25 +82,25 @@ public struct SchemeCardView: View {
         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
         .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
-    
-    // MARK: - Gradient & Badging Helpers
+
+
     private var gradientColors: [Color] {
         switch scheme.category {
         case .businessLoan:
-            // Saffron gradient
+
             return [Color(hex: "#FF8C00"), Color(hex: "#FF5E00")]
         case .homeLoan:
-            // Indigo gradient
+
             return [Color(hex: "#3F51B5"), Color(hex: "#1A237E")]
         case .agriculture:
-            // Green gradient
+
             return [Color(hex: "#4CAF50"), Color(hex: "#2E7D32")]
         case .education:
-            // Rose/Pink gradient
+
             return [Color(hex: "#E91E63"), Color(hex: "#C2185B")]
         }
     }
-    
+
     private var categoryBadgeText: String {
         switch scheme.category {
         case .businessLoan, .agriculture:
@@ -109,18 +109,18 @@ public struct SchemeCardView: View {
             return "Bank Offer"
         }
     }
-    
+
     private var categoryBadgeBgColor: Color {
         switch scheme.category {
         case .businessLoan, .agriculture:
-            // Saffron shade
+
             return Color(hex: "#E05A00").opacity(0.85)
         case .homeLoan, .education:
-            // Deep blue shade
+
             return LMSColors.brandNavy.opacity(0.8)
         }
     }
-    
+
     private var iconName: String {
         switch scheme.category {
         case .businessLoan: return "briefcase.fill"
@@ -131,10 +131,10 @@ public struct SchemeCardView: View {
     }
 }
 
-// MARK: - Scheme Skeleton Card
+
 public struct SchemeCardSkeleton: View {
     public init() {}
-    
+
     public var body: some View {
         RoundedRectangle(cornerRadius: LMSRadius.card)
             .fill(LMSColors.surfaceElevated)
@@ -150,3 +150,4 @@ public struct SchemeCardSkeleton: View {
 #Preview("Scheme Skeleton") {
     SchemeCardSkeleton()
 }
+

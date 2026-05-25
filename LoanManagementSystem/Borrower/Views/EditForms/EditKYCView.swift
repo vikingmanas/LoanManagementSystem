@@ -6,35 +6,35 @@ import Supabase
 struct EditKYCView: View {
     @Environment(\.presentationMode) var presentationMode
     @ObservedObject var viewModel: BorrowerProfileViewModel
-    
+
     @State private var aadhaarStatus: VerificationStatus
     @State private var panStatus: VerificationStatus
     @State private var addressProofStatus: VerificationStatus
-    
+
     @State private var aadhaarFileName: String?
     @State private var panFileName: String?
     @State private var addressProofFileName: String?
-    
+
     @State private var showingFileImporter = false
     @State private var showingPhotosPicker = false
     @State private var showingUploadSourceDialog = false
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
-    
+
     @State private var documentUploading: KYCDocumentType? = nil
     @State private var isUploading = false
     @State private var secureUploadMessage = ""
-    
+
     init(viewModel: BorrowerProfileViewModel) {
         self.viewModel = viewModel
         _aadhaarStatus = State(initialValue: viewModel.profile?.kycVerification.aadhaarStatus ?? .pending)
         _panStatus = State(initialValue: viewModel.profile?.kycVerification.panStatus ?? .pending)
         _addressProofStatus = State(initialValue: viewModel.profile?.kycVerification.addressProofStatus ?? .pending)
-        
+
         _aadhaarFileName = State(initialValue: viewModel.profile?.kycVerification.aadhaarFileName)
         _panFileName = State(initialValue: viewModel.profile?.kycVerification.panFileName)
         _addressProofFileName = State(initialValue: viewModel.profile?.kycVerification.addressProofFileName)
     }
-    
+
     var body: some View {
         ZStack {
             NavigationStack {
@@ -44,7 +44,7 @@ struct EditKYCView: View {
                             .font(Font.AppTheme.body)
                             .foregroundStyle(Color.AppTheme.textSecondary)
                     }
-                    
+
                     Section(header: Text("Documents")) {
                         DocumentUploadCardView(
                             documentName: "Aadhaar Card",
@@ -60,7 +60,7 @@ struct EditKYCView: View {
                             }
                         )
                         .listRowInsets(EdgeInsets())
-                        
+
                         DocumentUploadCardView(
                             documentName: "PAN Card",
                             status: panStatus,
@@ -75,7 +75,7 @@ struct EditKYCView: View {
                             }
                         )
                         .listRowInsets(EdgeInsets())
-                        
+
                         DocumentUploadCardView(
                             documentName: "Address Proof",
                             status: addressProofStatus,
@@ -124,21 +124,21 @@ struct EditKYCView: View {
             }
             .blur(radius: isUploading ? 3 : 0)
             .disabled(isUploading)
-            
+
             if isUploading {
                 Color.black.opacity(0.4)
                     .edgesIgnoringSafeArea(.all)
-                
+
                 VStack(spacing: 20) {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: Color.AppTheme.primary))
                         .scaleEffect(1.5)
-                    
+
                     Text("Secure Document Upload")
                         .font(Font.AppTheme.button)
                         .fontWeight(.bold)
                         .foregroundStyle(Color.AppTheme.textPrimary)
-                    
+
                     Text(secureUploadMessage)
                         .font(Font.AppTheme.body)
                         .foregroundStyle(Color.AppTheme.textSecondary)
@@ -201,7 +201,7 @@ struct EditKYCView: View {
                 docName = "address_proof"
                 filename = "address_proof_kyc.jpg"
             }
-            
+
             Task {
                 if let data = try? await newItem.loadTransferable(type: Data.self) {
                     uploadKYCDocument(data: data, filename: filename, docType: docType, docName: docName)
@@ -209,7 +209,7 @@ struct EditKYCView: View {
             }
         }
     }
-    
+
     private func loadData(from url: URL) -> Data? {
         guard url.startAccessingSecurityScopedResource() else {
             return try? Data(contentsOf: url)
@@ -217,51 +217,51 @@ struct EditKYCView: View {
         defer { url.stopAccessingSecurityScopedResource() }
         return try? Data(contentsOf: url)
     }
-    
+
     private func uploadKYCDocument(data: Data, filename: String, docType: KYCDocumentType, docName: String) {
         isUploading = true
         secureUploadMessage = "Establishing secure connection to SSL Gateway..."
-        
+
         Task {
             do {
-                // Wait for secure gateway simulation
+
                 try? await Task.sleep(nanoseconds: 800_000_000)
                 await MainActor.run {
                     secureUploadMessage = "Encrypting document using AES-256 key..."
                 }
-                
-                // Get authenticated user ID
+
+
                 guard let session = try? await SupabaseManager.shared.client.auth.session else {
                     print("Error: Auth session not found")
                     await MainActor.run { isUploading = false }
                     return
                 }
                 let userId = session.user.id
-                
+
                 try? await Task.sleep(nanoseconds: 800_000_000)
                 await MainActor.run {
                     secureUploadMessage = "Uploading document to Supabase Cloud Storage..."
                 }
-                
-                // 1. Upload to Supabase Storage (this is the primary goal)
+
+
                 let path = "\(userId.uuidString)/\(filename)"
                 let publicUrl = try await StorageService.shared.uploadDocument(data: data, bucket: "documents", path: path)
-                
+
                 print("✅ KYC Document uploaded successfully to Storage!")
                 print("   Public URL: \(publicUrl.absoluteString)")
-                
-                // 2. Best-effort: try to insert a record into the documents database table
-                //    This may fail if the user doesn't have a borrower record yet (FK constraint).
-                //    That's OK — the file is already safely stored in Supabase Storage.
+
+
+
+
                 do {
-                    // First, look up the borrower_id for this user
+
                     let borrowerRows: [BorrowerLookup] = try await SupabaseManager.shared.client
                         .from("borrowers")
                         .select("borrower_id")
                         .eq("user_id", value: userId.uuidString)
                         .execute()
                         .value
-                    
+
                     if let borrower = borrowerRows.first {
                         let docRow = SupabaseDocumentInsert(
                             document_id: UUID(),
@@ -272,12 +272,12 @@ struct EditKYCView: View {
                             file_name: filename,
                             status: "verified"
                         )
-                        
+
                         try await SupabaseManager.shared.client
                             .from("documents")
                             .insert(docRow)
                             .execute()
-                        
+
                         print("✅ Document record saved to database!")
                     } else {
                         print("⚠️ No borrower record found for user — skipping DB insert. File is safe in Storage.")
@@ -285,8 +285,8 @@ struct EditKYCView: View {
                 } catch {
                     print("⚠️ Database insert skipped (non-critical): \(error.localizedDescription)")
                 }
-                
-                // 3. Update local state — always succeeds since Storage upload passed
+
+
                 await MainActor.run {
                     isUploading = false
                     switch docType {
@@ -337,3 +337,4 @@ struct SupabaseDocumentInsert: Codable {
 struct BorrowerLookup: Codable {
     let borrower_id: UUID
 }
+

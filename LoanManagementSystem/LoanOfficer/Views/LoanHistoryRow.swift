@@ -6,7 +6,7 @@ struct LoanHistoryRow: View {
     var onView: () -> Void
     var onCall: () -> Void
     var onFlag: () -> Void
-    
+
     var body: some View {
         Button(action: onView) {
             VStack(alignment: .leading, spacing: 14) {
@@ -78,7 +78,7 @@ struct LoanHistoryRow: View {
         }
         .buttonStyle(PlainButtonStyle())
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            // View Action
+
             Button {
                 HapticsManager.triggerImpact(style: .light)
                 onView()
@@ -86,8 +86,8 @@ struct LoanHistoryRow: View {
                 Label("View", systemImage: "eye.fill")
             }
             .tint(AppTheme.actionBlue)
-            
-            // Call Action
+
+
             Button {
                 HapticsManager.triggerImpact(style: .light)
                 onCall()
@@ -95,8 +95,8 @@ struct LoanHistoryRow: View {
                 Label("Call", systemImage: "phone.fill")
             }
             .tint(AppTheme.successGreen)
-            
-            // Flag Action
+
+
             Button {
                 HapticsManager.triggerImpact(style: .light)
                 onFlag()
@@ -106,7 +106,7 @@ struct LoanHistoryRow: View {
             .tint(AppTheme.criticalRed)
         }
     }
-    
+
     private var verifiedDocumentCount: Int {
         app.documents.filter { $0.status == .verified }.count
     }
@@ -117,14 +117,14 @@ struct LoanHistoryRow: View {
         return formatter
     }()
 
-    // Grayscale Initials Avatar
+
     private var borrowerAvatar: some View {
         let initials = app.borrowerName.components(separatedBy: " ")
             .compactMap { $0.first }
             .map { String($0) }
             .joined()
             .prefix(2)
-        
+
         return ZStack {
             Circle()
                 .fill(app.loanType.themeColor.opacity(0.13))
@@ -133,7 +133,7 @@ struct LoanHistoryRow: View {
                     Circle()
                         .stroke(app.loanType.themeColor.opacity(0.18), lineWidth: 1)
                 )
-            
+
             Text(initials.uppercased())
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundColor(app.loanType.themeColor)
@@ -166,8 +166,8 @@ struct LoanHistoryRow: View {
         .background(Color(.systemBackground).opacity(0.72))
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
-    
-    // Simplified status badge colors and tags matching specs
+
+
     private var statusDetails: (text: String, color: Color) {
         switch app.status {
         case .pending, .applied, .documentsPending:
@@ -182,7 +182,7 @@ struct LoanHistoryRow: View {
             return ("On Hold", .gray)
         }
     }
-    
+
     private var statusBadge: some View {
         let details = statusDetails
         return Text(details.text)
@@ -204,3 +204,4 @@ struct LoanHistoryRow: View {
     )
     .padding()
 }
+

@@ -6,22 +6,22 @@ struct LoanHistoryTabView: View {
     typealias LoanType = OfficerLoanType
     typealias ApplicationStatus = OfficerApplicationStatus
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
-    
+
     @State private var selectedFilter: FilterOption = .all
     @State private var showingExportAlert = false
     @State private var activeDetailApp: LoanApplication? = nil
     @State private var alertMessage = ""
-    
+
     enum FilterOption: String, CaseIterable, Identifiable {
         case all = "All"
         case pendingVerification = "Pending Verification"
         case underReview = "Under Review"
         case approved = "Approved"
         case rejected = "Rejected"
-        
+
         var id: String { self.rawValue }
     }
-    
+
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             LazyVStack(alignment: .leading, spacing: 16) {
@@ -33,11 +33,11 @@ struct LoanHistoryTabView: View {
                     Text("Showing \(localFilteredApplications.count) of \(viewModel.totalApplications) loans")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(.secondary)
-                    
+
                     Spacer()
                 }
                 .padding(.top, 2)
-                
+
                 if localFilteredApplications.isEmpty {
                     emptyState
                 } else {
@@ -81,7 +81,7 @@ struct LoanHistoryTabView: View {
                 }
             )
         }
-        // Coordinate sync with deep links from overview tab
+
         .onChange(of: viewModel.historyFilter) { _, newStatus in
             if let status = newStatus {
                 switch status {
@@ -101,14 +101,14 @@ struct LoanHistoryTabView: View {
             }
         }
     }
-    
+
     private var registryHeader: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Loan Registry")
                 .font(.system(size: 34, weight: .bold, design: .rounded))
                 .foregroundColor(.primary)
         }
-//        .padding(.bottom, 10)
+
     }
 
     private var emptyState: some View {
@@ -137,10 +137,10 @@ struct LoanHistoryTabView: View {
         )
     }
 
-    // local applications filter mapping
+
     private var localFilteredApplications: [OfficerLoanApplication] {
         var list = viewModel.filteredApplications
-        
+
         switch selectedFilter {
         case .all:
             break
@@ -153,23 +153,23 @@ struct LoanHistoryTabView: View {
         case .rejected:
             list = list.filter { $0.status == .rejected || $0.status == .documentsRejected }
         }
-        
+
         return list
     }
-    
-    // Header containing search and filter chips
+
+
     private var searchAndFilterHeader: some View {
         VStack(spacing: 16) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary.opacity(0.8))
                     .font(.system(size: 16, weight: .semibold))
-                
+
                 TextField("Search loans, customers, application ID", text: $viewModel.historySearchQuery)
                     .font(.system(size: 15, design: .rounded))
                     .foregroundColor(.primary)
                     .autocorrectionDisabled()
-                
+
                 if !viewModel.historySearchQuery.isEmpty {
                     Button(action: {
                         viewModel.historySearchQuery = ""
@@ -190,7 +190,7 @@ struct LoanHistoryTabView: View {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(Color.primary.opacity(0.08), lineWidth: 1)
             )
-            
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(FilterOption.allCases, id: \.self) { option in
@@ -219,12 +219,12 @@ struct LoanHistoryTabView: View {
     }
 }
 
-// Gorgeous Custom Pill Chip
+
 struct FilterChip: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             Text(title)
@@ -246,3 +246,4 @@ struct FilterChip: View {
     LoanHistoryTabView(viewModel: PreviewSupport.loanOfficerViewModel)
         .previewLoanOfficerEnvironment()
 }
+
