@@ -104,7 +104,7 @@ private struct ManagerTabBarButton: View {
         .padding()
 }
 
-struct VisualEffectView: UIViewRepresentable {
+fileprivate struct VisualEffectView: UIViewRepresentable {
     var effect: UIVisualEffect?
     func makeUIView(context: Context) -> UIVisualEffectView {
         UIVisualEffectView()
