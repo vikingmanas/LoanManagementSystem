@@ -364,14 +364,27 @@ private struct CombinedApplicationScreen: View {
             }
 
             Section {
-                TextField("Occupation", text: $viewModel.formData.occupation)
-                Picker("Employment Type", selection: $viewModel.formData.employmentType) {
-                    ForEach(viewModel.employmentTypes, id: \.self) { type in
-                        Text(type).tag(type)
+                if viewModel.formData.employmentType == "Self-Employed" || viewModel.formData.employmentType == "Business Owner" {
+                    TextField("Designation/Role", text: $viewModel.formData.occupation)
+                    Picker("Employment Type", selection: $viewModel.formData.employmentType) {
+                        ForEach(viewModel.employmentTypes, id: \.self) { type in
+                            Text(type).tag(type)
+                        }
                     }
+                    TextField("Business Name", text: $viewModel.formData.employerName)
+                    Stepper("Business Vintage: \(viewModel.formData.workExperienceYears) years", value: $viewModel.formData.workExperienceYears, in: 0...50)
+                    TextField("GST Number", text: $viewModel.formData.gstNumber)
+                        .textInputAutocapitalization(.characters)
+                } else {
+                    TextField("Occupation", text: $viewModel.formData.occupation)
+                    Picker("Employment Type", selection: $viewModel.formData.employmentType) {
+                        ForEach(viewModel.employmentTypes, id: \.self) { type in
+                            Text(type).tag(type)
+                        }
+                    }
+                    TextField("Employer Name", text: $viewModel.formData.employerName)
+                    Stepper("Experience: \(viewModel.formData.workExperienceYears) years", value: $viewModel.formData.workExperienceYears, in: 0...50)
                 }
-                TextField("Employer Name", text: $viewModel.formData.employerName)
-                Stepper("Experience: \(viewModel.formData.workExperienceYears) years", value: $viewModel.formData.workExperienceYears, in: 0...50)
             } header: {
                 Text("Professional Details")
             }
