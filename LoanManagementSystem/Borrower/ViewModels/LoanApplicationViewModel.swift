@@ -1,6 +1,5 @@
 import SwiftUI
 import Combine
-import Supabase
 
 @MainActor
 final class LoanApplicationViewModel: ObservableObject {
@@ -24,6 +23,8 @@ final class LoanApplicationViewModel: ObservableObject {
 
     @Published var verificationComplete: Bool = false
     @Published var showVerificationResult: Bool = false
+
+    private var cancellables = Set<AnyCancellable>()
 
     let employmentTypes = ["Salaried", "Self-Employed", "Business Owner", "Professional", "Student", "Retired"]
     let repaymentPreferences = ["EMI Auto-Debit", "UPI Manual Payment", "Net Banking", "Branch Payment"]
@@ -82,7 +83,8 @@ final class LoanApplicationViewModel: ObservableObject {
     ]
 
     init() {
-        seedInitialApplications()
+        CentralLoanRepository.shared.$applications
+            .assign(to: &$applications)
     }
 
     var selectedProduct: BorrowerLoanProduct? {
@@ -287,7 +289,12 @@ final class LoanApplicationViewModel: ObservableObject {
             formData.loanAmountRequested = String(Int(recommended))
         }
         formData.loanPurpose = formData.loanPurpose.isEmpty ? "General financing requirement" : formData.loanPurpose
-        documents = BorrowerLoanDocumentItem.defaultRequirements(for: product)
+        documents = BorrowerLoanDocumentItem.defaultRequirements(
+            for: product,
+            identityDoc: formData.selectedIdentityDoc,
+            addressDoc: formData.selectedAddressDoc,
+            incomeDoc: formData.selectedIncomeDoc
+        )
 
         let now = Date()
         let draft = BorrowerLoanApplication(
@@ -312,6 +319,7 @@ final class LoanApplicationViewModel: ObservableObject {
         )
 
         applications.insert(draft, at: 0)
+        CentralLoanRepository.shared.submitApplication(draft)
         currentDraftID = draft.id
         lastDraftSavedAt = now
     }
@@ -347,6 +355,7 @@ final class LoanApplicationViewModel: ObservableObject {
         applications[draftIndex].formData = formData
         applications[draftIndex].documents = documents
         applications[draftIndex].updatedAt = Date()
+        CentralLoanRepository.shared.submitApplication(applications[draftIndex])
         lastDraftSavedAt = Date()
     }
 
@@ -401,34 +410,76 @@ final class LoanApplicationViewModel: ObservableObject {
         documents.filter { $0.category == category }
     }
 
-    func uploadDocument(_ documentID: UUID, imageData: Data) async {
+    func document(for category: BorrowerDocumentCategory) -> BorrowerLoanDocumentItem? {
+        documents.first(where: { $0.category == category })
+    }
+
+    func selectedDocumentType(for category: BorrowerDocumentCategory) -> String {
+        switch category {
+        case .identityVerification:
+            return formData.selectedIdentityDoc
+        case .addressVerification:
+            return formData.selectedAddressDoc
+        case .incomeVerification:
+            return formData.selectedIncomeDoc
+        case .loanSpecific:
+            return ""
+        }
+    }
+
+    func availableDocumentTypes(for category: BorrowerDocumentCategory) -> [String] {
+        switch category {
+        case .identityVerification:
+            return ["Aadhaar Card", "PAN Card", "Passport", "Driving License"]
+        case .addressVerification:
+            return ["Utility Bill", "Rental Agreement", "Passport", "Bank Statement"]
+        case .incomeVerification:
+            return ["Salary Slips", "Bank Statements", "Income Tax Returns", "Form 16"]
+        case .loanSpecific:
+            return []
+        }
+    }
+
+    func changeDocumentType(for category: BorrowerDocumentCategory, to newType: String) {
+        switch category {
+        case .identityVerification:
+            formData.selectedIdentityDoc = newType
+        case .addressVerification:
+            formData.selectedAddressDoc = newType
+        case .incomeVerification:
+            formData.selectedIncomeDoc = newType
+        case .loanSpecific:
+            break
+        }
+        
+        if let index = documents.firstIndex(where: { $0.category == category }) {
+            if documents[index].name != newType {
+                documents[index].name = newType
+                documents[index].status = .pendingUpload
+                documents[index].fileName = nil
+                documents[index].uploadDate = nil
+                documents[index].lastUpdated = Date()
+                autosaveDraft()
+            }
+        }
+    }
+
+    func uploadDocument(_ documentID: UUID, fileName: String, source: BorrowerDocumentUploadSource) {
         guard let index = documents.firstIndex(where: { $0.id == documentID }) else { return }
         guard !documents[index].isLocked else { return }
 
-        do {
-            guard let session = try? await SupabaseManager.shared.client.auth.session else {
-                print("Error uploading document: Auth session not found")
-                return
-            }
-            let userId = session.user.id.uuidString
-            let path = "\(userId)/\(documentID.uuidString).jpg"
-            
-            // Upload to Supabase Storage
-            let publicUrl = try await StorageService.shared.uploadDocument(data: imageData, bucket: "documents", path: path)
-            
-            await MainActor.run {
-                let now = Date()
-                documents[index].status = .uploaded
-                documents[index].uploadDate = now
-                documents[index].lastUpdated = now
-                documents[index].fileName = "\(documentID.uuidString).jpg"
-                documents[index].fileUrl = publicUrl.absoluteString
-                
-                autosaveDraft()
-            }
-        } catch {
-            print("Failed to upload document to Supabase Storage: \(error.localizedDescription)")
-        }
+        let now = Date()
+        documents[index].status = .uploaded
+        documents[index].uploadDate = now
+        documents[index].lastUpdated = now
+        documents[index].fileName = fileName
+
+        autosaveDraft()
+    }
+
+    func uploadDocument(_ documentID: UUID) {
+        let defaultName = "document-\(Int(Date().timeIntervalSince1970)).pdf"
+        uploadDocument(documentID, fileName: defaultName, source: .pdf)
     }
 
     func moveDocumentToVerification(_ documentID: UUID) {
@@ -522,6 +573,7 @@ final class LoanApplicationViewModel: ObservableObject {
         )
 
         applications[index] = draft
+        CentralLoanRepository.shared.submitApplication(draft)
         selectedSegment = .applications
         self.currentDraftID = nil
         self.showSubmissionAlert = true
@@ -622,7 +674,7 @@ final class LoanApplicationViewModel: ObservableObject {
     }
 
     private func seedInitialApplications() {
-        guard applications.isEmpty else { return }
+        return // Clear all mock data
         let profile = BorrowerProfileStore.shared.profile
 
         guard let home = products.first(where: { $0.type == .home }),
