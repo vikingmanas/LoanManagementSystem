@@ -26,7 +26,7 @@ final class LoanApplicationViewModel: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
 
-    let employmentTypes = ["Salaried", "Self-Employed", "Business Owner", "Professional", "Student", "Retired"]
+    let employmentTypes = ["Salaried", "Self-Employed"]
     let repaymentPreferences = ["EMI Auto-Debit", "UPI Manual Payment", "Net Banking", "Branch Payment"]
     let tenureOptions = [12, 24, 36, 48, 60, 84, 120, 180, 240, 300, 360]
 

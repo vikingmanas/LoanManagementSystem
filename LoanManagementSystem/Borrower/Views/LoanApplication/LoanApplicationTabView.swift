@@ -30,6 +30,7 @@ struct LoanApplicationTabView: View {
                         switch viewModel.selectedSegment {
                         case .discover:
                             LoanDiscoveryContent(viewModel: viewModel) { product in
+                                viewModel.startDraft(for: product)
                                 navigationPath.append(LoanApplicationRoute.overview(product))
                             }
                         case .applications:
@@ -48,22 +49,14 @@ struct LoanApplicationTabView: View {
             .navigationDestination(for: LoanApplicationRoute.self) { route in
                 switch route {
                 case .overview(let product):
-                    LoanOverviewScreen(viewModel: viewModel, product: product) {
-                        viewModel.startDraft(for: product)
-                        navigationPath.append(LoanApplicationRoute.combinedApplication)
+                    BorrowerLoanWizardView(viewModel: viewModel, product: product) {
+                        navigationPath = NavigationPath()
+                        viewModel.selectedSegment = .applications
                     }
                 case .combinedApplication:
-                    CombinedApplicationScreen(viewModel: viewModel) {
-                        viewModel.runBulkVerification()
-                        navigationPath.append(LoanApplicationRoute.verificationResult)
-                    }
+                    EmptyView()
                 case .verificationResult:
-                    DocumentVerificationResultView(viewModel: viewModel) {
-                        if let _ = viewModel.submitCurrentApplication() {
-                            navigationPath = NavigationPath()
-                            viewModel.selectedSegment = .applications
-                        }
-                    }
+                    EmptyView()
                 case .tracking(let application):
                     LoanApplicationTrackingScreen(viewModel: viewModel, application: application)
                 }
