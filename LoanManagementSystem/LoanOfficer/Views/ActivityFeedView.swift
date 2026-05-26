@@ -4,17 +4,17 @@ struct ActivityFeedView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onActionTriggered: (ActivityActionType, ActivityFeedItem) -> Void
     var onViewAllPressed: () -> Void
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Header Row
+
             HStack {
                 Text("Borrower Activity")
                     .font(.system(.subheadline, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
-                
+
                 Spacer()
-                
+
                 if viewModel.unreadActivityCount > 0 {
                     Button(action: {
                         HapticsManager.triggerImpact(style: .medium)
@@ -28,8 +28,8 @@ struct ActivityFeedView: View {
                 }
             }
             .padding(.horizontal, 16)
-            
-            // Feed Card
+
+
             VStack(spacing: 0) {
                 if viewModel.activityFeed.isEmpty {
                     ContentUnavailableView(
@@ -41,8 +41,8 @@ struct ActivityFeedView: View {
                     .background(LMSColors.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 } else {
-                    // We render a standard list with scroll disabled, giving it the card layout.
-                    // This enables SwiftUI native swipeActions to run beautifully!
+
+
                     List {
                         ForEach(viewModel.activityFeed.prefix(8)) { item in
                             ActivityFeedRow(
@@ -68,10 +68,10 @@ struct ActivityFeedView: View {
                     }
                     .listStyle(.plain)
                     .scrollDisabled(true)
-                    // Set height based on prefix count * approximate height of a feed row
+
                     .frame(height: CGFloat(min(viewModel.activityFeed.count, 8) * 88))
-                    
-                    // Bottom Button
+
+
                     Button(action: {
                         HapticsManager.triggerImpact(style: .light)
                         onViewAllPressed()
@@ -96,3 +96,14 @@ struct ActivityFeedView: View {
         }
     }
 }
+
+#Preview {
+    ActivityFeedView(
+        viewModel: PreviewSupport.loanOfficerViewModel,
+        onActionTriggered: { _, _ in },
+        onViewAllPressed: {}
+    )
+    .padding()
+    .previewLoanOfficerEnvironment()
+}
+

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Reusable section card for profile and settings screens.
-/// Uses the unified LMS card modifier for consistent surface + shadow.
+
+
 struct SectionCardView<Content: View>: View {
     var title: String
     var icon: String
@@ -11,7 +11,7 @@ struct SectionCardView<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.lg) {
-            // Header
+
             HStack(spacing: LMSSpacing.md) {
                 Image(systemName: icon)
                     .font(.system(.callout, design: .rounded).weight(.semibold))
@@ -37,10 +37,19 @@ struct SectionCardView<Content: View>: View {
 
             Divider()
 
-            // Custom Content
+
             content()
         }
         .padding(LMSSpacing.xl)
         .lmsCard(radius: LMSRadius.lg)
     }
 }
+
+#Preview {
+    SectionCardView(title: "Personal Info", icon: "person.fill") {
+        Text("Rahul Sharma")
+        Text("rahul@example.com")
+    }
+    .padding()
+}
+

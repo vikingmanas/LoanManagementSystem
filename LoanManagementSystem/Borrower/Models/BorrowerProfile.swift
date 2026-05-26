@@ -23,6 +23,8 @@ public struct BorrowerProfile: Codable, Equatable {
     public var income: IncomeInfo
     
     public var bankDetails: BankDetails
+    public var linkedAccounts: [LinkedBankAccount]?
+    public var gstNumber: String?
     
     public var kycVerification: KYCVerification
     public var loanOverview: LoanOverview
@@ -88,9 +90,7 @@ public struct BorrowerProfile: Codable, Equatable {
            !bankDetails.ifscCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         
         // 6. Onboarding Questionnaire Details
-        if !preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
-        if !emergencyContactName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-           !emergencyContactNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
+        if !preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 10 }
         if !nomineeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
            !nomineeRelationship.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         
@@ -126,6 +126,8 @@ public struct BorrowerProfile: Codable, Equatable {
             employment: EmploymentInfo(employmentType: "", companyName: "", designation: "", workExperienceYears: 0, employerAddress: ""),
             income: IncomeInfo(monthlyIncome: 0, annualIncome: 0, existingEMIs: 0, creditScore: 0, incomeSource: ""),
             bankDetails: BankDetails(bankName: "", accountHolderName: "", accountNumber: "", ifscCode: "", upiID: nil, isVerified: false),
+            linkedAccounts: [],
+            gstNumber: nil,
             kycVerification: KYCVerification(aadhaarStatus: .pending, panStatus: .pending, addressProofStatus: .pending, selfieStatus: .pending),
             loanOverview: LoanOverview(activeLoans: 0, loanHistoryCount: 0, nextEmiDueDate: nil, remainingBalance: 0, currentLoanStatus: "None"),
             occupation: "",
@@ -186,6 +188,16 @@ public struct BankDetails: Codable, Equatable {
     public let ifscCode: String
     public let upiID: String?
     public let isVerified: Bool
+}
+
+public struct LinkedBankAccount: Codable, Equatable, Identifiable {
+    public var id: UUID
+    public var bankName: String
+    public var accountNumber: String
+    public var ifscCode: String
+    public var balance: Double
+    public var branch: String
+    public var customerId: String
 }
 
 public struct KYCVerification: Codable, Equatable {

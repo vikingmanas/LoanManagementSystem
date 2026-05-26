@@ -147,3 +147,12 @@ struct KPICard: View {
         .accessibilityHint("Tap to view details in the history tab.")
     }
 }
+
+#Preview {
+    KPIGridView(
+        viewModel: PreviewSupport.loanOfficerViewModel,
+        onCardSelected: { _ in }
+    )
+    .padding()
+    .previewLoanOfficerEnvironment()
+}

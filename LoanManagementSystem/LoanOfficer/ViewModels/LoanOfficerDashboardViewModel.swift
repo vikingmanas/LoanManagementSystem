@@ -28,7 +28,11 @@ class LoanOfficerDashboardViewModel: ObservableObject {
             .map { apps in
                 apps.compactMap { CentralLoanRepository.shared.toOfficerApplication(from: $0) }
             }
-            .assign(to: &$applications)
+            .sink { [weak self] mappedApps in
+                guard let self = self else { return }
+                self.applications = mappedApps
+            }
+            .store(in: &cancellables)
     }
     
     // Tab 2 History Filter parameters
@@ -103,18 +107,18 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         var items: [DocumentQueueItem] = []
         for app in applications {
             for doc in app.documents {
+                guard let uploadedDate = doc.uploadedDate else { continue }
                 items.append(DocumentQueueItem(
                     id: doc.id,
                     borrowerName: app.borrowerName,
                     docType: doc.docType,
                     status: doc.status,
-                    submittedDate: doc.uploadedDate ?? app.lastUpdatedDate,
+                    submittedDate: uploadedDate,
                     applicationId: app.applicationId
                 ))
             }
         }
         
-        // Sort items by status priority: reUploaded/uploaded first, then underReview, then pending
         return items.sorted { a, b in
             let aScore = priorityScore(for: a.status)
             let bScore = priorityScore(for: b.status)
@@ -123,6 +127,15 @@ class LoanOfficerDashboardViewModel: ObservableObject {
             }
             return a.submittedDate > b.submittedDate
         }
+    }
+    
+    /// Documents uploaded today — officer review queue for the current day.
+    var todayDocumentQueueList: [DocumentQueueItem] {
+        documentQueueList.filter { Calendar.current.isDateInToday($0.submittedDate) }
+    }
+    
+    var todayDocumentReviewCount: Int {
+        todayDocumentQueueList.filter { $0.status == .uploaded || $0.status == .reUploaded || $0.status == .underReview }.count
     }
     
     private func priorityScore(for status: DocumentStatus) -> Int {

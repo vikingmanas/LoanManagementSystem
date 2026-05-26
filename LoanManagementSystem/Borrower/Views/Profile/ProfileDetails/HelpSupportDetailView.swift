@@ -44,3 +44,9 @@ struct HelpSupportDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
+
+#Preview {
+    NavigationStack {
+        HelpSupportDetailView()
+    }
+}

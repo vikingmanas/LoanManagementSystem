@@ -116,12 +116,12 @@ final class AuthManager: ObservableObject {
     // MARK: - Sign Up
     /// Creates a new borrower account with email and password, then inserts them in the users table.
     @discardableResult
-    func signUp(name: String, email: String, password: String) async -> Bool {
+    func signUp(name: String, email: String, password: String, phone: String) async -> Bool {
         clearError()
         isLoading = true
 
         do {
-            if let session = try await AuthService.shared.signUp(email: email, password: password, name: name) {
+            if let session = try await AuthService.shared.signUp(email: email, password: password, name: name, phone: phone) {
                 let user = session.user
                 self.currentUser = AuthSessionUser(
                     uid: user.id.uuidString,
@@ -213,6 +213,11 @@ final class AuthManager: ObservableObject {
     // MARK: - Error Mapping
     /// Converts Supabase Auth/DB errors into user-friendly messages.
     private func mapSupabaseError(_ error: Error) -> String {
+        // Handle custom AuthServiceError cases with clear, user-friendly messages
+        if let authServiceError = error as? AuthServiceError {
+            return authServiceError.errorDescription ?? error.localizedDescription
+        }
+        
         let errDesc = error.localizedDescription
         
         // Handle common auth/network string matches
@@ -220,7 +225,8 @@ final class AuthManager: ObservableObject {
            errDesc.localizedCaseInsensitiveContains("invalid credentials") {
             return "Incorrect email or password. Please try again."
         } else if errDesc.localizedCaseInsensitiveContains("email already in use") ||
-                  errDesc.localizedCaseInsensitiveContains("user already exists") {
+                  errDesc.localizedCaseInsensitiveContains("user already exists") ||
+                  errDesc.localizedCaseInsensitiveContains("already registered") {
             return "This email is already registered. Try logging in instead."
         } else if errDesc.localizedCaseInsensitiveContains("password is too weak") ||
                   errDesc.localizedCaseInsensitiveContains("password should be") {

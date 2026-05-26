@@ -84,3 +84,9 @@ struct ResetPasswordDetailView: View {
         showAlert = true
     }
 }
+
+#Preview {
+    NavigationStack {
+        ResetPasswordDetailView()
+    }
+}

@@ -3,14 +3,14 @@ import SwiftUI
 struct EditAddressInfoView: View {
     @Environment(\.presentationMode) var presentationMode
     @ObservedObject var viewModel: BorrowerProfileViewModel
-    
+
     @State private var streetAddress: String
     @State private var city: String
     @State private var state: String
     @State private var zipCode: String
-    
+
     @State private var isSameAsCurrent: Bool
-    
+
     init(viewModel: BorrowerProfileViewModel) {
         self.viewModel = viewModel
         _streetAddress = State(initialValue: viewModel.profile?.currentAddress.streetAddress ?? "")
@@ -19,7 +19,7 @@ struct EditAddressInfoView: View {
         _zipCode = State(initialValue: viewModel.profile?.currentAddress.zipCode ?? "")
         _isSameAsCurrent = State(initialValue: viewModel.profile?.currentAddress.isSameAsCurrent ?? true)
     }
-    
+
     var body: some View {
         NavigationStack {
             Form {
@@ -34,7 +34,7 @@ struct EditAddressInfoView: View {
                         .keyboardType(.numberPad)
                         .font(Font.AppTheme.input)
                 }
-                
+
                 Section {
                     Toggle("Permanent address is same as current", isOn: $isSameAsCurrent)
                 }
@@ -70,3 +70,10 @@ struct EditAddressInfoView: View {
         }
     }
 }
+
+#Preview {
+    NavigationStack {
+        EditAddressInfoView(viewModel: PreviewSupport.borrowerProfileViewModel)
+    }
+}
+

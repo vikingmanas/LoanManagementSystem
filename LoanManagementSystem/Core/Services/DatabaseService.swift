@@ -1,62 +1,84 @@
-//
-//  DatabaseService.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 22/05/26.
-//
+
+
+
+
+
+
 
 import Foundation
 import Supabase
 
-/// Service for managing database queries using Supabase Database (PostgREST) with local fallback.
+
 final class DatabaseService {
     static let shared = DatabaseService()
     private init() {}
-    
+
     private var client: SupabaseClient {
         SupabaseManager.shared.client
     }
-    
-    /// Fetches borrower profile from "profiles" table.
+
+
     func fetchProfile(userId: String) async throws -> BorrowerProfile? {
-        do {
-            let profile: BorrowerProfile = try await client
-                .from("profiles")
-                .select()
-                .eq("id", value: userId)
-                .single()
-                .execute()
-                .value
-            
-            // Cache it locally on successful fetch
+
+        let profiles: [BorrowerProfile] = try await client
+            .from("profiles")
+            .select()
+            .eq("id", value: userId)
+            .execute()
+            .value
+
+        if let profile = profiles.first {
+
             saveProfileLocally(profile, userId: userId)
             return profile
-        } catch {
-            print("[DatabaseService] Failed to fetch profile from Supabase: \(error.localizedDescription)")
-            // Fallback to local cache
-            return loadProfileLocally(userId: userId)
+        } else {
+
+            return nil
         }
     }
-    
-    /// Updates borrower profile metadata in "profiles" table.
+
+
     func updateProfile(_ profile: BorrowerProfile) async throws {
-        // Save locally first so user's work is not lost
+
         saveProfileLocally(profile, userId: profile.id)
-        
+
+
+        if let userId = UUID(uuidString: profile.id) {
+            let userUpsert: [String: String] = [
+                "id": userId.uuidString,
+                "email": profile.email,
+                "full_name": profile.fullName,
+                "mobile_number": profile.mobileNumber
+            ]
+            print("UPSERT REQUEST - Table: users, ID: \(userId), Payload: \(userUpsert)")
+            do {
+                try await client
+                    .from("users")
+                    .upsert(userUpsert)
+                    .execute()
+                print("UPSERT RESPONSE - Table: users, Status: Success")
+            } catch {
+                print("EXACT SUPABASE ERROR - Table: users, Sync Error: \(error.localizedDescription)")
+                throw error
+            }
+        }
+
+
+        print("UPDATE REQUEST - Table: profiles, ID: \(profile.id)")
         do {
             try await client
                 .from("profiles")
                 .upsert(profile)
                 .execute()
-            print("[DatabaseService] Profile upserted to Supabase successfully.")
+            print("UPDATED RESPONSE - Table: profiles, Status: Success")
         } catch {
-            print("[DatabaseService] Failed to update profile in Supabase: \(error.localizedDescription)")
-            // Graceful fallback: we do not rethrow since local cache has successfully saved the data.
+            print("EXACT SUPABASE ERROR - Table: profiles, Error: \(error.localizedDescription)")
+            throw error
         }
     }
-    
-    // MARK: - Local Cache Helpers
-    
+
+
+
     private func saveProfileLocally(_ profile: BorrowerProfile, userId: String) {
         do {
             let data = try JSONEncoder().encode(profile)
@@ -67,8 +89,8 @@ final class DatabaseService {
             print("[DatabaseService] Error caching profile locally: \(error.localizedDescription)")
         }
     }
-    
-    private func loadProfileLocally(userId: String) -> BorrowerProfile? {
+
+    func loadProfileLocally(userId: String) -> BorrowerProfile? {
         let fileURL = getLocalProfileURL(userId: userId)
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             return nil
@@ -83,12 +105,13 @@ final class DatabaseService {
             return nil
         }
     }
-    
+
     private func getLocalProfileURL(userId: String) -> URL {
         let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
         let directory = paths[0].appendingPathComponent("Profiles", isDirectory: true)
-        // Ensure directory exists
+
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: nil)
         return directory.appendingPathComponent("\(userId).json")
     }
 }
+

@@ -6,14 +6,14 @@ struct LoanOfficerMockData {
     typealias ApplicationStatus = OfficerApplicationStatus
     typealias DocumentStatus = OfficerDocumentStatus
     typealias DocumentType = OfficerDocumentType
-    
+
     static let branchName = "Bengaluru"
     static let officerName = "Arjun"
-    
+
     static func createApplications() -> [LoanApplication] {
         let calendar = Calendar.current
         let now = Date()
-        
+
         let officerId = UUID()
         let borrower1 = UUID()
         let borrower2 = UUID()
@@ -25,41 +25,41 @@ struct LoanOfficerMockData {
         let borrower8 = UUID()
         let borrower9 = UUID()
         let borrower10 = UUID()
-        
-        // Mocking Documents
+
+
         let docsPriya = [
             LoanDocument(id: UUID(), docType: .aadhaar, status: .reUploaded, uploadedDate: calendar.date(byAdding: .hour, value: -2, to: now), reviewedDate: nil),
             LoanDocument(id: UUID(), docType: .pan, status: .verified, uploadedDate: calendar.date(byAdding: .day, value: -10, to: now), reviewedDate: calendar.date(byAdding: .day, value: -8, to: now)),
             LoanDocument(id: UUID(), docType: .salarySlip, status: .verified, uploadedDate: calendar.date(byAdding: .day, value: -10, to: now), reviewedDate: calendar.date(byAdding: .day, value: -8, to: now))
         ]
-        
+
         let docsRohit = [
             LoanDocument(id: UUID(), docType: .salarySlip, status: .uploaded, uploadedDate: calendar.date(byAdding: .hour, value: -5, to: now), reviewedDate: nil),
             LoanDocument(id: UUID(), docType: .pan, status: .verified, uploadedDate: calendar.date(byAdding: .day, value: -5, to: now), reviewedDate: calendar.date(byAdding: .day, value: -4, to: now)),
             LoanDocument(id: UUID(), docType: .aadhaar, status: .verified, uploadedDate: calendar.date(byAdding: .day, value: -5, to: now), reviewedDate: calendar.date(byAdding: .day, value: -4, to: now))
         ]
-        
+
         let docsAnita = [
-            LoanDocument(id: UUID(), docType: .gstCertificate, status: .pending, uploadedDate: nil, reviewedDate: nil),
-            LoanDocument(id: UUID(), docType: .pan, status: .verified, uploadedDate: calendar.date(byAdding: .day, value: -1, to: now), reviewedDate: calendar.date(byAdding: .hour, value: -6, to: now))
+            LoanDocument(id: UUID(), docType: .gstCertificate, status: .uploaded, uploadedDate: calendar.date(byAdding: .hour, value: -1, to: now), reviewedDate: nil),
+            LoanDocument(id: UUID(), docType: .pan, status: .verified, uploadedDate: calendar.date(byAdding: .hour, value: -4, to: now), reviewedDate: calendar.date(byAdding: .hour, value: -2, to: now))
         ]
-        
+
         let docsSuresh = [
             LoanDocument(id: UUID(), docType: .pan, status: .verified, uploadedDate: calendar.date(byAdding: .day, value: -15, to: now), reviewedDate: calendar.date(byAdding: .day, value: -14, to: now)),
             LoanDocument(id: UUID(), docType: .aadhaar, status: .verified, uploadedDate: calendar.date(byAdding: .day, value: -15, to: now), reviewedDate: calendar.date(byAdding: .day, value: -14, to: now))
         ]
-        
+
         let docsKavya = [
-            LoanDocument(id: UUID(), docType: .bankStatement, status: .underReview, uploadedDate: calendar.date(byAdding: .day, value: -1, to: now), reviewedDate: nil),
+            LoanDocument(id: UUID(), docType: .bankStatement, status: .underReview, uploadedDate: calendar.date(byAdding: .hour, value: -3, to: now), reviewedDate: nil),
             LoanDocument(id: UUID(), docType: .pan, status: .verified, uploadedDate: calendar.date(byAdding: .day, value: -4, to: now), reviewedDate: calendar.date(byAdding: .day, value: -3, to: now))
         ]
-        
+
         let docsRajan = [
             LoanDocument(id: UUID(), docType: .propertyDoc, status: .verified, uploadedDate: calendar.date(byAdding: .day, value: -6, to: now), reviewedDate: calendar.date(byAdding: .day, value: -5, to: now))
         ]
 
         let apps: [LoanApplication] = [
-            // 1. Priya Sharma
+
             LoanApplication(
                 id: UUID(),
                 applicationId: "APP-2024-0892",
@@ -78,7 +78,7 @@ struct LoanOfficerMockData {
                 sentToManagerDate: calendar.date(byAdding: .day, value: -2, to: now),
                 managerStatus: .underReview
             ),
-            // 2. Rohit Mehta
+
             LoanApplication(
                 id: UUID(),
                 applicationId: "APP-2024-0914",
@@ -97,7 +97,7 @@ struct LoanOfficerMockData {
                 sentToManagerDate: nil,
                 managerStatus: nil
             ),
-            // 3. Anita Desai
+
             LoanApplication(
                 id: UUID(),
                 applicationId: "APP-2024-0925",
@@ -116,7 +116,7 @@ struct LoanOfficerMockData {
                 sentToManagerDate: nil,
                 managerStatus: nil
             ),
-            // 4. Suresh Kumar
+
             LoanApplication(
                 id: UUID(),
                 applicationId: "APP-2024-0711",
@@ -135,7 +135,7 @@ struct LoanOfficerMockData {
                 sentToManagerDate: nil,
                 managerStatus: nil
             ),
-            // 5. Kavya Nair
+
             LoanApplication(
                 id: UUID(),
                 applicationId: "APP-2024-0830",
@@ -154,7 +154,7 @@ struct LoanOfficerMockData {
                 sentToManagerDate: nil,
                 managerStatus: nil
             ),
-            // 6. Rajan Pillai
+
             LoanApplication(
                 id: UUID(),
                 applicationId: "APP-2024-0610",
@@ -173,7 +173,7 @@ struct LoanOfficerMockData {
                 sentToManagerDate: calendar.date(byAdding: .day, value: -6, to: now),
                 managerStatus: .approved
             ),
-            // 7. Kiran Joshi
+
             LoanApplication(
                 id: UUID(),
                 applicationId: "APP-2024-0754",
@@ -192,7 +192,7 @@ struct LoanOfficerMockData {
                 sentToManagerDate: calendar.date(byAdding: .day, value: -4, to: now),
                 managerStatus: .approved
             ),
-            // 8. Deepak Rao
+
             LoanApplication(
                 id: UUID(),
                 applicationId: "APP-2024-0801",
@@ -211,7 +211,7 @@ struct LoanOfficerMockData {
                 sentToManagerDate: calendar.date(byAdding: .day, value: -1, to: now),
                 managerStatus: .needsClarification
             ),
-            // 9. Meena Iyer
+
             LoanApplication(
                 id: UUID(),
                 applicationId: "APP-2024-0932",
@@ -230,7 +230,7 @@ struct LoanOfficerMockData {
                 sentToManagerDate: now,
                 managerStatus: .underReview
             ),
-            // 10. Arun Verma
+
             LoanApplication(
                 id: UUID(),
                 applicationId: "APP-2024-0511",
@@ -249,7 +249,7 @@ struct LoanOfficerMockData {
                 sentToManagerDate: calendar.date(byAdding: .day, value: -20, to: now),
                 managerStatus: .approved
             ),
-            // 11. Tara Sen
+
             LoanApplication(
                 id: UUID(),
                 applicationId: "APP-2024-0419",
@@ -269,14 +269,14 @@ struct LoanOfficerMockData {
                 managerStatus: nil
             )
         ]
-        
+
         return apps
     }
-    
+
     static func createActivityFeed() -> [ActivityFeedItem] {
         let calendar = Calendar.current
         let now = Date()
-        
+
         return [
             ActivityFeedItem(
                 id: UUID(),
@@ -353,3 +353,4 @@ struct LoanOfficerMockData {
         ]
     }
 }
+

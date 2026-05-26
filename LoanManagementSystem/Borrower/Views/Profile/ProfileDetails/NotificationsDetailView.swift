@@ -76,3 +76,9 @@ struct NotificationsDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
+
+#Preview {
+    NavigationStack {
+        NotificationsDetailView()
+    }
+}

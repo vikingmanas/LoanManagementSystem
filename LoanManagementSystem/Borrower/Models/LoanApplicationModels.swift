@@ -173,6 +173,7 @@ struct BorrowerLoanDocumentItem: Identifiable, Hashable {
     var category: BorrowerDocumentCategory
     var status: BorrowerDocumentStatus
     var fileName: String?
+    var fileUrl: String?
     var uploadDate: Date?
     var lastUpdated: Date?
     var isLocked: Bool
@@ -206,6 +207,7 @@ struct BorrowerLoanFormData: Equatable, Hashable {
     var coApplicantDetails: String
     var hasGuarantor: Bool
     var guarantorDetails: String
+    var gstNumber: String
 
     // Dropdown selections
     var selectedIdentityDoc: String
@@ -244,6 +246,7 @@ struct BorrowerLoanFormData: Equatable, Hashable {
         coApplicantDetails: String,
         hasGuarantor: Bool,
         guarantorDetails: String,
+        gstNumber: String = "",
         selectedIdentityDoc: String = "Aadhaar Card",
         selectedAddressDoc: String = "Utility Bill",
         selectedIncomeDoc: String = "Salary Slips"
@@ -271,6 +274,7 @@ struct BorrowerLoanFormData: Equatable, Hashable {
         self.coApplicantDetails = coApplicantDetails
         self.hasGuarantor = hasGuarantor
         self.guarantorDetails = guarantorDetails
+        self.gstNumber = gstNumber
         self.selectedIdentityDoc = selectedIdentityDoc
         self.selectedAddressDoc = selectedAddressDoc
         self.selectedIncomeDoc = selectedIncomeDoc
@@ -300,6 +304,7 @@ struct BorrowerLoanFormData: Equatable, Hashable {
         coApplicantDetails: "",
         hasGuarantor: false,
         guarantorDetails: "",
+        gstNumber: "",
         selectedIdentityDoc: "Aadhaar Card",
         selectedAddressDoc: "Utility Bill",
         selectedIncomeDoc: "Salary Slips"
@@ -331,6 +336,7 @@ struct BorrowerLoanFormData: Equatable, Hashable {
             coApplicantDetails: "",
             hasGuarantor: false,
             guarantorDetails: "",
+            gstNumber: profile.gstNumber ?? "",
             selectedIdentityDoc: "Aadhaar Card",
             selectedAddressDoc: "Utility Bill",
             selectedIncomeDoc: "Salary Slips"
@@ -723,3 +729,4 @@ private extension String {
         return Double(filtered) ?? 0
     }
 }
+

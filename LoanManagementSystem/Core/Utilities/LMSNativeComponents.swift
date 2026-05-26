@@ -18,7 +18,7 @@ public enum LMSAppearance {
         UINavigationBar.appearance().standardAppearance = nav
         UINavigationBar.appearance().scrollEdgeAppearance = nav
         UINavigationBar.appearance().compactAppearance = nav
-        // Since brandNavy is a custom color, it's safer to resolve it properly. But tintColor is usually fine as a single color, though if we want true dynamic behavior we could use the UIColor closure.
+
         UINavigationBar.appearance().tintColor = UIColor { tc in
             tc.userInterfaceStyle == .dark
                 ? UIColor(red: 74/255, green: 114/255, blue: 190/255, alpha: 1)
@@ -34,13 +34,13 @@ public enum LMSAppearance {
             .foregroundColor: UIColor.tertiaryLabel,
             .font: UIFont.systemFont(ofSize: 10, weight: .medium)
         ]
-        
+
         let brandNavyUIColor = UIColor { tc in
             tc.userInterfaceStyle == .dark
                 ? UIColor(red: 74/255, green: 114/255, blue: 190/255, alpha: 1)
                 : UIColor(red: 10/255, green: 37/255, blue: 64/255, alpha: 1)
         }
-        
+
         tab.stackedLayoutAppearance.selected.iconColor = brandNavyUIColor
         tab.stackedLayoutAppearance.selected.titleTextAttributes = [
             .foregroundColor: brandNavyUIColor,
@@ -426,3 +426,4 @@ public struct LMSNotificationRow: View {
         .contentShape(Rectangle())
     }
 }
+

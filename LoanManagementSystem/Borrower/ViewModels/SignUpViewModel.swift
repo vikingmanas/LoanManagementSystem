@@ -63,7 +63,8 @@ class SignUpViewModel: ObservableObject {
         let success = await authManager.signUp(
             name: fullName,
             email: cleanedEmail,
-            password: password
+            password: password,
+            phone: phone
         )
         isLoading = false
 
@@ -80,3 +81,4 @@ class SignUpViewModel: ObservableObject {
         }
     }
 }
+

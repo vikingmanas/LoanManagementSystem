@@ -64,3 +64,9 @@ struct PrivacyControlsDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
+
+#Preview {
+    NavigationStack {
+        PrivacyControlsDetailView()
+    }
+}

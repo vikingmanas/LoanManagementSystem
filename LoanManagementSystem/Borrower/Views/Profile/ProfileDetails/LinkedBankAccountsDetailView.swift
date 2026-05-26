@@ -57,3 +57,9 @@ struct LinkedBankAccountsDetailView: View {
         return String(repeating: "•", count: number.count - 4) + suffix
     }
 }
+
+#Preview {
+    NavigationStack {
+        LinkedBankAccountsDetailView(viewModel: PreviewSupport.borrowerProfileViewModel)
+    }
+}

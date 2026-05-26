@@ -4,40 +4,26 @@ struct SignInView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel = SignInViewModel()
+    @State private var showBankAccess = false
 
     var body: some View {
         NavigationStack {
             ZStack {
                 ScrollView {
+                    Spacer()
+                        .frame(width: 0, height: 90)
                     VStack(alignment: .leading, spacing: LMSSpacing.xxl) {
-
-                        // Back to roles
-                        Button(action: {
-                            HapticsManager.triggerImpact(style: .medium)
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                appState.showRoleSelection = true
-                            }
-                        }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "chevron.left")
-                                Text("Back to Roles")
-                            }
-                            .font(LMSFont.subheadline.weight(.semibold))
-                            .foregroundStyle(LMSColors.brandNavy)
-                        }
-                        .padding(.top, LMSSpacing.lg)
-
                         // Header
                         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                             Text("Welcome Back")
                                 .font(LMSFont.largeTitle)
                                 .foregroundStyle(LMSColors.textPrimary)
-
+                            
                             Text("Sign in securely to manage your loans.")
                                 .font(LMSFont.subheadline)
                                 .foregroundStyle(LMSColors.textSecondary)
                         }
-                        .padding(.bottom, LMSSpacing.sm)
+                        .padding(.top, LMSSpacing.sm)
 
                         // Error banner
                         if !viewModel.generalError.isEmpty {
@@ -54,7 +40,7 @@ struct SignInView: View {
                             .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
                             .transition(.move(edge: .top).combined(with: .opacity))
                         }
-
+                        
                         // Fields
                         VStack(spacing: LMSSpacing.lg) {
                             CustomTextField(
@@ -73,9 +59,10 @@ struct SignInView: View {
                                 errorMessage: viewModel.passwordError
                             )
                         }
-
+                        Spacer()
+                            .frame(width:0,height:7)
                         // Secondary actions
-                        HStack {
+                        HStack(alignment:.center) {
                             CheckboxView(isChecked: $viewModel.rememberMe, label: "Remember Me")
 
                             Spacer()
@@ -90,7 +77,6 @@ struct SignInView: View {
                         // Sign In
                         PrimaryButton(
                             title: "Sign In",
-                            icon: "arrow.right",
                             isLoading: viewModel.isLoading,
                             isDisabled: !viewModel.isFormValid,
                             action: {
@@ -101,18 +87,7 @@ struct SignInView: View {
                         )
                         .padding(.top, LMSSpacing.sm)
 
-                        // Divider
-                        HStack(spacing: LMSSpacing.md) {
-                            Rectangle()
-                                .fill(LMSColors.separator)
-                                .frame(height: 0.5)
-                            Text("OR")
-                                .font(LMSFont.caption.weight(.medium))
-                                .foregroundStyle(LMSColors.textTertiary)
-                            Rectangle()
-                                .fill(LMSColors.separator)
-                                .frame(height: 0.5)
-                        }
+                        
 
                         // Sign Up link
                         HStack {
@@ -129,6 +104,20 @@ struct SignInView: View {
                             Spacer()
                         }
                         .padding(.bottom, LMSSpacing.xxxl)
+                        // Divider
+                        HStack(spacing: LMSSpacing.md) {
+                            Rectangle()
+                                .fill(LMSColors.separator)
+                                .frame(height: 0.5)
+                            Text("OR")
+                                .font(LMSFont.caption.weight(.medium))
+                                .foregroundStyle(LMSColors.textTertiary)
+                            Rectangle()
+                                .fill(LMSColors.separator)
+                                .frame(height: 0.5)
+                        }
+                        staffLoginButton
+                            .padding(.bottom, LMSSpacing.xl)
                     }
                     .padding(.horizontal, LMSSpacing.xxl)
                 }
@@ -136,12 +125,134 @@ struct SignInView: View {
             .lmsScreenBackground()
             .navigationBarTitleDisplayMode(.inline)
             .hideNavigationBar()
+            .sheet(isPresented: $showBankAccess) {
+                BankRoleAccessSheet { role in
+                    HapticsManager.triggerImpact(style: .heavy)
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                        appState.selectedRole = role
+                        appState.login()
+                    }
+                }
+            }
             .onChange(of: viewModel.showSuccess) { _, success in
                 if success {
                     appState.login()
                 }
             }
         }
+    }
+
+    private var staffLoginButton: some View {
+        HStack {
+
+            Button {
+                HapticsManager.triggerImpact(style: .medium)
+                showBankAccess = true
+            } label: {
+                HStack(spacing: LMSSpacing.sm) {
+                    Spacer()
+                    Image(systemName: "building.columns.fill")
+                        .font(.system(size: 15, weight: .semibold))
+
+                    Text("Staff Login")
+                        .font(LMSFont.footnote.weight(.semibold))
+                    Spacer()
+                }
+                .foregroundStyle(LMSColors.brandNavy)
+                .padding(.horizontal, LMSSpacing.lg)
+                .padding(.vertical, LMSSpacing.sm)
+                .background(LMSColors.brandNavy.opacity(0.08), in: Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(LMSColors.separatorLight, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Bank access")
+            .accessibilityHint("Opens staff role selection")
+
+            Spacer()
+        }
+    }
+}
+
+private struct BankRoleAccessSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let onRoleSelected: (PortalRole) -> Void
+
+    private let staffRoles: [PortalRole] = [.loanOfficer, .bankManager, .admin]
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: LMSSpacing.xl) {
+                VStack(alignment: .leading, spacing: LMSSpacing.sm) {
+                    Text("Bank Access")
+                        .font(LMSFont.title)
+                        .foregroundStyle(LMSColors.textPrimary)
+
+                    Text("Select your staff workspace.")
+                        .font(LMSFont.subheadline)
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+                .padding(.top, LMSSpacing.lg)
+
+                VStack(spacing: LMSSpacing.md) {
+                    ForEach(staffRoles) { role in
+                        Button {
+                            onRoleSelected(role)
+                            dismiss()
+                        } label: {
+                            HStack(spacing: LMSSpacing.lg) {
+                                Image(systemName: role.icon)
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundStyle(LMSColors.brandNavy)
+                                    .frame(width: 48, height: 48)
+                                    .background(LMSColors.brandNavy.opacity(0.08), in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+
+                                VStack(alignment: .leading, spacing: LMSSpacing.xs) {
+                                    Text(role.rawValue)
+                                        .font(LMSFont.callout.weight(.bold))
+                                        .foregroundStyle(LMSColors.textPrimary)
+
+                                    Text(role.description)
+                                        .font(LMSFont.caption)
+                                        .foregroundStyle(LMSColors.textSecondary)
+                                        .multilineTextAlignment(.leading)
+                                        .lineLimit(2)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "arrow.right")
+                                    .font(.system(.callout, design: .rounded).weight(.bold))
+                                    .foregroundStyle(LMSColors.textTertiary)
+                            }
+                            .padding(LMSSpacing.lg)
+                            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                                    .stroke(LMSColors.separatorLight, lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, LMSSpacing.xxl)
+            .lmsScreenBackground()
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                    .foregroundStyle(LMSColors.brandNavy)
+                }
+            }
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
     }
 }
 

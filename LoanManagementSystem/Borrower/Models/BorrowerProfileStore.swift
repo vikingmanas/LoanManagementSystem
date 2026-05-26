@@ -82,7 +82,7 @@ public class BorrowerProfileStore: ObservableObject {
         self.accounts = [rahulAccount]
     }
 
-    // MARK: - Actions
+
 
     @discardableResult
     func ensureProfile(email: String, name: String? = nil, phone: String? = nil, alternatePhone: String? = nil) -> BorrowerProfile {
@@ -100,8 +100,8 @@ public class BorrowerProfileStore: ObservableObject {
                     return
                 }
             }
-            
-            // Previews / offline mock check
+
+
             if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
                 if let account = accounts.first(where: { $0.email == cleanedEmail }) {
                     self.profile = account.profile
@@ -109,7 +109,7 @@ public class BorrowerProfileStore: ObservableObject {
                     return
                 }
             }
-            
+
             let customerId = "C-\(Int.random(in: 100000...999999))"
             let fallbackProfile = makeEmptyProfile(name: name ?? cleanedEmail, email: cleanedEmail, phone: phone ?? "", alternatePhone: alternatePhone, customerId: customerId)
             self.profile = fallbackProfile
@@ -124,6 +124,8 @@ public class BorrowerProfileStore: ObservableObject {
             if let decodedProfile = try await DatabaseService.shared.fetchProfile(userId: uid) {
                 self.profile = decodedProfile
             } else {
+
+
                 let customerId = "C-\(Int.random(in: 100000...999999))"
                 var newProfile = makeEmptyProfile(
                     name: name ?? email,
@@ -139,10 +141,16 @@ public class BorrowerProfileStore: ObservableObject {
             self.currentEmail = email
         } catch {
             print("Error fetching profile from Supabase: \(error.localizedDescription)")
-            let customerId = "C-\(Int.random(in: 100000...999999))"
-            var fallbackProfile = makeEmptyProfile(name: name ?? email, email: email, phone: phone ?? "", alternatePhone: alternatePhone, customerId: customerId)
-            fallbackProfile.id = uid
-            self.profile = fallbackProfile
+
+
+            if let cachedProfile = DatabaseService.shared.loadProfileLocally(userId: uid) {
+                self.profile = cachedProfile
+            } else {
+                let customerId = "C-\(Int.random(in: 100000...999999))"
+                var fallbackProfile = makeEmptyProfile(name: name ?? email, email: email, phone: phone ?? "", alternatePhone: alternatePhone, customerId: customerId)
+                fallbackProfile.id = uid
+                self.profile = fallbackProfile
+            }
             self.currentEmail = email
         }
     }
@@ -151,16 +159,21 @@ public class BorrowerProfileStore: ObservableObject {
         self.profile = updatedProfile
 
         Task {
-            if let session = try? await SupabaseManager.shared.client.auth.session {
-                let user = session.user
-                var profileWithUid = updatedProfile
-                profileWithUid.id = user.id.uuidString
-                try? await DatabaseService.shared.updateProfile(profileWithUid)
-            } else {
-                if let index = accounts.firstIndex(where: { $0.email == updatedProfile.email }) {
-                    accounts[index].profile = updatedProfile
-                    accounts[index].isOnboardingCompleted = updatedProfile.isOnboardingCompleted
+            do {
+                if let session = try? await SupabaseManager.shared.client.auth.session {
+                    let user = session.user
+                    var profileWithUid = updatedProfile
+                    profileWithUid.id = user.id.uuidString
+                    try await DatabaseService.shared.updateProfile(profileWithUid)
+                    print("[BorrowerProfileStore] Profile synchronization completed successfully.")
+                } else {
+                    if let index = accounts.firstIndex(where: { $0.email == updatedProfile.email }) {
+                        accounts[index].profile = updatedProfile
+                        accounts[index].isOnboardingCompleted = updatedProfile.isOnboardingCompleted
+                    }
                 }
+            } catch {
+                print("Error updating profile in Supabase: \(error.localizedDescription)")
             }
         }
     }
@@ -221,7 +234,7 @@ public class BorrowerProfileStore: ObservableObject {
     }
 }
 
-// MARK: - Codable Extensions for Supabase/JSON Serialization
+
 
 extension Encodable {
     var asDictionary: [String: Any]? {
@@ -236,3 +249,4 @@ extension Decodable {
         return try? JSONDecoder().decode(Self.self, from: data)
     }
 }
+
