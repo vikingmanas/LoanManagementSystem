@@ -1,7 +1,12 @@
-LoanManagementSystem.xcodeproj/project.xcworkspace/xcuserdata/akashkashyap.xcuserdatad/UserInterfaceState.xcuserstate
-LoanManagementSystem.xcodeproj/project.xcworkspace/xcuserdata/akashkashyap.xcuserdatad/UserInterfaceState.xcuserstate
-LoanManagementSystem.xcodeproj/xcuserdata/aditya.xcuserdatad/xcschemes/xcschememanagement.plist
-LoanManagementSystem.xcodeproj/project.pbxproj
-LoanManagementSystem.xcodeproj/project.pbxproj
-LoanManagementSystem.xcodeproj/project.xcworkspace/xcuserdata/aditya.xcuserdatad/UserInterfaceState.xcuserstate
-LoanManagementSystem.xcodeproj/project.pbxproj
+# Xcode user settings and states
+xcuserdata/
+*.xcuserstate
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xccheckout
+*.moved-aside
+DerivedData/
+*.hmap
+*.ipa
+*.playground.xml
