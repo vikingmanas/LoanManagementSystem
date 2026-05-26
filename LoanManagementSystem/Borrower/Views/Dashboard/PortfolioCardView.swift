@@ -164,14 +164,14 @@ struct TotalLoanOutstandingCard: View {
             
             Spacer()
             
-            HStack {
-                Text("Manage Loans")
-                    .font(.system(.caption, design: .rounded).bold())
-                    .foregroundStyle(.white)
-                Spacer()
-                Image(systemName: "chevron.right.circle.fill")
-                    .foregroundStyle(.white.opacity(0.5))
-            }
+//            HStack {
+//                Text("Manage Loans")
+//                    .font(.system(.caption, design: .rounded).bold())
+//                    .foregroundStyle(.white)
+//                Spacer()
+//                Image(systemName: "chevron.right.circle.fill")
+//                    .foregroundStyle(.white.opacity(0.5))
+//            }
         }
         .padding(LMSSpacing.xl)
         .background(

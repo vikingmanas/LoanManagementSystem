@@ -113,6 +113,26 @@ class BorrowerProfileViewModel: ObservableObject {
         
         BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
+
+    func addLinkedBankAccount(bank: String, account: String, ifsc: String, branch: String, customerId: String) {
+        guard var updatedProfile = profile else { return }
+
+        let linkedAccount = LinkedBankAccount(
+            id: UUID(),
+            bankName: bank,
+            accountNumber: account,
+            ifscCode: ifsc,
+            balance: 0,
+            branch: branch,
+            customerId: customerId
+        )
+
+        var accounts = updatedProfile.linkedAccounts ?? []
+        accounts.append(linkedAccount)
+        updatedProfile.linkedAccounts = accounts
+
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
+    }
     
     func updateKYC(
         aadhaar: VerificationStatus,
