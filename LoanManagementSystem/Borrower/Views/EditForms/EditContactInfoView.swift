@@ -3,30 +3,30 @@ import SwiftUI
 struct EditContactInfoView: View {
     @Environment(\.presentationMode) var presentationMode
     @ObservedObject var viewModel: BorrowerProfileViewModel
-    
+
     @State private var mobileNumber: String
     @State private var alternateNumber: String
     @State private var email: String
-    
+
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var alertTitle = ""
-    
+
     init(viewModel: BorrowerProfileViewModel) {
         self.viewModel = viewModel
         _mobileNumber = State(initialValue: viewModel.profile?.mobileNumber ?? "")
         _alternateNumber = State(initialValue: viewModel.profile?.alternateNumber ?? "")
         _email = State(initialValue: viewModel.profile?.email ?? "")
     }
-    
+
     var isPhoneVerified: Bool {
         viewModel.profile?.isPhoneVerified ?? false
     }
-    
+
     var isKYCVerified: Bool {
         viewModel.profile?.isKYCVerified ?? false
     }
-    
+
     var body: some View {
         NavigationStack {
             Form {
@@ -35,7 +35,7 @@ struct EditContactInfoView: View {
                         LockedFieldRow(label: "Mobile Number", value: mobileNumber) {
                             triggerRequestChange(for: "Mobile Number")
                         }
-                        
+
                         Text("This verified mobile number is locked. To modify it, please request an official update.")
                             .font(Font.AppTheme.caption)
                             .foregroundStyle(Color.AppTheme.textSecondary)
@@ -52,7 +52,7 @@ struct EditContactInfoView: View {
                         }
                     }
                 }
-                
+
                 Section(header: Text("Other Contact Fields")) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Alternate Mobile Number")
@@ -62,7 +62,7 @@ struct EditContactInfoView: View {
                             .keyboardType(.phonePad)
                             .font(Font.AppTheme.input)
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Email Address")
                             .font(Font.AppTheme.caption)
@@ -104,7 +104,7 @@ struct EditContactInfoView: View {
             }
         }
     }
-    
+
     private func triggerRequestChange(for fieldName: String) {
         alertTitle = "Request Contact Update"
         alertMessage = "A request to change your registered \(fieldName) has been generated. For security reasons, you will receive a verification call from our relationship manager within 24 hours."
@@ -115,3 +115,4 @@ struct EditContactInfoView: View {
 #Preview {
     EditContactInfoView(viewModel: BorrowerProfileViewModel())
 }
+

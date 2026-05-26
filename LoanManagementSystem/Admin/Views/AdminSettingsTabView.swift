@@ -4,18 +4,18 @@ import Supabase
 struct AdminSettingsTabView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
-    
-    // Password update state
+
+
     @State private var newPassword = ""
     @State private var confirmPassword = ""
     @State private var isUpdatingPassword = false
     @State private var passwordMessage: String? = nil
     @State private var passwordError: String? = nil
-    
+
     var body: some View {
         NavigationStack {
             Form {
-                // Admin Header Profile Card
+
                 Section {
                     HStack(spacing: LMSSpacing.md) {
                         ZStack {
@@ -26,12 +26,12 @@ struct AdminSettingsTabView: View {
                                     endPoint: .bottomTrailing
                                 ))
                                 .frame(width: 60, height: 60)
-                            
+
                             Text("AD")
                                 .font(LMSFont.title3)
                                 .foregroundStyle(.white)
                         }
-                        
+
                         VStack(alignment: .leading, spacing: 2) {
                             Text("System Administrator")
                                 .font(LMSFont.callout.weight(.bold))
@@ -46,8 +46,8 @@ struct AdminSettingsTabView: View {
                     }
                     .padding(.vertical, 8)
                 }
-                
-                // Security permissions list
+
+
                 Section("System Permissions") {
                     HStack {
                         Label("Access Level", systemImage: "shield.fill")
@@ -58,7 +58,7 @@ struct AdminSettingsTabView: View {
                             .font(LMSFont.footnote.weight(.semibold))
                             .foregroundStyle(LMSColors.emerald)
                     }
-                    
+
                     HStack {
                         Label("Database Control", systemImage: "externaldrive.fill")
                             .font(LMSFont.body)
@@ -68,7 +68,7 @@ struct AdminSettingsTabView: View {
                             .font(LMSFont.footnote.weight(.semibold))
                             .foregroundStyle(LMSColors.textSecondary)
                     }
-                    
+
                     HStack {
                         Label("Staff Management", systemImage: "person.badge.key.fill")
                             .font(LMSFont.body)
@@ -79,8 +79,8 @@ struct AdminSettingsTabView: View {
                             .foregroundStyle(LMSColors.brandNavy)
                     }
                 }
-                
-                // Password Change Section
+
+
                 Section("Update Administrator Password") {
                     SecureInputField(
                         placeholder: "New Password",
@@ -89,7 +89,7 @@ struct AdminSettingsTabView: View {
                     .listRowInsets(EdgeInsets())
                     .padding(.horizontal, LMSSpacing.screenHorizontal)
                     .padding(.vertical, LMSSpacing.xs)
-                    
+
                     SecureInputField(
                         placeholder: "Confirm New Password",
                         text: $confirmPassword
@@ -97,17 +97,17 @@ struct AdminSettingsTabView: View {
                     .listRowInsets(EdgeInsets())
                     .padding(.horizontal, LMSSpacing.screenHorizontal)
                     .padding(.vertical, LMSSpacing.xs)
-                    
+
                     if let passwordMessage {
                         LMSBanner(message: passwordMessage, style: .success, icon: "checkmark.circle.fill")
                             .listRowInsets(EdgeInsets())
                     }
-                    
+
                     if let passwordError {
                         LMSBanner(message: passwordError, style: .error, icon: "exclamationmark.triangle.fill")
                             .listRowInsets(EdgeInsets())
                     }
-                    
+
                     Button(action: {
                         Task {
                             await updatePassword()
@@ -131,8 +131,8 @@ struct AdminSettingsTabView: View {
                     .padding(.top, LMSSpacing.sm)
                     .disabled(newPassword.isEmpty || confirmPassword.isEmpty || isUpdatingPassword)
                 }
-                
-                // Session Sign Out
+
+
                 Section {
                     Button(action: {
                         HapticsManager.triggerImpact(style: .medium)
@@ -154,24 +154,24 @@ struct AdminSettingsTabView: View {
             .lmsScreenBackground()
         }
     }
-    
-    // MARK: - Password Update Logic
+
+
     private func updatePassword() async {
         passwordMessage = nil
         passwordError = nil
-        
+
         guard newPassword == confirmPassword else {
             passwordError = "Passwords do not match."
             return
         }
-        
+
         guard newPassword.count >= 6 else {
             passwordError = "Password must be at least 6 characters long."
             return
         }
-        
+
         isUpdatingPassword = true
-        
+
         do {
             let client = SupabaseManager.shared.client
             try await client.auth.update(user: UserAttributes(password: newPassword))
@@ -181,7 +181,8 @@ struct AdminSettingsTabView: View {
         } catch {
             passwordError = error.localizedDescription
         }
-        
+
         isUpdatingPassword = false
     }
 }
+

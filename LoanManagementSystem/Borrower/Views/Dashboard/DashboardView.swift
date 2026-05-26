@@ -164,7 +164,7 @@ public struct DashboardView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var tabRouter: BorrowerTabRouter
-    @StateObject private var viewModel = DashboardViewModel()
+    @ObservedObject var viewModel: DashboardViewModel
     
     @State private var navigationPath = [DashboardRoute]()
     @State private var showingQuickPaySheet = false

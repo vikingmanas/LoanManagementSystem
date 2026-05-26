@@ -27,45 +27,45 @@ class BorrowerProfileStore: ObservableObject {
     }
 
     private func setupDefaultAccount() {
-        let rahulProfile = BorrowerProfile(
+                let rahulProfile = BorrowerProfile(
             id: "C-109482",
             fullName: "Rahul Sharma",
             email: "rahul.sharma@example.com",
             mobileNumber: "+91 98765 43210",
-            alternateNumber: "+91 91234 56789",
+            alternateNumber: "",
             dateOfBirth: Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date(),
-            gender: "Male",
-            maritalStatus: "Single",
-            nationality: "Indian",
-            aadhaarNumber: "123456789012",
-            panNumber: "ABCDE1234F",
+            gender: "",
+            maritalStatus: "",
+            nationality: "",
+            aadhaarNumber: "",
+            panNumber: "",
             isEmailVerified: true,
             isPhoneVerified: true,
-            currentAddress: AddressInfo(streetAddress: "14B, Tech Park Road, Andheri East", city: "Mumbai", state: "Maharashtra", zipCode: "400069", country: "India", isSameAsCurrent: true),
-            permanentAddress: AddressInfo(streetAddress: "14B, Tech Park Road, Andheri East", city: "Mumbai", state: "Maharashtra", zipCode: "400069", country: "India", isSameAsCurrent: true),
-            employment: EmploymentInfo(employmentType: "Salaried", companyName: "Tech Global Pvt Ltd.", designation: "Senior Software Engineer", workExperienceYears: 8, employerAddress: "Mindspace, Malad West, Mumbai"),
-            income: IncomeInfo(monthlyIncome: 120000.0, annualIncome: 1440000.0, existingEMIs: 15000.0, creditScore: 780, incomeSource: "Salary"),
-            bankDetails: BankDetails(bankName: "HDFC Bank", accountHolderName: "Rahul Sharma", accountNumber: "50100234567890", ifscCode: "HDFC0001234", upiID: "rahulsharma@okhdfcbank", isVerified: true),
-            kycVerification: KYCVerification(aadhaarStatus: .verified, panStatus: .verified, addressProofStatus: .rejected, selfieStatus: .verified, aadhaarFileName: "aadhaar_card.pdf", panFileName: "pan_card.pdf", addressProofFileName: nil),
-            loanOverview: LoanOverview(activeLoans: 1, loanHistoryCount: 2, nextEmiDueDate: Calendar.current.date(byAdding: .day, value: 15, to: Date()), remainingBalance: 450000.0, currentLoanStatus: "Active"),
+            currentAddress: AddressInfo(streetAddress: "", city: "", state: "", zipCode: "", country: "India", isSameAsCurrent: true),
+            permanentAddress: AddressInfo(streetAddress: "", city: "", state: "", zipCode: "", country: "India", isSameAsCurrent: true),
+            employment: EmploymentInfo(employmentType: "Salaried", companyName: "", designation: "", workExperienceYears: 0, employerAddress: ""),
+            income: IncomeInfo(monthlyIncome: 0.0, annualIncome: 0.0, existingEMIs: 0.0, creditScore: 750, incomeSource: ""),
+            bankDetails: BankDetails(bankName: "", accountHolderName: "", accountNumber: "", ifscCode: "", upiID: nil, isVerified: false),
+            kycVerification: KYCVerification(aadhaarStatus: .pending, panStatus: .pending, addressProofStatus: .pending, selfieStatus: .pending, aadhaarFileName: nil, panFileName: nil, addressProofFileName: nil),
+            loanOverview: LoanOverview(activeLoans: 0, loanHistoryCount: 0, nextEmiDueDate: nil, remainingBalance: 0.0, currentLoanStatus: "Active"),
             profileImageData: nil,
-            occupation: "Senior Software Engineer",
-            industry: "Technology",
-            yearsOfExperience: 8,
-            hasExistingBankAccount: true,
+            occupation: "",
+            industry: "",
+            yearsOfExperience: 0,
+            hasExistingBankAccount: false,
             existingCustomerId: "C-109482",
-            preferredBranch: "Andheri East Branch",
-            existingLoansCount: 1,
-            existingCreditCardsCount: 1,
-            bankingRelationshipDuration: "2 Years",
-            averageMonthlyBalance: 85000,
-            emergencyContactName: "Priya Sharma",
-            emergencyContactNumber: "+91 98765 00000",
+            preferredBranch: "",
+            existingLoansCount: 0,
+            existingCreditCardsCount: 0,
+            bankingRelationshipDuration: "",
+            averageMonthlyBalance: 0,
+            emergencyContactName: "",
+            emergencyContactNumber: "",
             emergencyContactAlternateNumber: "",
-            emergencyContactAddress: "Mumbai",
-            emergencyContactRelationship: "Spouse",
-            nomineeName: "Geeta Sharma",
-            nomineeRelationship: "Mother",
+            emergencyContactAddress: "",
+            emergencyContactRelationship: "",
+            nomineeName: "",
+            nomineeRelationship: "",
             isOnboardingCompleted: true
         )
 
@@ -82,7 +82,7 @@ class BorrowerProfileStore: ObservableObject {
         self.accounts = [rahulAccount]
     }
 
-    // MARK: - Actions
+
 
     @discardableResult
     func ensureProfile(email: String, name: String? = nil, phone: String? = nil, alternatePhone: String? = nil) -> BorrowerProfile {
@@ -100,8 +100,8 @@ class BorrowerProfileStore: ObservableObject {
                     return
                 }
             }
-            
-            // Previews / offline mock check
+
+
             if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
                 if let account = accounts.first(where: { $0.email == cleanedEmail }) {
                     self.profile = account.profile
@@ -109,7 +109,7 @@ class BorrowerProfileStore: ObservableObject {
                     return
                 }
             }
-            
+
             let customerId = "C-\(Int.random(in: 100000...999999))"
             let fallbackProfile = makeEmptyProfile(name: name ?? cleanedEmail, email: cleanedEmail, phone: phone ?? "", alternatePhone: alternatePhone, customerId: customerId)
             self.profile = fallbackProfile
@@ -124,8 +124,8 @@ class BorrowerProfileStore: ObservableObject {
             if let decodedProfile = try await DatabaseService.shared.fetchProfile(userId: uid) {
                 self.profile = decodedProfile
             } else {
-                // If it successfully returns nil, it means the query executed successfully but no profile exists.
-                // In this case, we create a new blank profile and upsert it.
+
+
                 let customerId = "C-\(Int.random(in: 100000...999999))"
                 var newProfile = makeEmptyProfile(
                     name: name ?? email,
@@ -141,8 +141,8 @@ class BorrowerProfileStore: ObservableObject {
             self.currentEmail = email
         } catch {
             print("Error fetching profile from Supabase: \(error.localizedDescription)")
-            // On connection/auth/other query failures, fallback to local cache if available,
-            // otherwise set a local fallback profile, but DO NOT upsert back to Supabase!
+
+
             if let cachedProfile = DatabaseService.shared.loadProfileLocally(userId: uid) {
                 self.profile = cachedProfile
             } else {
@@ -234,7 +234,7 @@ class BorrowerProfileStore: ObservableObject {
     }
 }
 
-// MARK: - Codable Extensions for Supabase/JSON Serialization
+
 
 extension Encodable {
     var asDictionary: [String: Any]? {
@@ -249,3 +249,4 @@ extension Decodable {
         return try? JSONDecoder().decode(Self.self, from: data)
     }
 }
+

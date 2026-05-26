@@ -47,7 +47,7 @@ class AdminSignUpViewModel: ObservableObject {
         }
 
         isLoading = true
-        
+
         do {
             try await AdminStaffService.shared.createAdmin(
                 name: fullName,
@@ -63,3 +63,4 @@ class AdminSignUpViewModel: ObservableObject {
         }
     }
 }
+

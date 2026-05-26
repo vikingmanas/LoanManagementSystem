@@ -4,24 +4,24 @@ struct AdminUserDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: AdminStaffViewModel
     let member: StaffMember
-    
-    // Mode tracking
+
+
     @State private var isEditMode = false
-    
-    // Editable input states
+
+
     @State private var fullName = ""
     @State private var phoneNumber = ""
     @State private var status: StaffStatus = .active
     @State private var selectedBranchId: UUID? = nil
     @State private var designation = ""
     @State private var region = ""
-    
-    // Confirmation dialog and alert states
+
+
     @State private var isShowingDeleteConfirmation = false
     @State private var validationErrors: [String: String] = [:]
     @State private var actionError: String? = nil
     @State private var isProcessing = false
-    
+
     var body: some View {
         NavigationStack {
             Form {
@@ -30,14 +30,14 @@ struct AdminUserDetailSheet: View {
                 } else {
                     viewFieldsSection
                 }
-                
+
                 if let actionError {
                     Section {
                         LMSBanner(message: actionError, style: .error, icon: "exclamationmark.triangle.fill")
                             .listRowInsets(EdgeInsets())
                     }
                 }
-                
+
                 if !isEditMode {
                     Section {
                         Button(role: .destructive, action: {
@@ -60,7 +60,7 @@ struct AdminUserDetailSheet: View {
                 ToolbarItem(placement: .topBarLeading) {
                     if isEditMode {
                         Button("Cancel") {
-                            // Revert changes
+
                             loadMemberData()
                             isEditMode = false
                         }
@@ -72,7 +72,7 @@ struct AdminUserDetailSheet: View {
                         .foregroundStyle(LMSColors.textSecondary)
                     }
                 }
-                
+
                 ToolbarItem(placement: .topBarTrailing) {
                     if isProcessing {
                         ProgressView()
@@ -110,8 +110,8 @@ struct AdminUserDetailSheet: View {
             }
         }
     }
-    
-    // MARK: - View Fields Section
+
+
     private var viewFieldsSection: some View {
         Group {
             Section {
@@ -123,11 +123,11 @@ struct AdminUserDetailSheet: View {
                             .foregroundStyle(.white)
                             .frame(width: 80, height: 80)
                             .background(member.role.themeColor, in: Circle())
-                        
+
                         Text(member.fullName)
                             .font(LMSFont.title3)
                             .foregroundStyle(LMSColors.textPrimary)
-                        
+
                         Text(member.role.displayName)
                             .font(LMSFont.subheadline.weight(.semibold))
                             .foregroundStyle(member.role.themeColor)
@@ -137,7 +137,7 @@ struct AdminUserDetailSheet: View {
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
             }
-            
+
             Section("Account Details") {
                 LabeledRow(title: "Email", value: member.email, icon: "envelope")
                 LabeledRow(title: "Phone", value: member.phoneNumber, icon: "phone")
@@ -148,23 +148,23 @@ struct AdminUserDetailSheet: View {
                     valueColor: member.status.themeColor
                 )
             }
-            
+
             Section("Employment Details") {
                 LabeledRow(title: "Employee Code", value: member.employeeCode, icon: "number.square")
                 LabeledRow(title: "Branch", value: member.branchName ?? "Unassigned", icon: "mappin.circle")
-                
+
                 if member.role == .loanOfficer {
                     LabeledRow(title: "Designation", value: member.designation ?? "Loan Officer", icon: "briefcase")
                 } else if member.role == .bankManager {
                     LabeledRow(title: "Assigned Region", value: member.region ?? "General", icon: "map")
                 }
-                
+
                 LabeledRow(title: "Registered At", value: formatDate(member.createdAt), icon: "calendar")
             }
         }
     }
-    
-    // MARK: - Edit Fields Section
+
+
     private var editFieldsSection: some View {
         Group {
             Section("Basic Credentials") {
@@ -175,7 +175,7 @@ struct AdminUserDetailSheet: View {
                     isError: validationErrors["fullName"] != nil,
                     errorMessage: validationErrors["fullName"] ?? ""
                 )
-                
+
                 CustomTextField(
                     icon: "phone.fill",
                     placeholder: "Phone Number",
@@ -184,7 +184,7 @@ struct AdminUserDetailSheet: View {
                     errorMessage: validationErrors["phoneNumber"] ?? "",
                     keyboardType: .phonePad
                 )
-                
+
                 Picker("Account Status", selection: $status) {
                     ForEach(StaffStatus.allCases) { statusOption in
                         Text(statusOption.displayName).tag(statusOption)
@@ -192,7 +192,7 @@ struct AdminUserDetailSheet: View {
                 }
                 .font(LMSFont.body)
             }
-            
+
             Section("Employment Details") {
                 HStack(spacing: LMSSpacing.md) {
                     Image(systemName: "number.square.fill")
@@ -208,7 +208,7 @@ struct AdminUserDetailSheet: View {
                 }
                 .padding(.horizontal, LMSSpacing.md)
                 .frame(height: 44)
-                
+
                 if !viewModel.branches.isEmpty {
                     Picker("Assigned Branch", selection: $selectedBranchId) {
                         Text("Select Branch").tag(nil as UUID?)
@@ -218,7 +218,7 @@ struct AdminUserDetailSheet: View {
                     }
                     .font(LMSFont.body)
                 }
-                
+
                 if member.role == .loanOfficer {
                     CustomTextField(
                         icon: "briefcase.fill",
@@ -239,8 +239,8 @@ struct AdminUserDetailSheet: View {
             }
         }
     }
-    
-    // MARK: - Local Data Loading
+
+
     private func loadMemberData() {
         fullName = member.fullName
         phoneNumber = member.phoneNumber
@@ -249,46 +249,46 @@ struct AdminUserDetailSheet: View {
         designation = member.designation ?? ""
         region = member.region ?? ""
     }
-    
+
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: date)
     }
-    
+
     private func validateForm() -> Bool {
         validationErrors.removeAll()
-        
+
         if fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             validationErrors["fullName"] = "Full name is required"
         }
-        
+
         if phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             validationErrors["phoneNumber"] = "Phone number is required"
         }
-        
+
         if selectedBranchId == nil {
             validationErrors["branchId"] = "Please select a branch"
         }
-        
+
         if member.role == .loanOfficer && designation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             validationErrors["designation"] = "Designation is required"
         }
-        
+
         if member.role == .bankManager && region.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             validationErrors["region"] = "Region is required"
         }
-        
+
         return validationErrors.isEmpty
     }
-    
+
     private func saveChanges() async {
         guard validateForm(), let branchId = selectedBranchId else { return }
-        
+
         isProcessing = true
         actionError = nil
-        
+
         let success = await viewModel.updateStaff(
             id: member.id,
             role: member.role,
@@ -299,24 +299,24 @@ struct AdminUserDetailSheet: View {
             designation: member.role == .loanOfficer ? designation.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
             region: member.role == .bankManager ? region.trimmingCharacters(in: .whitespacesAndNewlines) : nil
         )
-        
+
         isProcessing = false
-        
+
         if success {
             isEditMode = false
         } else {
             actionError = viewModel.errorMessage ?? "Failed to save updates."
         }
     }
-    
+
     private func deleteAccount() async {
         isProcessing = true
         actionError = nil
-        
+
         let success = await viewModel.deleteStaff(id: member.id)
-        
+
         isProcessing = false
-        
+
         if success {
             dismiss()
         } else {
@@ -325,25 +325,25 @@ struct AdminUserDetailSheet: View {
     }
 }
 
-// MARK: - LabeledRow Subview
+
 private struct LabeledRow: View {
     let title: String
     let value: String
     let icon: String
     var valueColor: Color = LMSColors.textPrimary
-    
+
     var body: some View {
         HStack(spacing: LMSSpacing.md) {
             Image(systemName: icon)
                 .foregroundStyle(LMSColors.textTertiary)
                 .frame(width: 22, alignment: .leading)
-            
+
             Text(title)
                 .font(LMSFont.body)
                 .foregroundStyle(LMSColors.textPrimary)
-            
+
             Spacer()
-            
+
             Text(value)
                 .font(LMSFont.body.weight(.medium))
                 .foregroundStyle(valueColor)
@@ -352,3 +352,4 @@ private struct LabeledRow: View {
         .padding(.vertical, 8)
     }
 }
+

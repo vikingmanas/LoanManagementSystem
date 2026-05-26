@@ -23,6 +23,8 @@ struct BorrowerProfile: Codable, Equatable {
     var income: IncomeInfo
     
     var bankDetails: BankDetails
+    var linkedAccounts: [LinkedBankAccount]?
+    var gstNumber: String?
     
     var kycVerification: KYCVerification
     var loanOverview: LoanOverview
@@ -88,9 +90,7 @@ struct BorrowerProfile: Codable, Equatable {
            !bankDetails.ifscCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         
         // 6. Onboarding Questionnaire Details
-        if !preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
-        if !emergencyContactName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-           !emergencyContactNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
+        if !preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 10 }
         if !nomineeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
            !nomineeRelationship.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         
@@ -126,6 +126,8 @@ struct BorrowerProfile: Codable, Equatable {
             employment: EmploymentInfo(employmentType: "", companyName: "", designation: "", workExperienceYears: 0, employerAddress: ""),
             income: IncomeInfo(monthlyIncome: 0, annualIncome: 0, existingEMIs: 0, creditScore: 0, incomeSource: ""),
             bankDetails: BankDetails(bankName: "", accountHolderName: "", accountNumber: "", ifscCode: "", upiID: nil, isVerified: false),
+            linkedAccounts: [],
+            gstNumber: nil,
             kycVerification: KYCVerification(aadhaarStatus: .pending, panStatus: .pending, addressProofStatus: .pending, selfieStatus: .pending),
             loanOverview: LoanOverview(activeLoans: 0, loanHistoryCount: 0, nextEmiDueDate: nil, remainingBalance: 0, currentLoanStatus: "None"),
             occupation: "",
@@ -186,6 +188,16 @@ struct BankDetails: Codable, Equatable {
     let ifscCode: String
     let upiID: String?
     let isVerified: Bool
+}
+
+struct LinkedBankAccount: Codable, Equatable, Identifiable {
+    var id: UUID
+    var bankName: String
+    var accountNumber: String
+    var ifscCode: String
+    var balance: Double
+    var branch: String
+    var customerId: String
 }
 
 struct KYCVerification: Codable, Equatable {

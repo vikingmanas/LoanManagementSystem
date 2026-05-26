@@ -1,13 +1,6 @@
-//
-//  AuditModels.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 20/05/26.
-//
-
 import Foundation
 
-// MARK: - System / Audit
+
 
 struct AuditLog: Codable, Identifiable {
     let id: UUID
@@ -15,13 +8,13 @@ struct AuditLog: Codable, Identifiable {
     let action: String
     let entityType: String
     let entityId: UUID
-    
-    // Storing JSON generically. Use Data for raw payload parsing.
+
+
     let oldValue: Data?
     let newValue: Data?
     let ipAddress: String
     let ts: Date
-    
+
     enum CodingKeys: String, CodingKey {
         case id = "log_id"
         case userId = "user_id"
@@ -34,3 +27,4 @@ struct AuditLog: Codable, Identifiable {
         case ts
     }
 }
+

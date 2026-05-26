@@ -1,6 +1,5 @@
 Command line invocation:
-    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project LoanManagementSystem.xcodeproj -scheme LoanManagementSystem -sdk iphonesimulator -destination "generic/platform=iOS Simulator" build
-
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project LoanManagementSystem.xcodeproj -scheme LoanManagementSystem -sdk iphonesimulator -destination "generic/platform=iOS Simulator" bu
 Build settings from command line:
     SDKROOT = iphonesimulator26.4
 

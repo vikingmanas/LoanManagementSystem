@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// iOS-native checkbox with animated SF Symbol toggle and brand styling.
+
 struct CheckboxView: View {
     @Binding var isChecked: Bool
     var label: String
@@ -12,7 +12,7 @@ struct CheckboxView: View {
             }
             HapticsManager.triggerImpact(style: .light)
         }) {
-            HStack(alignment: .top, spacing: LMSSpacing.md) {
+            HStack(alignment: .center, spacing: LMSSpacing.md) {
                 Image(systemName: isChecked ? "checkmark.square.fill" : "square")
                     .font(.system(size: 22, weight: .medium, design: .rounded))
                     .foregroundStyle(isChecked ? LMSColors.brandNavy : LMSColors.textTertiary)
@@ -35,3 +35,4 @@ struct CheckboxView: View {
     CheckboxView(isChecked: .constant(true), label: "I agree to the Terms and Conditions")
         .padding()
 }
+

@@ -207,6 +207,12 @@ struct BorrowerLoanFormData: Equatable, Hashable {
     var coApplicantDetails: String
     var hasGuarantor: Bool
     var guarantorDetails: String
+    var gstNumber: String
+
+    // Dropdown selections
+    var selectedIdentityDoc: String
+    var selectedAddressDoc: String
+    var selectedIncomeDoc: String
 
     var monthlyIncomeValue: Double { monthlyIncome.numericValue }
     var annualIncomeValue: Double { annualIncome.numericValue }
@@ -215,6 +221,64 @@ struct BorrowerLoanFormData: Equatable, Hashable {
     var creditCardObligationsValue: Double { creditCardObligations.numericValue }
     var creditScoreValue: Int { Int(creditScore.numericValue) }
     var requestedAmountValue: Double { loanAmountRequested.numericValue }
+
+    init(
+        fullName: String,
+        dateOfBirth: Date,
+        mobileNumber: String,
+        emailAddress: String,
+        address: String,
+        occupation: String,
+        employmentType: String,
+        employerName: String,
+        workExperienceYears: Int,
+        monthlyIncome: String,
+        annualIncome: String,
+        existingLoans: String,
+        existingEMIs: String,
+        creditCardObligations: String,
+        creditScore: String,
+        loanAmountRequested: String,
+        loanPurpose: String,
+        repaymentPreference: String,
+        preferredTenureMonths: Int,
+        hasCoApplicant: Bool,
+        coApplicantDetails: String,
+        hasGuarantor: Bool,
+        guarantorDetails: String,
+        gstNumber: String = "",
+        selectedIdentityDoc: String = "Aadhaar Card",
+        selectedAddressDoc: String = "Utility Bill",
+        selectedIncomeDoc: String = "Salary Slips"
+    ) {
+        self.fullName = fullName
+        self.dateOfBirth = dateOfBirth
+        self.mobileNumber = mobileNumber
+        self.emailAddress = emailAddress
+        self.address = address
+        self.occupation = occupation
+        self.employmentType = employmentType
+        self.employerName = employerName
+        self.workExperienceYears = workExperienceYears
+        self.monthlyIncome = monthlyIncome
+        self.annualIncome = annualIncome
+        self.existingLoans = existingLoans
+        self.existingEMIs = existingEMIs
+        self.creditCardObligations = creditCardObligations
+        self.creditScore = creditScore
+        self.loanAmountRequested = loanAmountRequested
+        self.loanPurpose = loanPurpose
+        self.repaymentPreference = repaymentPreference
+        self.preferredTenureMonths = preferredTenureMonths
+        self.hasCoApplicant = hasCoApplicant
+        self.coApplicantDetails = coApplicantDetails
+        self.hasGuarantor = hasGuarantor
+        self.guarantorDetails = guarantorDetails
+        self.gstNumber = gstNumber
+        self.selectedIdentityDoc = selectedIdentityDoc
+        self.selectedAddressDoc = selectedAddressDoc
+        self.selectedIncomeDoc = selectedIncomeDoc
+    }
 
     static let empty = BorrowerLoanFormData(
         fullName: "",
@@ -239,7 +303,11 @@ struct BorrowerLoanFormData: Equatable, Hashable {
         hasCoApplicant: false,
         coApplicantDetails: "",
         hasGuarantor: false,
-        guarantorDetails: ""
+        guarantorDetails: "",
+        gstNumber: "",
+        selectedIdentityDoc: "Aadhaar Card",
+        selectedAddressDoc: "Utility Bill",
+        selectedIncomeDoc: "Salary Slips"
     )
 
     static func prefilled(from profile: BorrowerProfile?) -> BorrowerLoanFormData {
@@ -267,7 +335,11 @@ struct BorrowerLoanFormData: Equatable, Hashable {
             hasCoApplicant: false,
             coApplicantDetails: "",
             hasGuarantor: false,
-            guarantorDetails: ""
+            guarantorDetails: "",
+            gstNumber: profile.gstNumber ?? "",
+            selectedIdentityDoc: "Aadhaar Card",
+            selectedAddressDoc: "Utility Bill",
+            selectedIncomeDoc: "Salary Slips"
         )
     }
 }
@@ -586,14 +658,19 @@ extension BorrowerLoanProduct {
 
 extension BorrowerLoanDocumentItem {
     static func defaultRequirements(for product: BorrowerLoanProduct) -> [BorrowerLoanDocumentItem] {
-        let baseIdentityDocs = ["Aadhaar Card", "PAN Card", "Passport", "Driving License"]
-        let baseAddressDocs = ["Utility Bill", "Rental Agreement", "Passport", "Bank Statement"]
-        let baseIncomeDocs = ["Salary Slips", "Bank Statements", "Income Tax Returns", "Form 16"]
+        return defaultRequirements(for: product, identityDoc: "Aadhaar Card", addressDoc: "Utility Bill", incomeDoc: "Salary Slips")
+    }
 
-        let identity = baseIdentityDocs.map {
+    static func defaultRequirements(
+        for product: BorrowerLoanProduct,
+        identityDoc: String,
+        addressDoc: String,
+        incomeDoc: String
+    ) -> [BorrowerLoanDocumentItem] {
+        let identity = [
             BorrowerLoanDocumentItem(
                 id: UUID(),
-                name: $0,
+                name: identityDoc,
                 category: .identityVerification,
                 status: .pendingUpload,
                 fileName: nil,
@@ -601,12 +678,12 @@ extension BorrowerLoanDocumentItem {
                 lastUpdated: nil,
                 isLocked: false
             )
-        }
+        ]
 
-        let address = baseAddressDocs.map {
+        let address = [
             BorrowerLoanDocumentItem(
                 id: UUID(),
-                name: $0,
+                name: addressDoc,
                 category: .addressVerification,
                 status: .pendingUpload,
                 fileName: nil,
@@ -614,12 +691,12 @@ extension BorrowerLoanDocumentItem {
                 lastUpdated: nil,
                 isLocked: false
             )
-        }
+        ]
 
-        let income = baseIncomeDocs.map {
+        let income = [
             BorrowerLoanDocumentItem(
                 id: UUID(),
-                name: $0,
+                name: incomeDoc,
                 category: .incomeVerification,
                 status: .pendingUpload,
                 fileName: nil,
@@ -627,7 +704,7 @@ extension BorrowerLoanDocumentItem {
                 lastUpdated: nil,
                 isLocked: false
             )
-        }
+        ]
 
         let loanSpecific = product.loanSpecificDocuments.map {
             BorrowerLoanDocumentItem(
@@ -652,3 +729,4 @@ private extension String {
         return Double(filtered) ?? 0
     }
 }
+
