@@ -34,3 +34,4 @@ class ForgotPasswordViewModel: ObservableObject {
         errorMessage = success ? "" : (authManager.errorMessage ?? "Unable to send reset link. Please try again.")
     }
 }
+

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Type-safe status badge with consistent styling across all modules.
+
 enum LMSStatusType {
     case success
     case warning
@@ -40,7 +40,7 @@ struct StatusBadgeView: View {
         .clipShape(Capsule())
     }
 
-    // Determine color from explicit type or infer from status string.
+
     private var resolvedColor: Color {
         if let type { return type.color }
         switch status.lowercased() {
@@ -66,3 +66,4 @@ struct StatusBadgeView: View {
         StatusBadgeView(status: "Active", type: .success)
     }
 }
+
