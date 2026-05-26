@@ -68,8 +68,14 @@
       }
     }
 
+    // Cache the session in memory to avoid localStorage issues on iOS webviews
+    let activeSession = null;
+
     // Wait for Supabase to parse the URL hash and set up the session
     supabaseClient.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        activeSession = session;
+      }
       if (event === 'PASSWORD_RECOVERY') {
         console.log('Recovery session detected.');
       }
@@ -103,9 +109,13 @@
         }
         
         // Ensure a session exists before trying to update
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (!session) {
-           messageDiv.textContent = 'Error: No auth session found. If you opened this from an email, the link might be expired or already used. Please request a NEW link and make sure to open the latest email.';
+        const { data: sessionData } = await supabaseClient.auth.getSession();
+        const sessionToUse = activeSession || sessionData.session;
+        
+        if (!sessionToUse) {
+           // Output the hash if it exists to debug further
+           const currentHash = window.location.hash;
+           messageDiv.textContent = 'Error: No auth session found. (Hash: ' + (currentHash || 'none') + '). Please request a NEW link and make sure to open the latest email.';
            messageDiv.className = 'error';
            return;
         }
