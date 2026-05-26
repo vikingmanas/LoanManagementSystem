@@ -8,12 +8,11 @@ enum ProfileEditSheet: Identifiable {
 struct ProfileView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
-    @Environment(\.dismiss) private var dismiss
+
     @StateObject private var viewModel = BorrowerProfileViewModel()
     @State private var activeSheet: ProfileEditSheet?
 
     var body: some View {
-        NavigationStack {
             Group {
                 if viewModel.isLoading {
                     VStack {
@@ -118,18 +117,13 @@ struct ProfileView: View {
             }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                        .fontWeight(.semibold)
-                }
-            }
-        }
     }
 }
 
 #Preview {
-    ProfileView()
-        .environmentObject(AppStateManager())
-        .environmentObject(AuthManager())
+    NavigationStack {
+        ProfileView()
+            .environmentObject(AppStateManager())
+            .environmentObject(AuthManager())
+    }
 }

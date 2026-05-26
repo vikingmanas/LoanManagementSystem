@@ -9,20 +9,20 @@ public enum DashboardRoute: Hashable {
     case schemeDetails(GovernmentScheme)
     case profileInfo
     case notifications
+    case profile
 }
 
 // MARK: - Native Status Banner Section
 struct StatusBannerSection: View {
     @ObservedObject var viewModel: DashboardViewModel
     @Binding var navigationPath: [DashboardRoute]
-    @Binding var showingProfileSheet: Bool
 
     var body: some View {
         VStack(spacing: 12) {
             // Profile Completion Row (Priority 1)
             if let profile = BorrowerProfileStore.shared.profile, profile.profileCompletionPercentage < 100 {
                 Button {
-                    showingProfileSheet = true
+                    navigationPath.append(.profile)
                 } label: {
                     HStack(spacing: 12) {
                         Image(systemName: "person.crop.circle.badge.exclamationmark.fill")
@@ -172,7 +172,6 @@ public struct DashboardView: View {
     @State private var showingForeclosureSheet = false
     @State private var showingSupportSheet = false
     @State private var showingTopUpSheet = false
-    @State private var showingProfileSheet = false
     
     private var greetingSubtitle: String {
         if let profile = BorrowerProfileStore.shared.profile, !profile.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -197,7 +196,7 @@ public struct DashboardView: View {
                     .padding(.horizontal, LMSSpacing.lg)
                     .padding(.top, 8)
 
-                    StatusBannerSection(viewModel: viewModel, navigationPath: $navigationPath, showingProfileSheet: $showingProfileSheet)
+                    StatusBannerSection(viewModel: viewModel, navigationPath: $navigationPath)
                     
                     VStack(alignment: .leading, spacing: 14) {
                         Text("FINANCIAL PORTFOLIO")
@@ -261,7 +260,7 @@ public struct DashboardView: View {
                         }
                         
                         Button {
-                            showingProfileSheet = true
+                            navigationPath.append(.profile)
                         } label: {
                             DashboardAvatar(
                                 initials: dashboardInitials(
@@ -292,6 +291,10 @@ public struct DashboardView: View {
                     ProfileInfoDetailView(viewModel: BorrowerProfileViewModel())
                 case .notifications:
                     NotificationsDetailView()
+                case .profile:
+                    ProfileView()
+                        .environmentObject(authManager)
+                        .environmentObject(appState)
                 }
             }
             .sheet(isPresented: $showingQuickPaySheet) {
@@ -308,11 +311,6 @@ public struct DashboardView: View {
             }
             .sheet(isPresented: $showingTopUpSheet) {
                 TopUpSheet(viewModel: viewModel)
-            }
-            .sheet(isPresented: $showingProfileSheet) {
-                ProfileView()
-                    .environmentObject(authManager)
-                    .environmentObject(appState)
             }
         }
     }
