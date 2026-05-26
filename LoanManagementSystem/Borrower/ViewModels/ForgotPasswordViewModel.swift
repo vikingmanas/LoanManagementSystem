@@ -46,3 +46,4 @@ class ForgotPasswordViewModel: ObservableObject {
         isLoading = false
     }
 }
+

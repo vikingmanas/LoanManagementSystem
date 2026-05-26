@@ -11,7 +11,7 @@ struct QuickActionItem: Identifiable {
 struct QuickActionRowView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onActionTapped: (String) -> Void
-    
+
     private let actions = [
         QuickActionItem(title: "New App", symbol: "plus.circle.fill", color: LMSColors.brandNavy, identifier: "new_app"),
         QuickActionItem(title: "Verify Docs", symbol: "doc.text.magnifyingglass", color: LMSColors.actionBlue, identifier: "verify_docs"),
@@ -20,14 +20,14 @@ struct QuickActionRowView: View {
         QuickActionItem(title: "Borrowers", symbol: "person.2.fill", color: LMSColors.emerald, identifier: "borrowers"),
         QuickActionItem(title: "Escalate", symbol: "arrow.up.forward.circle.fill", color: LMSColors.amber, identifier: "escalate")
     ]
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Quick Actions")
                 .font(.system(.subheadline, design: .rounded).bold())
                 .foregroundStyle(LMSColors.textPrimary)
                 .padding(.horizontal, 16)
-            
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     ForEach(actions) { action in
@@ -40,12 +40,12 @@ struct QuickActionRowView: View {
                                     Circle()
                                         .fill(action.color.opacity(0.12))
                                         .frame(width: 40, height: 40)
-                                    
+
                                     Image(systemName: action.symbol)
                                         .font(.system(size: 18, weight: .semibold))
                                         .foregroundStyle(action.color)
                                 }
-                                
+
                                 Text(action.title)
                                     .font(.system(.caption2, design: .rounded).weight(.semibold))
                                     .foregroundStyle(LMSColors.textPrimary)
@@ -72,7 +72,7 @@ struct QuickActionRowView: View {
     }
 }
 
-// Micro-animation ButtonStyle
+
 struct ScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -88,3 +88,4 @@ struct ScaleButtonStyle: ButtonStyle {
     )
     .padding()
 }
+

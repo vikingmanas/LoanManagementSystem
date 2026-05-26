@@ -4,16 +4,16 @@ import SwiftUI
 enum StaffRole: String, Codable, CaseIterable, Identifiable {
     case loanOfficer = "loan_officer"
     case bankManager = "manager"
-    
+
     var id: String { rawValue }
-    
+
     var displayName: String {
         switch self {
         case .loanOfficer: return "Loan Officer"
         case .bankManager: return "Bank Manager"
         }
     }
-    
+
     var themeColor: Color {
         switch self {
         case .loanOfficer: return LMSColors.actionBlue
@@ -27,13 +27,13 @@ enum StaffStatus: String, Codable, CaseIterable, Identifiable {
     case inactive = "inactive"
     case suspended = "suspended"
     case pending = "pending"
-    
+
     var id: String { rawValue }
-    
+
     var displayName: String {
         rawValue.capitalized
     }
-    
+
     var themeColor: Color {
         switch self {
         case .active: return LMSColors.emerald
@@ -45,7 +45,7 @@ enum StaffStatus: String, Codable, CaseIterable, Identifiable {
 }
 
 struct StaffMember: Identifiable, Codable, Hashable {
-    let id: UUID // Maps to public.users.id
+    let id: UUID
     var email: String
     var role: StaffRole
     var fullName: String
@@ -56,9 +56,9 @@ struct StaffMember: Identifiable, Codable, Hashable {
     var employeeCode: String
     var branchId: UUID
     var branchName: String?
-    var designation: String? // For loan officers
-    var region: String?      // For managers
-    
+    var designation: String?
+    var region: String?
+
     var initials: String {
         let parts = fullName.components(separatedBy: " ")
         if parts.count >= 2 {
@@ -73,6 +73,7 @@ struct BranchInfo: Identifiable, Codable, Hashable {
     var name: String
     var code: String
     var region: String
-    
+
     var id: UUID { branchId }
 }
+

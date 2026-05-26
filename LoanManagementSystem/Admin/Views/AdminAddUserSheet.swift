@@ -3,8 +3,8 @@ import SwiftUI
 struct AdminAddUserSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: AdminStaffViewModel
-    
-    // Form input states
+
+
     @State private var email = ""
     @State private var password = ""
     @State private var role: StaffRole = .loanOfficer
@@ -14,12 +14,12 @@ struct AdminAddUserSheet: View {
     @State private var employeeCode = ""
     @State private var designation = ""
     @State private var region = ""
-    
-    // Error tracking
+
+
     @State private var validationErrors: [String: String] = [:]
     @State private var submissionError: String? = nil
     @State private var isSubmitting = false
-    
+
     var body: some View {
         NavigationStack {
             Form {
@@ -32,7 +32,7 @@ struct AdminAddUserSheet: View {
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
                     .padding(.bottom, LMSSpacing.sm)
-                    
+
                     CustomTextField(
                         icon: "person.fill",
                         placeholder: "Full Name",
@@ -40,7 +40,7 @@ struct AdminAddUserSheet: View {
                         isError: validationErrors["fullName"] != nil,
                         errorMessage: validationErrors["fullName"] ?? ""
                     )
-                    
+
                     CustomTextField(
                         icon: "envelope.fill",
                         placeholder: "Email Address",
@@ -49,14 +49,14 @@ struct AdminAddUserSheet: View {
                         errorMessage: validationErrors["email"] ?? "",
                         keyboardType: .emailAddress
                     )
-                    
+
                     SecureInputField(
                         placeholder: "Login Password",
                         text: $password,
                         isError: validationErrors["password"] != nil,
                         errorMessage: validationErrors["password"] ?? ""
                     )
-                    
+
                     CustomTextField(
                         icon: "phone.fill",
                         placeholder: "Phone Number",
@@ -69,7 +69,7 @@ struct AdminAddUserSheet: View {
                     Text("Basic Credentials")
                         .font(LMSFont.caption.weight(.bold))
                 }
-                
+
                 Section {
                     CustomTextField(
                         icon: "card.fill",
@@ -78,7 +78,7 @@ struct AdminAddUserSheet: View {
                         isError: validationErrors["employeeCode"] != nil,
                         errorMessage: validationErrors["employeeCode"] ?? ""
                     )
-                    
+
                     if !viewModel.branches.isEmpty {
                         Picker("Assigned Branch", selection: $selectedBranchId) {
                             Text("Select Branch").tag(nil as UUID?)
@@ -104,7 +104,7 @@ struct AdminAddUserSheet: View {
                             }
                         }
                     }
-                    
+
                     if let branchError = validationErrors["branchId"] {
                         HStack(spacing: LMSSpacing.xs) {
                             Image(systemName: "exclamationmark.circle.fill")
@@ -115,7 +115,7 @@ struct AdminAddUserSheet: View {
                         .foregroundStyle(LMSColors.coral)
                         .padding(.leading, LMSSpacing.xs)
                     }
-                    
+
                     if role == .loanOfficer {
                         CustomTextField(
                             icon: "briefcase.fill",
@@ -137,7 +137,7 @@ struct AdminAddUserSheet: View {
                     Text("Employment Details")
                         .font(LMSFont.caption.weight(.bold))
                 }
-                
+
                 if let submissionError {
                     Section {
                         LMSBanner(message: submissionError, style: .error, icon: "exclamationmark.triangle.fill")
@@ -154,7 +154,7 @@ struct AdminAddUserSheet: View {
                     }
                     .foregroundStyle(LMSColors.textSecondary)
                 }
-                
+
                 ToolbarItem(placement: .topBarTrailing) {
                     if isSubmitting {
                         ProgressView()
@@ -173,62 +173,62 @@ struct AdminAddUserSheet: View {
                 if viewModel.branches.isEmpty {
                     await viewModel.loadData()
                 }
-                // Pre-select first branch if available
+
                 if selectedBranchId == nil, let firstBranch = viewModel.branches.first {
                     selectedBranchId = firstBranch.id
                 }
             }
         }
     }
-    
-    // MARK: - Helper Methods
+
+
     private func validateForm() -> Bool {
         validationErrors.removeAll()
-        
+
         if fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             validationErrors["fullName"] = "Full name is required"
         }
-        
+
         let cleanedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
         if cleanedEmail.isEmpty {
             validationErrors["email"] = "Email address is required"
         } else if !cleanedEmail.contains("@") || !cleanedEmail.contains(".") {
             validationErrors["email"] = "Enter a valid email address"
         }
-        
+
         if password.count < 6 {
             validationErrors["password"] = "Password must be at least 6 characters"
         }
-        
+
         if phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             validationErrors["phoneNumber"] = "Phone number is required"
         }
-        
+
         if employeeCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             validationErrors["employeeCode"] = "Employee code is required"
         }
-        
+
         if selectedBranchId == nil {
             validationErrors["branchId"] = "Please select a branch"
         }
-        
+
         if role == .loanOfficer && designation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             validationErrors["designation"] = "Designation is required"
         }
-        
+
         if role == .bankManager && region.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             validationErrors["region"] = "Region is required"
         }
-        
+
         return validationErrors.isEmpty
     }
-    
+
     private func submitForm() async {
         guard validateForm(), let branchId = selectedBranchId else { return }
-        
+
         isSubmitting = true
         submissionError = nil
-        
+
         let payload = AdminStaffService.CreateStaffPayload(
             email: email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
             password: password,
@@ -240,11 +240,11 @@ struct AdminAddUserSheet: View {
             designation: role == .loanOfficer ? designation.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
             region: role == .bankManager ? region.trimmingCharacters(in: .whitespacesAndNewlines) : nil
         )
-        
+
         let success = await viewModel.createStaff(payload: payload)
-        
+
         isSubmitting = false
-        
+
         if success {
             dismiss()
         } else {
@@ -252,3 +252,4 @@ struct AdminAddUserSheet: View {
         }
     }
 }
+

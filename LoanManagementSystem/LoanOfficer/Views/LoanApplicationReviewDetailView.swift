@@ -80,17 +80,26 @@ struct LoanApplicationReviewDetailView: View {
     
     @ViewBuilder
     private func applicationContent(_ currentApp: LoanApplication) -> some View {
-        List {
-            applicationHeaderSection(currentApp)
-            progressSection(currentApp)
-            personalDetailsSection(currentApp)
-            loanEmploymentSection(currentApp)
-            aiAuditSection(currentApp)
-            documentChecklistSection(currentApp)
-            timelineSection(currentApp)
-            approvalSection(currentApp)
+        ZStack {
+            List {
+                applicationHeaderSection(currentApp)
+                progressSection(currentApp)
+                personalDetailsSection(currentApp)
+                loanEmploymentSection(currentApp)
+                aiAuditSection(currentApp)
+                documentChecklistSection(currentApp)
+                timelineSection(currentApp)
+                approvalSection(currentApp)
+            }
+            .listStyle(.insetGrouped)
+
+            if let doc = showingActionSheetForDoc {
+                centeredVerificationActions(for: doc, in: currentApp)
+                    .transition(.opacity.combined(with: .scale(scale: 0.94)))
+                    .zIndex(1)
+            }
         }
-        .listStyle(.insetGrouped)
+        .animation(.spring(response: 0.28, dampingFraction: 0.86), value: showingActionSheetForDoc?.id)
         .navigationTitle("Application Review")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -114,38 +123,6 @@ struct LoanApplicationReviewDetailView: View {
                 )
             }
         }
-        .confirmationDialog("Verification Actions", isPresented: Binding(
-            get: { showingActionSheetForDoc != nil },
-            set: { if !$0 { showingActionSheetForDoc = nil } }
-        ), titleVisibility: .visible) {
-            if let doc = showingActionSheetForDoc {
-                Button("Verify Document") {
-                    HapticsManager.triggerImpact(style: .medium)
-                    viewModel.updateDocumentStatus(applicationId: currentApp.applicationId, docId: doc.id, newStatus: .verified)
-                }
-                
-                Button("Flag for Re-upload", role: .destructive) {
-                    activeDocForRejection = doc
-                    showingRejectionTextAlert = true
-                }
-                
-                Button("Mark as Missing") {
-                    HapticsManager.triggerImpact(style: .medium)
-                    viewModel.updateDocumentStatus(
-                        applicationId: currentApp.applicationId,
-                        docId: doc.id,
-                        newStatus: .pending,
-                        rejectionReason: "Required document is missing."
-                    )
-                }
-                
-                Button("Cancel", role: .cancel) {}
-            }
-        } message: {
-            if let doc = showingActionSheetForDoc {
-                Text("Select verification status update for \(doc.docType.rawValue).")
-            }
-        }
         .alert("Flag Document", isPresented: $showingRejectionTextAlert) {
             TextField("Reason (e.g. Blurry photo)", text: $rejectionText)
             Button("Submit", role: .destructive) {
@@ -167,6 +144,103 @@ struct LoanApplicationReviewDetailView: View {
         } message: {
             Text("Provide correction guidelines to send to borrower.")
         }
+    }
+
+    private func centeredVerificationActions(for doc: LoanDocument, in app: LoanApplication) -> some View {
+        ZStack {
+            Color.black.opacity(0.46)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    showingActionSheetForDoc = nil
+                }
+
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Verification Actions")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.primary)
+
+                    Text("Select verification status update for \(doc.docType.rawValue).")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                VStack(spacing: 10) {
+                    verificationActionButton(
+                        title: "Verify Document",
+                        icon: "checkmark.seal.fill",
+                        tint: LMSColors.actionBlue
+                    ) {
+                        HapticsManager.triggerImpact(style: .medium)
+                        viewModel.updateDocumentStatus(applicationId: app.applicationId, docId: doc.id, newStatus: .verified)
+                        showingActionSheetForDoc = nil
+                    }
+
+                    verificationActionButton(
+                        title: "Flag for Re-upload",
+                        icon: "arrow.triangle.2.circlepath",
+                        tint: LMSColors.coral
+                    ) {
+                        activeDocForRejection = doc
+                        showingActionSheetForDoc = nil
+                        showingRejectionTextAlert = true
+                    }
+
+                    verificationActionButton(
+                        title: "Mark as Missing",
+                        icon: "questionmark.folder.fill",
+                        tint: LMSColors.actionBlue
+                    ) {
+                        HapticsManager.triggerImpact(style: .medium)
+                        viewModel.updateDocumentStatus(
+                            applicationId: app.applicationId,
+                            docId: doc.id,
+                            newStatus: .pending,
+                            rejectionReason: "Required document is missing."
+                        )
+                        showingActionSheetForDoc = nil
+                    }
+                }
+
+                Button("Cancel") {
+                    showingActionSheetForDoc = nil
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 2)
+            }
+            .padding(20)
+            .frame(maxWidth: 300)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(LMSColors.separatorLight, lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.26), radius: 24, x: 0, y: 14)
+            .padding(.horizontal, 32)
+        }
+    }
+
+    private func verificationActionButton(title: String, icon: String, tint: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.body.weight(.semibold))
+                    .frame(width: 22)
+
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+
+                Spacer()
+            }
+            .foregroundStyle(tint)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 13)
+            .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
     
     // MARK: - Application Header

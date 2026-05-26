@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Manager Applicant Detail View
+
 struct ManagerApplicantDetailView: View {
     let applicant: ManagerApplicant
     @ObservedObject var viewModel: ManagerDashboardViewModel
@@ -21,7 +21,7 @@ struct ManagerApplicantDetailView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: LMSSpacing.xl) {
 
-                    // MARK: 1 — Borrower Header
+
                     VStack(spacing: LMSSpacing.md) {
                         ZStack {
                             Circle()
@@ -57,7 +57,7 @@ struct ManagerApplicantDetailView: View {
                     .background(LMSColors.surfaceElevated)
                     .clipShape(RoundedRectangle(cornerRadius: LMSRadius.xl, style: .continuous))
 
-                    // MARK: 2 — Loan Details Grid
+
                     VStack(spacing: 0) {
                         DetailRow(label: "LOAN TYPE", value: applicant.loanType.rawValue, icon: applicant.loanType.symbol)
                         Divider()
@@ -72,30 +72,30 @@ struct ManagerApplicantDetailView: View {
                     .background(LMSColors.surfaceElevated)
                     .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
 
-                    // MARK: 3 — CIBIL Score
+
                     CIBILScoreCard(score: applicant.cibilScore)
 
-                    // MARK: 4 — Verification Progress
+
                     VerificationProgressCard(progress: applicant.verificationProgress)
 
-                    // MARK: 5 — Documents
+
                     DocumentsSection(documents: applicant.documents)
 
-                    // MARK: 6 — Officer Recommendation
+
                     OfficerRecommendationCard(
                         officerName: applicant.assignedOfficer,
                         remarks: applicant.officerRemarks
                     )
 
-                    // MARK: 7 — Manager Remarks
+
                     if !applicant.managerRemarks.isEmpty {
                         ManagerRemarksCard(remarks: applicant.managerRemarks)
                     }
 
-                    // MARK: 8 — Action Buttons
+
                     if applicant.status == .sentToManager || applicant.status == .needsClarification {
                         VStack(spacing: LMSSpacing.md) {
-                            // Approve
+
                             Button(action: { actionType = .approve }) {
                                 Text("Approve & Disburse Clearance")
                                     .font(.system(.body, design: .rounded).weight(.bold))
@@ -107,7 +107,7 @@ struct ManagerApplicantDetailView: View {
                             }
 
                             HStack(spacing: LMSSpacing.md) {
-                                // Reject
+
                                 Button(action: { actionType = .reject }) {
                                     Text("Reject")
                                         .font(.system(.body, design: .rounded).weight(.semibold))
@@ -118,7 +118,7 @@ struct ManagerApplicantDetailView: View {
                                         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
                                 }
 
-                                // Escalate
+
                                 Button(action: { actionType = .escalate }) {
                                     Text("Escalate")
                                         .font(.system(.body, design: .rounded).weight(.semibold))
@@ -130,7 +130,7 @@ struct ManagerApplicantDetailView: View {
                                 }
                             }
 
-                            // Send Back
+
                             Button(action: { actionType = .sendBack }) {
                                 Text("Request Officer Clarification")
                                     .font(.system(.body, design: .rounded).weight(.semibold))
@@ -141,7 +141,7 @@ struct ManagerApplicantDetailView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
                             }
 
-                            // Reassign
+
                             Button(action: { showReassignSheet = true }) {
                                 HStack(spacing: 6) {
                                     Image(systemName: "arrow.triangle.2.circlepath")
@@ -200,7 +200,7 @@ struct ManagerApplicantDetailView: View {
     }
 }
 
-// MARK: - Detail Row
+
 private struct DetailRow: View {
     let label: String
     let value: String
@@ -228,7 +228,7 @@ private struct DetailRow: View {
     }
 }
 
-// MARK: - CIBIL Score Card
+
 private struct CIBILScoreCard: View {
     let score: Int
 
@@ -283,7 +283,7 @@ private struct CIBILScoreCard: View {
     }
 }
 
-// MARK: - Verification Progress Card
+
 private struct VerificationProgressCard: View {
     let progress: Double
 
@@ -342,7 +342,7 @@ private struct ProgressStep: View {
     }
 }
 
-// MARK: - Documents Section
+
 private struct DocumentsSection: View {
     let documents: [ManagerDocument]
 
@@ -396,7 +396,7 @@ private struct DocumentsSection: View {
     }
 }
 
-// MARK: - Officer Recommendation Card
+
 private struct OfficerRecommendationCard: View {
     let officerName: String
     let remarks: String
@@ -443,7 +443,7 @@ private struct OfficerRecommendationCard: View {
     }
 }
 
-// MARK: - Manager Remarks Card
+
 private struct ManagerRemarksCard: View {
     let remarks: String
 
@@ -472,7 +472,7 @@ private struct ManagerRemarksCard: View {
     }
 }
 
-// MARK: - Reassign Officer Sheet
+
 private struct ReassignOfficerSheet: View {
     let applicant: ManagerApplicant
     let officers: [ManagerOfficer]
@@ -538,3 +538,4 @@ private struct ReassignOfficerSheet: View {
     }
     .previewManagerEnvironment()
 }
+

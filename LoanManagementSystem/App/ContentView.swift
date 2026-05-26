@@ -44,8 +44,8 @@ struct ContentView: View {
 
                         switch appState.selectedRole {
                         case .customer:
-                            if profileStore.profile?.isOnboardingCompleted == true {
-                                MainTabView()
+                            if appState.requiresBorrowerOnboarding && profileStore.profile?.isOnboardingCompleted != true {
+                                OnboardingQuestionnaireView()
                                     .environmentObject(authManager)
                                     .environmentObject(appState)
                                     .transition(.asymmetric(
@@ -53,7 +53,7 @@ struct ContentView: View {
                                         removal: .move(edge: .leading).combined(with: .opacity)
                                     ))
                             } else {
-                                OnboardingQuestionnaireView()
+                                MainTabView()
                                     .environmentObject(authManager)
                                     .environmentObject(appState)
                                     .transition(.asymmetric(

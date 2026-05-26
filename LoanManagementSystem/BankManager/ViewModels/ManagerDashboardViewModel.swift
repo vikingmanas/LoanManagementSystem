@@ -1,43 +1,45 @@
 import SwiftUI
 import Combine
 
-// MARK: - Manager Dashboard ViewModel
 @MainActor
 final class ManagerDashboardViewModel: ObservableObject {
-
-    // MARK: - Tab State
     @Published var selectedTab: Int = 0
 
-    // MARK: - Loading
     @Published var isLoading: Bool = false
     @Published var isRefreshing: Bool = false
 
-    // MARK: - Data
     @Published var applicants: [ManagerApplicant] = []
     @Published var officers: [ManagerOfficer] = []
     @Published var kpis: [ManagerKPI] = []
     @Published var notifications: [ManagerNotificationItem] = []
     @Published var conversations: [ManagerChatConversation] = []
-    @Published var branchOverview: BranchOverview = ManagerMockData.branchOverview
+    @Published var branchOverview: BranchOverview = BranchOverview(
+        name: "Assigned Branch",
+        code: "BR",
+        region: "Regional Office",
+        staffCount: 0,
+        activeLoanCount: 0,
+        totalDisbursed: 0,
+        totalRecovered: 0,
+        nplRate: 0,
+        auditRating: "Pending",
+        monthlyTarget: 0
+    )
     @Published var auditEvents: [ManagerAuditEvent] = []
-    
-    private var cancellables = Set<AnyCancellable>()
-    
-    init() {
-        CentralLoanRepository.shared.$applications
-            .map { apps in
-                apps.compactMap { CentralLoanRepository.shared.toManagerApplicant(from: $0) }
-            }
-            .assign(to: &$applicants)
-    }
+    @Published var managerProfile: ManagerStaffProfile = .empty
+    @Published var lastReportPublishedAt: Date?
 
-    // MARK: - Filters (Applicants Tab)
     @Published var applicantSearchQuery: String = ""
     @Published var selectedStatusFilter: ManagerApplicantStatus? = nil
     @Published var selectedOfficerFilter: UUID? = nil
     @Published var selectedRiskFilter: ManagerRiskLevel? = nil
     @Published var selectedLoanTypeFilter: ManagerLoanType? = nil
     @Published var applicantSortOrder: ApplicantSortOrder = .dateDesc
+
+    @Published var chatSearchQuery: String = ""
+    @Published var selectedChatFilter: ChatFilterMode = .all
+
+    private var cancellables = Set<AnyCancellable>()
 
     enum ApplicantSortOrder: String, CaseIterable {
         case dateDesc = "Newest First"
@@ -47,17 +49,24 @@ final class ManagerDashboardViewModel: ObservableObject {
         case riskDesc = "Highest Risk"
     }
 
-    // MARK: - Communication
-    @Published var chatSearchQuery: String = ""
-    @Published var selectedChatFilter: ChatFilterMode = .all
-
     enum ChatFilterMode: String, CaseIterable {
         case all = "All"
         case escalations = "Escalations"
         case announcements = "Announcements"
     }
 
-    // MARK: - Computed Properties
+    init() {
+        CentralLoanRepository.shared.$applications
+            .map { apps in
+                apps.compactMap { CentralLoanRepository.shared.toManagerApplicant(from: $0) }
+            }
+            .sink { [weak self] mappedApplicants in
+                guard let self else { return }
+                self.applicants = mappedApplicants
+                self.rebuildDerivedDashboardState()
+            }
+            .store(in: &cancellables)
+    }
 
     var unreadNotificationCount: Int {
         notifications.filter { !$0.isRead }.count
@@ -74,27 +83,22 @@ final class ManagerDashboardViewModel: ObservableObject {
     var filteredApplicants: [ManagerApplicant] {
         var result = applicants
 
-        // Status filter
         if let status = selectedStatusFilter {
             result = result.filter { $0.status == status }
         }
 
-        // Officer filter
         if let officerId = selectedOfficerFilter {
             result = result.filter { $0.assignedOfficerId == officerId }
         }
 
-        // Risk filter
         if let risk = selectedRiskFilter {
             result = result.filter { $0.riskLevel == risk }
         }
 
-        // Loan type filter
         if let loanType = selectedLoanTypeFilter {
             result = result.filter { $0.loanType == loanType }
         }
 
-        // Search
         let query = applicantSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         if !query.isEmpty {
             result = result.filter {
@@ -104,7 +108,6 @@ final class ManagerDashboardViewModel: ObservableObject {
             }
         }
 
-        // Sort
         switch applicantSortOrder {
         case .dateDesc:
             result.sort { $0.submissionDate > $1.submissionDate }
@@ -139,11 +142,9 @@ final class ManagerDashboardViewModel: ObservableObject {
         case .escalations:
             result = result.filter { $0.priority == .urgent }
         case .announcements:
-            // placeholder — no announcements filter yet
-            break
+            result = result.filter { $0.messages.contains(where: { $0.isSystemMessage }) }
         }
 
-        // Pinned first, then by timestamp
         result.sort { lhs, rhs in
             if lhs.isPinned != rhs.isPinned { return lhs.isPinned }
             return lhs.timestamp > rhs.timestamp
@@ -152,43 +153,62 @@ final class ManagerDashboardViewModel: ObservableObject {
         return result
     }
 
-    // MARK: - Data Fetching
-
-    func fetchDashboardData() async {
+    func fetchDashboardData(authManager: AuthManager? = nil) async {
         isLoading = true
-        // Simulate API call
-        try? await Task.sleep(nanoseconds: 600_000_000)
 
-        // Sync from Central Repository, ignore static mocks for applicants
-        officers = ManagerMockData.officers
-        kpis = ManagerMockData.kpis
-        notifications = ManagerMockData.notifications
-        conversations = ManagerMockData.conversations
-        branchOverview = ManagerMockData.branchOverview
+        if let authManager {
+            configureProfileFromAuth(authManager)
+            await loadStaffContext(userId: authManager.currentUser?.uid)
+        } else {
+            rebuildDerivedDashboardState()
+        }
 
         isLoading = false
     }
 
     func refreshData() async {
         isRefreshing = true
-        try? await Task.sleep(nanoseconds: 400_000_000)
+        rebuildDerivedDashboardState()
         isRefreshing = false
     }
 
-    // MARK: - Applicant Actions
-
-    func approveApplicant(_ id: UUID, remarks: String) {
-        CentralLoanRepository.shared.approveApplication(id: id, remarks: remarks)
+    @discardableResult
+    func approveApplicant(_ id: UUID, remarks: String) -> Bool {
+        guard CentralLoanRepository.shared.approveApplication(id: id, remarks: remarks) else {
+            return false
+        }
+        appendAudit(action: "Approved \(applicationLabel(for: id))", severity: .success)
+        appendNotification(
+            title: "Loan approved and credited",
+            message: "\(applicationLabel(for: id)) was approved by \(managerProfile.name). The sanctioned amount has been credited to the borrower account.",
+            type: .success,
+            relatedApplicantId: id
+        )
         HapticsManager.triggerNotification(type: .success)
+        return true
     }
 
     func rejectApplicant(_ id: UUID, remarks: String) {
         CentralLoanRepository.shared.rejectApplication(id: id, remarks: remarks)
+        appendAudit(action: "Rejected \(applicationLabel(for: id))", severity: .critical)
+        appendNotification(
+            title: "Loan rejected",
+            message: "\(applicationLabel(for: id)) was rejected after manager review.",
+            type: .alert,
+            relatedApplicantId: id
+        )
         HapticsManager.triggerNotification(type: .error)
     }
 
     func sendBackApplicant(_ id: UUID, remarks: String) {
         CentralLoanRepository.shared.sendBackApplication(id: id, remarks: remarks)
+        appendAudit(action: "Requested clarification on \(applicationLabel(for: id))", severity: .warning)
+        appendNotification(
+            title: "Clarification requested",
+            message: remarks.isEmpty ? "The application was returned to the loan officer." : remarks,
+            type: .warning,
+            relatedApplicantId: id
+        )
         HapticsManager.triggerImpact(style: .medium)
     }
 
@@ -196,8 +216,9 @@ final class ManagerDashboardViewModel: ObservableObject {
         guard let index = applicants.firstIndex(where: { $0.id == id }) else { return }
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
             applicants[index].status = .escalated
-            applicants[index].managerRemarks = "Escalated to Admin for review."
+            applicants[index].managerRemarks = "Escalated for senior review."
         }
+        appendAudit(action: "Escalated \(applicationLabel(for: id))", severity: .critical)
         HapticsManager.triggerNotification(type: .warning)
     }
 
@@ -208,10 +229,9 @@ final class ManagerDashboardViewModel: ObservableObject {
             applicants[index].assignedOfficerId = officerId
             applicants[index].assignedOfficer = officer.name
         }
+        appendAudit(action: "Reassigned \(applicationLabel(for: id)) to \(officer.name)", severity: .info)
         HapticsManager.triggerImpact(style: .medium)
     }
-
-    // MARK: - Notification Actions
 
     func markNotificationRead(_ id: UUID) {
         guard let index = notifications.firstIndex(where: { $0.id == id }) else { return }
@@ -228,44 +248,59 @@ final class ManagerDashboardViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Chat Actions
-
     func sendMessage(_ text: String, toConversation conversationId: UUID) {
+        let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let index = conversations.firstIndex(where: { $0.id == conversationId }),
-              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+              !cleanText.isEmpty else { return }
 
         let message = ManagerChatMessage(
             id: UUID(),
-            senderName: ManagerMockData.managerName,
-            text: text,
+            senderName: managerProfile.name,
+            text: cleanText,
             timestamp: Date(),
             isFromManager: true,
             isSystemMessage: false
         )
 
         conversations[index].messages.append(message)
-        conversations[index].lastMessage = text
+        conversations[index].lastMessage = cleanText
         conversations[index].timestamp = Date()
+        appendAudit(action: "Messaged \(conversations[index].officerName)", severity: .info)
 
         HapticsManager.triggerImpact(style: .light)
+    }
 
-        // Simulate officer reply
-        let convIdx = index
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-            guard let self = self else { return }
-            let reply = ManagerChatMessage(
+    func broadcastAnnouncement(subject: String, message: String) {
+        let cleanSubject = subject.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanSubject.isEmpty, !cleanMessage.isEmpty else { return }
+
+        let body = "\(cleanSubject): \(cleanMessage)"
+        let timestamp = Date()
+
+        for index in conversations.indices {
+            let announcement = ManagerChatMessage(
                 id: UUID(),
-                senderName: self.conversations[convIdx].officerName,
-                text: "Noted, sir. I'll take care of it right away.",
-                timestamp: Date(),
-                isFromManager: false,
-                isSystemMessage: false
+                senderName: managerProfile.name,
+                text: body,
+                timestamp: timestamp,
+                isFromManager: true,
+                isSystemMessage: true
             )
-            self.conversations[convIdx].messages.append(reply)
-            self.conversations[convIdx].lastMessage = reply.text
-            self.conversations[convIdx].timestamp = Date()
-            HapticsManager.triggerImpact(style: .light)
+            conversations[index].messages.append(announcement)
+            conversations[index].lastMessage = cleanSubject
+            conversations[index].timestamp = timestamp
+            conversations[index].isPinned = true
         }
+
+        appendAudit(action: "Broadcast announcement to \(officers.count) officers", severity: .info)
+        appendNotification(
+            title: "Broadcast sent",
+            message: cleanSubject,
+            type: .info,
+            relatedApplicantId: nil
+        )
+        HapticsManager.triggerNotification(type: .success)
     }
 
     func markConversationRead(_ conversationId: UUID) {
@@ -273,7 +308,17 @@ final class ManagerDashboardViewModel: ObservableObject {
         conversations[index].unreadCount = 0
     }
 
-    // MARK: - Navigate to Applicants Tab with Filter
+    func publishMonthlyReport() {
+        lastReportPublishedAt = Date()
+        appendAudit(action: "Published monthly branch performance report", severity: .info)
+        appendNotification(
+            title: "Monthly report published",
+            message: "Branch performance report is available for \(branchOverview.name).",
+            type: .info,
+            relatedApplicantId: nil
+        )
+        HapticsManager.triggerNotification(type: .success)
+    }
 
     func navigateToApplicantsWithPending() {
         selectedStatusFilter = .sentToManager
@@ -289,5 +334,241 @@ final class ManagerDashboardViewModel: ObservableObject {
         selectedRiskFilter = nil
         selectedLoanTypeFilter = nil
         applicantSortOrder = .dateDesc
+    }
+
+    private func configureProfileFromAuth(_ authManager: AuthManager) {
+        managerProfile.name = authManager.userDisplayName
+        managerProfile.email = authManager.userEmail ?? ""
+    }
+
+    private func loadStaffContext(userId: String?) async {
+        guard let staff = try? await AdminStaffService.shared.fetchStaffMembers() else {
+            rebuildDerivedDashboardState()
+            return
+        }
+
+        if let userId, let uuid = UUID(uuidString: userId),
+           let manager = staff.first(where: { $0.id == uuid && $0.role == .bankManager }) {
+            managerProfile = ManagerStaffProfile(
+                name: manager.fullName,
+                email: manager.email,
+                phone: manager.phoneNumber,
+                employeeCode: manager.employeeCode,
+                branchName: manager.branchName ?? "Assigned Branch",
+                branchCode: manager.employeeCode,
+                region: manager.region ?? "Regional Office",
+                roleTitle: manager.role.displayName,
+                joinedAt: manager.createdAt
+            )
+        }
+
+        let managerBranchId = staff.first(where: { $0.email == managerProfile.email && $0.role == .bankManager })?.branchId
+        let branchOfficers = staff.filter { member in
+            member.role == .loanOfficer && (managerBranchId == nil || member.branchId == managerBranchId)
+        }
+
+        officers = branchOfficers.map { member in
+            let assignedCases = applicants.filter { $0.assignedOfficer.localizedCaseInsensitiveContains(member.fullName) }.count
+            let completedCases = applicants.filter {
+                $0.assignedOfficer.localizedCaseInsensitiveContains(member.fullName) &&
+                ($0.status == .approved || $0.status == .disbursed)
+            }.count
+            let processed = applicants.filter { $0.assignedOfficer.localizedCaseInsensitiveContains(member.fullName) }.count
+            let approvalRate = processed == 0 ? 0 : (Double(completedCases) / Double(processed)) * 100
+
+            return ManagerOfficer(
+                id: member.id,
+                name: member.fullName,
+                role: member.designation ?? member.role.displayName,
+                activeCases: assignedCases,
+                maxCapacity: 15,
+                rating: processed == 0 ? 0 : min(5, 3.5 + approvalRate / 100),
+                performance: processed == 0 ? 0 : min(1, approvalRate / 100),
+                loansProcessedYTD: processed,
+                approvalRate: approvalRate
+            )
+        }
+
+        rebuildDerivedDashboardState(keepStaff: true)
+    }
+
+    private func rebuildDerivedDashboardState(keepStaff: Bool = false) {
+        if !keepStaff {
+            rebuildOfficersFromApplicants()
+        }
+        rebuildBranchOverview()
+        rebuildKPIs()
+        rebuildNotifications()
+        rebuildConversations()
+        rebuildAuditEvents()
+    }
+
+    private func rebuildOfficersFromApplicants() {
+        let grouped = Dictionary(grouping: applicants, by: \.assignedOfficer)
+        officers = grouped.map { name, apps in
+            let completed = apps.filter { $0.status == .approved || $0.status == .disbursed }.count
+            let approvalRate = apps.isEmpty ? 0 : (Double(completed) / Double(apps.count)) * 100
+            return ManagerOfficer(
+                id: apps.first?.assignedOfficerId ?? stableId(for: name),
+                name: name,
+                role: "Loan Officer",
+                activeCases: apps.filter { $0.status == .sentToManager || $0.status == .needsClarification }.count,
+                maxCapacity: 15,
+                rating: apps.isEmpty ? 0 : min(5, 3.5 + approvalRate / 100),
+                performance: apps.isEmpty ? 0 : min(1, approvalRate / 100),
+                loansProcessedYTD: apps.count,
+                approvalRate: approvalRate
+            )
+        }
+        .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    private func rebuildBranchOverview() {
+        let totalDisbursed = applicants
+            .filter { $0.status == .disbursed || $0.status == .approved }
+            .reduce(0) { $0 + $1.requestedAmount }
+        let activeLoans = applicants.filter { $0.status != .rejected }.count
+
+        branchOverview = BranchOverview(
+            name: managerProfile.branchName,
+            code: managerProfile.branchCode,
+            region: managerProfile.region,
+            staffCount: officers.count,
+            activeLoanCount: activeLoans,
+            totalDisbursed: totalDisbursed,
+            totalRecovered: 0,
+            nplRate: 0,
+            auditRating: auditRating(for: applicants),
+            monthlyTarget: max(totalDisbursed, applicants.reduce(0) { $0 + $1.requestedAmount } * 1.2)
+        )
+    }
+
+    private func rebuildKPIs() {
+        let totalRequested = applicants.reduce(0) { $0 + $1.requestedAmount }
+        let disbursed = applicants
+            .filter { $0.status == .approved || $0.status == .disbursed }
+            .reduce(0) { $0 + $1.requestedAmount }
+        let terminal = applicants.filter { $0.status == .approved || $0.status == .disbursed || $0.status == .rejected }
+        let approvalRate = terminal.isEmpty ? 0 : Double(terminal.filter { $0.status != .rejected }.count) / Double(terminal.count)
+        let queueCount = pendingApplicants.count
+        let activeLoanCount = applicants.filter { $0.status != .rejected }.count
+        let highRiskCount = applicants.filter { $0.riskLevel == .high || $0.riskLevel == .critical }.count
+        let progress = totalRequested == 0 ? 0 : min(1, disbursed / max(totalRequested, 1))
+
+        kpis = [
+            ManagerKPI(title: "TOTAL DISBURSED", value: CurrencyFormatter.shared.format(disbursed), subtitle: "From approved/disbursed loans", icon: "indianrupeesign.circle.fill", tint: LMSColors.emerald, trend: .neutral, trendValue: "Live", progress: progress),
+            ManagerKPI(title: "APPROVAL RATE", value: "\(Int(approvalRate * 100))%", subtitle: "\(terminal.count) decided cases", icon: "checkmark.seal.fill", tint: LMSColors.actionBlue, trend: .neutral, trendValue: "Live", progress: approvalRate),
+            ManagerKPI(title: "CLEARANCE QUEUE", value: "\(queueCount) Loans", subtitle: "Awaiting manager action", icon: "clock.badge.exclamationmark", tint: LMSColors.amber, trend: queueCount == 0 ? .neutral : .up, trendValue: "\(queueCount)", progress: min(1, Double(queueCount) / 10)),
+            ManagerKPI(title: "HIGH RISK", value: "\(highRiskCount)", subtitle: highRiskCount == 0 ? "No flagged profiles" : "Flagged profiles", icon: "shield.lefthalf.filled", tint: LMSColors.coral, trend: .neutral, trendValue: highRiskCount == 0 ? "Clear" : "\(highRiskCount)", progress: applicants.isEmpty ? 0 : Double(highRiskCount) / Double(applicants.count)),
+            ManagerKPI(title: "ACTIVE LOANS", value: "\(activeLoanCount)", subtitle: "Across all types", icon: "doc.text.fill", tint: LMSColors.brandNavy, trend: .neutral, trendValue: "Live", progress: applicants.isEmpty ? 0 : Double(activeLoanCount) / Double(applicants.count))
+        ]
+    }
+
+    private func rebuildNotifications() {
+        let generated = pendingApplicants.prefix(5).map { applicant in
+            ManagerNotificationItem(
+                id: stableId(for: "notification-\(applicant.id.uuidString)"),
+                title: "Approval pending",
+                message: "\(applicant.borrowerName)'s \(applicant.loanType.rawValue.lowercased()) is ready for manager decision.",
+                timestamp: applicant.submissionDate,
+                type: applicant.riskLevel == .high || applicant.riskLevel == .critical ? .warning : .info,
+                isRead: notifications.first(where: { $0.relatedApplicantId == applicant.id })?.isRead ?? false,
+                relatedApplicantId: applicant.id
+            )
+        }
+
+        let manual = notifications.filter { $0.relatedApplicantId == nil }
+        notifications = (manual + generated).sorted { $0.timestamp > $1.timestamp }
+    }
+
+    private func rebuildConversations() {
+        let existing = Dictionary(uniqueKeysWithValues: conversations.map { ($0.id, $0) })
+        conversations = officers.map { officer in
+            let id = stableId(for: "conversation-\(officer.id.uuidString)")
+            if let conversation = existing[id] {
+                return conversation
+            }
+            return ManagerChatConversation(
+                id: id,
+                officerName: officer.name,
+                officerInitials: officer.initials,
+                officerRole: officer.role,
+                lastMessage: "No messages yet",
+                timestamp: Date.distantPast,
+                unreadCount: 0,
+                isPinned: officer.activeCases > 0,
+                priority: officer.activeCases > 10 ? .high : .normal,
+                messages: []
+            )
+        }
+    }
+
+    private func rebuildAuditEvents() {
+        let derived = applicants.flatMap { applicant -> [ManagerAuditEvent] in
+            applicant.documents.compactMap { document in
+                guard document.status == .rejected || document.status == .reUploaded else { return nil }
+                return ManagerAuditEvent(
+                    id: stableId(for: "audit-\(applicant.id.uuidString)-\(document.id.uuidString)-\(document.status.rawValue)"),
+                    timestamp: applicant.submissionDate,
+                    action: "\(document.name) marked \(document.status.rawValue.lowercased()) for \(applicant.applicationId)",
+                    user: applicant.assignedOfficer,
+                    severity: document.status == .rejected ? .warning : .info
+                )
+            }
+        }
+
+        let manual = auditEvents.filter { $0.user == managerProfile.name }
+        auditEvents = (manual + derived).sorted { $0.timestamp > $1.timestamp }
+    }
+
+    private func appendAudit(action: String, severity: ManagerAuditEvent.Severity) {
+        auditEvents.insert(
+            ManagerAuditEvent(
+                id: UUID(),
+                timestamp: Date(),
+                action: action,
+                user: managerProfile.name,
+                severity: severity
+            ),
+            at: 0
+        )
+    }
+
+    private func appendNotification(title: String, message: String, type: ManagerNotificationItem.NotifType, relatedApplicantId: UUID?) {
+        notifications.insert(
+            ManagerNotificationItem(
+                id: UUID(),
+                title: title,
+                message: message,
+                timestamp: Date(),
+                type: type,
+                isRead: false,
+                relatedApplicantId: relatedApplicantId
+            ),
+            at: 0
+        )
+    }
+
+    private func applicationLabel(for id: UUID) -> String {
+        guard let applicant = applicants.first(where: { $0.id == id }) else { return "application" }
+        return "\(applicant.applicationId) (\(applicant.borrowerName))"
+    }
+
+    private func auditRating(for applicants: [ManagerApplicant]) -> String {
+        guard !applicants.isEmpty else { return "Pending" }
+        let highRiskShare = Double(applicants.filter { $0.riskLevel == .high || $0.riskLevel == .critical }.count) / Double(applicants.count)
+        if highRiskShare < 0.10 { return "A" }
+        if highRiskShare < 0.25 { return "B" }
+        return "Review"
+    }
+
+    private func stableId(for value: String) -> UUID {
+        var hash: UInt64 = 14_695_981_039_346_656_037
+        for byte in value.utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 1_099_511_628_211
+        }
+        let hex = String(format: "00000000-0000-0000-0000-%012llx", hash & 0x0000_FFFF_FFFF_FFFF)
+        return UUID(uuidString: hex) ?? UUID()
     }
 }

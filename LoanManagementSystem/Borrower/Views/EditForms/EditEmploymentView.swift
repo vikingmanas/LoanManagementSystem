@@ -3,22 +3,22 @@ import SwiftUI
 struct EditEmploymentView: View {
     @Environment(\.presentationMode) var presentationMode
     @ObservedObject var viewModel: BorrowerProfileViewModel
-    
+
     @State private var employmentType: String
     @State private var companyName: String
     @State private var designation: String
     @State private var monthlyIncome: String
-    
+
     init(viewModel: BorrowerProfileViewModel) {
         self.viewModel = viewModel
         _employmentType = State(initialValue: viewModel.profile?.employment.employmentType ?? "")
         _companyName = State(initialValue: viewModel.profile?.employment.companyName ?? "")
         _designation = State(initialValue: viewModel.profile?.employment.designation ?? "")
-        
+
         let incomeVal = viewModel.profile?.income.monthlyIncome ?? 0.0
         _monthlyIncome = State(initialValue: String(format: "%.0f", incomeVal))
     }
-    
+
     var body: some View {
         NavigationStack {
             Form {
@@ -71,3 +71,4 @@ struct EditEmploymentView: View {
         EditEmploymentView(viewModel: PreviewSupport.borrowerProfileViewModel)
     }
 }
+
