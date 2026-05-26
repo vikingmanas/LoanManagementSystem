@@ -18,14 +18,14 @@ struct LoanOfficerChartView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onTapAnalytics: () -> Void
     @State private var timeFilter: ChartTimeFilter = .last7Days
-    
+
     var chartData: [ChartDataPoint] {
         let calendar = Calendar.current
         let now = Date()
-        
+
         let startDate: Date
         let component: Calendar.Component
-        
+
         switch timeFilter {
         case .last7Days:
             startDate = calendar.date(byAdding: .day, value: -6, to: now)!
@@ -37,10 +37,10 @@ struct LoanOfficerChartView: View {
             startDate = calendar.date(byAdding: .month, value: -11, to: now)!
             component = .month
         }
-        
+
         var allCounts: [Date: Int] = [:]
         var pendingCounts: [Date: Int] = [:]
-        
+
         var currentDate = startDate
         while currentDate <= now {
             var dateKey = currentDate
@@ -54,10 +54,10 @@ struct LoanOfficerChartView: View {
             pendingCounts[dateKey] = 0
             currentDate = calendar.date(byAdding: component, value: 1, to: currentDate)!
         }
-        
+
         for app in viewModel.applications {
             guard app.submittedDate >= startDate else { continue }
-            
+
             var dateKey = app.submittedDate
             if component == .day {
                 dateKey = calendar.startOfDay(for: dateKey)
@@ -65,29 +65,29 @@ struct LoanOfficerChartView: View {
                 let comps = calendar.dateComponents([.year, .month], from: dateKey)
                 dateKey = calendar.date(from: comps)!
             }
-            
+
             allCounts[dateKey, default: 0] += 1
             if app.status == .pending || app.status == .applied {
                 pendingCounts[dateKey, default: 0] += 1
             }
         }
-        
+
         var result: [ChartDataPoint] = []
         let sortedDates = allCounts.keys.sorted()
         for date in sortedDates {
             result.append(ChartDataPoint(date: date, type: "All", count: allCounts[date] ?? 0))
             result.append(ChartDataPoint(date: date, type: "Pending", count: pendingCounts[date] ?? 0))
         }
-        
+
         return result
     }
-    
+
     var body: some View {
         let currentUnit: Calendar.Component = timeFilter == .thisYear ? .month : .day
         let isYear = timeFilter == .thisYear
-        
+
         VStack(alignment: .leading, spacing: 18) {
-            // Header Row (Tappable)
+
             Button(action: {
                 HapticsManager.triggerImpact(style: .light)
                 onTapAnalytics()
@@ -101,17 +101,17 @@ struct LoanOfficerChartView: View {
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(LMSColors.textSecondary)
                     }
-                    
+
                     Spacer()
-                    
+
                     Image(systemName: "chevron.right.circle.fill")
                         .font(.system(size: 22))
                         .foregroundStyle(Color(hex: "F3F4F6"), AppTheme.actionBlue)
                 }
             }
             .buttonStyle(PlainButtonStyle())
-            
-            // Filters
+
+
             HStack {
                 Spacer()
                 Picker("Time Filter", selection: $timeFilter) {
@@ -122,8 +122,8 @@ struct LoanOfficerChartView: View {
                 .pickerStyle(SegmentedPickerStyle())
             }
             .padding(.bottom, 8)
-            
-            // Chart Area
+
+
             if chartData.isEmpty {
                 ContentUnavailableView("No Data", systemImage: "chart.bar.xaxis")
             } else {
@@ -184,3 +184,4 @@ struct LoanOfficerChartView: View {
     LoanOfficerChartView(viewModel: PreviewSupport.loanOfficerViewModel, onTapAnalytics: {})
         .padding()
 }
+

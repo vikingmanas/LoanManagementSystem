@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Manager Applicant Action Sheet
+
 struct ManagerApplicantActionSheet: View {
     let applicant: ManagerApplicant
     let actionType: ManagerApplicantDetailView.ActionType
@@ -14,7 +14,7 @@ struct ManagerApplicantActionSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: LMSSpacing.xl) {
-                // Action Icon
+
                 ZStack {
                     Circle()
                         .fill(actionColor.opacity(0.12))
@@ -25,13 +25,13 @@ struct ManagerApplicantActionSheet: View {
                 }
                 .padding(.top, LMSSpacing.xl)
 
-                // Title
+
                 Text(actionTitle)
                     .font(.system(.title3, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
                     .multilineTextAlignment(.center)
 
-                // Summary
+
                 VStack(spacing: LMSSpacing.sm) {
                     HStack {
                         Text("Borrower")
@@ -62,7 +62,7 @@ struct ManagerApplicantActionSheet: View {
                 .background(LMSColors.surfaceElevated)
                 .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
 
-                // Remarks
+
                 VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                     Text("Remarks (Required)")
                         .font(.system(.caption, design: .rounded).bold())
@@ -82,7 +82,7 @@ struct ManagerApplicantActionSheet: View {
 
                 Spacer()
 
-                // Confirm Button
+
                 Button(action: performAction) {
                     Group {
                         if isProcessing {
@@ -117,7 +117,7 @@ struct ManagerApplicantActionSheet: View {
         }
     }
 
-    // MARK: - Perform Action
+
     private func performAction() {
         guard !remarks.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || actionType == .escalate else {
             HapticsManager.triggerNotification(type: .warning)
@@ -147,7 +147,7 @@ struct ManagerApplicantActionSheet: View {
         }
     }
 
-    // MARK: - Computed Properties
+
     private var actionTitle: String {
         switch actionType {
         case .approve:  return "Approve Application"
@@ -193,3 +193,4 @@ struct ManagerApplicantActionSheet: View {
         onComplete: {}
     )
 }
+

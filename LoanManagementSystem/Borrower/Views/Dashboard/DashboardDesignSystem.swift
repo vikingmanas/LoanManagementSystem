@@ -1,13 +1,13 @@
 import SwiftUI
 
-// MARK: - Dashboard Spacing (Aliases → unified LMSSpacing)
+
 enum DashboardSpacing {
     static let screenHorizontal: CGFloat = LMSSpacing.screenHorizontal
     static let sectionVertical: CGFloat = LMSSpacing.sectionGap
     static let cardCornerRadius: CGFloat = LMSRadius.card
 }
 
-// MARK: - Pressable Style
+
 struct DashboardPressableStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -17,7 +17,7 @@ struct DashboardPressableStyle: ButtonStyle {
     }
 }
 
-// MARK: - Card Modifier (Redirects to unified .lmsCard)
+
 struct DashboardCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
@@ -31,7 +31,7 @@ extension View {
     }
 }
 
-// MARK: - Section Container
+
 struct SectionContainer<Content: View, Trailing: View>: View {
     let title: LocalizedStringKey
     let subtitle: String?
@@ -83,7 +83,7 @@ extension SectionContainer where Trailing == EmptyView {
     }
 }
 
-// MARK: - Loan Card (Hero card on dashboard carousel)
+
 struct LoanCard: View {
     let title: String
     let subtitle: String
@@ -104,9 +104,9 @@ struct LoanCard: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            
+
             VStack(alignment: .leading, spacing: LMSSpacing.lg) {
-                // Header
+
                 HStack(alignment: .top, spacing: LMSSpacing.sm) {
                     VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                         Text(title)
@@ -125,7 +125,7 @@ struct LoanCard: View {
                         .background(.white.opacity(0.16), in: Capsule())
                 }
 
-                // Outstanding amount
+
                 VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                     Text("Outstanding")
                         .font(LMSFont.caption)
@@ -137,12 +137,12 @@ struct LoanCard: View {
                         .contentTransition(.numericText())
                 }
 
-                // Progress bar
+
                 ProgressView(value: clampedFraction)
                     .tint(accent)
                     .animation(.easeInOut(duration: 0.35), value: clampedFraction)
 
-                // Bottom metrics
+
                 HStack(spacing: LMSSpacing.lg) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Monthly EMI")
@@ -181,3 +181,4 @@ struct LoanCard: View {
     }
     .padding()
 }
+

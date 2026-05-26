@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Secure password field with visibility toggle, matching `CustomTextField` styling.
+
 struct SecureInputField: View {
     var placeholder: String
     @Binding var text: String
@@ -36,13 +36,13 @@ struct SecureInputField: View {
                         isVisible.toggle()
                     }
                 } label: {
-                    Image(systemName: isVisible ? "eye.slash.fill" : "eye.fill")
+                    Image(systemName: isVisible ? "eye.fill" : "eye.slash.fill")
                         .font(.system(.callout, design: .rounded))
                         .foregroundStyle(LMSColors.textTertiary)
                         .contentTransition(.symbolEffect(.replace))
                 }
                 .buttonStyle(.plain)
-                .frame(width: 44, height: 44) // HIG tap target
+                .frame(width: 44, height: 44)
             }
             .padding(.horizontal, LMSSpacing.lg)
             .frame(height: 50)
@@ -70,7 +70,7 @@ struct SecureInputField: View {
         }
     }
 
-    // MARK: - Computed Styling
+
 
     private var iconColor: Color {
         if isError { return LMSColors.coral }
@@ -94,3 +94,4 @@ struct SecureInputField: View {
     SecureInputField(placeholder: "Password", text: $text)
         .padding()
 }
+
