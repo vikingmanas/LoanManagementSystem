@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-enum NotificationType: String, CaseIterable {
+enum AppNotificationType: String, CaseIterable {
     case alert
     case message
     case payment
@@ -34,15 +34,15 @@ enum NotificationType: String, CaseIterable {
     }
 }
 
-struct Notification: Identifiable, Equatable {
+struct AppNotification: Identifiable, Equatable {
     let id: UUID
     let title: String
     let description: String
     let timestamp: Date
-    let type: NotificationType
+    let type: AppNotificationType
     var isRead: Bool
     
-    init(id: UUID = UUID(), title: String, description: String, timestamp: Date = Date(), type: NotificationType, isRead: Bool = false) {
+    init(id: UUID = UUID(), title: String, description: String, timestamp: Date = Date(), type: AppNotificationType, isRead: Bool = false) {
         self.id = id
         self.title = title
         self.description = description

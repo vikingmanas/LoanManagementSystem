@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct NotificationCardView: View {
-    let notification: Notification
+    let notification: AppNotification
     
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
@@ -71,7 +71,7 @@ struct NotificationCardView: View {
 
 #Preview {
     VStack(spacing: 16) {
-        NotificationCardView(notification: Notification(
+        NotificationCardView(notification: AppNotification(
             title: "EMI Payment Successful",
             description: "Your EMI of $450.00 for Home Loan has been successfully processed.",
             timestamp: Date().addingTimeInterval(-3600),
@@ -79,7 +79,7 @@ struct NotificationCardView: View {
             isRead: false
         ))
         
-        NotificationCardView(notification: Notification(
+        NotificationCardView(notification: AppNotification(
             title: "Document Verification Pending",
             description: "Please upload your recent bank statement to proceed with your personal loan application.",
             timestamp: Date().addingTimeInterval(-86400),
