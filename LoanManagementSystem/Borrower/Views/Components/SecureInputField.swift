@@ -36,7 +36,7 @@ struct SecureInputField: View {
                         isVisible.toggle()
                     }
                 } label: {
-                    Image(systemName: isVisible ? "eye.slash.fill" : "eye.fill")
+                    Image(systemName: isVisible ? "eye.fill" : "eye.slash.fill")
                         .font(.system(.callout, design: .rounded))
                         .foregroundStyle(LMSColors.textTertiary)
                         .contentTransition(.symbolEffect(.replace))

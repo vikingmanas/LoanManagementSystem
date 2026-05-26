@@ -12,7 +12,7 @@ struct CheckboxView: View {
             }
             HapticsManager.triggerImpact(style: .light)
         }) {
-            HStack(alignment: .top, spacing: LMSSpacing.md) {
+            HStack(alignment: .center, spacing: LMSSpacing.md) {
                 Image(systemName: isChecked ? "checkmark.square.fill" : "square")
                     .font(.system(size: 22, weight: .medium, design: .rounded))
                     .foregroundStyle(isChecked ? LMSColors.brandNavy : LMSColors.textTertiary)
