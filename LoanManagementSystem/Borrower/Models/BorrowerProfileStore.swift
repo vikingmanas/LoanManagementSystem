@@ -82,7 +82,7 @@ class BorrowerProfileStore: ObservableObject {
         self.accounts = [rahulAccount]
     }
 
-    // MARK: - Actions
+
 
     @discardableResult
     func ensureProfile(email: String, name: String? = nil, phone: String? = nil, alternatePhone: String? = nil) -> BorrowerProfile {
@@ -100,8 +100,8 @@ class BorrowerProfileStore: ObservableObject {
                     return
                 }
             }
-            
-            // Previews / offline mock check
+
+
             if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
                 if let account = accounts.first(where: { $0.email == cleanedEmail }) {
                     self.profile = account.profile
@@ -109,7 +109,7 @@ class BorrowerProfileStore: ObservableObject {
                     return
                 }
             }
-            
+
             let customerId = "C-\(Int.random(in: 100000...999999))"
             let fallbackProfile = makeEmptyProfile(name: name ?? cleanedEmail, email: cleanedEmail, phone: phone ?? "", alternatePhone: alternatePhone, customerId: customerId)
             self.profile = fallbackProfile
@@ -124,8 +124,8 @@ class BorrowerProfileStore: ObservableObject {
             if let decodedProfile = try await DatabaseService.shared.fetchProfile(userId: uid) {
                 self.profile = decodedProfile
             } else {
-                // If it successfully returns nil, it means the query executed successfully but no profile exists.
-                // In this case, we create a new blank profile and upsert it.
+
+
                 let customerId = "C-\(Int.random(in: 100000...999999))"
                 var newProfile = makeEmptyProfile(
                     name: name ?? email,
@@ -141,8 +141,8 @@ class BorrowerProfileStore: ObservableObject {
             self.currentEmail = email
         } catch {
             print("Error fetching profile from Supabase: \(error.localizedDescription)")
-            // On connection/auth/other query failures, fallback to local cache if available,
-            // otherwise set a local fallback profile, but DO NOT upsert back to Supabase!
+
+
             if let cachedProfile = DatabaseService.shared.loadProfileLocally(userId: uid) {
                 self.profile = cachedProfile
             } else {
@@ -234,7 +234,7 @@ class BorrowerProfileStore: ObservableObject {
     }
 }
 
-// MARK: - Codable Extensions for Supabase/JSON Serialization
+
 
 extension Encodable {
     var asDictionary: [String: Any]? {
@@ -249,3 +249,4 @@ extension Decodable {
         return try? JSONDecoder().decode(Self.self, from: data)
     }
 }
+

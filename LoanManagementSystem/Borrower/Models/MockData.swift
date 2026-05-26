@@ -1,13 +1,13 @@
-//
-//  MockData.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 19/05/26.
-//
+
+
+
+
+
+
 
 import SwiftUI
 
-// MARK: - Color Aliases (Canonical definitions are in DesignSystem.swift)
+
 extension Color {
     public static let brandNavy        = LMSColors.brandNavy
     public static let brandNavyDark    = LMSColors.brandNavyLight
@@ -17,7 +17,7 @@ extension Color {
     public static let brandCoral       = LMSColors.coral
 }
 
-// MARK: - Formatters
+
 extension Double {
     public func formattedAsINR() -> String {
         let formatter = NumberFormatter()
@@ -55,7 +55,7 @@ extension Date {
     }
 }
 
-// MARK: - Mock Data Struct
+
 public struct MockData {
     public static func makeDate(year: Int, month: Int, day: Int, hour: Int = 10, minute: Int = 0) -> Date {
         var components = DateComponents()
@@ -66,17 +66,17 @@ public struct MockData {
         components.minute = minute
         return Calendar.current.date(from: components) ?? Date()
     }
-    
-    // Unique UUIDs for mock data linking
+
+
     public static let uuid1 = UUID(uuidString: "7a83d789-21df-4a69-9528-98e6e58914b1") ?? UUID()
     public static let uuid2 = UUID(uuidString: "f07d2c3e-8c9e-4c8d-8a1a-4a2b3c4d5e6f") ?? UUID()
     public static let uuid3 = UUID(uuidString: "8e9b0a1c-2d3e-4f5a-6b7c-8d9e0f1a2b3c") ?? UUID()
-    
+
     public static let loanId1 = UUID(uuidString: "a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d") ?? UUID()
     public static let loanId2 = UUID(uuidString: "b4c5d6e7-f89a-0b1c-2d3e-4f5a-6b7c8d9e") ?? UUID()
     public static let loanId3 = UUID(uuidString: "c5d6e7f8-9a0b-1c2d-3e4f-5a6b7c8d9e0f") ?? UUID()
 
-    // 3 Bank Accounts
+
     public static let sbi = BankAccount(
         id: uuid1,
         accountNumber: "XXXXXX7890",
@@ -86,7 +86,7 @@ public struct MockData {
         minBalance: 5000.0,
         linkedLoanIds: [loanId1]
     )
-    
+
     public static let hdfc = BankAccount(
         id: uuid2,
         accountNumber: "XXXXXX3421",
@@ -96,7 +96,7 @@ public struct MockData {
         odLimit: 50000.0,
         linkedLoanIds: [loanId2]
     )
-    
+
     public static let axis = BankAccount(
         id: uuid3,
         accountNumber: "XXXXXX9910",
@@ -105,8 +105,8 @@ public struct MockData {
         availableBalance: 2800.0,
         linkedLoanIds: [loanId3]
     )
-    
-    // 3 Loans
+
+
     public static let home = DashboardLoanAccount(
         id: loanId1,
         accountNumber: "XXXX XXXX 4321",
@@ -120,7 +120,7 @@ public struct MockData {
         repaidPercentage: 0.68,
         linkedBankAccountId: uuid1
     )
-    
+
     public static let business = DashboardLoanAccount(
         id: loanId2,
         accountNumber: "XXXX XXXX 8765",
@@ -134,7 +134,7 @@ public struct MockData {
         repaidPercentage: 0.28,
         linkedBankAccountId: uuid2
     )
-    
+
     public static let car = DashboardLoanAccount(
         id: loanId3,
         accountNumber: "XXXX XXXX 9911",
@@ -148,14 +148,14 @@ public struct MockData {
         repaidPercentage: 0.24,
         linkedBankAccountId: uuid3
     )
-    
-    // Initial static data
+
+
     public static let sampleLoanAccount = home
-    
+
     public static let sampleBankAccount = sbi
-    
+
     public static let sampleOverdraftAccount = hdfc
-    
+
     public static let samplePendingEMIs: [EMIRecord] = [
         EMIRecord(dueDate: makeDate(year: 2025, month: 6, day: 5), amount: 18500.0, loanType: "Home Loan", status: .dueSoon),
         EMIRecord(dueDate: makeDate(year: 2025, month: 5, day: 5), amount: 8500.0, loanType: "Personal Loan", status: .overdue),
@@ -164,26 +164,26 @@ public struct MockData {
         EMIRecord(dueDate: makeDate(year: 2025, month: 9, day: 5), amount: 18500.0, loanType: "Home Loan", status: .upcoming),
         EMIRecord(dueDate: makeDate(year: 2025, month: 10, day: 5), amount: 18500.0, loanType: "Home Loan", status: .upcoming)
     ]
-    
+
     public static let sampleTransactions: [Transaction] = [
-        // State Bank of India (uuid1)
+
         Transaction(title: "EMI - Home Loan", date: makeDate(year: 2025, month: 5, day: 5, hour: 11, minute: 30), amount: 18500.0, type: .emiPayment, referenceNo: "TXN9847291", bankAccountId: uuid1),
         Transaction(title: "Salary Credited", date: makeDate(year: 2025, month: 5, day: 1, hour: 9, minute: 15), amount: 75000.0, type: .credit, referenceNo: "TXN1028392", bankAccountId: uuid1),
         Transaction(title: "Quarterly Interest Credit", date: makeDate(year: 2025, month: 4, day: 25, hour: 16, minute: 45), amount: 1450.0, type: .credit, referenceNo: "TXN5528190", bankAccountId: uuid1),
-        
-        // HDFC Bank (uuid2)
+
+
         Transaction(title: "Auto-debit Penalty", date: makeDate(year: 2025, month: 4, day: 10, hour: 18, minute: 0), amount: 450.0, type: .penalty, referenceNo: "TXN4728193", bankAccountId: uuid2),
         Transaction(title: "Processing Fee Refund", date: makeDate(year: 2025, month: 4, day: 5, hour: 14, minute: 20), amount: 2500.0, type: .refund, referenceNo: "TXN7783921", bankAccountId: uuid2),
         Transaction(title: "Cashback Reward", date: makeDate(year: 2025, month: 3, day: 28, hour: 12, minute: 10), amount: 800.0, type: .credit, referenceNo: "TXN8829304", bankAccountId: uuid2),
         Transaction(title: "EMI - Business Loan", date: makeDate(year: 2025, month: 3, day: 5, hour: 11, minute: 0), amount: 12000.0, type: .emiPayment, referenceNo: "TXN1092834", bankAccountId: uuid2),
-        
-        // Axis Bank (uuid3)
+
+
         Transaction(title: "EMI - Personal Loan", date: makeDate(year: 2025, month: 4, day: 5, hour: 10, minute: 0), amount: 8500.0, type: .emiPayment, referenceNo: "TXN3384918", bankAccountId: uuid3),
         Transaction(title: "Amazon Refund", date: makeDate(year: 2025, month: 3, day: 22, hour: 15, minute: 30), amount: 4890.0, type: .refund, referenceNo: "TXN6549281", bankAccountId: uuid3),
         Transaction(title: "Account Penalty Charge", date: makeDate(year: 2025, month: 3, day: 15, hour: 9, minute: 0), amount: 350.0, type: .penalty, referenceNo: "TXN2840192", bankAccountId: uuid3),
         Transaction(title: "EMI - Car Loan", date: makeDate(year: 2025, month: 3, day: 5, hour: 11, minute: 15), amount: 9200.0, type: .emiPayment, referenceNo: "TXN4492810", bankAccountId: uuid3)
     ]
-    
+
     public static let sampleSchemes: [GovernmentScheme] = [
         GovernmentScheme(
             title: "PM Mudra Yojana",
@@ -215,3 +215,4 @@ public struct MockData {
         )
     ]
 }
+

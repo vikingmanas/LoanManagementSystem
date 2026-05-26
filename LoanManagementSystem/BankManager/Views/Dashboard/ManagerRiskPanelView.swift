@@ -1,11 +1,19 @@
 import SwiftUI
 
-// MARK: - Manager Risk Panel View
+
 struct ManagerRiskPanelView: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
 
     private var highRiskApplicants: [ManagerApplicant] {
         viewModel.applicants.filter { $0.riskLevel == .high || $0.riskLevel == .critical }
+    }
+
+    @State private var showNPLRateSheet = false
+    @State private var showEscalationsSheet = false
+    @State private var showHighRiskSheet = false
+
+    private var hasData: Bool {
+        !viewModel.applicants.isEmpty
     }
 
     var body: some View {
@@ -15,15 +23,33 @@ struct ManagerRiskPanelView: View {
                 .foregroundStyle(LMSColors.textSecondary)
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
 
+            if !hasData {
+                ContentUnavailableView(
+                    "No Risk Data",
+                    systemImage: "shield.slash",
+                    description: Text("Risk metrics will populate once branch applications are submitted.")
+                )
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, LMSSpacing.xl)
+                .background(LMSColors.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                        .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+                )
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+            } else {
+
             VStack(spacing: LMSSpacing.md) {
-                // NPL + Risk Summary Row
+
                 HStack(spacing: LMSSpacing.md) {
                     RiskGaugeCard(
                         title: "NPL Rate",
                         value: String(format: "%.2f%%", viewModel.branchOverview.nplRate),
                         progress: viewModel.branchOverview.nplRate / 5.0,
                         tint: viewModel.branchOverview.nplRate < 1.0 ? LMSColors.emerald : LMSColors.coral,
-                        subtitle: viewModel.branchOverview.nplRate < 1.0 ? "Excellent" : "Needs Attention"
+                        subtitle: viewModel.branchOverview.nplRate < 1.0 ? "Excellent" : "Needs Attention",
+                        action: { showNPLRateSheet = true }
                     )
 
                     RiskGaugeCard(
@@ -31,77 +57,117 @@ struct ManagerRiskPanelView: View {
                         value: "\(viewModel.applicants.filter { $0.status == .escalated }.count)",
                         progress: Double(viewModel.applicants.filter { $0.status == .escalated }.count) / 10.0,
                         tint: Color.purple,
-                        subtitle: "Active"
+                        subtitle: "Active",
+                        action: { showEscalationsSheet = true }
                     )
                 }
 
-                // High-Risk Loans
+
                 if !highRiskApplicants.isEmpty {
-                    VStack(alignment: .leading, spacing: LMSSpacing.sm) {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(LMSColors.coral)
-                                .font(.system(size: 12, weight: .bold))
+                    Button(action: {
+                        HapticsManager.triggerImpact(style: .light)
+                        showHighRiskSheet = true
+                    }) {
+                        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(LMSColors.coral)
+                                    .font(.system(size: 12, weight: .bold))
 
-                            Text("HIGH-RISK LOANS")
-                                .font(.system(size: 10, weight: .bold, design: .rounded))
-                                .foregroundStyle(LMSColors.coral)
-                        }
-
-                        ForEach(highRiskApplicants) { applicant in
-                            HStack(spacing: LMSSpacing.sm) {
-                                Circle()
-                                    .fill(applicant.riskLevel.themeColor)
-                                    .frame(width: 8, height: 8)
-
-                                Text(applicant.borrowerName)
-                                    .font(.system(.caption, design: .rounded).bold())
-                                    .foregroundStyle(LMSColors.textPrimary)
-
-                                Spacer()
-
-                                Text(applicant.applicationId)
-                                    .font(.system(.caption2, design: .monospaced))
-                                    .foregroundStyle(LMSColors.textTertiary)
-
-                                Text(CurrencyFormatter.shared.format(applicant.requestedAmount))
-                                    .font(.system(.caption2, design: .rounded).bold())
-                                    .foregroundStyle(LMSColors.textSecondary)
+                                Text("HIGH-RISK LOANS")
+                                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                                    .foregroundStyle(LMSColors.coral)
                             }
-                            .padding(.vertical, 6)
+
+                            ForEach(highRiskApplicants) { applicant in
+                                HStack(spacing: LMSSpacing.sm) {
+                                    Circle()
+                                        .fill(applicant.riskLevel.themeColor)
+                                        .frame(width: 8, height: 8)
+
+                                    Text(applicant.borrowerName)
+                                        .font(.system(.caption, design: .rounded).bold())
+                                        .foregroundStyle(LMSColors.textPrimary)
+
+                                    Spacer()
+
+                                    Text(applicant.applicationId)
+                                        .font(.system(.caption2, design: .monospaced))
+                                        .foregroundStyle(LMSColors.textTertiary)
+
+                                    Text(CurrencyFormatter.shared.format(applicant.requestedAmount))
+                                        .font(.system(.caption2, design: .rounded).bold())
+                                        .foregroundStyle(LMSColors.textSecondary)
+                                }
+                                .padding(.vertical, 6)
+                            }
                         }
+                        .padding(LMSSpacing.md)
+                        .background(LMSColors.coral.opacity(0.06))
+                        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
+                                .stroke(LMSColors.coral.opacity(0.15), lineWidth: 0.5)
+                        )
                     }
-                    .padding(LMSSpacing.md)
-                    .background(LMSColors.coral.opacity(0.06))
-                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
-                            .stroke(LMSColors.coral.opacity(0.15), lineWidth: 0.5)
-                    )
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, LMSSpacing.screenHorizontal)
+            } // else hasData
+        }
+        .sheet(isPresented: $showNPLRateSheet) {
+            ManagerApplicantListSheet(
+                title: "NPL Loans",
+                systemImage: "exclamationmark.triangle.fill",
+                description: "No non-performing loans found.",
+                applicants: viewModel.applicants.filter { $0.riskLevel == .critical || $0.status == .rejected },
+                viewModel: viewModel
+            )
+        }
+        .sheet(isPresented: $showEscalationsSheet) {
+            ManagerApplicantListSheet(
+                title: "Escalations",
+                systemImage: "arrow.up.circle.fill",
+                description: "No escalated applications.",
+                applicants: viewModel.applicants.filter { $0.status == .escalated },
+                viewModel: viewModel
+            )
+        }
+        .sheet(isPresented: $showHighRiskSheet) {
+            ManagerApplicantListSheet(
+                title: "High-Risk Loans",
+                systemImage: "shield.slash.fill",
+                description: "No high-risk loans detected.",
+                applicants: highRiskApplicants,
+                viewModel: viewModel
+            )
         }
     }
 }
 
-// MARK: - Risk Gauge Card
+
 private struct RiskGaugeCard: View {
     let title: String
     let value: String
     let progress: Double
     let tint: Color
     let subtitle: String
+    var action: (() -> Void)? = nil
     @State private var animatedProgress: Double = 0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
+        Button(action: {
+            HapticsManager.triggerImpact(style: .light)
+            action?()
+        }) {
+            VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             Text(title)
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .foregroundStyle(LMSColors.textSecondary)
 
             HStack(spacing: LMSSpacing.sm) {
-                // Mini ring
+
                 ZStack {
                     Circle()
                         .stroke(tint.opacity(0.15), lineWidth: 4)
@@ -128,11 +194,13 @@ private struct RiskGaugeCard: View {
         .background(LMSColors.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
         .shadow(color: .black.opacity(0.03), radius: 6, x: 0, y: 2)
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.7).delay(0.15)) {
-                animatedProgress = min(progress, 1.0)
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.7).delay(0.15)) {
+                    animatedProgress = min(progress, 1.0)
+                }
             }
         }
+        .buttonStyle(.plain)
     }
 }
 
@@ -140,3 +208,4 @@ private struct RiskGaugeCard: View {
     ManagerRiskPanelView(viewModel: PreviewSupport.managerViewModel)
         .previewManagerEnvironment()
 }
+

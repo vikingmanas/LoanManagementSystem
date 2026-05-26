@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - App Colors Styling (Aliases → unified DesignSystem.swift)
+
 struct AppTheme {
     static let brandNavy      = LMSColors.brandNavy
     static let actionBlue     = LMSColors.actionBlue
@@ -11,10 +11,10 @@ struct AppTheme {
     static let background     = LMSColors.surfaceElevated
 }
 
-// MARK: - Core Data Models
+
 struct OfficerLoanApplication: Identifiable, Hashable {
     let id: UUID
-    var applicationId: String          // "APP-2024-XXXX"
+    var applicationId: String
     var borrowerName: String
     var borrowerId: UUID
     var loanType: OfficerLoanType
@@ -37,7 +37,7 @@ enum OfficerLoanType: String, CaseIterable, Codable, Hashable {
     case business = "Business Loan"
     case vehicle = "Vehicle Loan"
     case education = "Education Loan"
-    
+
     var symbol: String {
         switch self {
         case .home: return "house.fill"
@@ -47,7 +47,7 @@ enum OfficerLoanType: String, CaseIterable, Codable, Hashable {
         case .education: return "graduationcap.fill"
         }
     }
-    
+
     var themeColor: Color {
         switch self {
         case .home: return AppTheme.brandNavy
@@ -66,19 +66,19 @@ enum OfficerApplicationStatus: String, CaseIterable, Codable, Hashable {
     case rejected = "Rejected"
     case disbursed = "Disbursed"
     case onHold = "On Hold"
-    
-    // Spec status flow
+
+
     case applied = "Applied"
     case documentsPending = "Documents Pending"
     case documentsRejected = "Documents Rejected"
     case verificationCompleted = "Verification Completed"
     case sentToManager = "Sent to Manager"
     case finalApprovalPending = "Final Approval Pending"
-    
+
     var displayName: String {
         self.rawValue
     }
-    
+
     var themeColor: Color {
         switch self {
         case .pending, .applied: return AppTheme.warningAmber
@@ -98,7 +98,7 @@ enum ManagerStatus: String, CaseIterable, Codable, Hashable {
     case underReview = "Under Review"
     case approved = "Approved ✓"
     case needsClarification = "Needs Clarification"
-    
+
     var themeColor: Color {
         switch self {
         case .underReview: return AppTheme.warningAmber
@@ -125,7 +125,7 @@ enum OfficerDocumentStatus: String, CaseIterable, Codable, Hashable {
     case verified = "Verified ✓"
     case rejectFlag = "Re-upload Req."
     case reUploaded = "Re-Uploaded"
-    
+
     var themeColor: Color {
         switch self {
         case .pending: return AppTheme.warningAmber
@@ -148,7 +148,7 @@ enum OfficerDocumentType: String, CaseIterable, Codable, Hashable {
     case admissionLetter = "Admission Letter"
     case incomeTaxReturn = "ITR"
     case photograph = "Photograph"
-    
+
     var symbol: String {
         switch self {
         case .aadhaar: return "person.text.rectangle"
@@ -181,7 +181,7 @@ enum OfficerDocumentType: String, CaseIterable, Codable, Hashable {
     }
 }
 
-// MARK: - Activity Feed Models
+
 struct ActivityFeedItem: Identifiable, Hashable {
     let id: UUID
     var borrowerName: String
@@ -203,7 +203,7 @@ enum ActivityEventType: String, Codable, Hashable {
     case emiOverdue
     case consentGiven
     case profileUpdated
-    
+
     var symbol: String {
         switch self {
         case .documentUploaded, .documentReUploaded:
@@ -220,7 +220,7 @@ enum ActivityEventType: String, Codable, Hashable {
             return "pencil.circle.fill"
         }
     }
-    
+
     var themeColor: Color {
         switch self {
         case .documentUploaded, .documentReUploaded:
@@ -244,7 +244,7 @@ enum ActivityActionType: String, Codable, Hashable {
     case replyQuery
     case verifyApplication
     case viewEMIAlert
-    
+
     var label: String {
         switch self {
         case .reviewDocument: return "Review"
@@ -253,7 +253,7 @@ enum ActivityActionType: String, Codable, Hashable {
         case .viewEMIAlert: return "Alert"
         }
     }
-    
+
     var color: Color {
         switch self {
         case .reviewDocument: return AppTheme.actionBlue
@@ -264,12 +264,12 @@ enum ActivityActionType: String, Codable, Hashable {
     }
 }
 
-// MARK: - Formatters & Haptics Helpers
+
 struct CurrencyFormatter {
     static let shared = CurrencyFormatter()
-    
+
     private let formatter: NumberFormatter
-    
+
     init() {
         formatter = NumberFormatter()
         formatter.numberStyle = .currency
@@ -277,9 +277,9 @@ struct CurrencyFormatter {
         formatter.locale = Locale(identifier: "en_IN")
         formatter.maximumFractionDigits = 0
     }
-    
+
     func format(_ val: Double) -> String {
-        // Human-friendly representation if values are very large (Crores / Lakhs)
+
         if val >= 10_000_000 {
             let crVal = val / 10_000_000
             return String(format: "₹ %.1f Cr", crVal)
@@ -293,22 +293,22 @@ struct CurrencyFormatter {
 
 struct RelativeDateFormatter {
     static let shared = RelativeDateFormatter()
-    
+
     private let formatter: RelativeDateTimeFormatter
     private let textFormatter: DateFormatter
-    
+
     init() {
         formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .full
-        
+
         textFormatter = DateFormatter()
         textFormatter.dateFormat = "d MMM yyyy"
     }
-    
+
     func relativeString(from date: Date) -> String {
         formatter.localizedString(for: date, relativeTo: Date())
     }
-    
+
     func absoluteString(from date: Date) -> String {
         textFormatter.string(from: date)
     }
@@ -320,10 +320,11 @@ struct HapticsManager {
         generator.prepare()
         generator.impactOccurred()
     }
-    
+
     static func triggerNotification(type: UINotificationFeedbackGenerator.FeedbackType) {
         let generator = UINotificationFeedbackGenerator()
         generator.prepare()
         generator.notificationOccurred(type)
     }
 }
+

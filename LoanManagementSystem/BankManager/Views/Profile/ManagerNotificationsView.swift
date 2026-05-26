@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Manager Notifications View
+
 struct ManagerNotificationsView: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
@@ -16,7 +16,7 @@ struct ManagerNotificationsView: View {
                     )
                 } else {
                     List {
-                        // Mark All Read
+
                         if viewModel.unreadNotificationCount > 0 {
                             Button(action: {
                                 HapticsManager.triggerImpact(style: .medium)
@@ -94,3 +94,4 @@ struct ManagerNotificationsView: View {
     ManagerNotificationsView(viewModel: PreviewSupport.managerViewModel)
         .previewManagerEnvironment()
 }
+

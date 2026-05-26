@@ -3,12 +3,12 @@ import Supabase
 
 final class AdminStaffService {
     static let shared = AdminStaffService()
-    
+
     private let client = SupabaseManager.shared.client
-    
+
     private init() {}
-    
-    // Internal struct to match the database schemas
+
+
     private struct DBUser: Codable {
         let id: UUID
         let email: String
@@ -19,7 +19,7 @@ final class AdminStaffService {
         let createdBy: UUID?
         let createdAt: Date
     }
-    
+
     private struct DBLoanOfficer: Codable {
         let officerId: UUID
         let userId: UUID
@@ -28,7 +28,7 @@ final class AdminStaffService {
         let designation: String
         let createdAt: Date
     }
-    
+
     private struct DBManager: Codable {
         let managerId: UUID
         let userId: UUID
@@ -37,7 +37,7 @@ final class AdminStaffService {
         let region: String
         let createdAt: Date
     }
-    
+
     struct CreateStaffPayload: Encodable {
         let action: String = "create"
         let email: String
@@ -49,7 +49,7 @@ final class AdminStaffService {
         let employeeCode: String
         let designation: String?
         let region: String?
-        
+
         enum CodingKeys: String, CodingKey {
             case action, email, password, role
             case fullName = "fullName"
@@ -59,18 +59,18 @@ final class AdminStaffService {
             case designation, region
         }
     }
-    
+
     struct DeleteStaffPayload: Encodable {
         let action: String = "delete"
         let userId: UUID
-        
+
         enum CodingKeys: String, CodingKey {
             case action
             case userId = "userId"
         }
     }
-    
-    /// Fetches all available branches.
+
+
     func fetchBranches() async throws -> [BranchInfo] {
         let branches: [BranchInfo] = try await client
             .from("branches")
@@ -79,8 +79,8 @@ final class AdminStaffService {
             .value
         return branches
     }
-    
-    /// Fetches all loan officers and bank managers.
+
+
     func fetchStaffMembers() async throws -> [StaffMember] {
         async let usersTask: [DBUser] = client
             .from("users")
@@ -88,32 +88,32 @@ final class AdminStaffService {
             .or("role.eq.loan_officer,role.eq.manager")
             .execute()
             .value
-            
+
         async let officersTask: [DBLoanOfficer] = client
             .from("loan_officers")
             .select()
             .execute()
             .value
-            
+
         async let managersTask: [DBManager] = client
             .from("managers")
             .select()
             .execute()
             .value
-            
+
         async let branchesTask: [BranchInfo] = fetchBranches()
-        
+
         let (users, officers, managers, branches) = try await (usersTask, officersTask, managersTask, branchesTask)
-        
+
         let branchesMap = Dictionary(uniqueKeysWithValues: branches.map { ($0.id, $0.name) })
         let officersMap = Dictionary(uniqueKeysWithValues: officers.map { ($0.userId, $0) })
         let managersMap = Dictionary(uniqueKeysWithValues: managers.map { ($0.userId, $0) })
-        
+
         var staffMembers: [StaffMember] = []
-        
+
         for user in users {
             let role = StaffRole(rawValue: user.role)
-            
+
             if role == .loanOfficer, let officer = officersMap[user.id] {
                 let branchName = branchesMap[officer.branchId]
                 let member = StaffMember(
@@ -152,10 +152,10 @@ final class AdminStaffService {
                 staffMembers.append(member)
             }
         }
-        
+
         return staffMembers.sorted { $0.fullName.localizedCaseInsensitiveCompare($1.fullName) == .orderedAscending }
     }
-    
+
     private var adminClient: SupabaseClient {
         SupabaseClient(
             supabaseURL: AppConfiguration.supabaseURL,
@@ -163,7 +163,7 @@ final class AdminStaffService {
         )
     }
 
-    /// Directly calls Supabase Swift SDK Admin API to register a new admin in auth.users, then inserts into public tables.
+
     func createAdmin(name: String, email: String, phone: String, password: String) async throws {
         let attributes = AdminUserAttributes(
             email: email,
@@ -174,10 +174,10 @@ final class AdminStaffService {
                 "role": .string("admin")
             ]
         )
-        
+
         let newUser = try await adminClient.auth.admin.createUser(attributes: attributes)
         let newUserId = newUser.id
-        
+
         let userInsert: [String: String] = [
             "id": newUserId.uuidString,
             "email": email,
@@ -186,10 +186,10 @@ final class AdminStaffService {
             "mobile_number": phone,
             "status": "active"
         ]
-        
+
         do {
             try await adminClient.from("users").upsert(userInsert).execute()
-            
+
             let adminInsert: [String: String] = [
                 "user_id": newUserId.uuidString,
                 "admin_level": "1"
@@ -201,24 +201,24 @@ final class AdminStaffService {
         }
     }
 
-    /// Directly calls Supabase Swift SDK Admin API to register a new user in auth.users, then inserts into public tables.
+
     func createStaffMember(payload: CreateStaffPayload) async throws {
-        // 1. Create auth user via native Supabase Admin API
+
         let attributes = AdminUserAttributes(
             email: payload.email,
             emailConfirm: true,
             password: payload.password,
-            
+
             userMetadata: [
                 "full_name": .string(payload.fullName),
                 "role": .string(payload.role)
             ]
         )
-        
+
         let newUser = try await adminClient.auth.admin.createUser(attributes: attributes)
         let newUserId = newUser.id
-        
-        // 2. Insert into public.users
+
+
         let userInsert: [String: String] = [
             "id": newUserId.uuidString,
             "email": payload.email,
@@ -227,11 +227,11 @@ final class AdminStaffService {
             "mobile_number": payload.phoneNumber,
             "status": "active"
         ]
-        
+
         do {
             try await adminClient.from("users").upsert(userInsert).execute()
-            
-            // 3. Insert role-specific details
+
+
             if payload.role == "loan_officer" {
                 let officerInsert: [String: String] = [
                     "user_id": newUserId.uuidString,
@@ -240,7 +240,7 @@ final class AdminStaffService {
                     "designation": payload.designation ?? "Loan Officer"
                 ]
                 try await adminClient.from("loan_officers").insert(officerInsert).execute()
-                
+
             } else if payload.role == "manager" {
                 let managerInsert: [String: String] = [
                     "user_id": newUserId.uuidString,
@@ -251,18 +251,18 @@ final class AdminStaffService {
                 try await adminClient.from("managers").insert(managerInsert).execute()
             }
         } catch {
-            // Rollback auth user creation if public insertions fail
+
             try? await deleteStaffMember(userId: newUserId)
             throw error
         }
     }
-    
-    /// Directly calls Supabase Swift SDK Admin API to delete the user from auth.users (cascades to public tables).
+
+
     func deleteStaffMember(userId: UUID) async throws {
         try await adminClient.auth.admin.deleteUser(id: userId)
     }
-    
-    /// Updates staff member's info in public.users and their role-specific details.
+
+
     func updateStaffMember(
         id: UUID,
         role: StaffRole,
@@ -273,26 +273,26 @@ final class AdminStaffService {
         designation: String?,
         region: String?
     ) async throws {
-        // 1. Update public.users
+
         let userUpdate: [String: String] = [
             "full_name": fullName,
             "mobile_number": phoneNumber,
             "status": status.rawValue
         ]
-        
+
         try await client
             .from("users")
             .update(userUpdate)
             .eq("id", value: id)
             .execute()
-            
-        // 2. Update role-specific detail tables
+
+
         if role == .loanOfficer {
             let officerUpdate: [String: String] = [
                 "branch_id": branchId.uuidString,
                 "designation": designation ?? "Loan Officer"
             ]
-            
+
             try await client
                 .from("loan_officers")
                 .update(officerUpdate)
@@ -303,7 +303,7 @@ final class AdminStaffService {
                 "branch_id": branchId.uuidString,
                 "region": region ?? "General"
             ]
-            
+
             try await client
                 .from("managers")
                 .update(managerUpdate)
@@ -312,3 +312,4 @@ final class AdminStaffService {
         }
     }
 }
+

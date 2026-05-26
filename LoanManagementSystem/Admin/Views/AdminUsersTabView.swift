@@ -4,13 +4,13 @@ struct AdminUsersTabView: View {
     @ObservedObject var viewModel: AdminStaffViewModel
     @State private var isShowingAddSheet = false
     @State private var selectedMemberForDetail: StaffMember? = nil
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Header with Search and Filters
+
                 VStack(spacing: LMSSpacing.md) {
-                    // Search Bar
+
                     HStack {
                         Image(systemName: "magnifyingglass")
                             .foregroundStyle(LMSColors.textSecondary)
@@ -28,8 +28,8 @@ struct AdminUsersTabView: View {
                     .padding(LMSSpacing.md)
                     .background(LMSColors.surfaceTertiary, in: RoundedRectangle(cornerRadius: LMSRadius.md))
                     .padding(.horizontal, LMSSpacing.screenHorizontal)
-                    
-                    // Role Filter Pills
+
+
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: LMSSpacing.sm) {
                             AdminFilterChip(
@@ -37,13 +37,13 @@ struct AdminUsersTabView: View {
                                 isSelected: viewModel.selectedRoleFilter == nil,
                                 action: { viewModel.selectedRoleFilter = nil }
                             )
-                            
+
                             AdminFilterChip(
                                 title: "Loan Officer",
                                 isSelected: viewModel.selectedRoleFilter == .loanOfficer,
                                 action: { viewModel.selectedRoleFilter = .loanOfficer }
                             )
-                            
+
                             AdminFilterChip(
                                 title: "Bank Manager",
                                 isSelected: viewModel.selectedRoleFilter == .bankManager,
@@ -55,8 +55,8 @@ struct AdminUsersTabView: View {
                 }
                 .padding(.vertical, LMSSpacing.md)
                 .background(LMSColors.surface)
-                
-                // Staff List or Empty/Loading State
+
+
                 if viewModel.isLoading && viewModel.staffMembers.isEmpty {
                     Spacer()
                     ProgressView("Loading staff directory...")
@@ -125,12 +125,12 @@ struct AdminUsersTabView: View {
     }
 }
 
-// MARK: - Subviews
+
 private struct AdminFilterChip: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             Text(title)
@@ -153,45 +153,45 @@ private struct AdminFilterChip: View {
 
 private struct StaffMemberRow: View {
     let member: StaffMember
-    
+
     var body: some View {
         HStack(spacing: LMSSpacing.md) {
-            // Profile Initials Badge
+
             Text(member.initials)
                 .font(LMSFont.headline)
                 .foregroundStyle(.white)
                 .frame(width: 46, height: 46)
                 .background(member.role.themeColor, in: Circle())
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: LMSSpacing.xs) {
                     Text(member.fullName)
                         .font(LMSFont.callout.weight(.semibold))
                         .foregroundStyle(LMSColors.textPrimary)
-                    
+
                     Spacer()
-                    
-                    // Status Pill
+
+
                     LMSStatusPill(
                         text: member.status.displayName,
                         style: statusStyle(member.status),
                         icon: statusIcon(member.status)
                     )
                 }
-                
+
                 Text(member.email)
                     .font(LMSFont.footnote)
                     .foregroundStyle(LMSColors.textSecondary)
-                
+
                 HStack(spacing: 8) {
                     Label(member.employeeCode, systemImage: "number.square.fill")
                         .font(LMSFont.caption)
                         .foregroundStyle(LMSColors.textSecondary)
-                    
+
                     Text("•")
                         .font(LMSFont.caption)
                         .foregroundStyle(LMSColors.textTertiary)
-                    
+
                     Text(member.role.displayName)
                         .font(LMSFont.caption.weight(.medium))
                         .foregroundStyle(member.role.themeColor)
@@ -201,7 +201,7 @@ private struct StaffMemberRow: View {
         .padding(LMSSpacing.md)
         .lmsInsetGroupedCard()
     }
-    
+
     private func statusStyle(_ status: StaffStatus) -> LMSStatusPill.Style {
         switch status {
         case .active: return .success
@@ -210,7 +210,7 @@ private struct StaffMemberRow: View {
         case .pending: return .warning
         }
     }
-    
+
     private func statusIcon(_ status: StaffStatus) -> String {
         switch status {
         case .active: return "checkmark.circle.fill"
@@ -220,3 +220,4 @@ private struct StaffMemberRow: View {
         }
     }
 }
+

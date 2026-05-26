@@ -1,18 +1,18 @@
-//
-//  Models.swift
-//  LoanManagementSystem
-//
-//  Dashboard-specific UI display models.
-//  These are distinct from the canonical backend models in Models/.
-//
+
+
+
+
+
+
+
 
 import Foundation
 
 public struct DashboardLoanAccount: Identifiable, Hashable, Sendable {
     public let id: UUID
     public var accountNumber: String
-    public var loanType: String  // e.g., "Home Loan", "Personal Loan", etc.
-    public var sanctionedAmount: Double // original approved amount
+    public var loanType: String
+    public var sanctionedAmount: Double
     public var principalOutstanding: Double
     public var totalEMI: Double
     public var nextEMIDate: Date
@@ -62,7 +62,7 @@ public enum DashboardAccountType: String, CaseIterable, Identifiable, Hashable, 
     case savings = "Savings Account"
     case current = "Current Account"
     case overdraft = "OD Account"
-    
+
     public var id: String { self.rawValue }
     public var displayName: String { self.rawValue.uppercased() }
 }
@@ -88,7 +88,7 @@ public enum DashboardEMIStatus: String, CaseIterable, Identifiable, Hashable, Se
     case upcoming = "Upcoming"
     case dueSoon = "Due Soon"
     case overdue = "Overdue"
-    
+
     public var id: String { self.rawValue }
 }
 
@@ -117,7 +117,7 @@ public enum TransactionType: String, CaseIterable, Identifiable, Hashable, Senda
     case credit = "Credit"
     case penalty = "Penalty"
     case refund = "Refund"
-    
+
     public var id: String { self.rawValue }
 }
 
@@ -144,6 +144,7 @@ public enum SchemeCategory: String, CaseIterable, Identifiable, Hashable, Sendab
     case homeLoan = "Home Loan"
     case agriculture = "Agriculture"
     case education = "Education"
-    
+
     public var id: String { self.rawValue }
 }
+
