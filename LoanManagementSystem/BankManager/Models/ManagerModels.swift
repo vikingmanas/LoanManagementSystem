@@ -2,7 +2,7 @@ import SwiftUI
 
 
 enum ManagerApplicantStatus: String, CaseIterable, Codable, Hashable {
-    case sentToManager = "Sent to Manager"
+    case sentToManager = "Pending Review"
     case needsClarification = "Needs Clarification"
     case approved = "Approved"
     case rejected = "Rejected"
@@ -175,6 +175,44 @@ struct ManagerOfficer: Identifiable, Hashable {
     }
 }
 
+struct ManagerStaffProfile: Hashable {
+    var name: String
+    var email: String
+    var phone: String
+    var employeeCode: String
+    var branchName: String
+    var branchCode: String
+    var region: String
+    var roleTitle: String
+    var joinedAt: Date?
+
+    var initials: String {
+        let parts = name.split(separator: " ")
+        if parts.count >= 2 {
+            return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
+        }
+        if !name.isEmpty {
+            return String(name.prefix(2)).uppercased()
+        }
+        if !email.isEmpty {
+            return String(email.prefix(1)).uppercased()
+        }
+        return "M"
+    }
+
+    static let empty = ManagerStaffProfile(
+        name: "Manager",
+        email: "",
+        phone: "",
+        employeeCode: "",
+        branchName: "Assigned Branch",
+        branchCode: "BR",
+        region: "Regional Office",
+        roleTitle: "Branch Manager",
+        joinedAt: nil
+    )
+}
+
 
 struct ManagerKPI: Identifiable, Hashable {
     let id = UUID()
@@ -323,4 +361,3 @@ struct ManagerAuditEvent: Identifiable, Hashable {
         }
     }
 }
-

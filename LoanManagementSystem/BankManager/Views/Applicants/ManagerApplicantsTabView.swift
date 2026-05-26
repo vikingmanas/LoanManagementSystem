@@ -139,23 +139,12 @@ struct ManagerApplicantsTabView: View {
             let filtered = viewModel.filteredApplicants
 
             if filtered.isEmpty {
-                Spacer()
-                VStack(spacing: LMSSpacing.lg) {
-                    Image(systemName: "doc.text.magnifyingglass")
-                        .font(.system(size: 48))
-                        .foregroundStyle(LMSColors.textTertiary)
-
-                    Text("No Applicants Found")
-                        .font(.system(.headline, design: .rounded))
-                        .foregroundStyle(LMSColors.textPrimary)
-
-                    Text("Try adjusting your filters or search query.")
-                        .font(.system(.subheadline, design: .rounded))
-                        .foregroundStyle(LMSColors.textSecondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding(.horizontal, LMSSpacing.xxxl)
-                Spacer()
+                ContentUnavailableView(
+                    viewModel.applicants.isEmpty ? "No Applications Sent" : "No Applicants Found",
+                    systemImage: "doc.text.magnifyingglass",
+                    description: Text(viewModel.applicants.isEmpty ? "Loan applications submitted by loan officers for manager approval will appear here." : "Try adjusting your filters or search query.")
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: LMSSpacing.sm) {
@@ -239,7 +228,7 @@ private struct SecondaryFilterLabel: View {
 }
 
 
-private struct ApplicantListCard: View {
+struct ApplicantListCard: View {
     let applicant: ManagerApplicant
 
     var body: some View {
@@ -328,4 +317,3 @@ private struct ApplicantListCard: View {
     )
     .previewManagerEnvironment()
 }
-

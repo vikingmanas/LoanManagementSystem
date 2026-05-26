@@ -2,9 +2,15 @@ import SwiftUI
 
 
 struct ManagerProfileView: View {
+    @ObservedObject var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
+    @State private var showSettingsSheet = false
+
+    private var profile: ManagerStaffProfile {
+        viewModel.managerProfile
+    }
 
     var body: some View {
         NavigationStack {
@@ -25,21 +31,21 @@ struct ManagerProfileView: View {
                                 .frame(width: 80, height: 80)
                                 .shadow(color: Color(hex: "#00C48C").opacity(0.25), radius: 8, x: 0, y: 4)
 
-                            Text(ManagerMockData.managerInitials)
+                            Text(profile.initials)
                                 .font(.system(size: 32, weight: .bold, design: .rounded))
                                 .foregroundStyle(.white)
                         }
 
                         VStack(spacing: 4) {
-                            Text(ManagerMockData.managerName)
+                            Text(profile.name)
                                 .font(.system(.title3, design: .rounded).bold())
                                 .foregroundStyle(LMSColors.textPrimary)
 
-                            Text("Branch Manager")
+                            Text(profile.roleTitle)
                                 .font(.system(.subheadline, design: .rounded).weight(.semibold))
                                 .foregroundStyle(Color(hex: "#00C48C"))
 
-                            Text("\(ManagerMockData.branchName) (\(ManagerMockData.branchCode))")
+                            Text("\(profile.branchName) (\(profile.branchCode))")
                                 .font(.system(.caption, design: .rounded))
                                 .foregroundStyle(LMSColors.textSecondary)
                         }
@@ -51,34 +57,34 @@ struct ManagerProfileView: View {
 
 
                     ManagerProfileSection(title: "Employee Information") {
-                        ManagerProfileDetailRow(label: "EMPLOYEE ID", value: ManagerMockData.employeeId)
+                        ManagerProfileDetailRow(label: "EMPLOYEE ID", value: profile.employeeCode.isEmpty ? "Not assigned" : profile.employeeCode)
                         Divider().padding(.leading, LMSSpacing.lg)
                         ManagerProfileDetailRow(label: "DEPARTMENT", value: "Retail Lending Operations")
                         Divider().padding(.leading, LMSSpacing.lg)
-                        ManagerProfileDetailRow(label: "ROLE LEVEL", value: "BM-L5 (Branch Head)")
+                        ManagerProfileDetailRow(label: "ROLE LEVEL", value: profile.roleTitle)
                         Divider().padding(.leading, LMSSpacing.lg)
-                        ManagerProfileDetailRow(label: "DATE OF JOINING", value: "12 Sep 2016")
+                        ManagerProfileDetailRow(label: "DATE OF JOINING", value: profile.joinedAt?.formattedAsDDMMMYYYY() ?? "Not available")
                         Divider().padding(.leading, LMSSpacing.lg)
-                        ManagerProfileDetailRow(label: "APPROVAL AUTHORITY", value: "Up to ₹1 Cr")
+                        ManagerProfileDetailRow(label: "APPROVAL QUEUE", value: "\(viewModel.pendingApplicants.count) pending")
                     }
 
 
                     ManagerProfileSection(title: "Contact Information") {
-                        ManagerProfileDetailRow(label: "OFFICIAL EMAIL", value: "ramanathan.swamy@astrabank.com")
+                        ManagerProfileDetailRow(label: "OFFICIAL EMAIL", value: profile.email.isEmpty ? "Not available" : profile.email)
                         Divider().padding(.leading, LMSSpacing.lg)
-                        ManagerProfileDetailRow(label: "WORK PHONE", value: "+91 80 4112 9900")
+                        ManagerProfileDetailRow(label: "WORK PHONE", value: profile.phone.isEmpty ? "Not available" : profile.phone)
                     }
 
 
                     ManagerProfileSection(title: "Branch Performance") {
                         Grid(horizontalSpacing: LMSSpacing.md, verticalSpacing: LMSSpacing.md) {
                             GridRow {
-                                ManagerStatBox(title: "STAFF MANAGED", value: "18", subtitle: "Officers & Support")
-                                ManagerStatBox(title: "APPROVALS YTD", value: "187", subtitle: "Year to Date")
+                                ManagerStatBox(title: "STAFF MANAGED", value: "\(viewModel.officers.count)", subtitle: "Loan officers")
+                                ManagerStatBox(title: "APPROVALS", value: "\(viewModel.applicants.filter { $0.status == .approved || $0.status == .disbursed }.count)", subtitle: "Current branch data")
                             }
                             GridRow {
-                                ManagerStatBox(title: "PORTFOLIO VALUE", value: "₹4.8 Cr", subtitle: "Total Disbursed")
-                                ManagerStatBox(title: "AUDIT RATING", value: "A+", subtitle: "Last Quarter")
+                                ManagerStatBox(title: "PORTFOLIO VALUE", value: CurrencyFormatter.shared.format(viewModel.branchOverview.totalDisbursed), subtitle: "Total disbursed")
+                                ManagerStatBox(title: "AUDIT RATING", value: viewModel.branchOverview.auditRating, subtitle: "Live risk mix")
                             }
                         }
                         .padding(.horizontal, LMSSpacing.lg)
@@ -87,6 +93,41 @@ struct ManagerProfileView: View {
 
 
                     ManagerProfileSection(title: "System Settings") {
+                        Button(action: {
+                            HapticsManager.triggerImpact(style: .medium)
+                            showSettingsSheet = true
+                        }) {
+                            HStack(spacing: LMSSpacing.md) {
+                                ZStack {
+                                    Circle()
+                                        .fill(LMSColors.textSecondary.opacity(0.12))
+                                        .frame(width: 36, height: 36)
+                                    Image(systemName: "gearshape.fill")
+                                        .foregroundStyle(LMSColors.textSecondary)
+                                        .font(.system(size: 18))
+                                }
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("App Settings")
+                                        .font(.system(.subheadline, design: .rounded).bold())
+                                        .foregroundStyle(LMSColors.textPrimary)
+                                    Text("Preferences and account settings")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(LMSColors.textSecondary)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .font(.system(.caption, design: .rounded).bold())
+                                    .foregroundStyle(LMSColors.textSecondary)
+                            }
+                            .padding(.vertical, LMSSpacing.md)
+                            .padding(.horizontal, LMSSpacing.lg)
+                        }
+                        
+                        Divider().padding(.leading, LMSSpacing.lg)
+
                         Button(action: {
                             HapticsManager.triggerImpact(style: .heavy)
                             NotificationCenter.default.post(name: NSNotification.Name("SwitchRoleToBorrower"), object: nil)
@@ -153,6 +194,9 @@ struct ManagerProfileView: View {
                         .font(.system(.body, design: .rounded).bold())
                 }
             }
+        }
+        .sheet(isPresented: $showSettingsSheet) {
+            ManagerSettingsView()
         }
     }
 }
@@ -224,7 +268,6 @@ private struct ManagerStatBox: View {
 }
 
 #Preview {
-    ManagerProfileView()
+    ManagerProfileView(viewModel: PreviewSupport.managerViewModel)
         .previewManagerEnvironment()
 }
-

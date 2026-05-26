@@ -180,6 +180,7 @@ final class CentralLoanRepository: ObservableObject {
         }
         
         let sentToManagerDate = app.stageHistory.first(where: { $0.stage == .bankManagerReview })?.timestamp
+        let assignedOfficerId = UUID(uuidString: "00000000-0000-0000-0000-000000000002") ?? app.id
         
         return OfficerLoanApplication(
             id: app.id,
@@ -191,7 +192,7 @@ final class CentralLoanRepository: ObservableObject {
             status: officerStatus,
             submittedDate: app.submittedAt ?? Date(),
             lastUpdatedDate: app.updatedAt,
-            assignedOfficerId: UUID(),
+            assignedOfficerId: assignedOfficerId,
             documents: app.documents.map { mapToLoanDocument(from: $0) },
             notes: app.formData.loanPurpose.isEmpty ? "General financing requirement" : app.formData.loanPurpose,
             branch: "Main Branch",
@@ -228,6 +229,9 @@ final class CentralLoanRepository: ObservableObject {
         
         let initials = app.formData.fullName.components(separatedBy: " ").compactMap { $0.first }.map { String($0) }.joined().uppercased()
         
+        let assignedOfficerName = app.assignedQueue ?? "Loan Officer Queue"
+        let assignedOfficerId = UUID(uuidString: "00000000-0000-0000-0000-000000000001") ?? app.id
+
         return ManagerApplicant(
             id: app.id,
             applicationId: app.applicationId ?? "APP-2026-\(app.id.uuidString.prefix(4))",
@@ -238,13 +242,13 @@ final class CentralLoanRepository: ObservableObject {
             cibilScore: app.formData.creditScoreValue > 0 ? app.formData.creditScoreValue : 750,
             status: status,
             riskLevel: app.formData.creditScoreValue >= 750 ? .low : (app.formData.creditScoreValue >= 650 ? .medium : .high),
-            assignedOfficer: "Officer Arjun",
-            assignedOfficerId: UUID(),
+            assignedOfficer: assignedOfficerName,
+            assignedOfficerId: assignedOfficerId,
             submissionDate: app.submittedAt ?? Date(),
             documents: app.documents.map { mapToManagerDocument(from: $0) },
-            officerRemarks: "All required KYC and income documents successfully verified. Profile is strong. Recommended for immediate approval.",
+            officerRemarks: app.stageHistory.last(where: { $0.stage == .bankManagerReview })?.note ?? "Forwarded for manager approval after officer review.",
             managerRemarks: "",
-            verificationProgress: 1.0,
+            verificationProgress: app.documents.isEmpty ? 0 : Double(app.documents.filter { $0.status == .verified }.count) / Double(app.documents.count),
             tenure: app.formData.preferredTenureMonths,
             interestRate: 10.5
         )

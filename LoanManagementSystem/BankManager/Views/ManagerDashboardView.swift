@@ -1,84 +1,66 @@
 import SwiftUI
 
-
 struct ManagerDashboardView: View {
+    @EnvironmentObject private var authManager: AuthManager
     @StateObject private var viewModel = ManagerDashboardViewModel()
 
-
+    @State private var selectedTab: ManagerWorkspaceTab = .dashboard
     @State private var showProfileSheet = false
-    @State private var showSettingsSheet = false
     @State private var showNotificationSheet = false
     @State private var showSearchSheet = false
-    @State private var selectedApplicant: ManagerApplicant? = nil
+    @State private var selectedApplicant: ManagerApplicant?
 
     var body: some View {
-        VStack(spacing: 0) {
-
-            ManagerTopToolbar(
-                viewModel: viewModel,
-                onNotificationPressed: { showNotificationSheet = true },
-                onSettingsPressed: { showSettingsSheet = true },
-                onProfilePressed: { showProfileSheet = true },
-                onSearchPressed: { showSearchSheet = true }
-            )
-
-            Divider()
-
-
-            ZStack(alignment: .bottom) {
-                ZStack {
-                    switch viewModel.selectedTab {
-                    case 0:
-                        ManagerDashboardTabView(
-                            viewModel: viewModel,
-                            onSelectApplicant: { applicant in
-                                selectedApplicant = applicant
-                            }
-                        )
-                        .transition(.opacity)
-
-                    case 1:
-                        ManagerApplicantsTabView(
-                            viewModel: viewModel,
-                            onSelectApplicant: { applicant in
-                                selectedApplicant = applicant
-                            }
-                        )
-                        .transition(.opacity)
-
-                    case 2:
-                        ManagerCommunicationTabView(viewModel: viewModel)
-                            .transition(.opacity)
-
-                    default:
-                        EmptyView()
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .safeAreaInset(edge: .bottom) {
-                    Spacer().frame(height: 80)
-                }
-
-
-                ManagerFloatingTabBar(
-                    selectedTab: $viewModel.selectedTab,
-                    unreadChatCount: viewModel.unreadChatCount
+        TabView(selection: $selectedTab) {
+            NavigationStack {
+                ManagerDashboardTabView(
+                    viewModel: viewModel,
+                    selectedTab: $selectedTab,
+                    onSelectApplicant: { selectedApplicant = $0 }
                 )
-                .padding(.horizontal, 24)
-                .padding(.bottom, 12)
+                .navigationTitle("Dashboard")
+                .toolbar { dashboardToolbar }
             }
-            .edgesIgnoringSafeArea(.bottom)
+            .tabItem { Label("Dashboard", systemImage: "square.grid.2x2") }
+            .tag(ManagerWorkspaceTab.dashboard)
+
+            NavigationStack {
+                ManagerApplicantsTabView(
+                    viewModel: viewModel,
+                    onSelectApplicant: { selectedApplicant = $0 }
+                )
+                .navigationTitle("Applicants")
+                .toolbar { applicantsToolbar }
+            }
+            .tabItem { Label("Applicants", systemImage: "person.2") }
+            .badge(viewModel.pendingApplicants.count > 0 ? viewModel.pendingApplicants.count : 0)
+            .tag(ManagerWorkspaceTab.applicants)
+
+            NavigationStack {
+                ManagerCommunicationTabView(viewModel: viewModel)
+                    .navigationTitle("Messages")
+                    .toolbar { dashboardToolbar }
+            }
+            .tabItem { Label("Messages", systemImage: "message") }
+            .badge(viewModel.unreadChatCount > 0 ? viewModel.unreadChatCount : 0)
+            .tag(ManagerWorkspaceTab.messages)
         }
+        .tint(LMSColors.brandNavy)
         .task {
-            await viewModel.fetchDashboardData()
+            await viewModel.fetchDashboardData(authManager: authManager)
         }
-
-
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SwitchToApplicantsTab"))) { _ in
+            selectedTab = .applicants
+        }
+        .onChange(of: selectedTab) { _, tab in
+            viewModel.selectedTab = tab.rawValue
+        }
+        .onChange(of: viewModel.selectedTab) { _, rawValue in
+            guard let tab = ManagerWorkspaceTab(rawValue: rawValue), tab != selectedTab else { return }
+            selectedTab = tab
+        }
         .sheet(isPresented: $showProfileSheet) {
-            ManagerProfileView()
-        }
-        .sheet(isPresented: $showSettingsSheet) {
-            ManagerSettingsView()
+            ManagerProfileView(viewModel: viewModel)
         }
         .sheet(isPresented: $showNotificationSheet) {
             ManagerNotificationsView(viewModel: viewModel)
@@ -93,8 +75,59 @@ struct ManagerDashboardView: View {
             ManagerApplicantDetailView(applicant: applicant, viewModel: viewModel)
         }
     }
+
+    @ToolbarContentBuilder
+    private var dashboardToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            HStack(spacing: LMSSpacing.sm) {
+                notificationButton
+                profileButton
+            }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var applicantsToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            HStack(spacing: LMSSpacing.sm) {
+                searchButton
+                notificationButton
+                profileButton
+            }
+        }
+    }
+
+    private var searchButton: some View {
+        Button(action: { showSearchSheet = true }) {
+            Image(systemName: "magnifyingglass")
+        }
+        .accessibilityLabel("Search applicants")
+    }
+
+    private var notificationButton: some View {
+        Button(action: { showNotificationSheet = true }) {
+            Image(systemName: viewModel.unreadNotificationCount > 0 ? "bell.badge" : "bell")
+        }
+        .accessibilityLabel("Notifications")
+    }
+
+    private var profileButton: some View {
+        Button(action: { showProfileSheet = true }) {
+            Text(viewModel.managerProfile.initials)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30)
+                .background(LMSColors.brandNavy.gradient, in: Circle())
+        }
+        .accessibilityLabel("Manager profile")
+    }
 }
 
+enum ManagerWorkspaceTab: Int, Hashable {
+    case dashboard = 0
+    case applicants = 1
+    case messages = 2
+}
 
 private struct ManagerSearchSheet: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
@@ -115,12 +148,11 @@ private struct ManagerSearchSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(LMSColors.textSecondary)
-                    TextField("Search applicants, officers…", text: $query)
-                        .font(.system(.body, design: .rounded))
+                    TextField("Search applicants, officers...", text: $query)
+                        .font(.body)
                         .textFieldStyle(.plain)
                     if !query.isEmpty {
                         Button(action: { query = "" }) {
@@ -137,27 +169,13 @@ private struct ManagerSearchSheet: View {
                 .padding(.top, LMSSpacing.md)
 
                 if query.isEmpty {
-                    Spacer()
-                    VStack(spacing: LMSSpacing.md) {
-                        Image(systemName: "text.magnifyingglass")
-                            .font(.system(size: 44))
-                            .foregroundStyle(LMSColors.textTertiary)
-                        Text("Search by name, application ID, or officer.")
-                            .font(.system(.subheadline, design: .rounded))
-                            .foregroundStyle(LMSColors.textSecondary)
-                    }
-                    Spacer()
+                    ContentUnavailableView(
+                        "Search Applications",
+                        systemImage: "text.magnifyingglass",
+                        description: Text("Search by borrower name, application ID, or loan officer.")
+                    )
                 } else if results.isEmpty {
-                    Spacer()
-                    VStack(spacing: LMSSpacing.md) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 44))
-                            .foregroundStyle(LMSColors.textTertiary)
-                        Text("No results for \"\(query)\"")
-                            .font(.system(.subheadline, design: .rounded))
-                            .foregroundStyle(LMSColors.textSecondary)
-                    }
-                    Spacer()
+                    ContentUnavailableView.search(text: query)
                 } else {
                     List(results) { applicant in
                         Button(action: {
@@ -170,28 +188,24 @@ private struct ManagerSearchSheet: View {
                                         .fill(applicant.status.themeColor.opacity(0.12))
                                         .frame(width: 36, height: 36)
                                     Text(applicant.borrowerInitials)
-                                        .font(.system(.caption, design: .rounded).bold())
+                                        .font(.caption.weight(.bold))
                                         .foregroundStyle(applicant.status.themeColor)
                                 }
 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(applicant.borrowerName)
-                                        .font(.system(.callout, design: .rounded).bold())
+                                        .font(.callout.weight(.semibold))
                                         .foregroundStyle(LMSColors.textPrimary)
                                     Text("\(applicant.applicationId) · \(applicant.loanType.rawValue)")
-                                        .font(.system(.caption, design: .rounded))
+                                        .font(.caption)
                                         .foregroundStyle(LMSColors.textSecondary)
                                 }
 
                                 Spacer()
 
                                 Text(applicant.status.displayName)
-                                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                                    .font(.caption2.weight(.semibold))
                                     .foregroundStyle(applicant.status.themeColor)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(applicant.status.themeColor.opacity(0.10))
-                                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                             }
                         }
                     }
@@ -203,7 +217,7 @@ private struct ManagerSearchSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") { dismiss() }
+                    Button("Done") { dismiss() }
                 }
             }
         }
@@ -214,4 +228,3 @@ private struct ManagerSearchSheet: View {
     ManagerDashboardView()
         .previewManagerEnvironment()
 }
-

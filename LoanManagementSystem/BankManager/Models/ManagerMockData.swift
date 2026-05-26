@@ -310,7 +310,7 @@ enum ManagerMockData {
             priority: .high,
             messages: [
                 ManagerChatMessage(id: UUID(), senderName: "Aarav Patel", text: "Good morning sir. I've completed the verification for APP-2026-0892.", timestamp: Date().addingTimeInterval(-7200), isFromManager: false, isSystemMessage: false),
-                ManagerChatMessage(id: UUID(), senderName: "System", text: "APP-2026-0892 (Priya Sharma) sent to Manager for clearance.", timestamp: Date().addingTimeInterval(-3600), isFromManager: false, isSystemMessage: true),
+                ManagerChatMessage(id: UUID(), senderName: "System", text: "APP-2026-0892 (Priya Sharma) submitted for your clearance.", timestamp: Date().addingTimeInterval(-3600), isFromManager: false, isSystemMessage: true),
                 ManagerChatMessage(id: UUID(), senderName: "Ramanathan Swamy", text: "Good. Has the property valuation been uploaded?", timestamp: Date().addingTimeInterval(-2400), isFromManager: true, isSystemMessage: false),
                 ManagerChatMessage(id: UUID(), senderName: "Aarav Patel", text: "Priya Sharma's property valuation report has been uploaded.", timestamp: Date().addingTimeInterval(-1200), isFromManager: false, isSystemMessage: false)
             ]
@@ -347,7 +347,7 @@ enum ManagerMockData {
             priority: .high,
             messages: [
                 ManagerChatMessage(id: UUID(), senderName: "Neha Singh", text: "Sir, I'm submitting APP-2026-0965 for your review. Premium home loan case.", timestamp: Date().addingTimeInterval(-3600), isFromManager: false, isSystemMessage: false),
-                ManagerChatMessage(id: UUID(), senderName: "System", text: "APP-2026-0965 (Ananya Reddy) sent to Manager for clearance.", timestamp: Date().addingTimeInterval(-1800), isFromManager: false, isSystemMessage: true),
+                ManagerChatMessage(id: UUID(), senderName: "System", text: "APP-2026-0965 (Ananya Reddy) submitted for your clearance.", timestamp: Date().addingTimeInterval(-1800), isFromManager: false, isSystemMessage: true),
                 ManagerChatMessage(id: UUID(), senderName: "Neha Singh", text: "Ananya Reddy's home loan file is ready for your review.", timestamp: Date().addingTimeInterval(-600), isFromManager: false, isSystemMessage: false)
             ]
         )
