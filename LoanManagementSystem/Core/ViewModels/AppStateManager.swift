@@ -32,7 +32,7 @@ public enum PortalRole: String, CaseIterable, Identifiable {
 class AppStateManager: ObservableObject {
     @Published var isAuthenticated: Bool = false
     @Published var selectedRole: PortalRole = .customer
-    @Published var showRoleSelection: Bool = true
+    @Published var showRoleSelection: Bool = false
     
     // Mock user details could be stored here later
     
@@ -42,7 +42,7 @@ class AppStateManager: ObservableObject {
     
     func logout() {
         isAuthenticated = false
-        showRoleSelection = true
+        selectedRole = .customer
+        showRoleSelection = false
     }
 }
-
