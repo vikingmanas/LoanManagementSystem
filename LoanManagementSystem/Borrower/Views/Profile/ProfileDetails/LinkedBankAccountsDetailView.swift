@@ -35,31 +35,26 @@ struct LinkedBankAccountsDetailView: View {
                     Text("Primary Account")
                 }
 
-                if let linkedAccounts = viewModel.profile?.linkedAccounts, !linkedAccounts.isEmpty {
+                let linkedAccounts = viewModel.profile?.linkedAccounts ?? []
+                let odAccounts = linkedAccounts.filter(\.isOverdraftAccount)
+                let savingsAccounts = linkedAccounts.filter { !$0.isOverdraftAccount }
+
+                if !odAccounts.isEmpty {
                     Section {
-                        ForEach(linkedAccounts) { account in
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Label(account.bankName, systemImage: "building.columns.fill")
-                                        .font(.headline)
-                                        .foregroundStyle(.primary)
+                        ForEach(odAccounts) { account in
+                            linkedAccountDetails(account, isOD: true)
+                        }
+                    } header: {
+                        Text("OD Accounts (EMI Deduction)")
+                    } footer: {
+                        Text("Loan disbursement is credited here and monthly EMIs are deducted from this account.")
+                    }
+                }
 
-                                    Spacer()
-
-                                    Text(maskAccountNumber(account.accountNumber))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-
-                                LabeledContent("IFSC Code", value: account.ifscCode)
-                                if !account.branch.isEmpty {
-                                    LabeledContent("Branch", value: account.branch)
-                                }
-                                if !account.customerId.isEmpty {
-                                    LabeledContent("Customer ID", value: account.customerId)
-                                }
-                            }
-                            .padding(.vertical, 4)
+                if !savingsAccounts.isEmpty {
+                    Section {
+                        ForEach(savingsAccounts) { account in
+                            linkedAccountDetails(account, isOD: false)
                         }
                     } header: {
                         Text("Additional Accounts")
@@ -118,6 +113,39 @@ struct LinkedBankAccountsDetailView: View {
         guard number.count > 4 else { return number }
         let suffix = number.suffix(4)
         return String(repeating: "•", count: number.count - 4) + suffix
+    }
+
+    @ViewBuilder
+    private func linkedAccountDetails(_ account: LinkedBankAccount, isOD: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label(account.bankName, systemImage: isOD ? "indianrupeesign.circle.fill" : "building.columns.fill")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+
+                Spacer()
+
+                Text(maskAccountNumber(account.accountNumber))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if !account.accountHolderName.isEmpty {
+                LabeledContent("Account Holder", value: account.accountHolderName)
+            }
+            LabeledContent("IFSC Code", value: account.ifscCode)
+            if !account.branch.isEmpty {
+                LabeledContent("Branch", value: account.branch)
+            }
+            if !account.customerId.isEmpty {
+                LabeledContent("Customer ID", value: account.customerId)
+            }
+            LabeledContent("Available Balance", value: account.balance.formattedAsINR())
+            if isOD, let limit = account.odSanctionLimit {
+                LabeledContent("OD Sanction Limit", value: limit.formattedAsINR())
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 

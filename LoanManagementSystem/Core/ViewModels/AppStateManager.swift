@@ -33,10 +33,12 @@ class AppStateManager: ObservableObject {
     @Published var isAuthenticated: Bool = false
     @Published var selectedRole: PortalRole = .customer
     @Published var showRoleSelection: Bool = false
+    @Published var requiresBorrowerOnboarding: Bool = false
     
     // Mock user details could be stored here later
     
-    func login() {
+    func login(requiresBorrowerOnboarding: Bool = false) {
+        self.requiresBorrowerOnboarding = requiresBorrowerOnboarding
         isAuthenticated = true
     }
     
@@ -44,5 +46,6 @@ class AppStateManager: ObservableObject {
         isAuthenticated = false
         selectedRole = .customer
         showRoleSelection = false
+        requiresBorrowerOnboarding = false
     }
 }

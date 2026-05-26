@@ -22,7 +22,26 @@ struct ProfileView: View {
                         .foregroundStyle(.secondary)
                         .padding(.top, 8)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let profile = viewModel.profile {
+                profileForm(profile)
+            } else {
+                profileUnavailableView
+            }
+        }
+        .navigationTitle("Profile")
+        .navigationBarTitleDisplayMode(.inline)
+        .background(LMSColors.background)
+        .task(id: authManager.userEmail) {
+            viewModel.loadProfile(
+                email: authManager.userEmail,
+                displayName: authManager.userDisplayName
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func profileForm(_ profile: BorrowerProfile) -> some View {
                 Form {
                     // MARK: - Header Section
                     Section {
@@ -112,10 +131,42 @@ struct ProfileView: View {
                         }
                     }
                 }
+    }
+
+    private var profileUnavailableView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "person.crop.circle.badge.exclamationmark")
+                .font(.system(size: 52))
+                .foregroundStyle(LMSColors.brandNavy.opacity(0.8))
+
+            Text("Profile Not Available")
+                .font(.system(.title3, design: .rounded).bold())
+                .foregroundStyle(LMSColors.textPrimary)
+
+            Text("We could not load your profile yet. Sign in again or refresh to continue.")
+                .font(.system(.subheadline, design: .rounded))
+                .foregroundStyle(LMSColors.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            Button {
+                viewModel.loadProfile(
+                    email: authManager.userEmail,
+                    displayName: authManager.userDisplayName
+                )
+            } label: {
+                Text("Refresh Profile")
+                    .font(.system(.body, design: .rounded).weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(LMSColors.brandNavy, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
+            .padding(.horizontal, 40)
+            .padding(.top, 8)
         }
-        .navigationTitle("Profile")
-        .navigationBarTitleDisplayMode(.inline)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
     }
 }
 

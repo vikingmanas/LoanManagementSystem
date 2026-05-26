@@ -12,12 +12,36 @@ class BorrowerProfileViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     init() {
-        // Observe changes from the shared store
+        profile = BorrowerProfileStore.shared.profile
+
         BorrowerProfileStore.shared.$profile
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] updatedProfile in
                 self?.profile = updatedProfile
+                if updatedProfile != nil {
+                    self?.isLoading = false
+                }
             }
             .store(in: &cancellables)
+    }
+
+    @MainActor
+    func loadProfile(email: String?, displayName: String?) {
+        isLoading = true
+
+        let cleanedEmail = email?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased() ?? ""
+
+        if !cleanedEmail.isEmpty {
+            _ = BorrowerProfileStore.shared.ensureProfile(
+                email: cleanedEmail,
+                name: displayName
+            )
+        }
+
+        profile = BorrowerProfileStore.shared.profile
+        isLoading = false
     }
     
     func updatePersonalInfo(fullName: String, gender: String, maritalStatus: String, nationality: String, dateOfBirth: Date, aadhaarNumber: String, panNumber: String) {

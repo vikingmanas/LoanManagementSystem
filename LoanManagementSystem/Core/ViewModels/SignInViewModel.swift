@@ -69,6 +69,7 @@ class SignInViewModel: ObservableObject {
 
 
             if appState.selectedRole == .customer {
+                appState.requiresBorrowerOnboarding = false
                 BorrowerProfileStore.shared.ensureProfile(
                     email: cleanedEmail,
                     name: authManager.userDisplayName
@@ -81,4 +82,3 @@ class SignInViewModel: ObservableObject {
         }
     }
 }
-

@@ -5,9 +5,31 @@ struct NotificationsDetailView: View {
     @State private var paymentReminders = true
     @State private var securityAlerts = true
     @State private var promoOffers = false
+    @ObservedObject private var loanRepository = CentralLoanRepository.shared
+
+    private var notifications: [LMSNotification] {
+        (loanRepository.borrowerNotifications + LMSMockNotifications.sample)
+            .sorted { $0.timestamp > $1.timestamp }
+    }
     
     var body: some View {
         Form {
+            Section {
+                if notifications.isEmpty {
+                    ContentUnavailableView(
+                        "No Messages",
+                        systemImage: "bell.slash",
+                        description: Text("Loan approval and payment updates will appear here.")
+                    )
+                } else {
+                    ForEach(notifications) { notification in
+                        LMSNotificationRow(notification: notification)
+                    }
+                }
+            } header: {
+                Text("Messages")
+            }
+
             Section {
                 Toggle(isOn: $loanUpdates) {
                     Label {

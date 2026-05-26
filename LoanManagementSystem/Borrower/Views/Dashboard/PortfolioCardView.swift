@@ -98,7 +98,11 @@ public struct PortfolioCarouselView: View {
                             BankAccountCardRefined(
                                 account: account,
                                 isLowBalance: viewModel.isLowBalance(account),
-                                onTransfer: { onTransferTap(account) }
+                                onTransfer: {
+                                    if account.accountType != .overdraft {
+                                        onTransferTap(account)
+                                    }
+                                }
                             )
                             .frame(width: 310, height: 185)
                             .onTapGesture {
@@ -219,18 +223,34 @@ struct BankAccountCardRefined: View {
             Spacer()
             
             VStack(alignment: .leading, spacing: 4) {
-                Text("Available Balance")
+                Text(account.accountType == .overdraft ? "OD Available Balance" : "Available Balance")
                     .font(.system(.caption2, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textSecondary)
                 Text(account.availableBalance.formattedAsINR())
                     .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundStyle(LMSColors.textPrimary)
+                if account.accountType == .overdraft, let limit = account.odLimit {
+                    Text("Sanctioned limit \(limit.formattedAsINR()) • EMI debited here")
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
             }
             
             Spacer()
             
             HStack {
-                if isLowBalance {
+                if account.accountType == .overdraft {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.system(size: 10))
+                        Text("EMI Account")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(LMSColors.brandNavy.opacity(0.1), in: Capsule())
+                } else if isLowBalance {
                     HStack(spacing: 4) {
                         Circle().fill(.red).frame(width: 6, height: 6)
                         Text("Low Balance")
@@ -255,13 +275,15 @@ struct BankAccountCardRefined: View {
                 
                 Spacer()
                 
-                Button(action: onTransfer) {
-                    Text("Add Funds")
-                        .font(.system(.caption, design: .rounded).bold())
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(LMSColors.brandNavy, in: Capsule())
+                if account.accountType != .overdraft {
+                    Button(action: onTransfer) {
+                        Text("Add Funds")
+                            .font(.system(.caption, design: .rounded).bold())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(LMSColors.brandNavy, in: Capsule())
+                    }
                 }
             }
         }

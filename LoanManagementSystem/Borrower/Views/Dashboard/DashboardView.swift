@@ -254,7 +254,7 @@ public struct DashboardView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
                         Button {
-                            tabRouter.select(.history)
+                            navigationPath.append(.notifications)
                         } label: {
                             Image(systemName: "bell.badge")
                                 .symbolRenderingMode(.hierarchical)
