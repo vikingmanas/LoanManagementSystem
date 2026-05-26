@@ -302,13 +302,22 @@ class BorrowerProfileStore: ObservableObject {
     }
 
     private func persistBorrowerProfile(_ borrowerProfile: BorrowerProfile, email normalizedEmail: String) {
-        if profile?.email.lowercased() == normalizedEmail {
+        // If the currently loaded/visible profile belongs to this borrower, update it immediately
+        // so UI (@Published `profile`) reflects the newly provisioned OD account.
+        if profile?.email.lowercased() == normalizedEmail || profile?.id == borrowerProfile.id {
             updateProfile(borrowerProfile)
             return
         }
 
         if let index = accounts.firstIndex(where: { $0.email.lowercased() == normalizedEmail }) {
             accounts[index].profile = borrowerProfile
+            accounts[index].isOnboardingCompleted = borrowerProfile.isOnboardingCompleted
+
+            // If this is the "current" account for the logged-in user, also update
+            // the published profile so screens update without waiting for a refetch.
+            if currentEmail?.lowercased() == normalizedEmail {
+                self.profile = borrowerProfile
+            }
         }
     }
 
@@ -338,7 +347,9 @@ class BorrowerProfileStore: ObservableObject {
                     try await DatabaseService.shared.updateProfile(profileWithUid)
                     print("[BorrowerProfileStore] Profile synchronization completed successfully.")
                 } else {
-                    if let index = accounts.firstIndex(where: { $0.email == updatedProfile.email }) {
+                    if let index = accounts.firstIndex(where: {
+                        $0.email.lowercased() == updatedProfile.email.lowercased()
+                    }) {
                         accounts[index].profile = updatedProfile
                         accounts[index].isOnboardingCompleted = updatedProfile.isOnboardingCompleted
                     }

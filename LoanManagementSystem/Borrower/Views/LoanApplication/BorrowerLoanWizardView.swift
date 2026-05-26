@@ -6,6 +6,7 @@ struct BorrowerLoanWizardView: View {
     let product: BorrowerLoanProduct
     let onComplete: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var authManager: AuthManager
 
     @State private var currentStep: Int = 1
     @State private var lastAutosavedTime: Date = Date()
@@ -102,6 +103,10 @@ struct BorrowerLoanWizardView: View {
             )
         }
         .onAppear {
+            viewModel.setBorrowerAuthContext(
+                email: authManager.userEmail,
+                displayName: authManager.userDisplayName
+            )
             prepareWizardState()
         }
         .alert("Unable to Submit", isPresented: Binding(
@@ -357,6 +362,8 @@ struct BorrowerLoanWizardView: View {
         if viewModel.currentDraftID == nil || viewModel.selectedProductID != product.id {
             viewModel.startDraft(for: product)
         }
+
+        viewModel.prefillEmptyFieldsFromProfile()
 
         ensureRequiredDocumentsLoaded()
 
@@ -841,7 +848,8 @@ private struct Step3PersonalInfoView: View {
                 HStack(spacing: 12) {
                     Text("Gender")
                     Spacer()
-                    Picker("Gender", selection: $viewModel.formData.occupation) { // Use occupied field as mock
+                    Picker("Gender", selection: $viewModel.formData.gender) {
+                        Text("Select").tag("")
                         Text("Male").tag("Male")
                         Text("Female").tag("Female")
                         Text("Other").tag("Other")

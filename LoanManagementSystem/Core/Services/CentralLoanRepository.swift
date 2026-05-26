@@ -67,6 +67,11 @@ final class CentralLoanRepository: ObservableObject {
             persistState()
         }
     }
+
+    func deleteApplication(id: UUID) {
+        applications.removeAll { $0.id == id }
+        persistState()
+    }
     
     // MARK: - State Transitions
     

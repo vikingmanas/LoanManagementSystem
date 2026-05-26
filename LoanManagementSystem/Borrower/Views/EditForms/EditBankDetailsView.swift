@@ -9,6 +9,7 @@ struct EditBankDetailsView: View {
     @State private var accountNumber: String
     @State private var ifscCode: String
     @State private var upiID: String
+    @State private var showingDeleteConfirmation = false
 
     init(viewModel: BorrowerProfileViewModel) {
         self.viewModel = viewModel
@@ -66,6 +67,19 @@ struct EditBankDetailsView: View {
                             .font(Font.AppTheme.input)
                     }
                 }
+                
+                Section {
+                    Button(role: .destructive) {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Text("Clear Bank Details")
+                                .fontWeight(.semibold)
+                            Spacer()
+                        }
+                    }
+                }
             }
             .navigationTitle("Edit Bank Details")
             .navigationBarTitleDisplayMode(.inline)
@@ -94,6 +108,15 @@ struct EditBankDetailsView: View {
                             .foregroundStyle(Color.AppTheme.primary)
                     }
                 }
+            }
+            .alert("Clear Bank Details?", isPresented: $showingDeleteConfirmation) {
+                Button("Clear", role: .destructive) {
+                    viewModel.deletePrimaryBankDetails()
+                    presentationMode.wrappedValue.dismiss()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Are you sure you want to clear your primary bank details? This will remove all primary account information.")
             }
         }
     }

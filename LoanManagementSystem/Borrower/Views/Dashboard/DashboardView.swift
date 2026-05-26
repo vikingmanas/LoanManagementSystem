@@ -168,6 +168,7 @@ public struct DashboardView: View {
     @EnvironmentObject var tabRouter: BorrowerTabRouter
     @ObservedObject var viewModel: DashboardViewModel
     
+    @StateObject private var profileViewModel = BorrowerProfileViewModel()
     @State private var navigationPath = [DashboardRoute]()
     @State private var showingQuickPaySheet = false
     @State private var showingStatementSheet = false
@@ -278,6 +279,12 @@ public struct DashboardView: View {
             .task {
                 await viewModel.fetchDashboardData()
             }
+            .task(id: authManager.userEmail) {
+                profileViewModel.loadProfile(
+                    email: authManager.userEmail,
+                    displayName: authManager.userDisplayName
+                )
+            }
             .navigationDestination(for: DashboardRoute.self) { route in
                 switch route {
                 case .loanDetails(let loan):
@@ -295,9 +302,9 @@ public struct DashboardView: View {
                         .environmentObject(authManager)
                         .environmentObject(appState)
                 case .linkedBankAccounts:
-                    LinkedBankAccountsDetailView(viewModel: BorrowerProfileViewModel())
+                    LinkedBankAccountsDetailView(viewModel: profileViewModel)
                 case .profileInfo:
-                    ProfileInfoDetailView(viewModel: BorrowerProfileViewModel())
+                    ProfileInfoDetailView(viewModel: profileViewModel)
                 case .notifications:
                     NotificationsDetailView()
                 }

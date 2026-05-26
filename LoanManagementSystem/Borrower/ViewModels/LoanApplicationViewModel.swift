@@ -25,6 +25,8 @@ final class LoanApplicationViewModel: ObservableObject {
     @Published var showVerificationResult: Bool = false
 
     private var cancellables = Set<AnyCancellable>()
+    private var borrowerAuthEmail: String?
+    private var borrowerAuthDisplayName: String?
 
     let employmentTypes = ["Salaried", "Self-Employed"]
     let repaymentPreferences = ["EMI Auto-Debit", "UPI Manual Payment", "Net Banking", "Branch Payment"]
@@ -85,6 +87,13 @@ final class LoanApplicationViewModel: ObservableObject {
     init() {
         CentralLoanRepository.shared.$applications
             .assign(to: &$applications)
+
+        BorrowerProfileStore.shared.$profile
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.prefillEmptyFieldsFromProfile()
+            }
+            .store(in: &cancellables)
     }
 
     var selectedProduct: BorrowerLoanProduct? {
@@ -275,15 +284,46 @@ final class LoanApplicationViewModel: ObservableObject {
         activeInfoSheet = contextualInfoMap[topic]
     }
 
+    func setBorrowerAuthContext(email: String?, displayName: String?) {
+        borrowerAuthEmail = email?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        borrowerAuthDisplayName = displayName?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let email = borrowerAuthEmail, !email.isEmpty {
+            _ = BorrowerProfileStore.shared.ensureProfile(
+                email: email,
+                name: borrowerAuthDisplayName
+            )
+        }
+        prefillEmptyFieldsFromProfile()
+    }
+
+    func prefillEmptyFieldsFromProfile() {
+        let merged = formData.mergedWithProfile(
+            BorrowerProfileStore.shared.profile,
+            authEmail: borrowerAuthEmail,
+            authDisplayName: borrowerAuthDisplayName
+        )
+        guard merged != formData else { return }
+        formData = merged
+        if currentDraftID != nil {
+            performAutosave()
+        }
+    }
+
     func startDraft(for product: BorrowerLoanProduct) {
         selectedProductID = product.id
 
         if let existingDraft = draftApplications.first(where: { $0.product.id == product.id }) {
             resumeDraft(existingDraft)
+            prefillEmptyFieldsFromProfile()
             return
         }
 
         formData = BorrowerLoanFormData.prefilled(from: BorrowerProfileStore.shared.profile)
+        prefillEmptyFieldsFromProfile()
         if formData.loanAmountRequested.isEmpty {
             let recommended = max(100_000, min(product.maximumAmount * 0.25, product.maximumAmount))
             formData.loanAmountRequested = String(Int(recommended))
@@ -331,6 +371,26 @@ final class LoanApplicationViewModel: ObservableObject {
         formData = application.formData
         documents = application.documents
         lastDraftSavedAt = Date()
+        prefillEmptyFieldsFromProfile()
+    }
+
+    @discardableResult
+    func deleteDraft(applicationID: UUID) -> Bool {
+        guard let index = applications.firstIndex(where: { $0.id == applicationID }),
+              applications[index].currentStage == .draft else {
+            return false
+        }
+
+        if currentDraftID == applicationID {
+            currentDraftID = nil
+            selectedProductID = nil
+            formData = .empty
+            documents = []
+        }
+
+        applications.remove(at: index)
+        CentralLoanRepository.shared.deleteApplication(id: applicationID)
+        return true
     }
 
     private var autosaveTask: Task<Void, Never>?
