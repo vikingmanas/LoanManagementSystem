@@ -3,10 +3,10 @@ import SwiftUI
 struct EditLoanOverviewView: View {
     @Environment(\.presentationMode) var presentationMode
     @ObservedObject var viewModel: BorrowerProfileViewModel
-    
+
     @State private var requestType: String = "Tenure Extension"
     @State private var reason: String = "Temporary financial hardship"
-    
+
     var body: some View {
         NavigationStack {
             Form {
@@ -17,7 +17,7 @@ struct EditLoanOverviewView: View {
                         DataRowView(label: "Status", value: loan.currentLoanStatus)
                     }
                 }
-                
+
                 Section(header: Text("Request Modification"), footer: Text("You cannot directly edit an active loan. Please submit a modification request to your loan officer.")) {
                     TextField("Request Type (e.g. Pre-closure)", text: $requestType)
                     TextField("Reason", text: $reason)
@@ -53,3 +53,4 @@ struct EditLoanOverviewView: View {
         EditLoanOverviewView(viewModel: PreviewSupport.borrowerProfileViewModel)
     }
 }
+

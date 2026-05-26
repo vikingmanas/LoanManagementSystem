@@ -1,13 +1,13 @@
-//
-//  CoreDomainModels.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 20/05/26.
-//
+
+
+
+
+
+
 
 import Foundation
 
-// MARK: - Core Domain Enums
+
 
 enum BranchStatus: String, Codable {
     case active, inactive, closed
@@ -29,7 +29,7 @@ enum EMIStatus: String, Codable {
     case pending, paid, overdue, bounced
 }
 
-// MARK: - Core Domain Models
+
 
 struct Branch: Codable, Identifiable {
     let id: UUID
@@ -39,7 +39,7 @@ struct Branch: Codable, Identifiable {
     let address: String
     let managerId: UUID?
     let status: BranchStatus
-    
+
     enum CodingKeys: String, CodingKey {
         case id = "branch_id"
         case name, code, region, address
@@ -61,7 +61,7 @@ struct LoanProduct: Codable, Identifiable {
     let eligibilityCriteria: String
     let isActive: Bool
     let createdBy: UUID
-    
+
     enum CodingKeys: String, CodingKey {
         case id = "product_id"
         case name
@@ -89,7 +89,7 @@ struct LoanApplication: Codable, Identifiable {
     let status: ApplicationStatus
     let submittedAt: Date
     let updatedAt: Date
-    
+
     enum CodingKeys: String, CodingKey {
         case id = "application_id"
         case borrowerId = "borrower_id"
@@ -114,7 +114,7 @@ struct LoanAccount: Codable, Identifiable {
     let closureDate: Date?
     let status: AccountStatus
     let nextEmiDate: Date?
-    
+
     enum CodingKeys: String, CodingKey {
         case id = "account_id"
         case applicationId = "application_id"
@@ -140,7 +140,7 @@ struct EMISchedule: Codable, Identifiable {
     let status: EMIStatus
     let paidDate: Date?
     let paidAmount: Decimal?
-    
+
     enum CodingKeys: String, CodingKey {
         case id = "emi_id"
         case accountId = "account_id"
@@ -154,3 +154,4 @@ struct EMISchedule: Codable, Identifiable {
         case paidAmount = "paid_amount"
     }
 }
+

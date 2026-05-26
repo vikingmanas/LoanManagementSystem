@@ -12,12 +12,36 @@ class BorrowerProfileViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     init() {
-        // Observe changes from the shared store
+        profile = BorrowerProfileStore.shared.profile
+
         BorrowerProfileStore.shared.$profile
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] updatedProfile in
                 self?.profile = updatedProfile
+                if updatedProfile != nil {
+                    self?.isLoading = false
+                }
             }
             .store(in: &cancellables)
+    }
+
+    @MainActor
+    func loadProfile(email: String?, displayName: String?) {
+        isLoading = true
+
+        let cleanedEmail = email?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased() ?? ""
+
+        if !cleanedEmail.isEmpty {
+            _ = BorrowerProfileStore.shared.ensureProfile(
+                email: cleanedEmail,
+                name: displayName
+            )
+        }
+
+        profile = BorrowerProfileStore.shared.profile
+        isLoading = false
     }
     
     func updatePersonalInfo(fullName: String, gender: String, maritalStatus: String, nationality: String, dateOfBirth: Date, aadhaarNumber: String, panNumber: String) {
@@ -111,6 +135,26 @@ class BorrowerProfileViewModel: ObservableObject {
             isVerified: updatedProfile.bankDetails.isVerified
         )
         
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
+    }
+
+    func addLinkedBankAccount(bank: String, account: String, ifsc: String, branch: String, customerId: String) {
+        guard var updatedProfile = profile else { return }
+
+        let linkedAccount = LinkedBankAccount(
+            id: UUID(),
+            bankName: bank,
+            accountNumber: account,
+            ifscCode: ifsc,
+            balance: 0,
+            branch: branch,
+            customerId: customerId
+        )
+
+        var accounts = updatedProfile.linkedAccounts ?? []
+        accounts.append(linkedAccount)
+        updatedProfile.linkedAccounts = accounts
+
         BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
     

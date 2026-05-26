@@ -1,10 +1,10 @@
 import SwiftUI
 
 public enum LMSButtonVariant {
-    case primary      // Filled navy / gradient
-    case secondary    // Outlined navy
-    case destructive  // Filled coral
-    case ghost        // Text-only navy
+    case primary
+    case secondary
+    case destructive
+    case ghost
 }
 
 struct PrimaryButton: View {
@@ -109,3 +109,4 @@ struct PrimaryButton: View {
     PrimaryButton(title: "Continue", action: {})
         .padding()
 }
+

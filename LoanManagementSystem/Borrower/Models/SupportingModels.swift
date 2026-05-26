@@ -1,13 +1,13 @@
-//
-//  SupportingModels.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 20/05/26.
-//
+
+
+
+
+
+
 
 import Foundation
 
-// MARK: - Supporting Enums
+
 
 enum DocumentType: String, Codable {
     case identityProof = "identity_proof"
@@ -45,7 +45,7 @@ enum ReportFormat: String, Codable {
     case pdf, csv, excel
 }
 
-// MARK: - Supporting Entity Models
+
 
 struct Document: Codable, Identifiable {
     let id: UUID
@@ -57,7 +57,7 @@ struct Document: Codable, Identifiable {
     let status: DocumentStatus
     let uploadedAt: Date
     let verifiedBy: UUID?
-    
+
     enum CodingKeys: String, CodingKey {
         case id = "document_id"
         case borrowerId = "borrower_id"
@@ -79,7 +79,7 @@ struct CreditScore: Codable, Identifiable {
     let bureauName: String
     let assessedAt: Date
     let isCurrent: Bool
-    
+
     enum CodingKeys: String, CodingKey {
         case id = "score_id"
         case borrowerId = "borrower_id"
@@ -98,7 +98,7 @@ struct AppWorkflow: Codable, Identifiable {
     let action: WorkflowAction
     let remarks: String?
     let actionAt: Date
-    
+
     enum CodingKeys: String, CodingKey {
         case id = "workflow_id"
         case applicationId = "application_id"
@@ -116,7 +116,7 @@ struct Message: Codable, Identifiable {
     let content: String
     let sentAt: Date
     let isRead: Bool
-    
+
     enum CodingKeys: String, CodingKey {
         case id = "message_id"
         case senderId = "sender_id"
@@ -136,7 +136,7 @@ struct NotificationModel: Codable, Identifiable {
     let message: String
     let isRead: Bool
     let createdAt: Date
-    
+
     enum CodingKeys: String, CodingKey {
         case id = "notification_id"
         case userId = "user_id"
@@ -154,7 +154,7 @@ struct NotificationTemplate: Codable, Identifiable {
     let bodyTemplate: String
     let createdBy: UUID
     let isActive: Bool
-    
+
     enum CodingKeys: String, CodingKey {
         case id = "template_id"
         case notifType = "notif_type"
@@ -175,7 +175,7 @@ struct Report: Codable, Identifiable {
     let format: ReportFormat
     let fileUrl: String
     let createdAt: Date
-    
+
     enum CodingKeys: String, CodingKey {
         case id = "report_id"
         case generatedBy = "generated_by"
@@ -188,3 +188,4 @@ struct Report: Codable, Identifiable {
         case createdAt = "created_at"
     }
 }
+

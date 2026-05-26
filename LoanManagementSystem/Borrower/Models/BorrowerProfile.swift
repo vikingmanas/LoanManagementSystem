@@ -190,6 +190,11 @@ struct BankDetails: Codable, Equatable {
     let isVerified: Bool
 }
 
+enum LinkedAccountKind: String, Codable, Equatable {
+    case savings
+    case overdraft
+}
+
 struct LinkedBankAccount: Codable, Equatable, Identifiable {
     var id: UUID
     var bankName: String
@@ -198,6 +203,55 @@ struct LinkedBankAccount: Codable, Equatable, Identifiable {
     var balance: Double
     var branch: String
     var customerId: String
+    var accountHolderName: String
+    var accountKind: LinkedAccountKind
+    var linkedLoanApplicationId: UUID?
+    var odSanctionLimit: Double?
+
+    var isOverdraftAccount: Bool {
+        accountKind == .overdraft
+    }
+
+    init(
+        id: UUID = UUID(),
+        bankName: String,
+        accountNumber: String,
+        ifscCode: String,
+        balance: Double,
+        branch: String,
+        customerId: String,
+        accountHolderName: String = "",
+        accountKind: LinkedAccountKind = .savings,
+        linkedLoanApplicationId: UUID? = nil,
+        odSanctionLimit: Double? = nil
+    ) {
+        self.id = id
+        self.bankName = bankName
+        self.accountNumber = accountNumber
+        self.ifscCode = ifscCode
+        self.balance = balance
+        self.branch = branch
+        self.customerId = customerId
+        self.accountHolderName = accountHolderName
+        self.accountKind = accountKind
+        self.linkedLoanApplicationId = linkedLoanApplicationId
+        self.odSanctionLimit = odSanctionLimit
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        bankName = try container.decode(String.self, forKey: .bankName)
+        accountNumber = try container.decode(String.self, forKey: .accountNumber)
+        ifscCode = try container.decode(String.self, forKey: .ifscCode)
+        balance = try container.decode(Double.self, forKey: .balance)
+        branch = try container.decode(String.self, forKey: .branch)
+        customerId = try container.decode(String.self, forKey: .customerId)
+        accountHolderName = try container.decodeIfPresent(String.self, forKey: .accountHolderName) ?? ""
+        accountKind = try container.decodeIfPresent(LinkedAccountKind.self, forKey: .accountKind) ?? .savings
+        linkedLoanApplicationId = try container.decodeIfPresent(UUID.self, forKey: .linkedLoanApplicationId)
+        odSanctionLimit = try container.decodeIfPresent(Double.self, forKey: .odSanctionLimit)
+    }
 }
 
 struct KYCVerification: Codable, Equatable {

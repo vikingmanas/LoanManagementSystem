@@ -20,8 +20,24 @@ public final class DashboardViewModel: ObservableObject {
     
     // Quick demonstration toggle state (e.g. to mock low balance vs normal)
     @Published public var forceLowBalanceMockState: Bool = false
+
+    private var cancellables = Set<AnyCancellable>()
     
-    public init() {}
+    public init() {
+        CentralLoanRepository.shared.$disbursementEvents
+            .dropFirst()
+            .sink { [weak self] _ in
+                Task { await self?.fetchDashboardData() }
+            }
+            .store(in: &cancellables)
+
+        CentralLoanRepository.shared.$applications
+            .dropFirst()
+            .sink { [weak self] _ in
+                Task { await self?.fetchDashboardData() }
+            }
+            .store(in: &cancellables)
+    }
     
     public var totalOutstanding: Double { loanAccounts.map(\.principalOutstanding).reduce(0, +) }
     public var totalSanctioned:  Double { loanAccounts.map(\.sanctionedAmount).reduce(0, +) }
@@ -78,6 +94,13 @@ public final class DashboardViewModel: ObservableObject {
     
     public func fetchDashboardData() async {
         isLoading = true
+        defer { isLoading = false }
+
+        if let email = BorrowerProfileStore.shared.currentEmail ?? BorrowerProfileStore.shared.profile?.email,
+           !email.isEmpty,
+           BorrowerProfileStore.shared.profile == nil {
+            _ = BorrowerProfileStore.shared.ensureProfile(email: email)
+        }
         
         // Simulate a 0.8s network latency delay
         do {
@@ -87,25 +110,12 @@ public final class DashboardViewModel: ObservableObject {
             return
         }
         
-        // Load bank account from user profile
         if let profile = BorrowerProfileStore.shared.profile {
-            let bank = profile.bankDetails
-            let bankName = bank.bankName.isEmpty ? "My Main Bank" : bank.bankName
-            let acctNum = bank.accountNumber.isEmpty ? "0000000000" : bank.accountNumber
-            
-            if self.bankAccount.bankName.isEmpty || self.bankAccount.accountNumber == "XXXX 7890" {
-                self.bankAccount = BankAccount(
-                    id: UUID(),
-                    accountNumber: acctNum,
-                    bankName: bankName,
-                    accountType: .savings,
-                    availableBalance: 0.0
-                )
-            } else {
-                self.bankAccount.bankName = bankName
-                self.bankAccount.accountNumber = acctNum
-            }
-            self.bankAccounts = [self.bankAccount]
+            let disbursedCredits = disbursementCredits(for: profile)
+            self.bankAccounts = buildBankAccounts(from: profile, disbursedCredits: disbursedCredits)
+            self.bankAccount = bankAccounts.first(where: { $0.accountType == .savings })
+                ?? bankAccounts.first
+                ?? BankAccount(accountNumber: "0000000000", bankName: "Default Bank", accountType: .savings, availableBalance: 0)
         } else {
             self.bankAccount = BankAccount(accountNumber: "XXXX 0000", bankName: "Default Bank", accountType: .savings, availableBalance: 0.0)
             self.bankAccounts = [self.bankAccount]
@@ -143,51 +153,189 @@ public final class DashboardViewModel: ObservableObject {
         }
         
         self.schemes = MockData.sampleSchemes
-        
-        self.isLoading = false
+
+        let disbursementTransactions = CentralLoanRepository.shared.disbursementEvents.map { event in
+            Transaction(
+                title: "Loan Amount Credited - \(event.applicationNumber)",
+                date: event.creditedAt,
+                amount: event.amount,
+                type: .credit,
+                referenceNo: event.referenceNumber,
+                bankAccountId: bankAccounts.first(where: { $0.accountNumber == event.accountNumber })?.id
+            )
+        }
+        let existingReferences = Set(transactions.map(\.referenceNo))
+        transactions.insert(contentsOf: disbursementTransactions.filter { !existingReferences.contains($0.referenceNo) }, at: 0)
     }
+
+    private func buildBankAccounts(from profile: BorrowerProfile, disbursedCredits: [String: Double]) -> [BankAccount] {
+        var accounts: [BankAccount] = []
+        let bank = profile.bankDetails
+        let linked = profile.linkedAccounts ?? []
+        let linkedNumbers = Set(linked.map(\.accountNumber))
+
+        if !bank.accountNumber.isEmpty, !linkedNumbers.contains(bank.accountNumber) {
+            accounts.append(
+                BankAccount(
+                    accountNumber: bank.accountNumber,
+                    bankName: bank.bankName.isEmpty ? "My Main Bank" : bank.bankName,
+                    accountType: .savings,
+                    availableBalance: disbursedCredits[bank.accountNumber, default: 0]
+                )
+            )
+        }
+
+        for linkedAccount in linked {
+            let isOD = linkedAccount.isOverdraftAccount
+            let extraCredits = isOD ? 0 : disbursedCredits[linkedAccount.accountNumber, default: 0]
+            accounts.append(
+                BankAccount(
+                    id: linkedAccount.id,
+                    accountNumber: linkedAccount.accountNumber,
+                    bankName: linkedAccount.bankName,
+                    accountType: isOD ? .overdraft : .savings,
+                    availableBalance: linkedAccount.balance + extraCredits,
+                    odLimit: linkedAccount.odSanctionLimit,
+                    linkedLoanIds: linkedAccount.linkedLoanApplicationId.map { [$0] } ?? []
+                )
+            )
+        }
+
+        if accounts.isEmpty, !bank.accountNumber.isEmpty {
+            accounts.append(
+                BankAccount(
+                    accountNumber: bank.accountNumber,
+                    bankName: bank.bankName.isEmpty ? "My Main Bank" : bank.bankName,
+                    accountType: .savings,
+                    availableBalance: disbursedCredits[bank.accountNumber, default: 0]
+                )
+            )
+        }
+
+        if accounts.isEmpty {
+            accounts.append(
+                BankAccount(accountNumber: "0000000000", bankName: "Default Bank", accountType: .savings, availableBalance: 0)
+            )
+        }
+
+        return accounts
+    }
+
+    private func emiRepaymentAccount() -> BankAccount? {
+        bankAccounts.first(where: { $0.accountType == .overdraft }) ??
+        bankAccounts.first(where: { $0.accountType == .savings })
+    }
+
+    private func disbursementCredits(for profile: BorrowerProfile) -> [String: Double] {
+        let email = profile.email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        return CentralLoanRepository.shared.disbursementEvents
+            .filter { event in
+                event.borrowerEmail.isEmpty ||
+                email.isEmpty ||
+                event.borrowerEmail == email
+            }
+            .reduce(into: [:]) { credits, event in
+                credits[event.accountNumber, default: 0] += event.amount
+            }
+    }
+
     
     // Quick-action methods
     public func payNextEMI() {
         guard let currentNextEMI = nextEMI else { return }
+        _ = payEMI(currentNextEMI)
+    }
+
+    @discardableResult
+    public func payEMI(_ emi: EMIRecord) -> Bool {
+        guard let index = pendingEMIs.firstIndex(where: { $0.id == emi.id }),
+              pendingEMIs[index].status != .paid else {
+            return false
+        }
         
         // Trigger haptic feedback
         let feedback = UIImpactFeedbackGenerator(style: .medium)
         feedback.prepare()
         feedback.impactOccurred()
         
-        // Deduct balance if sufficient, and transition EMI status to paid
-        if bankAccount.availableBalance >= currentNextEMI.amount {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                bankAccount.availableBalance -= currentNextEMI.amount
-                // Update the matching EMI to paid
-                if let index = pendingEMIs.firstIndex(where: { $0.id == currentNextEMI.id }) {
-                    pendingEMIs[index].status = .paid
-                }
+        guard let repaymentAccount = emiRepaymentAccount(),
+              repaymentAccount.availableBalance >= emi.amount else {
+            return false
+        }
+
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+            let updatedBalance = repaymentAccount.availableBalance - emi.amount
+
+            if let accountIndex = bankAccounts.firstIndex(where: { $0.id == repaymentAccount.id }) {
+                bankAccounts[accountIndex].availableBalance = updatedBalance
+            }
+            if bankAccount.id == repaymentAccount.id {
+                bankAccount.availableBalance = updatedBalance
+            }
+
+            BorrowerProfileStore.shared.updateLinkedAccountBalance(
+                accountId: repaymentAccount.id,
+                balance: updatedBalance
+            )
+
+            pendingEMIs[index].status = .paid
                 
                 // Add a new transaction row for the EMI paid
                 let newTx = Transaction(
-                    title: "EMI - \(currentNextEMI.loanType)",
+                    title: "EMI - \(emi.loanType)",
                     date: Date(),
-                    amount: currentNextEMI.amount,
+                    amount: emi.amount,
                     type: .emiPayment,
                     referenceNo: "TXN\(Int.random(in: 1000000...9999999))"
                 )
                 transactions.insert(newTx, at: 0)
-            }
         }
+        return true
     }
     
-    public func topUpAccount(amount: Double) {
+    public func topUpAccount(amount: Double, to account: BankAccount? = nil) {
         let feedback = UIImpactFeedbackGenerator(style: .light)
         feedback.impactOccurred()
         
         withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-            bankAccount.availableBalance += amount
+            let destinationID = account?.id ?? bankAccount.id
+
+            if let index = bankAccounts.firstIndex(where: { $0.id == destinationID }) {
+                bankAccounts[index].availableBalance += amount
+                bankAccount = bankAccounts[index]
+            } else {
+                bankAccount.availableBalance += amount
+            }
             
             // Add a credit transaction row
             let newTx = Transaction(
                 title: "Account Top-Up",
+                date: Date(),
+                amount: amount,
+                type: .credit,
+                referenceNo: "TXN\(Int.random(in: 1000000...9999999))"
+            )
+            transactions.insert(newTx, at: 0)
+        }
+    }
+
+    public func transferFunds(amount: Double, from source: BankAccount, to destination: BankAccount) {
+        let feedback = UIImpactFeedbackGenerator(style: .medium)
+        feedback.impactOccurred()
+
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+            if let sourceIndex = bankAccounts.firstIndex(where: { $0.id == source.id }) {
+                bankAccounts[sourceIndex].availableBalance = max(0, bankAccounts[sourceIndex].availableBalance - amount)
+            }
+
+            if let destinationIndex = bankAccounts.firstIndex(where: { $0.id == destination.id }) {
+                bankAccounts[destinationIndex].availableBalance += amount
+                bankAccount = bankAccounts[destinationIndex]
+            }
+
+            let newTx = Transaction(
+                title: "Transfer to \(destination.bankName.isEmpty ? "Linked Account" : destination.bankName)",
                 date: Date(),
                 amount: amount,
                 type: .credit,

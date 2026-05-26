@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreImage.CIFilterBuiltins
 
 // MARK: - Navigation Destinations
 public enum DashboardRoute: Hashable {
@@ -7,6 +8,8 @@ public enum DashboardRoute: Hashable {
     case insuranceDetails
     case allPendingEMIs
     case schemeDetails(GovernmentScheme)
+    case profile
+    case linkedBankAccounts
     case profileInfo
     case notifications
 }
@@ -15,14 +18,13 @@ public enum DashboardRoute: Hashable {
 struct StatusBannerSection: View {
     @ObservedObject var viewModel: DashboardViewModel
     @Binding var navigationPath: [DashboardRoute]
-    @Binding var showingProfileSheet: Bool
 
     var body: some View {
         VStack(spacing: 12) {
             // Profile Completion Row (Priority 1)
             if let profile = BorrowerProfileStore.shared.profile, profile.profileCompletionPercentage < 100 {
                 Button {
-                    showingProfileSheet = true
+                    navigationPath.append(.profile)
                 } label: {
                     HStack(spacing: 12) {
                         Image(systemName: "person.crop.circle.badge.exclamationmark.fill")
@@ -172,12 +174,12 @@ public struct DashboardView: View {
     @State private var showingForeclosureSheet = false
     @State private var showingSupportSheet = false
     @State private var showingTopUpSheet = false
-    @State private var showingProfileSheet = false
+    @State private var navigateToLinkedBankAccountsAfterTopUp = false
     
     private var greetingSubtitle: String {
         if let profile = BorrowerProfileStore.shared.profile, !profile.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let firstName = profile.fullName.components(separatedBy: " ").first ?? profile.fullName
-            return "Good morning, \(firstName)"
+            return "Hi, \(firstName)"
         }
         let authName = authManager.userDisplayName.components(separatedBy: " ").first ?? "User"
         return "Hi, \(authName)"
@@ -197,7 +199,7 @@ public struct DashboardView: View {
                     .padding(.horizontal, LMSSpacing.lg)
                     .padding(.top, 8)
 
-                    StatusBannerSection(viewModel: viewModel, navigationPath: $navigationPath, showingProfileSheet: $showingProfileSheet)
+                    StatusBannerSection(viewModel: viewModel, navigationPath: $navigationPath)
                     
                     VStack(alignment: .leading, spacing: 14) {
                         Text("FINANCIAL PORTFOLIO")
@@ -252,7 +254,7 @@ public struct DashboardView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
                         Button {
-                            tabRouter.select(.history)
+                            navigationPath.append(.notifications)
                         } label: {
                             Image(systemName: "bell.badge")
                                 .symbolRenderingMode(.hierarchical)
@@ -261,7 +263,7 @@ public struct DashboardView: View {
                         }
                         
                         Button {
-                            showingProfileSheet = true
+                            navigationPath.append(.profile)
                         } label: {
                             DashboardAvatar(
                                 initials: dashboardInitials(
@@ -288,6 +290,12 @@ public struct DashboardView: View {
                     AllPendingEMIsView(viewModel: viewModel)
                 case .schemeDetails(let scheme):
                     SchemeDetailsView(scheme: scheme)
+                case .profile:
+                    ProfileView()
+                        .environmentObject(authManager)
+                        .environmentObject(appState)
+                case .linkedBankAccounts:
+                    LinkedBankAccountsDetailView(viewModel: BorrowerProfileViewModel())
                 case .profileInfo:
                     ProfileInfoDetailView(viewModel: BorrowerProfileViewModel())
                 case .notifications:
@@ -306,13 +314,16 @@ public struct DashboardView: View {
             .sheet(isPresented: $showingSupportSheet) {
                 SupportSheet()
             }
-            .sheet(isPresented: $showingTopUpSheet) {
-                TopUpSheet(viewModel: viewModel)
-            }
-            .sheet(isPresented: $showingProfileSheet) {
-                ProfileView()
-                    .environmentObject(authManager)
-                    .environmentObject(appState)
+            .sheet(isPresented: $showingTopUpSheet, onDismiss: {
+                if navigateToLinkedBankAccountsAfterTopUp {
+                    navigateToLinkedBankAccountsAfterTopUp = false
+                    navigationPath.append(.linkedBankAccounts)
+                }
+            }) {
+                TopUpSheet(viewModel: viewModel) {
+                    showingTopUpSheet = false
+                    navigateToLinkedBankAccountsAfterTopUp = true
+                }
             }
         }
     }
@@ -374,32 +385,52 @@ struct GovernmentSchemesSection: View {
 struct QuickPaySheet: View {
     @ObservedObject var viewModel: DashboardViewModel
     @Environment(\.dismiss) var dismiss
+    @State private var successMessage = ""
+    @State private var showSuccessAlert = false
+
+    private var payableEMIs: [EMIRecord] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let endDate = calendar.date(byAdding: .day, value: 4, to: today) ?? today
+
+        return viewModel.pendingEMIs
+            .filter { emi in
+                let dueDate = calendar.startOfDay(for: emi.dueDate)
+                return emi.status != .paid && dueDate >= today && dueDate <= endDate
+            }
+            .sorted { $0.dueDate < $1.dueDate }
+    }
+
+    private var unpaidEMIs: [EMIRecord] {
+        viewModel.pendingEMIs.filter { $0.status != .paid }
+    }
     
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    if let nextEMI = viewModel.nextEMI {
-                        VStack(spacing: 16) {
-                            Image(systemName: "indianrupeesign.circle.fill")
-                                .font(.system(size: 64))
-                                .foregroundStyle(LMSColors.brandNavy)
-                            
-                            VStack(spacing: 4) {
-                                Text("Payment Amount")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                Text(nextEMI.amount.formattedAsINR())
-                                    .font(.system(size: 34, weight: .bold, design: .rounded))
-                                    .foregroundStyle(LMSColors.textPrimary)
-                            }
+                    VStack(spacing: 14) {
+                        Image(systemName: payableEMIs.isEmpty ? "calendar.badge.clock" : "indianrupeesign.circle.fill")
+                            .font(.system(size: 58))
+                            .foregroundStyle(payableEMIs.isEmpty ? LMSColors.textTertiary : LMSColors.brandNavy)
+
+                        VStack(spacing: 4) {
+                            Text(payableEMIs.isEmpty ? "No Payable EMI" : "Pay Upcoming EMI")
+                                .font(.headline)
+                                .foregroundStyle(LMSColors.textPrimary)
+
+                            Text(headerMessage)
+                                .font(.subheadline)
+                                .foregroundStyle(LMSColors.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 16)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 24)
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 22)
                 }
                 .listRowBackground(Color.clear)
-                
+
                 Section {
                     LabeledContent("Deduction Account", value: "•••• \(viewModel.bankAccount.accountNumber.suffix(4))")
                     LabeledContent("Bank Name", value: viewModel.bankAccount.bankName)
@@ -407,28 +438,29 @@ struct QuickPaySheet: View {
                 } header: {
                     Text("Payment Source")
                 }
-                
-                Section {
-                    Button {
-                        viewModel.payNextEMI()
-                        dismiss()
-                    } label: {
-                        HStack {
-                            Spacer()
-                            Text("Confirm Payment")
-                                .fontWeight(.bold)
-                                .foregroundStyle(.white)
-                            Spacer()
+
+                if !payableEMIs.isEmpty {
+                    Section {
+                        ForEach(payableEMIs) { emi in
+                            payableEMIRow(emi)
                         }
+                    } header: {
+                        Text("EMIs Due Soon")
+                    } footer: {
+                        Text("You can manually pay EMIs due in the next 4 days. Other EMIs will auto-debit on the fixed due date; failed debit may attract penalty.")
                     }
-                    .listRowBackground(LMSColors.brandNavy)
-                    .disabled(viewModel.bankAccount.availableBalance < (viewModel.nextEMI?.amount ?? 0))
-                } footer: {
-                    if viewModel.bankAccount.availableBalance < (viewModel.nextEMI?.amount ?? 0) {
-                        Text("Insufficient funds. Please top up your account.")
-                            .foregroundStyle(.red)
-                    } else {
-                        Text("Funds will be debited instantly from your linked account.")
+                } else {
+                    Section {
+                        Text(emptyStateMessage)
+                            .font(.subheadline)
+                            .foregroundStyle(LMSColors.textSecondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .multilineTextAlignment(.center)
+                            .padding(.vertical, 10)
+                    } footer: {
+                        if !unpaidEMIs.isEmpty {
+                            Text("EMIs outside this window will auto-debit on the fixed due date. If auto-debit fails, penalty may be applied.")
+                        }
                     }
                 }
             }
@@ -439,7 +471,78 @@ struct QuickPaySheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
+            .alert("Payment Successful", isPresented: $showSuccessAlert) {
+                Button("Done") {
+                    dismiss()
+                }
+            } message: {
+                Text(successMessage)
+            }
         }
+    }
+
+    private var headerMessage: String {
+        if payableEMIs.isEmpty {
+            return unpaidEMIs.isEmpty ? "There is no EMI yet." : "No EMI is due in the next 4 days."
+        }
+
+        return "\(payableEMIs.count) EMI\(payableEMIs.count == 1 ? "" : "s") available for early payment."
+    }
+
+    private var emptyStateMessage: String {
+        unpaidEMIs.isEmpty ? "There is no EMI yet." : "No EMI is available for payment right now."
+    }
+
+    private func payableEMIRow(_ emi: EMIRecord) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "calendar.badge.clock")
+                    .font(.title3)
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .frame(width: 36, height: 36)
+                    .background(LMSColors.brandNavy.opacity(0.10), in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(emi.loanType)
+                        .font(.headline)
+                        .foregroundStyle(LMSColors.textPrimary)
+
+                    Text("Due \(emi.dueDate.formattedAsDDMMMYYYY())")
+                        .font(.caption)
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+
+                Spacer()
+
+                Text(emi.amount.formattedAsINR())
+                    .font(.headline)
+                    .foregroundStyle(LMSColors.textPrimary)
+            }
+
+            Button {
+                if viewModel.payEMI(emi) {
+                    successMessage = "Your EMI of \(emi.amount.formattedAsINR()) for \(emi.loanType) is payed successfully."
+                    showSuccessAlert = true
+                }
+            } label: {
+                HStack {
+                    Spacer()
+                    Text(viewModel.bankAccount.availableBalance < emi.amount ? "Insufficient Balance" : "Pay EMI")
+                        .fontWeight(.bold)
+                    Spacer()
+                }
+            }
+            .disabled(viewModel.bankAccount.availableBalance < emi.amount)
+            .buttonStyle(.borderedProminent)
+            .tint(viewModel.bankAccount.availableBalance < emi.amount ? LMSColors.textTertiary : LMSColors.brandNavy)
+
+            if viewModel.bankAccount.availableBalance < emi.amount {
+                Text("Top up your account before paying this EMI.")
+                    .font(.caption)
+                    .foregroundStyle(LMSColors.coral)
+            }
+        }
+        .padding(.vertical, 6)
     }
 }
 
@@ -608,57 +711,55 @@ struct TopUpSheet: View {
     @ObservedObject var viewModel: DashboardViewModel
     @Environment(\.dismiss) var dismiss
     @State private var topUpAmount = 10000.0
+    @State private var sourceAccountID: UUID?
+    @State private var destinationAccountID: UUID?
+    @State private var successMessage = ""
+    @State private var showSuccessAlert = false
+    let onAddAccount: () -> Void
+
+    private var linkedAccounts: [BankAccount] {
+        viewModel.bankAccounts.filter { account in
+            !account.accountNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+            account.accountNumber != "XXXX 0000" &&
+            account.bankName != "Default Bank"
+        }
+    }
+
+    private var sourceAccount: BankAccount? {
+        linkedAccounts.first { $0.id == sourceAccountID }
+    }
+
+    private var destinationAccount: BankAccount? {
+        linkedAccounts.first { $0.id == destinationAccountID }
+    }
+
+    private var canConfirmTransfer: Bool {
+        if linkedAccounts.count == 1 { return true }
+        guard linkedAccounts.count > 1,
+              let sourceAccount,
+              let destinationAccount else {
+            return false
+        }
+
+        return sourceAccount.id != destinationAccount.id &&
+               sourceAccount.availableBalance >= topUpAmount
+    }
     
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    VStack(spacing: 20) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 64))
-                            .foregroundStyle(LMSColors.emerald)
-                        
-                        VStack(spacing: 4) {
-                            Text("Top-Up Amount")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Text(topUpAmount.formattedAsINR())
-                                .font(.system(size: 34, weight: .bold, design: .rounded))
-                                .foregroundStyle(LMSColors.textPrimary)
-                        }
-                        
-                        Slider(value: $topUpAmount, in: 5000...100000, step: 5000)
-                            .tint(LMSColors.emerald)
-                            .padding(.horizontal, 24)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 24)
+                amountSection
+
+                if linkedAccounts.isEmpty {
+                    noAccountSection
+                } else if linkedAccounts.count == 1 {
+                    qrReceiveSection(account: linkedAccounts[0])
+                } else {
+                    transferSection
                 }
-                .listRowBackground(Color.clear)
-                
-                Section {
-                    LabeledContent("From Source", value: "Verified Linked Account")
-                    LabeledContent("Account", value: "•••• \(viewModel.bankAccount.accountNumber.suffix(4))")
-                } header: {
-                    Text("Payment Details")
-                }
-                
-                Section {
-                    Button {
-                        viewModel.topUpAccount(amount: topUpAmount)
-                        dismiss()
-                    } label: {
-                        HStack {
-                            Spacer()
-                            Text("Confirm Deposit")
-                                .fontWeight(.bold)
-                                .foregroundStyle(.white)
-                            Spacer()
-                        }
-                    }
-                    .listRowBackground(LMSColors.emerald)
-                } footer: {
-                    Text("The amount will be credited to your available balance immediately.")
+
+                if !linkedAccounts.isEmpty {
+                    confirmSection
                 }
             }
             .navigationTitle("Add Funds")
@@ -668,7 +769,220 @@ struct TopUpSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
+            .onAppear {
+                configureDefaultAccounts()
+            }
+            .alert("Funds Added", isPresented: $showSuccessAlert) {
+                Button("Done") {
+                    dismiss()
+                }
+            } message: {
+                Text(successMessage)
+            }
         }
+    }
+
+    private var amountSection: some View {
+        Section {
+            VStack(spacing: 18) {
+                Image(systemName: linkedAccounts.isEmpty ? "building.columns.circle" : "plus.circle.fill")
+                    .font(.system(size: 60))
+                    .foregroundStyle(linkedAccounts.isEmpty ? LMSColors.brandNavy : LMSColors.emerald)
+
+                VStack(spacing: 4) {
+                    Text(linkedAccounts.count > 1 ? "Transfer Amount" : "Top-Up Amount")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    Text(topUpAmount.formattedAsINR())
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .foregroundStyle(LMSColors.textPrimary)
+                }
+
+                Slider(value: $topUpAmount, in: 5000...100000, step: 5000)
+                    .tint(LMSColors.emerald)
+                    .padding(.horizontal, 24)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 24)
+        }
+        .listRowBackground(Color.clear)
+    }
+
+    private var noAccountSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 14) {
+                Label("No linked bank account found", systemImage: "exclamationmark.circle.fill")
+                    .font(.headline)
+                    .foregroundStyle(LMSColors.textPrimary)
+
+                Text("Add and verify a bank account before adding funds.")
+                    .font(.subheadline)
+                    .foregroundStyle(LMSColors.textSecondary)
+
+                Button {
+                    onAddAccount()
+                } label: {
+                    HStack {
+                        Spacer()
+                        Label("Add Account", systemImage: "building.columns.fill")
+                            .fontWeight(.bold)
+                        Spacer()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(LMSColors.brandNavy)
+            }
+            .padding(.vertical, 8)
+        }
+    }
+
+    private func qrReceiveSection(account: BankAccount) -> some View {
+        Section {
+            VStack(spacing: 16) {
+                QRCodeView(payload: qrPayload(for: account))
+                    .frame(width: 170, height: 170)
+                    .padding(12)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                VStack(spacing: 4) {
+                    Text("Scan to add funds")
+                        .font(.headline)
+                        .foregroundStyle(LMSColors.textPrimary)
+
+                    Text("\(account.bankName.isEmpty ? "Linked Account" : account.bankName) \(maskedAccountNumber(account.accountNumber))")
+                        .font(.subheadline)
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+        } header: {
+            Text("Receive to Account")
+        } footer: {
+            Text("Scan this QR from any payment app, then confirm once the payment is completed.")
+        }
+    }
+
+    private var transferSection: some View {
+        Section {
+            Picker("From Account", selection: Binding(
+                get: { sourceAccountID ?? linkedAccounts.first?.id },
+                set: { sourceAccountID = $0 }
+            )) {
+                ForEach(linkedAccounts) { account in
+                    Text(accountPickerTitle(account)).tag(Optional(account.id))
+                }
+            }
+
+            Picker("To Account", selection: Binding(
+                get: { destinationAccountID ?? linkedAccounts.dropFirst().first?.id ?? linkedAccounts.first?.id },
+                set: { destinationAccountID = $0 }
+            )) {
+                ForEach(linkedAccounts) { account in
+                    Text(accountPickerTitle(account)).tag(Optional(account.id))
+                }
+            }
+
+            if let sourceAccount, sourceAccount.availableBalance < topUpAmount {
+                Label("Insufficient balance in source account", systemImage: "exclamationmark.triangle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(LMSColors.coral)
+            } else if sourceAccountID == destinationAccountID {
+                Label("Choose a different destination account", systemImage: "arrow.left.arrow.right")
+                    .font(.footnote)
+                    .foregroundStyle(LMSColors.amber)
+            }
+        } header: {
+            Text("Transfer Details")
+        } footer: {
+            Text("Move money from one linked account to another.")
+        }
+    }
+
+    private var confirmSection: some View {
+        Section {
+            Button {
+                confirmFunds()
+            } label: {
+                HStack {
+                    Spacer()
+                    Text(linkedAccounts.count > 1 ? "Confirm Transfer" : "Confirm Deposit")
+                        .fontWeight(.bold)
+                        .foregroundStyle(.white)
+                    Spacer()
+                }
+            }
+            .disabled(!canConfirmTransfer)
+            .listRowBackground(canConfirmTransfer ? LMSColors.emerald : LMSColors.textTertiary.opacity(0.25))
+        } footer: {
+            if let destination = destinationAccount ?? linkedAccounts.first {
+                Text("After confirmation, the amount will be credited to \(maskedAccountNumber(destination.accountNumber)).")
+            }
+        }
+    }
+
+    private func configureDefaultAccounts() {
+        guard !linkedAccounts.isEmpty else { return }
+        sourceAccountID = sourceAccountID ?? linkedAccounts.first?.id
+        destinationAccountID = destinationAccountID ?? (linkedAccounts.dropFirst().first?.id ?? linkedAccounts.first?.id)
+    }
+
+    private func confirmFunds() {
+        if linkedAccounts.count == 1, let account = linkedAccounts.first {
+            viewModel.topUpAccount(amount: topUpAmount, to: account)
+            successMessage = "Your amount \(topUpAmount.formattedAsINR()) is credited in the bank account \(maskedAccountNumber(account.accountNumber))."
+            showSuccessAlert = true
+            return
+        }
+
+        guard let sourceAccount, let destinationAccount else { return }
+        viewModel.transferFunds(amount: topUpAmount, from: sourceAccount, to: destinationAccount)
+        successMessage = "Your amount \(topUpAmount.formattedAsINR()) is credited in the bank account \(maskedAccountNumber(destinationAccount.accountNumber))."
+        showSuccessAlert = true
+    }
+
+    private func maskedAccountNumber(_ number: String) -> String {
+        let suffix = number.suffix(4)
+        return "•••• \(suffix)"
+    }
+
+    private func accountPickerTitle(_ account: BankAccount) -> String {
+        let name = account.bankName.isEmpty ? account.accountType.rawValue : account.bankName
+        return "\(name) \(maskedAccountNumber(account.accountNumber))"
+    }
+
+    private func qrPayload(for account: BankAccount) -> String {
+        "lms://add-funds?account=\(account.accountNumber)&amount=\(Int(topUpAmount))"
+    }
+}
+
+private struct QRCodeView: View {
+    let payload: String
+    private let context = CIContext()
+    private let filter = CIFilter.qrCodeGenerator()
+
+    var body: some View {
+        if let image = makeQRCode() {
+            Image(uiImage: image)
+                .interpolation(.none)
+                .resizable()
+                .scaledToFit()
+        } else {
+            Image(systemName: "qrcode")
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(LMSColors.textPrimary)
+        }
+    }
+
+    private func makeQRCode() -> UIImage? {
+        filter.message = Data(payload.utf8)
+        guard let outputImage = filter.outputImage else { return nil }
+        let scaledImage = outputImage.transformed(by: CGAffineTransform(scaleX: 10, y: 10))
+        guard let cgImage = context.createCGImage(scaledImage, from: scaledImage.extent) else { return nil }
+        return UIImage(cgImage: cgImage)
     }
 }
 

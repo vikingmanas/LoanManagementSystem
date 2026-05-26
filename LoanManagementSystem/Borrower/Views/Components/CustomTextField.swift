@@ -86,3 +86,4 @@ struct CustomTextField: View {
     CustomTextField(icon: "envelope", placeholder: "Email", text: $text)
         .padding()
 }
+

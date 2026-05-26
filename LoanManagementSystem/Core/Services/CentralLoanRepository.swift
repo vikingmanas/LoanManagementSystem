@@ -1,132 +1,56 @@
 import Foundation
 import Combine
 import SwiftUI
-import Supabase
-import Auth
-import OSLog
+
+struct LoanDisbursementEvent: Identifiable, Hashable {
+    let id: UUID
+    var applicationId: UUID
+    var applicationNumber: String
+    var borrowerEmail: String
+    var borrowerName: String
+    var amount: Double
+    var accountNumber: String
+    var referenceNumber: String
+    var creditedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        applicationId: UUID,
+        applicationNumber: String,
+        borrowerEmail: String,
+        borrowerName: String,
+        amount: Double,
+        accountNumber: String,
+        referenceNumber: String,
+        creditedAt: Date
+    ) {
+        self.id = id
+        self.applicationId = applicationId
+        self.applicationNumber = applicationNumber
+        self.borrowerEmail = borrowerEmail
+        self.borrowerName = borrowerName
+        self.amount = amount
+        self.accountNumber = accountNumber
+        self.referenceNumber = referenceNumber
+        self.creditedAt = creditedAt
+    }
+}
 
 /// Centralized repository serving as the single source of truth for all loan applications.
 /// Bridges real-time state updates across the Customer, Loan Officer, and Manager portals.
 @MainActor
 final class CentralLoanRepository: ObservableObject {
     static let shared = CentralLoanRepository()
-    private let logger = Logger(subsystem: "galgotias.in.akash", category: "CentralLoanRepository")
-    
-    struct BorrowerRow: Codable {
-        let borrowerId: UUID
-    }
     
     @Published var applications: [BorrowerLoanApplication] = []
+    @Published var disbursementEvents: [LoanDisbursementEvent] = []
+    @Published var borrowerNotifications: [LMSNotification] = []
     
     private init() {
-        Task {
-            var userIdString = SupabaseManager.shared.client.auth.currentSession?.user.id.uuidString
-            
-            if userIdString == nil {
-                userIdString = await MainActor.run {
-                    BorrowerProfileStore.shared.profile?.id
-                }
-            }
-            
-            if userIdString == nil {
-                userIdString = "C-109482"
-            }
-            
-            guard let userIdRaw = userIdString else { return }
-            
-            var userId = userIdRaw
-            if UUID(uuidString: userIdRaw) == nil {
-                let cleaned = userIdRaw.filter { $0.isHexDigit || $0.isNumber }
-                let padded = (cleaned + "00000000000000000000000000000000").prefix(32)
-                let part1 = padded.prefix(8)
-                let part2 = padded.dropFirst(8).prefix(4)
-                let part3 = padded.dropFirst(12).prefix(4)
-                let part4 = padded.dropFirst(16).prefix(4)
-                let part5 = padded.dropFirst(20).prefix(12)
-                
-                userId = "\(part1)-\(part2)-\(part3)-\(part4)-\(part5)"
-            }
-            
-            if let userUUID = UUID(uuidString: userId) {
-                var resolvedBorrowerId = userUUID
-                
-                // Ensure borrower record exists in Supabase
-                do {
-                    let rows: [BorrowerRow] = try await SupabaseManager.shared.client
-                        .from("borrowers")
-                        .select("borrower_id")
-                        .eq("user_id", value: userId)
-                        .execute()
-                        .value
-                    
-                    if let firstRow = rows.first {
-                        resolvedBorrowerId = firstRow.borrowerId
-                    } else {
-                        print("CentralLoanRepository WARNING: No borrower record found for user_id: \(userId). Syncing...")
-                        let newBorrower: [String: String] = [
-                            "borrower_id": userId, // Defaulting borrower_id to user_id for simplicity on missing
-                            "user_id": userId,
-                            "kyc_status": "pending",
-                            "address": "",
-                            "date_of_birth": "1990-01-01",
-                            "pan_number": "PENDING123",
-                            "aadhaar_number": "000000000000"
-                        ]
-                        try? await SupabaseManager.shared.client
-                            .from("borrowers")
-                            .insert(newBorrower)
-                            .execute()
-                    }
-                } catch {
-                    print("CentralLoanRepository: Failed to query/sync borrowers table on start: \(error.localizedDescription)")
-                }
-                
-                await fetchApplicationsFromSupabase(borrowerId: resolvedBorrowerId)
-            }
-        }
+        loadPersistedState()
     }
     
     // MARK: - Core Operations
-    
-    /// Dynamically loads borrower applications from Supabase and populates the local state.
-    func fetchApplicationsFromSupabase(borrowerId: UUID) async {
-        var resolvedId = borrowerId
-        
-        // Try to resolve user_id to actual borrower_id
-        do {
-            let rows: [BorrowerRow] = try await SupabaseManager.shared.client
-                .from("borrowers")
-                .select("borrower_id")
-                .eq("user_id", value: borrowerId.uuidString)
-                .execute()
-                .value
-            
-            if let firstRow = rows.first {
-                resolvedId = firstRow.borrowerId
-                logger.info("CentralLoanRepository: Resolved fetch borrower_id to true database ID: \(resolvedId.uuidString)")
-            }
-        } catch {
-            logger.error("CentralLoanRepository: Error resolving borrower_id for fetch: \(error.localizedDescription)")
-        }
-        
-        do {
-            let dbApps = try await ApplicationService.shared.fetchApplications(borrowerId: resolvedId)
-            
-            var loadedApps: [BorrowerLoanApplication] = []
-            for dbApp in dbApps {
-                let matchingProduct = BorrowerLoanProduct.sampleProducts.first(where: { $0.id == dbApp.productId })
-                    ?? BorrowerLoanProduct.sampleProducts.first!
-                
-                let app = dbApp.toBorrowerApplication(product: matchingProduct)
-                loadedApps.append(app)
-            }
-            
-            self.applications = loadedApps
-            logger.info("CentralLoanRepository: Loaded \(loadedApps.count) applications from Supabase.")
-        } catch {
-            logger.error("CentralLoanRepository: Error fetching from Supabase: \(error.localizedDescription)")
-        }
-    }
     
     func submitApplication(_ app: BorrowerLoanApplication) {
         if let index = applications.firstIndex(where: { $0.id == app.id }) {
@@ -134,99 +58,13 @@ final class CentralLoanRepository: ObservableObject {
         } else {
             applications.insert(app, at: 0)
         }
-        persistApplicationToSupabase(app)
+        persistState()
     }
     
     func updateApplication(_ app: BorrowerLoanApplication) {
         if let index = applications.firstIndex(where: { $0.id == app.id }) {
             applications[index] = app
-        }
-        persistApplicationToSupabase(app)
-    }
-    
-    private func persistApplicationToSupabase(_ app: BorrowerLoanApplication) {
-        Task {
-            var userIdString = SupabaseManager.shared.client.auth.currentSession?.user.id.uuidString
-            
-            if userIdString == nil {
-                userIdString = await MainActor.run {
-                    BorrowerProfileStore.shared.profile?.id
-                }
-            }
-            
-            if userIdString == nil {
-                userIdString = "C-109482"
-                logger.info("CentralLoanRepository: Both auth and profile were nil, falling back to default mock ID: C-109482")
-            }
-            
-            guard let userIdRaw = userIdString else {
-                logger.error("CentralLoanRepository: Could not fetch logged in user ID to persist application (userIdString is nil)")
-                return
-            }
-            
-            var userId = userIdRaw
-            if UUID(uuidString: userIdRaw) == nil {
-                let cleaned = userIdRaw.filter { $0.isHexDigit || $0.isNumber }
-                let padded = (cleaned + "00000000000000000000000000000000").prefix(32)
-                let part1 = padded.prefix(8)
-                let part2 = padded.dropFirst(8).prefix(4)
-                let part3 = padded.dropFirst(12).prefix(4)
-                let part4 = padded.dropFirst(16).prefix(4)
-                let part5 = padded.dropFirst(20).prefix(12)
-                
-                userId = "\(part1)-\(part2)-\(part3)-\(part4)-\(part5)"
-                logger.info("CentralLoanRepository: Standardized non-UUID '\(userIdRaw)' to stable UUID format: '\(userId)'")
-            }
-            
-            guard let borrowerId = UUID(uuidString: userId) else {
-                logger.error("CentralLoanRepository Error: Standardized UUID '\(userId)' was still invalid.")
-                return
-            }
-            
-            // Query borrowers table to resolve the real borrower_id (since borrower_id != user_id)
-            
-            var resolvedBorrowerId = borrowerId
-            do {
-                let rows: [BorrowerRow] = try await SupabaseManager.shared.client
-                    .from("borrowers")
-                    .select("borrower_id")
-                    .eq("user_id", value: userId)
-                    .execute()
-                    .value
-                
-                if let firstRow = rows.first {
-                    resolvedBorrowerId = firstRow.borrowerId
-                    logger.info("CentralLoanRepository: Resolved real borrower_id: \(resolvedBorrowerId.uuidString) for user_id: \(userId)")
-                } else {
-                    logger.warning("CentralLoanRepository WARNING: No borrower record found for user_id: \(userId). Attempting sync...")
-                    let newBorrower: [String: String] = [
-                        "borrower_id": userId,
-                        "user_id": userId,
-                        "kyc_status": "pending",
-                        "address": "",
-                        "date_of_birth": "1990-01-01",
-                        "pan_number": "PENDING123",
-                        "aadhaar_number": "000000000000"
-                    ]
-                    try await SupabaseManager.shared.client
-                        .from("borrowers")
-                        .insert(newBorrower)
-                        .execute()
-                    
-                    resolvedBorrowerId = borrowerId
-                }
-            } catch {
-                logger.error("CentralLoanRepository: Failed to query borrowers table: \(error.localizedDescription)")
-            }
-            
-            let dbApp = DBLoanApplication.from(borrowerApplication: app, borrowerId: resolvedBorrowerId)
-            logger.info("CentralLoanRepository: Persisting app \(dbApp.applicationId) | borrower: \(dbApp.borrowerId) | product: \(dbApp.productId) | status: \(dbApp.status) | amount: \(dbApp.amountRequested)")
-            do {
-                try await ApplicationService.shared.upsertApplication(dbApp)
-                logger.info("CentralLoanRepository: ✅ Successfully persisted application \(dbApp.applicationId) to Supabase.")
-            } catch {
-                logger.error("CentralLoanRepository Error: Failed to persist application to Supabase: \(String(describing: error))")
-            }
+            persistState()
         }
     }
     
@@ -253,7 +91,7 @@ final class CentralLoanRepository: ObservableObject {
             // Recompute stage based on verification
             recomputeVerificationStage(app: &app)
             applications[index] = app
-            persistApplicationToSupabase(app)
+            persistState()
         }
     }
     
@@ -270,36 +108,78 @@ final class CentralLoanRepository: ObservableObject {
             )
         )
         applications[index] = app
-        persistApplicationToSupabase(app)
+        persistState()
     }
     
-    func approveApplication(id: UUID, remarks: String) {
-        guard let index = applications.firstIndex(where: { $0.id == id }) else { return }
+    @discardableResult
+    func approveApplication(id: UUID, remarks: String) -> Bool {
+        guard let index = applicationIndex(for: id) else { return false }
         var app = applications[index]
+        guard app.currentStage == .bankManagerReview else { return false }
+
+        let approvedAmount = app.formData.requestedAmountValue
+        guard approvedAmount > 0 else { return false }
+
+        let referenceNumber = "DISB\(Int.random(in: 100000...999999))"
+        let trimmedRemarks = remarks.trimmingCharacters(in: .whitespacesAndNewlines)
+        let approvalNote = trimmedRemarks.isEmpty ? "Approved by Branch Manager." : trimmedRemarks
+
         app.currentStage = .approved
         app.updatedAt = Date()
         app.stageHistory.append(
             BorrowerStageEntry(
                 stage: .approved,
                 timestamp: Date(),
-                note: remarks.isEmpty ? "Approved by Branch Manager." : remarks
-            )
-        )
-        // Automatically disburse for live flow
-        app.currentStage = .disbursed
-        app.stageHistory.append(
-            BorrowerStageEntry(
-                stage: .disbursed,
-                timestamp: Date(),
-                note: "Loan amount disbursed to linked savings account."
+                note: "\(approvalNote) Loan amount \(CurrencyFormatter.shared.format(approvedAmount)) credited to OD account. Ref: \(referenceNumber)."
             )
         )
         applications[index] = app
-        persistApplicationToSupabase(app)
+
+        let borrowerEmail = app.formData.emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let applicationNumber = app.applicationId ?? app.displayIdentifier
+        let odAccountNumber = BorrowerProfileStore.shared.provisionODAccountForApprovedLoan(
+            email: borrowerEmail,
+            applicationId: app.id,
+            applicationNumber: applicationNumber,
+            borrowerName: app.formData.fullName,
+            sanctionedAmount: approvedAmount
+        ) ?? creditedAccountNumber(for: app)
+
+        app.stageHistory[app.stageHistory.count - 1].note += " OD account \(maskedAccountNumber(odAccountNumber)) opened for EMI deductions."
+        applications[index] = app
+
+        let event = LoanDisbursementEvent(
+            applicationId: app.id,
+            applicationNumber: applicationNumber,
+            borrowerEmail: borrowerEmail,
+            borrowerName: app.formData.fullName,
+            amount: approvedAmount,
+            accountNumber: odAccountNumber,
+            referenceNumber: referenceNumber,
+            creditedAt: Date()
+        )
+
+        if !disbursementEvents.contains(where: { $0.applicationId == event.applicationId }) {
+            disbursementEvents.insert(event, at: 0)
+        }
+
+        borrowerNotifications.insert(
+            LMSNotification(
+                title: "Loan Approved",
+                body: "Your loan \(event.applicationNumber) is approved. \(CurrencyFormatter.shared.format(approvedAmount)) has been credited to OD account \(maskedAccountNumber(odAccountNumber)) for EMI deductions.",
+                timestamp: event.creditedAt,
+                icon: "checkmark.seal.fill",
+                tint: LMSColors.emerald
+            ),
+            at: 0
+        )
+
+        persistState()
+        return true
     }
     
     func rejectApplication(id: UUID, remarks: String) {
-        guard let index = applications.firstIndex(where: { $0.id == id }) else { return }
+        guard let index = applicationIndex(for: id) else { return }
         var app = applications[index]
         app.currentStage = .rejected
         app.updatedAt = Date()
@@ -311,11 +191,11 @@ final class CentralLoanRepository: ObservableObject {
             )
         )
         applications[index] = app
-        persistApplicationToSupabase(app)
+        persistState()
     }
     
     func sendBackApplication(id: UUID, remarks: String) {
-        guard let index = applications.firstIndex(where: { $0.id == id }) else { return }
+        guard let index = applicationIndex(for: id) else { return }
         var app = applications[index]
         app.currentStage = .underReview
         app.updatedAt = Date()
@@ -327,10 +207,17 @@ final class CentralLoanRepository: ObservableObject {
             )
         )
         applications[index] = app
-        persistApplicationToSupabase(app)
+        persistState()
     }
     
     // MARK: - Private Helpers
+
+    private func applicationIndex(for id: UUID) -> Int? {
+        if let index = applications.firstIndex(where: { $0.id == id }) {
+            return index
+        }
+        return nil
+    }
     
     private func recomputeVerificationStage(app: inout BorrowerLoanApplication) {
         let docs = app.documents
@@ -347,6 +234,28 @@ final class CentralLoanRepository: ObservableObject {
             app.currentStage = .underReview
         }
         app.updatedAt = Date()
+    }
+
+    private func creditedAccountNumber(for app: BorrowerLoanApplication) -> String {
+        let email = app.formData.emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let profile = BorrowerProfileStore.shared.borrowerProfile(matchingEmail: email)
+            ?? BorrowerProfileStore.shared.profile
+
+        if let linkedAccount = profile?.linkedAccounts?.first {
+            return linkedAccount.accountNumber
+        }
+
+        if let accountNumber = profile?.bankDetails.accountNumber,
+           !accountNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return accountNumber
+        }
+
+        return "0000000000"
+    }
+
+    private func maskedAccountNumber(_ accountNumber: String) -> String {
+        let suffix = String(accountNumber.suffix(4))
+        return "•••• \(suffix.isEmpty ? "0000" : suffix)"
     }
     
     // MARK: - Mapping Helpers
@@ -387,6 +296,7 @@ final class CentralLoanRepository: ObservableObject {
         }
         
         let sentToManagerDate = app.stageHistory.first(where: { $0.stage == .bankManagerReview })?.timestamp
+        let assignedOfficerId = UUID(uuidString: "00000000-0000-0000-0000-000000000002") ?? app.id
         
         return OfficerLoanApplication(
             id: app.id,
@@ -398,7 +308,7 @@ final class CentralLoanRepository: ObservableObject {
             status: officerStatus,
             submittedDate: app.submittedAt ?? Date(),
             lastUpdatedDate: app.updatedAt,
-            assignedOfficerId: UUID(),
+            assignedOfficerId: assignedOfficerId,
             documents: app.documents.map { mapToLoanDocument(from: $0) },
             notes: app.formData.loanPurpose.isEmpty ? "General financing requirement" : app.formData.loanPurpose,
             branch: "Main Branch",
@@ -435,6 +345,9 @@ final class CentralLoanRepository: ObservableObject {
         
         let initials = app.formData.fullName.components(separatedBy: " ").compactMap { $0.first }.map { String($0) }.joined().uppercased()
         
+        let assignedOfficerName = app.assignedQueue ?? "Loan Officer Queue"
+        let assignedOfficerId = UUID(uuidString: "00000000-0000-0000-0000-000000000001") ?? app.id
+
         return ManagerApplicant(
             id: app.id,
             applicationId: app.applicationId ?? "APP-2026-\(app.id.uuidString.prefix(4))",
@@ -445,13 +358,13 @@ final class CentralLoanRepository: ObservableObject {
             cibilScore: app.formData.creditScoreValue > 0 ? app.formData.creditScoreValue : 750,
             status: status,
             riskLevel: app.formData.creditScoreValue >= 750 ? .low : (app.formData.creditScoreValue >= 650 ? .medium : .high),
-            assignedOfficer: "Officer Arjun",
-            assignedOfficerId: UUID(),
+            assignedOfficer: assignedOfficerName,
+            assignedOfficerId: assignedOfficerId,
             submissionDate: app.submittedAt ?? Date(),
             documents: app.documents.map { mapToManagerDocument(from: $0) },
-            officerRemarks: "All required KYC and income documents successfully verified. Profile is strong. Recommended for immediate approval.",
-            managerRemarks: "",
-            verificationProgress: 1.0,
+            officerRemarks: app.stageHistory.last(where: { $0.stage == .bankManagerReview })?.note ?? "Forwarded for manager approval after officer review.",
+            managerRemarks: app.stageHistory.last(where: { $0.stage == .approved })?.note ?? "",
+            verificationProgress: app.documents.isEmpty ? 0 : Double(app.documents.filter { $0.status == .verified }.count) / Double(app.documents.count),
             tenure: app.formData.preferredTenureMonths,
             interestRate: 10.5
         )
@@ -504,5 +417,21 @@ final class CentralLoanRepository: ObservableObject {
             type: item.category.rawValue,
             status: status
         )
+    }
+
+    private func loadPersistedState() {
+        let restoredApplications = LoanApplicationPersistence.loadApplications()
+        if !restoredApplications.isEmpty {
+            applications = restoredApplications
+        }
+        let restoredDisbursements = LoanApplicationPersistence.loadDisbursements()
+        if !restoredDisbursements.isEmpty {
+            disbursementEvents = restoredDisbursements
+        }
+    }
+
+    private func persistState() {
+        LoanApplicationPersistence.saveApplications(applications)
+        LoanApplicationPersistence.saveDisbursements(disbursementEvents)
     }
 }

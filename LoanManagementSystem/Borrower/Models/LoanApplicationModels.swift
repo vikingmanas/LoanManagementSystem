@@ -1021,3 +1021,4 @@ private extension String {
         return Double(filtered) ?? 0
     }
 }
+
