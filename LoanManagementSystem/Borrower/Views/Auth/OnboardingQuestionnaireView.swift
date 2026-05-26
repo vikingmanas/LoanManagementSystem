@@ -203,7 +203,7 @@ struct OnboardingQuestionnaireView: View {
                 
                 if showInsightCard, let profile = profileStore.profile {
                     Section(header: Text("Account Insights")) {
-                        CustomerInsightCardView(profile: profile)
+                        LMSAccountInsightCardView(profile: profile)
                             .listRowInsets(EdgeInsets())
                     }
                 }
