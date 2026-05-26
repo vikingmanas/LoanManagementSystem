@@ -121,8 +121,23 @@ class BorrowerProfileStore: ObservableObject {
 
     func fetchProfileFromSupabase(uid: String, email: String, name: String? = nil, phone: String? = nil, alternatePhone: String? = nil) async {
         do {
+            var resolvedUid = uid
+            if UUID(uuidString: uid) == nil {
+                let cleaned = uid.filter { $0.isHexDigit || $0.isNumber }
+                let padded = (cleaned + "00000000000000000000000000000000").prefix(32)
+                let part1 = padded.prefix(8)
+                let part2 = padded.dropFirst(8).prefix(4)
+                let part3 = padded.dropFirst(12).prefix(4)
+                let part4 = padded.dropFirst(16).prefix(4)
+                let part5 = padded.dropFirst(20).prefix(12)
+                resolvedUid = "\(part1)-\(part2)-\(part3)-\(part4)-\(part5)"
+            }
+            
             if let decodedProfile = try await DatabaseService.shared.fetchProfile(userId: uid) {
                 self.profile = decodedProfile
+                if let borrowerId = UUID(uuidString: resolvedUid) {
+                    await CentralLoanRepository.shared.fetchApplicationsFromSupabase(borrowerId: borrowerId)
+                }
             } else {
                 // If it successfully returns nil, it means the query executed successfully but no profile exists.
                 // In this case, we create a new blank profile and upsert it.
@@ -137,6 +152,9 @@ class BorrowerProfileStore: ObservableObject {
                 newProfile.id = uid
                 self.profile = newProfile
                 try? await DatabaseService.shared.updateProfile(newProfile)
+                if let borrowerId = UUID(uuidString: resolvedUid) {
+                    await CentralLoanRepository.shared.fetchApplicationsFromSupabase(borrowerId: borrowerId)
+                }
             }
             self.currentEmail = email
         } catch {

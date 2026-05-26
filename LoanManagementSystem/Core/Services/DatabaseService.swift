@@ -43,7 +43,19 @@ final class DatabaseService {
         saveProfileLocally(profile, userId: profile.id)
         
         // 1. Ensure user exists in users table first (snake_case) to satisfy foreign key constraint
-        if let userId = UUID(uuidString: profile.id) {
+        var userIdStr = profile.id
+        if UUID(uuidString: userIdStr) == nil {
+            let cleaned = userIdStr.filter { $0.isHexDigit || $0.isNumber }
+            let padded = (cleaned + "00000000000000000000000000000000").prefix(32)
+            let part1 = padded.prefix(8)
+            let part2 = padded.dropFirst(8).prefix(4)
+            let part3 = padded.dropFirst(12).prefix(4)
+            let part4 = padded.dropFirst(16).prefix(4)
+            let part5 = padded.dropFirst(20).prefix(12)
+            userIdStr = "\(part1)-\(part2)-\(part3)-\(part4)-\(part5)"
+        }
+        
+        if let userId = UUID(uuidString: userIdStr) {
             let userUpsert: [String: String] = [
                 "id": userId.uuidString,
                 "email": profile.email,

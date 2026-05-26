@@ -1,18 +1,132 @@
 import Foundation
 import Combine
 import SwiftUI
+import Supabase
+import Auth
+import OSLog
 
 /// Centralized repository serving as the single source of truth for all loan applications.
 /// Bridges real-time state updates across the Customer, Loan Officer, and Manager portals.
 @MainActor
 final class CentralLoanRepository: ObservableObject {
     static let shared = CentralLoanRepository()
+    private let logger = Logger(subsystem: "galgotias.in.akash", category: "CentralLoanRepository")
+    
+    struct BorrowerRow: Codable {
+        let borrowerId: UUID
+    }
     
     @Published var applications: [BorrowerLoanApplication] = []
     
-    private init() {}
+    private init() {
+        Task {
+            var userIdString = SupabaseManager.shared.client.auth.currentSession?.user.id.uuidString
+            
+            if userIdString == nil {
+                userIdString = await MainActor.run {
+                    BorrowerProfileStore.shared.profile?.id
+                }
+            }
+            
+            if userIdString == nil {
+                userIdString = "C-109482"
+            }
+            
+            guard let userIdRaw = userIdString else { return }
+            
+            var userId = userIdRaw
+            if UUID(uuidString: userIdRaw) == nil {
+                let cleaned = userIdRaw.filter { $0.isHexDigit || $0.isNumber }
+                let padded = (cleaned + "00000000000000000000000000000000").prefix(32)
+                let part1 = padded.prefix(8)
+                let part2 = padded.dropFirst(8).prefix(4)
+                let part3 = padded.dropFirst(12).prefix(4)
+                let part4 = padded.dropFirst(16).prefix(4)
+                let part5 = padded.dropFirst(20).prefix(12)
+                
+                userId = "\(part1)-\(part2)-\(part3)-\(part4)-\(part5)"
+            }
+            
+            if let userUUID = UUID(uuidString: userId) {
+                var resolvedBorrowerId = userUUID
+                
+                // Ensure borrower record exists in Supabase
+                do {
+                    let rows: [BorrowerRow] = try await SupabaseManager.shared.client
+                        .from("borrowers")
+                        .select("borrower_id")
+                        .eq("user_id", value: userId)
+                        .execute()
+                        .value
+                    
+                    if let firstRow = rows.first {
+                        resolvedBorrowerId = firstRow.borrowerId
+                    } else {
+                        print("CentralLoanRepository WARNING: No borrower record found for user_id: \(userId). Syncing...")
+                        let newBorrower: [String: String] = [
+                            "borrower_id": userId, // Defaulting borrower_id to user_id for simplicity on missing
+                            "user_id": userId,
+                            "kyc_status": "pending",
+                            "address": "",
+                            "date_of_birth": "1990-01-01",
+                            "pan_number": "PENDING123",
+                            "aadhaar_number": "000000000000"
+                        ]
+                        try? await SupabaseManager.shared.client
+                            .from("borrowers")
+                            .insert(newBorrower)
+                            .execute()
+                    }
+                } catch {
+                    print("CentralLoanRepository: Failed to query/sync borrowers table on start: \(error.localizedDescription)")
+                }
+                
+                await fetchApplicationsFromSupabase(borrowerId: resolvedBorrowerId)
+            }
+        }
+    }
     
     // MARK: - Core Operations
+    
+    /// Dynamically loads borrower applications from Supabase and populates the local state.
+    func fetchApplicationsFromSupabase(borrowerId: UUID) async {
+        var resolvedId = borrowerId
+        
+        // Try to resolve user_id to actual borrower_id
+        do {
+            let rows: [BorrowerRow] = try await SupabaseManager.shared.client
+                .from("borrowers")
+                .select("borrower_id")
+                .eq("user_id", value: borrowerId.uuidString)
+                .execute()
+                .value
+            
+            if let firstRow = rows.first {
+                resolvedId = firstRow.borrowerId
+                logger.info("CentralLoanRepository: Resolved fetch borrower_id to true database ID: \(resolvedId.uuidString)")
+            }
+        } catch {
+            logger.error("CentralLoanRepository: Error resolving borrower_id for fetch: \(error.localizedDescription)")
+        }
+        
+        do {
+            let dbApps = try await ApplicationService.shared.fetchApplications(borrowerId: resolvedId)
+            
+            var loadedApps: [BorrowerLoanApplication] = []
+            for dbApp in dbApps {
+                let matchingProduct = BorrowerLoanProduct.sampleProducts.first(where: { $0.id == dbApp.productId })
+                    ?? BorrowerLoanProduct.sampleProducts.first!
+                
+                let app = dbApp.toBorrowerApplication(product: matchingProduct)
+                loadedApps.append(app)
+            }
+            
+            self.applications = loadedApps
+            logger.info("CentralLoanRepository: Loaded \(loadedApps.count) applications from Supabase.")
+        } catch {
+            logger.error("CentralLoanRepository: Error fetching from Supabase: \(error.localizedDescription)")
+        }
+    }
     
     func submitApplication(_ app: BorrowerLoanApplication) {
         if let index = applications.firstIndex(where: { $0.id == app.id }) {
@@ -20,11 +134,99 @@ final class CentralLoanRepository: ObservableObject {
         } else {
             applications.insert(app, at: 0)
         }
+        persistApplicationToSupabase(app)
     }
     
     func updateApplication(_ app: BorrowerLoanApplication) {
         if let index = applications.firstIndex(where: { $0.id == app.id }) {
             applications[index] = app
+        }
+        persistApplicationToSupabase(app)
+    }
+    
+    private func persistApplicationToSupabase(_ app: BorrowerLoanApplication) {
+        Task {
+            var userIdString = SupabaseManager.shared.client.auth.currentSession?.user.id.uuidString
+            
+            if userIdString == nil {
+                userIdString = await MainActor.run {
+                    BorrowerProfileStore.shared.profile?.id
+                }
+            }
+            
+            if userIdString == nil {
+                userIdString = "C-109482"
+                logger.info("CentralLoanRepository: Both auth and profile were nil, falling back to default mock ID: C-109482")
+            }
+            
+            guard let userIdRaw = userIdString else {
+                logger.error("CentralLoanRepository: Could not fetch logged in user ID to persist application (userIdString is nil)")
+                return
+            }
+            
+            var userId = userIdRaw
+            if UUID(uuidString: userIdRaw) == nil {
+                let cleaned = userIdRaw.filter { $0.isHexDigit || $0.isNumber }
+                let padded = (cleaned + "00000000000000000000000000000000").prefix(32)
+                let part1 = padded.prefix(8)
+                let part2 = padded.dropFirst(8).prefix(4)
+                let part3 = padded.dropFirst(12).prefix(4)
+                let part4 = padded.dropFirst(16).prefix(4)
+                let part5 = padded.dropFirst(20).prefix(12)
+                
+                userId = "\(part1)-\(part2)-\(part3)-\(part4)-\(part5)"
+                logger.info("CentralLoanRepository: Standardized non-UUID '\(userIdRaw)' to stable UUID format: '\(userId)'")
+            }
+            
+            guard let borrowerId = UUID(uuidString: userId) else {
+                logger.error("CentralLoanRepository Error: Standardized UUID '\(userId)' was still invalid.")
+                return
+            }
+            
+            // Query borrowers table to resolve the real borrower_id (since borrower_id != user_id)
+            
+            var resolvedBorrowerId = borrowerId
+            do {
+                let rows: [BorrowerRow] = try await SupabaseManager.shared.client
+                    .from("borrowers")
+                    .select("borrower_id")
+                    .eq("user_id", value: userId)
+                    .execute()
+                    .value
+                
+                if let firstRow = rows.first {
+                    resolvedBorrowerId = firstRow.borrowerId
+                    logger.info("CentralLoanRepository: Resolved real borrower_id: \(resolvedBorrowerId.uuidString) for user_id: \(userId)")
+                } else {
+                    logger.warning("CentralLoanRepository WARNING: No borrower record found for user_id: \(userId). Attempting sync...")
+                    let newBorrower: [String: String] = [
+                        "borrower_id": userId,
+                        "user_id": userId,
+                        "kyc_status": "pending",
+                        "address": "",
+                        "date_of_birth": "1990-01-01",
+                        "pan_number": "PENDING123",
+                        "aadhaar_number": "000000000000"
+                    ]
+                    try await SupabaseManager.shared.client
+                        .from("borrowers")
+                        .insert(newBorrower)
+                        .execute()
+                    
+                    resolvedBorrowerId = borrowerId
+                }
+            } catch {
+                logger.error("CentralLoanRepository: Failed to query borrowers table: \(error.localizedDescription)")
+            }
+            
+            let dbApp = DBLoanApplication.from(borrowerApplication: app, borrowerId: resolvedBorrowerId)
+            logger.info("CentralLoanRepository: Persisting app \(dbApp.applicationId) | borrower: \(dbApp.borrowerId) | product: \(dbApp.productId) | status: \(dbApp.status) | amount: \(dbApp.amountRequested)")
+            do {
+                try await ApplicationService.shared.upsertApplication(dbApp)
+                logger.info("CentralLoanRepository: ✅ Successfully persisted application \(dbApp.applicationId) to Supabase.")
+            } catch {
+                logger.error("CentralLoanRepository Error: Failed to persist application to Supabase: \(String(describing: error))")
+            }
         }
     }
     
@@ -51,6 +253,7 @@ final class CentralLoanRepository: ObservableObject {
             // Recompute stage based on verification
             recomputeVerificationStage(app: &app)
             applications[index] = app
+            persistApplicationToSupabase(app)
         }
     }
     
@@ -67,6 +270,7 @@ final class CentralLoanRepository: ObservableObject {
             )
         )
         applications[index] = app
+        persistApplicationToSupabase(app)
     }
     
     func approveApplication(id: UUID, remarks: String) {
@@ -91,6 +295,7 @@ final class CentralLoanRepository: ObservableObject {
             )
         )
         applications[index] = app
+        persistApplicationToSupabase(app)
     }
     
     func rejectApplication(id: UUID, remarks: String) {
@@ -106,6 +311,7 @@ final class CentralLoanRepository: ObservableObject {
             )
         )
         applications[index] = app
+        persistApplicationToSupabase(app)
     }
     
     func sendBackApplication(id: UUID, remarks: String) {
@@ -121,6 +327,7 @@ final class CentralLoanRepository: ObservableObject {
             )
         )
         applications[index] = app
+        persistApplicationToSupabase(app)
     }
     
     // MARK: - Private Helpers
