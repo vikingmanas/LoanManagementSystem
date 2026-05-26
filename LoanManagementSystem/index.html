@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Password</title>
+  <!-- Load Supabase JS from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f3f4f6; margin: 0; }
+    .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 320px; }
+    h2 { margin-top: 0; color: #111827; }
+    label { font-size: 0.875rem; color: #374151; font-weight: 500; }
+    input { width: 100%; padding: 0.5rem; margin-top: 0.5rem; margin-bottom: 1rem; border: 1px solid #d1d5db; border-radius: 4px; box-sizing: border-box; }
+    button { width: 100%; padding: 0.75rem; background-color: #2563eb; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+    button:hover { background-color: #1d4ed8; }
+    #message { margin-top: 1rem; font-size: 0.875rem; text-align: center; font-weight: 500; }
+    .error { color: #ef4444; }
+    .success { color: #10b981; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Set New Password</h2>
+    <form id="reset-form">
+      <label for="password">New Password</label>
+      <input type="password" id="password" required minlength="6" placeholder="Enter new password">
+      <label for="confirm-password">Confirm New Password</label>
+      <input type="password" id="confirm-password" required minlength="6" placeholder="Confirm new password">
+      <button type="submit">Update Password</button>
+    </form>
+    <div id="message"></div>
+  </div>
+
+  <script>
+    // Initialized with your specific Supabase credentials
+    const supabaseUrl = 'https://zufrhozjfmvvucswmudj.supabase.co';
+    const supabaseKey = 'sb_publishable_C8TSNkIM4-1f4zJuPTeqYA_bTEGFtFe';
+    const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+    const form = document.getElementById('reset-form');
+    const messageDiv = document.getElementById('message');
+
+    // Wait for Supabase to parse the URL hash and set up the session
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('Recovery session detected.');
+      }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault(); // Stop page reload
+      
+      try {
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+        
+        if (password !== confirmPassword) {
+          messageDiv.textContent = 'Error: Passwords do not match.';
+          messageDiv.className = 'error';
+          return;
+        }
+        
+        messageDiv.textContent = 'Updating password...';
+        messageDiv.className = '';
+        
+        // 1. Check if Supabase passed an explicit error in the URL (e.g. expired link)
+        const hash = window.location.hash;
+        if (hash && hash.includes('error=')) {
+           // Hash looks like #error=unauthorized_client&error_description=Email+link+is+invalid+or+has+expired
+           const params = new URLSearchParams(hash.substring(1));
+           const errDesc = params.get('error_description') || 'Unknown link error';
+           messageDiv.textContent = 'Error from server: ' + errDesc.replace(/\+/g, ' ');
+           messageDiv.className = 'error';
+           return;
+        }
+        
+        // Ensure a session exists before trying to update
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) {
+           messageDiv.textContent = 'Error: No auth session found. If you opened this from an email, the link might be expired or already used. Please request a NEW link and make sure to open the latest email.';
+           messageDiv.className = 'error';
+           return;
+        }
+        
+        // Update the user's password
+        const { data, error } = await supabaseClient.auth.updateUser({
+          password: password
+        });
+
+        if (error) {
+          messageDiv.textContent = 'Error: ' + error.message;
+          messageDiv.className = 'error';
+        } else {
+          messageDiv.textContent = 'Password updated successfully! You can close this window and log in to the iOS app.';
+          messageDiv.className = 'success';
+          form.reset();
+        }
+      } catch (err) {
+        messageDiv.textContent = 'Unexpected error: ' + err.message;
+        messageDiv.className = 'error';
+      }
+    });
+  </script>
+</body>
+</html>

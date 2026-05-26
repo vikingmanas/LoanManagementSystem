@@ -242,6 +242,9 @@ final class AuthManager: ObservableObject {
         if errDesc.localizedCaseInsensitiveContains("invalid login credentials") ||
            errDesc.localizedCaseInsensitiveContains("invalid credentials") {
             return "Incorrect email or password. Please try again."
+        } else if errDesc.localizedCaseInsensitiveContains("email address") && errDesc.localizedCaseInsensitiveContains("is invalid") {
+            // Supabase returns this when the email is not found in auth.users (even if it's in public.users)
+            return "You are not registered."
         } else if errDesc.localizedCaseInsensitiveContains("email already in use") ||
                   errDesc.localizedCaseInsensitiveContains("user already exists") ||
                   errDesc.localizedCaseInsensitiveContains("already registered") {

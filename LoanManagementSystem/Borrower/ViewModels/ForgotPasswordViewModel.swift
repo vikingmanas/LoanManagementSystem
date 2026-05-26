@@ -28,9 +28,21 @@ class ForgotPasswordViewModel: ObservableObject {
         }
 
         isLoading = true
-        let success = await authManager.resetPassword(email: cleanedEmail)
+        
+        // 1. Verify if the email is actually registered in the database
+        let isRegistered = await AuthService.shared.isEmailRegistered(cleanedEmail)
+        
+        if isRegistered {
+            // 2. If registered, proceed to send the reset link
+            let success = await authManager.resetPassword(email: cleanedEmail)
+            showSuccessMessage = success
+            errorMessage = success ? "" : (authManager.errorMessage ?? "Unable to send reset link. Please try again.")
+        } else {
+            // 3. If not registered, show the requested error message
+            showSuccessMessage = false
+            errorMessage = "You are not registered."
+        }
+        
         isLoading = false
-        showSuccessMessage = success
-        errorMessage = success ? "" : (authManager.errorMessage ?? "Unable to send reset link. Please try again.")
     }
 }
