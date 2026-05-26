@@ -172,6 +172,24 @@ final class AuthManager: ObservableObject {
             return false
         }
     }
+    
+    // MARK: - Update Password
+    /// Updates the password for the currently signed-in user.
+    @discardableResult
+    func updatePassword(newPassword: String) async -> Bool {
+        clearError()
+        isLoading = true
+
+        do {
+            try await AuthService.shared.updatePassword(newPassword: newPassword)
+            self.isLoading = false
+            return true
+        } catch {
+            self.errorMessage = mapSupabaseError(error)
+            self.isLoading = false
+            return false
+        }
+    }
 
     // MARK: - Helpers
 
