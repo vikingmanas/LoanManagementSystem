@@ -9,17 +9,6 @@ struct HistoryTabView: View {
         NavigationStack {
             VStack(spacing: 0) {
 
-                HStack(alignment: .center) {
-                    Text("History")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(LMSColors.brandNavy)
-                    Spacer()
-                }
-                .padding(.horizontal, LMSSpacing.screenHorizontal)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-                .background(LMSColors.background)
-
 
                 if !viewModel.bankAccounts.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -147,34 +136,41 @@ struct HistoryTabView: View {
                     Text("Recent Transactions")
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundStyle(LMSColors.brandNavy)
-
                     Spacer()
-
-                    Menu {
-                        Button("All Transactions") { transactionFilter = nil }
-                        Divider()
-                        Button("EMI Payments") { transactionFilter = .emiPayment }
-                        Button("Credits") { transactionFilter = .credit }
-                        Button("Penalties") { transactionFilter = .penalty }
-                        Button("Refunds") { transactionFilter = .refund }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(transactionFilter == nil ? "Filter" : transactionFilter!.rawValue)
-                                .font(.system(size: 13, weight: .semibold))
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 9, weight: .bold))
-                        }
-                        .foregroundStyle(LMSColors.brandNavy)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(LMSColors.surface, in: Capsule())
-                        .overlay(Capsule().stroke(LMSColors.separatorLight, lineWidth: 0.5))
-                    }
                 }
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
                 .padding(.top, 16)
                 .padding(.bottom, 8)
                 .background(LMSColors.background)
+
+                if let filter = transactionFilter {
+                    HStack {
+                        HStack(spacing: 6) {
+                            Text(filter.rawValue)
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundStyle(Color.blue)
+                            
+                            Button(action: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                                    transactionFilter = nil
+                                }
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(Color.blue.opacity(0.6))
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.blue.opacity(0.12), in: Capsule())
+                        .padding(.horizontal, LMSSpacing.screenHorizontal)
+                        .padding(.bottom, 8)
+                        .transition(.scale.combined(with: .opacity))
+                        
+                        Spacer()
+                    }
+                    .background(LMSColors.background)
+                }
 
                 if viewModel.isLoading {
                     ScrollView {
@@ -240,14 +236,32 @@ struct HistoryTabView: View {
                     }
                 }
             }
+            .navigationTitle("History")
+            .navigationBarTitleDisplayMode(.large)
             .lmsScreenBackground()
-            .hideNavigationBar()
             .refreshable {
                 await viewModel.fetchDashboardData()
             }
             .task {
                 if viewModel.isLoading {
                     await viewModel.fetchDashboardData()
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button("All Transactions") { transactionFilter = nil }
+                        Divider()
+                        Button("EMI Payments") { transactionFilter = .emiPayment }
+                        Button("Credits") { transactionFilter = .credit }
+                        Button("Penalties") { transactionFilter = .penalty }
+                        Button("Refunds") { transactionFilter = .refund }
+                    } label: {
+                        Image(systemName: "line.3.horizontal.decrease")
+                            .font(.system(size: 18, weight: .regular))
+                            .foregroundStyle(LMSColors.brandNavy)
+                            .padding(4)
+                    }
                 }
             }
         }
