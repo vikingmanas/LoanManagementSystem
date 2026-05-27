@@ -18,6 +18,7 @@ struct StoredLoanApplication: Codable {
     var assignedQueue: String?
     var outstandingBalance: Double
     var upcomingEMI: Double
+    var documents: [BorrowerLoanDocumentItem]?
 }
 
 struct StoredLoanFormData: Codable {
@@ -184,7 +185,8 @@ enum LoanApplicationPersistence {
             updatedAt: app.updatedAt,
             assignedQueue: app.assignedQueue,
             outstandingBalance: app.outstandingBalance,
-            upcomingEMI: app.upcomingEMI
+            upcomingEMI: app.upcomingEMI,
+            documents: app.documents
         )
     }
 
@@ -234,7 +236,7 @@ enum LoanApplicationPersistence {
             applicationId: stored.applicationId,
             product: product,
             formData: formData,
-            documents: BorrowerLoanDocumentItem.defaultRequirements(for: product),
+            documents: stored.documents ?? BorrowerLoanDocumentItem.defaultRequirements(for: product),
             currentStage: stage,
             stageHistory: history.isEmpty ? [BorrowerStageEntry(stage: stage, timestamp: stored.updatedAt, note: "Restored application")] : history,
             submittedAt: stored.submittedAt,
