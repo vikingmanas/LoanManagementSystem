@@ -34,6 +34,12 @@ struct MainTabView: View {
                     Label("Dashboard", systemImage: "house.fill")
                 }
                 .tag(BorrowerTab.dashboard)
+            
+            BorrowerApplicationsTabView(viewModel: loanApplicationViewModel)
+                .tabItem {
+                    Label("Applications", systemImage: "tray.full.fill")
+                }
+                .tag(BorrowerTab.applications)
 
             LoanApplicationTabView(viewModel: loanApplicationViewModel)
                 .tabItem {
@@ -41,11 +47,7 @@ struct MainTabView: View {
                 }
                 .tag(BorrowerTab.loans)
 
-            BorrowerApplicationsTabView(viewModel: loanApplicationViewModel)
-                .tabItem {
-                    Label("Applications", systemImage: "tray.full.fill")
-                }
-                .tag(BorrowerTab.applications)
+            
 
         }
         .tint(LMSColors.brandNavy)
