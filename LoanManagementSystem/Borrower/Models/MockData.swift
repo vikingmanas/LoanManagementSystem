@@ -27,6 +27,24 @@ extension Double {
         formatter.maximumFractionDigits = 0
         return formatter.string(from: NSNumber(value: self)) ?? "₹\(Int(self))"
     }
+
+    public func formattedAsCompactINR() -> String {
+        let absoluteValue = abs(self)
+        let sign = self < 0 ? "-" : ""
+
+        if absoluteValue >= 100_000 {
+            return "\(sign)₹\((absoluteValue / 100_000).formattedCompactNumber()) L"
+        }
+
+        return formattedAsINR()
+    }
+
+    private func formattedCompactNumber() -> String {
+        let formatter = NumberFormatter()
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = self >= 10 ? 0 : 1
+        return formatter.string(from: NSNumber(value: self)) ?? "\(self)"
+    }
 }
 
 extension Date {

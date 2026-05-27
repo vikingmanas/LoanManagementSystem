@@ -10,6 +10,7 @@ struct ManagerApplicantActionSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var remarks = ""
     @State private var isProcessing = false
+    @State private var validationMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -78,6 +79,15 @@ struct ManagerApplicantActionSheet: View {
                             RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
                                 .stroke(LMSColors.separatorLight, lineWidth: 0.5)
                         )
+                        .onChange(of: remarks) { _, _ in
+                            validationMessage = nil
+                        }
+
+                    if let validationMessage {
+                        Text(validationMessage)
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundStyle(LMSColors.coral)
+                    }
                 }
 
                 Spacer()
@@ -119,7 +129,9 @@ struct ManagerApplicantActionSheet: View {
 
 
     private func performAction() {
-        guard !remarks.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || actionType == .escalate else {
+        let trimmedRemarks = remarks.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedRemarks.isEmpty || actionType == .escalate else {
+            validationMessage = "Please enter remarks before confirming."
             HapticsManager.triggerNotification(type: .warning)
             return
         }
@@ -127,24 +139,31 @@ struct ManagerApplicantActionSheet: View {
         isProcessing = true
         HapticsManager.triggerImpact(style: .heavy)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            switch actionType {
-            case .approve:
-                viewModel.approveApplicant(applicant.id, remarks: remarks)
-            case .reject:
-                viewModel.rejectApplicant(applicant.id, remarks: remarks)
-            case .sendBack:
-                viewModel.sendBackApplicant(applicant.id, remarks: remarks)
-            case .escalate:
-                viewModel.escalateApplicant(applicant.id)
-            }
-
-            isProcessing = false
-            dismiss()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                onComplete()
-            }
+        let succeeded: Bool
+        switch actionType {
+        case .approve:
+            succeeded = viewModel.approveApplicant(applicant.id, remarks: trimmedRemarks)
+        case .reject:
+            viewModel.rejectApplicant(applicant.id, remarks: trimmedRemarks)
+            succeeded = true
+        case .sendBack:
+            viewModel.sendBackApplicant(applicant.id, remarks: trimmedRemarks)
+            succeeded = true
+        case .escalate:
+            viewModel.escalateApplicant(applicant.id)
+            succeeded = true
         }
+
+        isProcessing = false
+
+        guard succeeded else {
+            validationMessage = "Unable to approve this application. Confirm it is still awaiting manager review."
+            HapticsManager.triggerNotification(type: .error)
+            return
+        }
+
+        dismiss()
+        onComplete()
     }
 
 

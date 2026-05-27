@@ -172,16 +172,20 @@ final class ManagerDashboardViewModel: ObservableObject {
         isRefreshing = false
     }
 
-    func approveApplicant(_ id: UUID, remarks: String) {
-        CentralLoanRepository.shared.approveApplication(id: id, remarks: remarks)
+    @discardableResult
+    func approveApplicant(_ id: UUID, remarks: String) -> Bool {
+        guard CentralLoanRepository.shared.approveApplication(id: id, remarks: remarks) else {
+            return false
+        }
         appendAudit(action: "Approved \(applicationLabel(for: id))", severity: .success)
         appendNotification(
-            title: "Loan approved",
-            message: "\(applicationLabel(for: id)) was approved by \(managerProfile.name).",
+            title: "Loan approved and credited",
+            message: "\(applicationLabel(for: id)) was approved by \(managerProfile.name). The sanctioned amount has been credited to the borrower account.",
             type: .success,
             relatedApplicantId: id
         )
         HapticsManager.triggerNotification(type: .success)
+        return true
     }
 
     func rejectApplicant(_ id: UUID, remarks: String) {
