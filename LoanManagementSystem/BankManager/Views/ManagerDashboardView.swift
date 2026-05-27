@@ -36,6 +36,10 @@ struct ManagerDashboardView: View {
             .badge(viewModel.pendingApplicants.count > 0 ? viewModel.pendingApplicants.count : 0)
             .tag(ManagerWorkspaceTab.applicants)
 
+            LoanReviewDashboardView()
+            .tabItem { Label("Reviews", systemImage: "doc.text.magnifyingglass") }
+            .tag(ManagerWorkspaceTab.reviews)
+            
             NavigationStack {
                 ManagerCommunicationTabView(viewModel: viewModel)
                     .navigationTitle("Messages")
@@ -126,7 +130,8 @@ struct ManagerDashboardView: View {
 enum ManagerWorkspaceTab: Int, Hashable {
     case dashboard = 0
     case applicants = 1
-    case messages = 2
+    case reviews = 2
+    case messages = 3
 }
 
 private struct ManagerSearchSheet: View {
