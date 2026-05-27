@@ -91,11 +91,16 @@ final class AuthService {
             throw AuthServiceError.emailAlreadyRegistered
         }
         
-        // 2. Sign up the user with Supabase Auth
+        // 2. Sign up the user with Supabase Auth (passing all potential metadata keys to prevent trigger errors)
         let authResponse = try await client.auth.signUp(
             email: cleanEmail,
             password: password,
-            data: ["display_name": .string(name)]
+            data: [
+                "display_name": .string(name),
+                "full_name": .string(name),
+                "phone": .string(phone),
+                "mobile_number": .string(phone)
+            ]
         )
         
         let user = authResponse.user
