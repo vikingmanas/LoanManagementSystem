@@ -87,34 +87,43 @@ struct ManagerAnalyticsView: View {
                     .frame(minHeight: 120)
                 }
             } else {
-                VStack(spacing: LMSSpacing.sm) {
-                    HStack(spacing: LMSSpacing.md) {
-                        RiskMetricCard(
-                            title: "NPL Rate",
-                            value: String(format: "%.2f%%", viewModel.branchOverview.nplRate),
-                            icon: "exclamationmark.triangle.fill",
-                            tint: viewModel.branchOverview.nplRate < 1.0 ? LMSColors.emerald : LMSColors.coral,
-                            subtitle: viewModel.branchOverview.nplRate < 1.0 ? "Healthy" : "Needs Attention",
-                            action: { showNPLRateSheet = true }
-                        )
-
-                        RiskMetricCard(
-                            title: "Escalations",
-                            value: "\(viewModel.applicants.filter { $0.status == .escalated }.count)",
-                            icon: "arrow.up.forward.circle.fill",
-                            tint: Color.purple,
-                            subtitle: "Active",
-                            action: { showEscalationsSheet = true }
-                        )
-
-                        RiskMetricCard(
-                            title: "High Risk",
-                            value: "\(highRiskApplicants.count)",
-                            icon: "shield.lefthalf.filled",
-                            tint: highRiskApplicants.isEmpty ? LMSColors.emerald : LMSColors.coral,
-                            subtitle: highRiskApplicants.isEmpty ? "Clear" : "Flagged",
-                            action: { showHighRiskSheet = true }
-                        )
+                let escalationsCount = viewModel.applicants.filter { $0.status == .escalated }.count
+                if viewModel.branchOverview.nplRate > 0 || escalationsCount > 0 || !highRiskApplicants.isEmpty {
+                    VStack(spacing: LMSSpacing.sm) {
+                        HStack(spacing: LMSSpacing.md) {
+                            if viewModel.branchOverview.nplRate > 0 {
+                                RiskMetricCard(
+                                    title: "NPL Rate",
+                                    value: String(format: "%.2f%%", viewModel.branchOverview.nplRate),
+                                    icon: "exclamationmark.triangle.fill",
+                                    tint: viewModel.branchOverview.nplRate < 1.0 ? LMSColors.emerald : LMSColors.coral,
+                                    subtitle: viewModel.branchOverview.nplRate < 1.0 ? "Healthy" : "Needs Attention",
+                                    action: { showNPLRateSheet = true }
+                                )
+                            }
+    
+                            if escalationsCount > 0 {
+                                RiskMetricCard(
+                                    title: "Escalations",
+                                    value: "\(escalationsCount)",
+                                    icon: "arrow.up.forward.circle.fill",
+                                    tint: Color.purple,
+                                    subtitle: "Active",
+                                    action: { showEscalationsSheet = true }
+                                )
+                            }
+    
+                            if !highRiskApplicants.isEmpty {
+                                RiskMetricCard(
+                                    title: "High Risk",
+                                    value: "\(highRiskApplicants.count)",
+                                    icon: "shield.lefthalf.filled",
+                                    tint: LMSColors.coral,
+                                    subtitle: "Flagged",
+                                    action: { showHighRiskSheet = true }
+                                )
+                            }
+                        }
                     }
                 }
             }
