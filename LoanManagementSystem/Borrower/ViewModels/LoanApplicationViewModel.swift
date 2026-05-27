@@ -4,8 +4,8 @@ import Supabase
 
 @MainActor
 final class LoanApplicationViewModel: ObservableObject {
-    @Published var selectedSegment: LoanHubSegment = .discover
     @Published var selectedApplicationFilter: BorrowerApplicationFilter = .all
+    @Published var selectedProductCategory: LoanProductCategoryFilter = .all
     @Published var searchQuery: String = ""
 
     @Published var products: [BorrowerLoanProduct] = BorrowerLoanProduct.sampleProducts
@@ -100,14 +100,21 @@ final class LoanApplicationViewModel: ObservableObject {
     }
 
     var filteredProducts: [BorrowerLoanProduct] {
-        if searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return products
-        } else {
-            let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-            return products.filter { product in
-                product.type.title.localizedCaseInsensitiveContains(query)
+        var result = products
+
+        if let type = selectedProductCategory.productType {
+            result = result.filter { $0.type == type }
+        }
+
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !query.isEmpty {
+            result = result.filter { product in
+                product.type.title.localizedCaseInsensitiveContains(query) ||
+                product.shortDescription.localizedCaseInsensitiveContains(query)
             }
         }
+
+        return result
     }
 
     var selectedProduct: BorrowerLoanProduct? {
@@ -130,10 +137,14 @@ final class LoanApplicationViewModel: ObservableObject {
     var filteredSubmittedApplications: [BorrowerLoanApplication] {
         switch selectedApplicationFilter {
         case .all:
-            return submittedApplications
-        case .active:
+            return applications.sorted { ($0.submittedAt ?? $0.updatedAt) > ($1.submittedAt ?? $1.updatedAt) }
+        case .draft:
+            return draftApplications
+        case .underReview:
             return submittedApplications.filter {
-                !$0.currentStage.isTerminal && $0.currentStage != .draft
+                !$0.currentStage.isTerminal &&
+                $0.currentStage != .approved &&
+                $0.currentStage != .disbursed
             }
         case .approved:
             return submittedApplications.filter {
@@ -641,7 +652,6 @@ final class LoanApplicationViewModel: ObservableObject {
 
         applications[index] = draft
         CentralLoanRepository.shared.submitApplication(draft)
-        selectedSegment = .applications
         self.currentDraftID = nil
         self.showSubmissionAlert = true
         self.submissionAlertMessage = "Application \(generatedApplicationID) submitted successfully on \(now.formattedAsDDMMMYYYY())."

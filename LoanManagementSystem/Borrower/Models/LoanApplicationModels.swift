@@ -1,10 +1,25 @@
 import SwiftUI
 
-enum LoanHubSegment: String, CaseIterable, Identifiable {
-    case discover = "Discover"
-    case applications = "My Applications"
+enum LoanProductCategoryFilter: String, CaseIterable, Identifiable {
+    case all = "All"
+    case personal = "Personal"
+    case home = "Home"
+    case education = "Education"
+    case business = "Business"
+    case vehicle = "Vehicle"
 
     var id: String { rawValue }
+
+    var productType: BorrowerLoanProductType? {
+        switch self {
+        case .all: return nil
+        case .personal: return .personal
+        case .home: return .home
+        case .education: return .education
+        case .business: return .business
+        case .vehicle: return .vehicle
+        }
+    }
 }
 
 enum BorrowerLoanProductType: String, Codable, CaseIterable, Identifiable, Hashable {
@@ -326,13 +341,17 @@ enum BorrowerDocumentStatus: String, Codable, CaseIterable, Hashable {
     }
 }
 
-enum BorrowerDocumentUploadSource: String, CaseIterable, Identifiable, Hashable {
-    case camera = "Camera Upload"
-    case gallery = "Gallery Upload"
+enum BorrowerDocumentUploadSource: String, Identifiable, Hashable {
+    case camera = "Take Photo"
+    case gallery = "Choose from Gallery"
     case pdf = "PDF Upload"
     case dragAndDrop = "Drag & Drop"
 
     var id: String { rawValue }
+
+    static var mobileSources: [BorrowerDocumentUploadSource] {
+        [.camera, .gallery]
+    }
 
     var iconName: String {
         switch self {
@@ -340,6 +359,15 @@ enum BorrowerDocumentUploadSource: String, CaseIterable, Identifiable, Hashable 
         case .gallery: return "photo.on.rectangle.angled"
         case .pdf: return "doc.richtext.fill"
         case .dragAndDrop: return "arrow.down.doc.fill"
+        }
+    }
+
+    var sourceDescription: String {
+        switch self {
+        case .camera: return "Choose document using camera"
+        case .gallery: return "Upload JPG, PNG, or HEIC from Photos"
+        case .pdf: return "PDF uploads are unavailable on mobile"
+        case .dragAndDrop: return "Drag and drop is unavailable on mobile"
         }
     }
 }
@@ -827,7 +855,8 @@ struct DBLoanApplication: Codable {
 
 enum BorrowerApplicationFilter: String, CaseIterable, Identifiable {
     case all = "All"
-    case active = "Active"
+    case draft = "Draft"
+    case underReview = "Under Review"
     case approved = "Approved"
     case rejected = "Rejected"
 
@@ -867,6 +896,18 @@ struct BorrowerLoanDashboardMetrics {
 }
 
 extension BorrowerLoanProduct {
+    /// Representative minimum EMI at base rate for display on marketplace cards.
+    var emiStartingFrom: Double {
+        let principal = minAmount > 0 ? minAmount : max(maximumAmount * 0.25, 100_000)
+        let months = max(maxTenureMonths, 12)
+        let annualRate = baseInterestRate > 0 ? baseInterestRate / 100 : 0.105
+        let monthlyRate = annualRate / 12
+        guard monthlyRate > 0 else { return principal / Double(months) }
+        let factor = pow(1 + monthlyRate, Double(months))
+        let emi = (principal * monthlyRate * factor) / (factor - 1)
+        return emi.isNaN || emi.isInfinite ? principal / Double(months) : emi
+    }
+
     static let sampleProducts: [BorrowerLoanProduct] = [
         BorrowerLoanProduct(
             id: UUID(uuidString: "a1d6518c-14d0-4f5b-85c4-3670f4a6ef01") ?? UUID(),
@@ -1112,4 +1153,3 @@ private extension String {
         return Double(filtered) ?? 0
     }
 }
-

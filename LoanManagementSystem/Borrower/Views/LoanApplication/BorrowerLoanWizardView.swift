@@ -1,5 +1,10 @@
 import SwiftUI
 
+private enum WizardNavigationDirection {
+    case forward
+    case backward
+}
+
 // MARK: - Main Wizard View
 struct BorrowerLoanWizardView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
@@ -9,6 +14,7 @@ struct BorrowerLoanWizardView: View {
     @EnvironmentObject private var authManager: AuthManager
 
     @State private var currentStep: Int = 1
+    @State private var navigationDirection: WizardNavigationDirection = .forward
     @State private var lastAutosavedTime: Date = Date()
     @State private var isAutosaving: Bool = false
     
@@ -77,13 +83,12 @@ struct BorrowerLoanWizardView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 22) {
-                stepTitleBlock
+            VStack(spacing: LMSSpacing.xl) {
+                LoanApplicationHeroCard(product: product, step: currentStep)
                 stepContent
-                bottomCTA
             }
-            .padding(.top, 18)
-            .padding(.bottom, 24)
+            .padding(.top, 16)
+            .padding(.bottom, 104)
         }
         .lmsScreenBackground()
         .navigationBarBackButtonHidden(true)
@@ -91,6 +96,16 @@ struct BorrowerLoanWizardView: View {
         .safeAreaInset(edge: .top, spacing: 0) {
             wizardNavigationBar
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            bottomCTA
+        }
+        .gesture(
+            DragGesture(minimumDistance: 24)
+                .onEnded { value in
+                    guard value.translation.width > 80, abs(value.translation.height) < 60 else { return }
+                    handleBackAction()
+                }
+        )
         .sheet(isPresented: $showUploadSourceSheet) {
             UploadSourceSelectionSheet(
                 isPresented: $showUploadSourceSheet,
@@ -105,7 +120,7 @@ struct BorrowerLoanWizardView: View {
         .onAppear {
             viewModel.setBorrowerAuthContext(
                 email: authManager.userEmail ?? "",
-                displayName: authManager.userDisplayName ?? ""
+                displayName: authManager.userDisplayName
             )
             prepareWizardState()
         }
@@ -120,19 +135,27 @@ struct BorrowerLoanWizardView: View {
     }
 
     private var wizardNavigationBar: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 9) {
             ZStack {
-                Text("Step \(currentStep) of 10")
-                    .font(LMSFont.subheadline.weight(.semibold))
-                    .foregroundStyle(LMSColors.textSecondary)
+                VStack(spacing: 2) {
+                    Text(navigationTitle(for: currentStep))
+                        .font(LMSFont.headline.weight(.semibold))
+                        .foregroundStyle(LMSColors.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                    Text("Step \(currentStep) of 10")
+                        .font(LMSFont.caption.weight(.semibold))
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .contentTransition(.numericText())
+                }
 
                 HStack {
                     Button(action: handleBackAction) {
                         Image(systemName: "chevron.backward")
                             .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(LMSColors.brandNavy)
-                            .frame(width: 38, height: 38)
-                            .background(Circle().fill(Color.white.opacity(0.35)))
+                            .frame(width: 40, height: 40)
+                            .background(Circle().fill(LMSColors.surfaceElevated.opacity(0.55)))
                             .background(Circle().fill(.ultraThinMaterial))
                             .overlay(
                                 Circle()
@@ -148,7 +171,7 @@ struct BorrowerLoanWizardView: View {
                                         lineWidth: 1
                                     )
                             )
-                            .shadow(color: Color.black.opacity(0.06), radius: 3, x: 0, y: 1.5)
+                            .shadow(color: LMSColors.darkGlow, radius: 8, x: 0, y: 4)
                     }
                     .buttonStyle(LMSPressableStyle())
                     .accessibilityLabel(currentStep > 1 ? "Previous step" : "Back")
@@ -162,11 +185,12 @@ struct BorrowerLoanWizardView: View {
             ProgressView(value: progressValue)
                 .tint(LMSColors.brandNavy)
                 .scaleEffect(x: 1, y: 0.72, anchor: .center)
+                .animation(.easeInOut(duration: 0.28), value: progressValue)
         }
         .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 10)
-        .background(.regularMaterial)
+        .padding(.top, 10)
+        .padding(.bottom, 9)
+        .background(.ultraThinMaterial)
         .overlay(alignment: .bottom) {
             Divider()
         }
@@ -186,22 +210,8 @@ struct BorrowerLoanWizardView: View {
         .background(LMSColors.surfaceElevated, in: Capsule())
         .overlay(
             Capsule()
-                .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+                .stroke(LMSColors.elevatedStroke, lineWidth: 0.8)
         )
-    }
-
-    private var stepTitleBlock: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(stepTitle(for: currentStep))
-                .font(LMSFont.title3)
-                .foregroundStyle(LMSColors.textPrimary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text(stepSubtitle(for: currentStep))
-                .font(LMSFont.footnote)
-                .foregroundStyle(LMSColors.textSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.horizontal, 16)
     }
 
     @ViewBuilder
@@ -301,7 +311,24 @@ struct BorrowerLoanWizardView: View {
                 Text("Unknown Step")
             }
         }
-        .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
+        .id(currentStep)
+        .transition(stepTransition)
+        .animation(.smooth(duration: 0.32), value: currentStep)
+    }
+
+    private var stepTransition: AnyTransition {
+        switch navigationDirection {
+        case .forward:
+            return .asymmetric(
+                insertion: .move(edge: .trailing).combined(with: .opacity),
+                removal: .move(edge: .leading).combined(with: .opacity)
+            )
+        case .backward:
+            return .asymmetric(
+                insertion: .move(edge: .leading).combined(with: .opacity),
+                removal: .move(edge: .trailing).combined(with: .opacity)
+            )
+        }
     }
 
     private var bottomCTA: some View {
@@ -323,46 +350,35 @@ struct BorrowerLoanWizardView: View {
             .buttonStyle(LMSPressableStyle())
         }
         .padding(.horizontal, 16)
-        .padding(.top, 2)
+        .padding(.vertical, 14)
+        .background(.regularMaterial)
+        .overlay(alignment: .top) {
+            Divider()
+        }
     }
     
     // MARK: - Helper Methods
     
-    private func stepTitle(for step: Int) -> String {
+    private func navigationTitle(for step: Int) -> String {
         switch step {
-        case 1: return "Loan Selection Overview"
-        case 2: return "Eligibility Pre-Check"
+        case 1: return product.type.title
+        case 2: return "Eligibility Check"
         case 3: return "Personal Information"
-        case 4: return "Employment & Income"
+        case 4: return "Employment Details"
         case 5: return "Co-Applicant Details"
-        case 6: return "Document Upload Center"
-        case 7: return "Simulated OCR Review"
-        case 8: return "Document Verification Hub"
-        case 9: return "Credit & Risk Assessment"
-        case 10: return "Final Review & Submit"
+        case 6: return "Document Upload"
+        case 7: return "Document Review"
+        case 8: return "Verification"
+        case 9: return "Risk Assessment"
+        case 10: return "Final Review"
         default: return "Loan Application"
-        }
-    }
-
-    private func stepSubtitle(for step: Int) -> String {
-        switch step {
-        case 1: return "Review the product details before starting your application."
-        case 2: return "Tune the amount and tenure to estimate affordability."
-        case 3: return "Confirm your personal and contact information."
-        case 4: return "Add income details for a stronger eligibility check."
-        case 5: return "Add a co-applicant only if it helps your profile."
-        case 6: return "Upload the documents needed for verification."
-        case 7: return "Review extracted details before verification."
-        case 8: return "Resolve any document mismatches before submission."
-        case 9: return "Check the risk summary generated from your profile."
-        case 10: return "Review everything once before final submission."
-        default: return "Complete each step to submit your loan application."
         }
     }
 
     private func handleBackAction() {
         if currentStep > 1 {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            navigationDirection = .backward
+            withAnimation(.smooth(duration: 0.32)) {
                 currentStep -= 1
             }
         } else {
@@ -496,7 +512,8 @@ struct BorrowerLoanWizardView: View {
                 }
             }
 
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            navigationDirection = .forward
+            withAnimation(.smooth(duration: 0.32)) {
                 currentStep += 1
             }
         } else {
@@ -571,56 +588,169 @@ struct BorrowerLoanWizardView: View {
     }
 }
 
+// MARK: - Persistent Premium Loan Hero
+private struct LoanApplicationHeroCard: View {
+    let product: BorrowerLoanProduct
+    let step: Int
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(product.type.applicationHeroGradient)
+
+            decorativeLayer
+
+            VStack(alignment: .leading, spacing: LMSSpacing.lg) {
+                HStack(alignment: .top, spacing: LMSSpacing.md) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                            .fill(.white.opacity(0.16))
+                        Image(systemName: product.type.iconName)
+                            .font(.system(size: 27, weight: .semibold))
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.white)
+                    }
+                    .frame(width: 64, height: 64)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                            .stroke(.white.opacity(0.18), lineWidth: 1)
+                    )
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(product.type.title)
+                            .font(LMSFont.title)
+                            .foregroundStyle(.white)
+                        Text(product.shortDescription)
+                            .font(LMSFont.footnote)
+                            .foregroundStyle(.white.opacity(0.78))
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: LMSSpacing.sm) {
+                    HeroMetric(title: "Maximum", value: product.maximumAmount.formattedAsINR())
+                    HeroMetric(title: "Interest", value: product.interestRateRange)
+                    HeroMetric(title: "Approval", value: product.estimatedProcessingTime)
+                    HeroMetric(title: "Step", value: "\(step)/10")
+                }
+            }
+            .padding(20)
+        }
+        .frame(maxWidth: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(.white.opacity(0.15), lineWidth: 1)
+        )
+        .shadow(color: product.type.applicationHeroShadow, radius: 22, x: 0, y: 12)
+        .padding(.horizontal, 16)
+    }
+
+    private var decorativeLayer: some View {
+        ZStack {
+            Circle()
+                .fill(.white.opacity(0.12))
+                .frame(width: 148, height: 148)
+                .offset(x: 58, y: -44)
+            Circle()
+                .stroke(.white.opacity(0.13), lineWidth: 20)
+                .frame(width: 184, height: 184)
+                .offset(x: 104, y: 96)
+            Image(systemName: product.type.heroDecorativeIcon)
+                .font(.system(size: 92, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.white.opacity(0.10))
+                .rotationEffect(.degrees(-10))
+                .offset(x: 76, y: 72)
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+private struct HeroMetric: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title.uppercased())
+                .font(LMSFont.caption2.weight(.bold))
+                .foregroundStyle(.white.opacity(0.62))
+            Text(value)
+                .font(LMSFont.callout.weight(.bold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, LMSSpacing.md)
+        .padding(.vertical, LMSSpacing.sm)
+        .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
+                .stroke(.white.opacity(0.13), lineWidth: 1)
+        )
+    }
+}
+
+private extension BorrowerLoanProductType {
+    var applicationHeroGradient: LinearGradient {
+        switch self {
+        case .personal:
+            return LinearGradient(colors: [Color(hex: "5B86E5"), Color(hex: "12365F")], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .home:
+            return LinearGradient(colors: [Color(hex: "0B2447"), Color(hex: "19376D")], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .education:
+            return LinearGradient(colors: [Color(hex: "6D5DF6"), Color(hex: "2F2366")], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .business:
+            return LinearGradient(colors: [Color(hex: "30323A"), Color(hex: "101115")], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .vehicle:
+            return LinearGradient(colors: [Color(hex: "0F766E"), Color(hex: "0B3D3A")], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .gold:
+            return LinearGradient(colors: [Color(hex: "C9961A"), Color(hex: "4A3411")], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .loanAgainstProperty:
+            return LinearGradient(colors: [Color(hex: "155E75"), Color(hex: "102A43")], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .other:
+            return LinearGradient(colors: [Color(hex: "4B5563"), Color(hex: "111827")], startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
+    }
+
+    var applicationHeroShadow: Color {
+        switch self {
+        case .personal: return Color(hex: "5B86E5").opacity(0.28)
+        case .home: return Color(hex: "19376D").opacity(0.30)
+        case .education: return Color(hex: "6D5DF6").opacity(0.28)
+        case .business: return Color.black.opacity(0.28)
+        case .vehicle: return Color(hex: "0F766E").opacity(0.25)
+        case .gold: return Color(hex: "C9961A").opacity(0.25)
+        case .loanAgainstProperty: return Color(hex: "155E75").opacity(0.26)
+        case .other: return Color(hex: "4B5563").opacity(0.24)
+        }
+    }
+
+    var heroDecorativeIcon: String {
+        switch self {
+        case .personal: return "creditcard.fill"
+        case .home: return "house.and.flag.fill"
+        case .education: return "graduationcap.fill"
+        case .business: return "chart.line.uptrend.xyaxis"
+        case .vehicle: return "car.fill"
+        case .gold: return "seal.fill"
+        case .loanAgainstProperty: return "building.2.fill"
+        case .other: return "sparkles"
+        }
+    }
+}
+
 // MARK: - STEP 1: Loan Overview / Selection
 private struct Step1SelectionView: View {
     let product: BorrowerLoanProduct
 
     var body: some View {
-        VStack(spacing: 22) {
-            // Main Card
-            VStack(spacing: 24) {
-                ZStack {
-                    Circle()
-                        .fill(LMSColors.brandNavy.opacity(0.10))
-                        .frame(width: 80, height: 80)
-                    Image(systemName: product.type.iconName)
-                        .font(.system(size: 38, weight: .bold))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(LMSColors.brandNavy)
-                }
-                
-                VStack(spacing: 6) {
-                    Text(product.type.title)
-                        .font(LMSFont.title)
-                        .foregroundStyle(LMSColors.textPrimary)
-                    Text(product.shortDescription)
-                        .font(LMSFont.subheadline)
-                        .foregroundStyle(LMSColors.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 16)
-                }
-                .padding(.bottom, 8)
-                
-                // Key metrics row
-                HStack(spacing: 10) {
-                    LoanMetricChip(title: "Max Amount", value: product.maximumAmount.formattedAsINR(), tint: LMSColors.brandNavy)
-                    LoanMetricChip(title: "Rate", value: product.interestRateRange, tint: LMSColors.brandNavy)
-                    LoanMetricChip(title: "Approval", value: product.estimatedProcessingTime, tint: LMSColors.emerald)
-                }
-                .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.vertical, 26)
-            .padding(.horizontal, 18)
-            .background(LMSColors.surfaceElevated, in: RoundedRectangle(cornerRadius: LMSRadius.xl, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: LMSRadius.xl, style: .continuous)
-                    .stroke(LMSColors.separatorLight, lineWidth: 0.5)
-            )
-            .padding(.horizontal, 16)
-            
-            // Benefits list
+        VStack(spacing: LMSSpacing.xl) {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Product Key Benefits")
+                Text("Product Benefits")
                     .font(LMSFont.title3)
                     .foregroundStyle(LMSColors.textPrimary)
                     .padding(.horizontal, 16)
@@ -701,7 +831,7 @@ private struct Step2EligibilityView: View {
     
     private var probabilityColor: Color {
         if foirPercentage > 60 {
-            return LMSColors.coral
+            return LMSColors.amber
         } else if foirPercentage > 45 {
             return LMSColors.amber
         } else {
@@ -709,12 +839,20 @@ private struct Step2EligibilityView: View {
         }
     }
 
+    private var recommendationText: String {
+        if foirPercentage > 60 {
+            return "Your EMI is relatively high compared to income. Consider increasing tenure or reducing the loan amount."
+        } else if foirPercentage > 45 {
+            return "This looks workable, but a slightly longer tenure may improve comfort and approval strength."
+        } else {
+            return "Your estimated EMI appears comfortable against your income profile."
+        }
+    }
+
     var body: some View {
-        VStack(spacing: 24) {
-            // Calculator Card
-            VStack(spacing: 20) {
-                // Desired Amount Slider
-                VStack(alignment: .leading, spacing: 8) {
+        VStack(spacing: LMSSpacing.xl) {
+            VStack(spacing: LMSSpacing.xl) {
+                VStack(alignment: .leading, spacing: LMSSpacing.md) {
                     HStack {
                         Text("Desired Loan Amount")
                             .font(LMSFont.callout.weight(.medium))
@@ -728,8 +866,7 @@ private struct Step2EligibilityView: View {
                         .tint(LMSColors.brandNavy)
                 }
                 
-                // Tenure Slider
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: LMSSpacing.md) {
                     HStack {
                         Text("Loan Tenure")
                             .font(LMSFont.callout.weight(.medium))
@@ -743,8 +880,7 @@ private struct Step2EligibilityView: View {
                         .tint(LMSColors.brandNavy)
                 }
                 
-                // Quick Financials Inputs
-                VStack(spacing: 12) {
+                VStack(spacing: 0) {
                     HStack {
                         Text("Monthly Income")
                             .font(LMSFont.callout.weight(.medium))
@@ -754,6 +890,7 @@ private struct Step2EligibilityView: View {
                             .multilineTextAlignment(.trailing)
                             .font(LMSFont.body.weight(.bold))
                     }
+                    .frame(minHeight: 50)
                     Divider()
                     HStack {
                         Text("Existing EMI Obligations")
@@ -764,15 +901,16 @@ private struct Step2EligibilityView: View {
                             .multilineTextAlignment(.trailing)
                             .font(LMSFont.body.weight(.bold))
                     }
+                    .frame(minHeight: 50)
                 }
-                .padding(.top, 10)
+                .padding(.horizontal, LMSSpacing.md)
+                .background(LMSColors.background, in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
             }
             .padding(20)
             .lmsInsetGroupedCard()
             .padding(.horizontal, 16)
             
-            // Estimates Banner
-            VStack(spacing: 16) {
+            VStack(spacing: LMSSpacing.lg) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("ESTIMATED EMI")
@@ -789,38 +927,42 @@ private struct Step2EligibilityView: View {
                             .foregroundStyle(LMSColors.textSecondary)
                         Text("\(foirPercentage)%")
                             .font(LMSFont.title3)
-                            .foregroundStyle(foirPercentage > 50 ? LMSColors.coral : LMSColors.textPrimary)
+                            .foregroundStyle(foirPercentage > 50 ? LMSColors.amber : LMSColors.textPrimary)
                     }
                 }
                 
                 Divider()
                 
-                // Dynamic probability gauge
-                HStack(spacing: 10) {
+                HStack(spacing: LMSSpacing.md) {
                     ZStack {
                         Circle()
                             .stroke(LMSColors.separatorLight, lineWidth: 6)
-                            .frame(width: 48, height: 48)
+                            .frame(width: 54, height: 54)
                         Circle()
                             .trim(from: 0.0, to: CGFloat(max(0.1, 1.0 - (Double(foirPercentage)/100.0))))
                             .stroke(probabilityColor, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                            .frame(width: 48, height: 48)
+                            .frame(width: 54, height: 54)
                             .rotationEffect(.degrees(-90))
+                            .animation(.easeInOut(duration: 0.25), value: foirPercentage)
                     }
                     
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text("Approval Probability")
                             .font(LMSFont.caption.weight(.bold))
                             .foregroundStyle(LMSColors.textSecondary)
                         Text(approvalProbability)
                             .font(LMSFont.callout.bold())
                             .foregroundStyle(probabilityColor)
+                        Text(recommendationText)
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer()
                 }
             }
             .padding(20)
-            .background(probabilityColor.opacity(0.06))
+            .background(probabilityColor.opacity(0.07))
             .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
@@ -1856,14 +1998,14 @@ private struct UploadSourceSelectionSheet: View {
     let onSelect: (BorrowerDocumentUploadSource) -> Void
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: LMSSpacing.lg) {
             Text("Select Document Source")
                 .font(LMSFont.title3)
                 .foregroundStyle(LMSColors.textPrimary)
-                .padding(.top, 24)
+                .padding(.top, 18)
             
-            VStack(spacing: 12) {
-                ForEach(BorrowerDocumentUploadSource.allCases, id: \.self) { source in
+            VStack(spacing: LMSSpacing.sm) {
+                ForEach(BorrowerDocumentUploadSource.mobileSources, id: \.self) { source in
                     Button(action: {
                         selectedSource = source
                         isPresented = false
@@ -1878,16 +2020,21 @@ private struct UploadSourceSelectionSheet: View {
                                     .font(.headline)
                                     .foregroundStyle(LMSColors.brandNavy)
                             }
-                            Text(source.rawValue)
-                                .font(LMSFont.headline)
-                                .foregroundStyle(LMSColors.textPrimary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(source.rawValue)
+                                    .font(LMSFont.callout.weight(.semibold))
+                                    .foregroundStyle(LMSColors.textPrimary)
+                                Text(source.sourceDescription)
+                                    .font(LMSFont.caption)
+                                    .foregroundStyle(LMSColors.textSecondary)
+                            }
                             Spacer()
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 14, weight: .bold))
                                 .foregroundStyle(LMSColors.textTertiary)
                         }
-                        .padding()
-                        .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 12))
+                        .padding(LMSSpacing.md)
+                        .background(LMSColors.surfaceElevated, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
                     }
                     .buttonStyle(LMSPressableStyle())
                 }
@@ -1896,8 +2043,9 @@ private struct UploadSourceSelectionSheet: View {
             
             Spacer()
         }
-        .presentationDetents([.height(380)])
-        .lmsScreenBackground()
+        .presentationDetents([.height(250)])
+        .presentationDragIndicator(.visible)
+        .background(.regularMaterial)
     }
 }
 

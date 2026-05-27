@@ -12,6 +12,7 @@ public enum DashboardRoute: Hashable {
     case linkedBankAccounts
     case profileInfo
     case notifications
+    case transactionHistory
 }
 
 // MARK: - Native Status Banner Section
@@ -176,73 +177,56 @@ public struct DashboardView: View {
     @State private var showingSupportSheet = false
     @State private var showingTopUpSheet = false
     @State private var navigateToLinkedBankAccountsAfterTopUp = false
-    
-    private var greetingSubtitle: String {
-        if !viewModel.profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let firstName = viewModel.profileName.components(separatedBy: " ").first ?? viewModel.profileName
-            return "Hi, \(firstName)"
-        }
-        let authName = authManager.userDisplayName.components(separatedBy: " ").first ?? "User"
-        return "Hi, \(authName)"
-    }
+    @State private var showingCalculatorAlert = false
     
     public var body: some View {
         NavigationStack(path: $navigationPath) {
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 28) {
-                    
-                    HStack {
-                        Text(greetingSubtitle)
-                            .font(.system(.subheadline, design: .rounded).bold())
-                            .foregroundStyle(LMSColors.textSecondary)
-                        Spacer()
+                VStack(spacing: LMSSpacing.xxl) {
+                    if viewModel.profileCompletionPercentage < 100 {
+                        ProfileCompletionCardSection(
+                            percentage: viewModel.profileCompletionPercentage,
+                            missingItems: viewModel.profileMissingRequirements
+                        ) {
+                            navigationPath.append(.profile)
+                        }
                     }
-                    .padding(.horizontal, LMSSpacing.lg)
-                    .padding(.top, 8)
 
-                    StatusBannerSection(viewModel: viewModel, navigationPath: $navigationPath)
-                    
-                    VStack(alignment: .leading, spacing: 14) {
-                        Text("FINANCIAL PORTFOLIO")
-                            .font(.system(.caption, design: .rounded).bold())
-                            .foregroundStyle(LMSColors.textSecondary)
-                            .padding(.horizontal, LMSSpacing.lg)
-                        
-                        PortfolioCarouselView(
-                            viewModel: viewModel,
-                            onNavigateToLoan: { loan in
-                                navigationPath.append(DashboardRoute.loanDetails(loan))
-                            },
-                            onNavigateToBank: { bank in
-                                navigationPath.append(DashboardRoute.bankDetails(bank))
-                            },
-                            onNavigateToInsurance: {
-                                navigationPath.append(DashboardRoute.insuranceDetails)
-                            },
-                            onTransferTap: { bank in
-                                navigationPath.append(DashboardRoute.bankDetails(bank))
-                            }
-                        )
-                    }
-                    
-                    QuickActionGridSection(
-                        onPay: { showingQuickPaySheet = true },
-                        onStatement: { showingStatementSheet = true },
-                        onForeclosure: { showingForeclosureSheet = true },
-                        onSupport: { showingSupportSheet = true },
-                        onTopUp: { showingTopUpSheet = true }
+                    LoanPortfolioSummarySection(viewModel: viewModel)
+
+                    ActiveLoanAccountsSection(
+                        viewModel: viewModel,
+                        onLoanTap: { loan in
+                            navigationPath.append(.loanDetails(loan))
+                        },
+                        onApplyLoan: {
+                            tabRouter.select(.loans)
+                        }
                     )
-                    
-                    EMITrackerView(viewModel: viewModel) {
-                        viewModel.payNextEMI()
-                    } onViewAllPendingTap: {
-                        navigationPath.append(DashboardRoute.allPendingEMIs)
-                    }
-                    
-                    GovernmentSchemesSection(viewModel: viewModel) { scheme in
-                        navigationPath.append(DashboardRoute.schemeDetails(scheme))
-                    }
+
+                    UpcomingPaymentSection(
+                        viewModel: viewModel,
+                        onPayNow: { showingQuickPaySheet = true },
+                        onViewAll: { navigationPath.append(.allPendingEMIs) }
+                    )
+
+                    DashboardQuickActionsSection(
+                        onApplyLoan: { tabRouter.select(.loans) },
+                        onPayEMI: { showingQuickPaySheet = true },
+                        onStatement: { showingStatementSheet = true },
+                        onSupport: { showingSupportSheet = true },
+                        onCalculator: { showingCalculatorAlert = true }
+                    )
+
+                    TransactionHistorySection(
+                        transactions: viewModel.recentTransactions,
+                        accounts: viewModel.bankAccounts,
+                        onViewAll: {
+                            navigationPath.append(.transactionHistory)
+                        }
+                    )
                 }
+                .padding(.top, LMSSpacing.sm)
                 .padding(.bottom, LMSSpacing.xxxl)
             }
             .refreshable {
@@ -252,29 +236,36 @@ public struct DashboardView: View {
             .navigationTitle("Dashboard")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 12) {
-                        Button {
-                            navigationPath.append(.notifications)
-                        } label: {
-                            Image(systemName: "bell.badge")
-                                .symbolRenderingMode(.hierarchical)
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(LMSColors.brandNavy)
-                        }
-                        
-                        Button {
-                            navigationPath.append(.profile)
-                        } label: {
-                            DashboardAvatar(
-                                initials: dashboardInitials(
-                                    viewModel: viewModel,
-                                    authManager: authManager
-                                )
-                            )
-                        }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button {
+                        navigationPath.append(.notifications)
+                    } label: {
+                        Image(systemName: viewModel.dashboardNotifications.contains(where: \.isUnread)
+                              ? "bell.badge.fill" : "bell")
+                            .symbolRenderingMode(.hierarchical)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(LMSColors.brandNavy)
+                            .frame(width: 44, height: 44)
                     }
+                    .accessibilityLabel("Notifications")
+
+                    Button {
+                        navigationPath.append(.profile)
+                    } label: {
+                        DashboardAvatar(
+                            initials: dashboardInitials(
+                                viewModel: viewModel,
+                                authManager: authManager
+                            )
+                        )
+                    }
+                    .accessibilityLabel("Profile")
                 }
+            }
+            .alert("Loan Calculator", isPresented: $showingCalculatorAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("EMI calculator is coming soon. Use the Loans tab to explore products and apply.")
             }
             .task {
                 await viewModel.fetchDashboardData()
@@ -307,6 +298,8 @@ public struct DashboardView: View {
                     ProfileInfoDetailView(viewModel: profileViewModel)
                 case .notifications:
                     NotificationsDetailView()
+                case .transactionHistory:
+                    TransactionHistoryFullScreen(viewModel: viewModel)
                 }
             }
             .sheet(isPresented: $showingQuickPaySheet) {

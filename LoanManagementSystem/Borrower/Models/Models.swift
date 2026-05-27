@@ -117,8 +117,18 @@ public enum TransactionType: String, CaseIterable, Identifiable, Hashable, Senda
     case credit = "Credit"
     case penalty = "Penalty"
     case refund = "Refund"
+    case failedDebit = "Failed Debit"
 
     public var id: String { self.rawValue }
+
+    public var isDebit: Bool {
+        switch self {
+        case .emiPayment, .penalty, .failedDebit:
+            return true
+        case .credit, .refund:
+            return false
+        }
+    }
 }
 
 public struct GovernmentScheme: Identifiable, Hashable, Sendable {
@@ -147,4 +157,3 @@ public enum SchemeCategory: String, CaseIterable, Identifiable, Hashable, Sendab
 
     public var id: String { self.rawValue }
 }
-

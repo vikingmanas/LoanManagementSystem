@@ -85,6 +85,61 @@ public final class DashboardViewModel: ObservableObject {
         }
         return "All your loan accounts are in good standing."
     }
+
+    public var timeBasedGreeting: String {
+        let firstName = profileName
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: " ")
+            .first ?? "there"
+        return Self.greetingPrefix + ", \(firstName)"
+    }
+
+    private static var greetingPrefix: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 5..<12: return "Good Morning"
+        case 12..<17: return "Good Afternoon"
+        default: return "Good Evening"
+        }
+    }
+
+    public var recentTransactions: [Transaction] {
+        transactions.sorted { $0.date > $1.date }
+    }
+
+    public var dashboardNotifications: [LMSNotification] {
+        let live = CentralLoanRepository.shared.borrowerNotifications
+        let merged = live + LMSMockNotifications.sample
+        var seen = Set<UUID>()
+        return merged.filter { seen.insert($0.id).inserted }
+            .sorted { $0.timestamp > $1.timestamp }
+    }
+
+    public var profileMissingRequirements: [String] {
+        guard let profile = BorrowerProfileStore.shared.profile else {
+            return ["Complete personal details", "Verify contact information", "Link your bank account"]
+        }
+        var missing: [String] = []
+        if profile.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            missing.append("Add your full name")
+        }
+        if !profile.isEmailVerified {
+            missing.append("Verify email address")
+        }
+        if !profile.isPhoneVerified {
+            missing.append("Verify mobile number")
+        }
+        if profile.bankDetails.accountNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            missing.append("Link bank account")
+        }
+        if profile.kycVerification.aadhaarStatus != .verified {
+            missing.append("Complete KYC verification")
+        }
+        if profile.profileImageData == nil {
+            missing.append("Add profile photo")
+        }
+        return missing
+    }
     
     public func isLowBalance(_ account: BankAccount) -> Bool {
         if account.id == MockData.uuid3 { // Axis Bank
@@ -156,7 +211,8 @@ public final class DashboardViewModel: ObservableObject {
                 nextEMIDate: Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date(),
                 tenureRemainingMonths: app.formData.preferredTenureMonths,
                 totalTenureMonths: app.formData.preferredTenureMonths,
-                repaidPercentage: 0.0
+                repaidPercentage: 0.0,
+                linkedBankAccountId: bankAccount.id
             )
         }
         
@@ -182,8 +238,63 @@ public final class DashboardViewModel: ObservableObject {
                 bankAccountId: bankAccounts.first(where: { $0.accountNumber == event.accountNumber })?.id
             )
         }
-        let existingReferences = Set(transactions.map(\.referenceNo))
-        transactions.insert(contentsOf: disbursementTransactions.filter { !existingReferences.contains($0.referenceNo) }, at: 0)
+        let generatedTransactions = generatedTransactionHistory(for: loanAccounts)
+        let preservedManualTransactions = transactions.filter {
+            !$0.referenceNo.hasPrefix("AUTO-")
+        }
+        self.transactions = (preservedManualTransactions + disbursementTransactions + generatedTransactions)
+            .uniquedByReference()
+            .sorted { $0.date > $1.date }
+    }
+
+    private func generatedTransactionHistory(for loans: [DashboardLoanAccount]) -> [Transaction] {
+        let calendar = Calendar.current
+        return loans.flatMap { loan -> [Transaction] in
+            let accountID = loan.linkedBankAccountId
+            let baseDate = calendar.date(byAdding: .day, value: -12, to: Date()) ?? Date()
+            return [
+                Transaction(
+                    title: "\(loan.loanType) loan credited to linked account",
+                    date: baseDate,
+                    amount: loan.sanctionedAmount,
+                    type: .credit,
+                    referenceNo: "AUTO-DISB-\(loan.id.uuidString.prefix(6))",
+                    bankAccountId: accountID
+                ),
+                Transaction(
+                    title: "EMI debited for \(loan.loanType)",
+                    date: calendar.date(byAdding: .day, value: -5, to: Date()) ?? Date(),
+                    amount: loan.totalEMI,
+                    type: .emiPayment,
+                    referenceNo: "AUTO-EMI-\(loan.id.uuidString.prefix(6))",
+                    bankAccountId: accountID
+                ),
+                Transaction(
+                    title: "Partial payment received for \(loan.loanType)",
+                    date: calendar.date(byAdding: .day, value: -3, to: Date()) ?? Date(),
+                    amount: max(1_000, loan.totalEMI * 0.35),
+                    type: .credit,
+                    referenceNo: "AUTO-PART-\(loan.id.uuidString.prefix(6))",
+                    bankAccountId: accountID
+                ),
+                Transaction(
+                    title: "Auto-debit failed due to low balance",
+                    date: calendar.date(byAdding: .day, value: -2, to: Date()) ?? Date(),
+                    amount: loan.totalEMI,
+                    type: .failedDebit,
+                    referenceNo: "AUTO-FAIL-\(loan.id.uuidString.prefix(6))",
+                    bankAccountId: accountID
+                ),
+                Transaction(
+                    title: "Late penalty charged on overdue EMI",
+                    date: calendar.date(byAdding: .day, value: -1, to: Date()) ?? Date(),
+                    amount: 500,
+                    type: .penalty,
+                    referenceNo: "AUTO-PEN-\(loan.id.uuidString.prefix(6))",
+                    bankAccountId: accountID
+                )
+            ]
+        }
     }
 
     private func buildBankAccounts(from profile: BorrowerProfile, disbursedCredits: [String: Double]) -> [BankAccount] {
@@ -375,6 +486,15 @@ public final class DashboardViewModel: ObservableObject {
             } else {
                 bankAccount.availableBalance = 42300.0
             }
+        }
+    }
+}
+
+private extension Array where Element == Transaction {
+    func uniquedByReference() -> [Transaction] {
+        var seen = Set<String>()
+        return filter { transaction in
+            seen.insert(transaction.referenceNo).inserted
         }
     }
 }
