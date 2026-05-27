@@ -12,20 +12,11 @@ struct ManagerDashboardTabView: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: LMSSpacing.xl) {
 
-                BranchOverviewCard(overview: viewModel.branchOverview) {
-                    showBranchOverview = true
-                }
-                .padding(.horizontal, LMSSpacing.screenHorizontal)
-                .padding(.top, LMSSpacing.md)
-                .sheet(isPresented: $showBranchOverview) {
-                    BranchOverviewDetailSheet(overview: viewModel.branchOverview)
-                }
+                // Key Performance Indicators
+                ActionItemsRow(viewModel: viewModel, selectedTab: $selectedTab)
+                    .padding(.top, LMSSpacing.md)
 
-                BranchOperationsSection(viewModel: viewModel, selectedTab: $selectedTab)
-
-                ManagerKPICardsView(viewModel: viewModel, kpis: viewModel.kpis)
-
-
+                // Approval Queue
                 ManagerApprovalQueueView(
                     viewModel: viewModel,
                     onViewAll: {
@@ -35,26 +26,21 @@ struct ManagerDashboardTabView: View {
                     onSelectApplicant: onSelectApplicant
                 )
 
+                // Team Overview
+                TeamOverviewSection(viewModel: viewModel)
 
+                // Branch Portfolio Analytics
                 VStack(alignment: .leading, spacing: LMSSpacing.md) {
                     Text("Branch Portfolio Analytics")
-                        .font(.system(.footnote, design: .rounded).bold())
-                        .foregroundStyle(LMSColors.textSecondary)
+                        .font(.system(.title3, design: .rounded).bold())
+                        .foregroundStyle(LMSColors.textPrimary)
                         .padding(.horizontal, LMSSpacing.screenHorizontal)
 
                     ManagerAnalyticsView(viewModel: viewModel)
                 }
 
-
-                ManagerRiskPanelView(viewModel: viewModel)
-
-
-                OfficerPerformanceSection(officers: viewModel.officers)
-
-
+                // Reports & Insights
                 ManagerReportsView(viewModel: viewModel)
-
-
 
                 Spacer()
                     .frame(height: LMSSpacing.xxxl)
@@ -68,191 +54,51 @@ struct ManagerDashboardTabView: View {
 }
 
 
-private struct BranchOverviewCard: View {
-    let overview: BranchOverview
-    var action: () -> Void
-    @State private var animatedProgress: Double = 0
 
-    private var targetProgress: Double {
-        guard overview.monthlyTarget > 0 else { return 0 }
-        return min(1, overview.totalDisbursed / overview.monthlyTarget)
-    }
 
-    var body: some View {
-        Button(action: {
-            HapticsManager.triggerImpact(style: .light)
-            action()
-        }) {
-            VStack(spacing: LMSSpacing.md) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(overview.name)
-                            .font(.system(.headline, design: .rounded))
-                            .foregroundStyle(LMSColors.textPrimary)
-                        Text("\(overview.code) · \(overview.region)")
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(LMSColors.textSecondary)
-                    }
-                    Spacer()
-                    LMSStatusPill(text: overview.auditRating, style: .success, icon: "shield.checkmark.fill")
-                }
 
-                HStack(spacing: LMSSpacing.sm) {
-                    BranchMetricPill(icon: "person.2.fill", value: "\(overview.staffCount)", label: "Staff")
-                    BranchMetricPill(icon: "doc.text.fill", value: "\(overview.activeLoanCount)", label: "Active")
-                    BranchMetricPill(icon: "indianrupeesign.circle.fill", value: CurrencyFormatter.shared.format(overview.totalDisbursed), label: "Disbursed")
-                }
+// MARK: - Action Items Row (replaces 4-card Branch Command Center)
 
-                if overview.monthlyTarget > 0 {
-                    VStack(spacing: 4) {
-                        HStack {
-                            Text("Monthly Target")
-                                .font(.system(size: 10, weight: .bold, design: .rounded))
-                                .foregroundStyle(LMSColors.textSecondary)
-                            Spacer()
-                            Text("\(Int(targetProgress * 100))% of \(CurrencyFormatter.shared.format(overview.monthlyTarget))")
-                                .font(.system(size: 10, weight: .bold, design: .rounded))
-                                .foregroundStyle(targetProgress >= 0.8 ? LMSColors.emerald : LMSColors.amber)
-                                .monospacedDigit()
-                        }
-
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                Capsule()
-                                    .fill(LMSColors.brandNavy.opacity(0.10))
-                                    .frame(height: 5)
-                                Capsule()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: targetProgress >= 0.8
-                                                ? [LMSColors.emerald, LMSColors.teal]
-                                                : [LMSColors.amber, LMSColors.amber.opacity(0.7)],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .frame(width: geo.size.width * animatedProgress, height: 5)
-                            }
-                        }
-                        .frame(height: 5)
-                    }
-                    .onAppear {
-                        withAnimation(.easeOut(duration: 0.7).delay(0.2)) {
-                            animatedProgress = targetProgress
-                        }
-                    }
-                }
-            }
-            .padding(LMSSpacing.lg)
-            .background(LMSColors.surfaceElevated)
-            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct BranchMetricPill: View {
-    let icon: String
-    let value: String
-    let label: String
-
-    var body: some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(LMSColors.brandNavy)
-            Text(value)
-                .font(.system(.caption2, design: .rounded).bold())
-                .foregroundStyle(LMSColors.textPrimary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            Text(label)
-                .font(.system(size: 9, weight: .medium, design: .rounded))
-                .foregroundStyle(LMSColors.textTertiary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, LMSSpacing.sm)
-        .background(LMSColors.brandNavy.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous))
-    }
-}
-
-private struct BranchOperationsSection: View {
+private struct ActionItemsRow: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
     @Binding var selectedTab: ManagerWorkspaceTab
-    @State private var showPerformanceSheet = false
-    @State private var showCustomerFilesSheet = false
     @State private var showDecisionsDueSheet = false
-    @State private var showClearedLoansSheet = false
 
-    private var customerCount: Int { viewModel.applicants.count }
-    private var officerCount: Int { viewModel.officers.count }
     private var pendingCount: Int { viewModel.pendingApplicants.count }
-    private var approvedCount: Int {
-        viewModel.applicants.filter { $0.status == .approved || $0.status == .disbursed }.count
+    private var escalatedCount: Int {
+        viewModel.applicants.filter { $0.status == .escalated }.count
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
-            Text("Branch Command Center")
-                .font(.system(.footnote, design: .rounded).bold())
-                .foregroundStyle(LMSColors.textSecondary)
+            Text("Action Items")
+                .font(.system(.title3, design: .rounded).bold())
+                .foregroundStyle(LMSColors.textPrimary)
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
 
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: LMSSpacing.md),
-                GridItem(.flexible(), spacing: LMSSpacing.md)
-            ], spacing: LMSSpacing.md) {
-                BranchOperationCard(
-                    title: "Customer Files",
-                    value: "\(customerCount)",
-                    subtitle: "Profiles in manager scope",
-                    icon: "person.text.rectangle",
-                    tint: LMSColors.actionBlue,
-                    action: { showCustomerFilesSheet = true }
-                )
-
-                BranchOperationCard(
-                    title: "Loan Officers",
-                    value: "\(officerCount)",
-                    subtitle: "Tracked branch staff",
-                    icon: "person.2.fill",
-                    tint: LMSColors.teal,
-                    action: { showPerformanceSheet = true }
-                )
-
-                BranchOperationCard(
+            HStack(spacing: LMSSpacing.md) {
+                ActionItemCard(
                     title: "Decisions Due",
                     value: "\(pendingCount)",
-                    subtitle: "Awaiting approve/reject",
                     icon: "checklist.checked",
                     tint: pendingCount == 0 ? LMSColors.emerald : LMSColors.amber,
-                    action: { showDecisionsDueSheet = true }
+                    action: {
+                        if pendingCount > 0 {
+                            showDecisionsDueSheet = true
+                        }
+                    }
                 )
 
-                BranchOperationCard(
-                    title: "Cleared Loans",
-                    value: "\(approvedCount)",
-                    subtitle: "Approved or disbursed",
-                    icon: "checkmark.seal.fill",
-                    tint: LMSColors.emerald,
-                    action: { showClearedLoansSheet = true }
+                ActionItemCard(
+                    title: "Escalations",
+                    value: "\(escalatedCount)",
+                    icon: "arrow.up.forward.circle.fill",
+                    tint: escalatedCount == 0 ? LMSColors.emerald : LMSColors.coral,
+                    action: nil
                 )
             }
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, LMSSpacing.screenHorizontal)
-        }
-        .sheet(isPresented: $showPerformanceSheet) {
-            OfficerPerformanceReportSheet(viewModel: viewModel)
-        }
-        .sheet(isPresented: $showCustomerFilesSheet) {
-            ManagerApplicantListSheet(
-                title: "Customer Files",
-                systemImage: "person.3.fill",
-                description: "No customer files found in your branch.",
-                applicants: viewModel.applicants,
-                viewModel: viewModel
-            )
         }
         .sheet(isPresented: $showDecisionsDueSheet) {
             ManagerApplicantListSheet(
@@ -263,22 +109,12 @@ private struct BranchOperationsSection: View {
                 viewModel: viewModel
             )
         }
-        .sheet(isPresented: $showClearedLoansSheet) {
-            ManagerApplicantListSheet(
-                title: "Cleared Loans",
-                systemImage: "checkmark.seal.fill",
-                description: "No cleared loans yet.",
-                applicants: viewModel.applicants.filter { $0.status == .approved || $0.status == .disbursed },
-                viewModel: viewModel
-            )
-        }
     }
 }
 
-private struct BranchOperationCard: View {
+private struct ActionItemCard: View {
     let title: String
     let value: String
-    let subtitle: String
     let icon: String
     let tint: Color
     var action: (() -> Void)? = nil
@@ -301,56 +137,69 @@ private struct BranchOperationCard: View {
 
     private var cardContent: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
-            HStack {
-                ZStack {
-                    RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous)
-                        .fill(tint.opacity(0.12))
-                        .frame(width: 36, height: 36)
-                    Image(systemName: icon)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(tint)
-                }
-                Spacer()
+            ZStack {
+                RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous)
+                    .fill(tint.opacity(0.12))
+                    .frame(width: 44, height: 44)
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(tint)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(value)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(LMSColors.textPrimary)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.system(.subheadline, design: .rounded).bold())
-                        .foregroundStyle(LMSColors.textPrimary)
-                    Text(subtitle)
-                        .font(.system(.caption2, design: .rounded))
-                        .foregroundStyle(LMSColors.textSecondary)
-                }
+                Text(title)
+                    .font(.system(.subheadline, design: .rounded).bold())
+                    .foregroundStyle(LMSColors.textSecondary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(LMSSpacing.lg)
         .background(LMSColors.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
-                .stroke(LMSColors.separatorLight, lineWidth: 0.5)
-        )
         .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
     }
 }
 
-private struct OfficerPerformanceSection: View {
-    let officers: [ManagerOfficer]
+
+// MARK: - Team Overview (single place for officer data)
+
+private struct TeamOverviewSection: View {
+    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @State private var showDetailSheet = false
+    @State private var selectedOfficer: ManagerOfficer?
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
-            Text("Officer Performance")
-                .font(.system(.footnote, design: .rounded).bold())
-                .foregroundStyle(LMSColors.textSecondary)
-                .padding(.horizontal, LMSSpacing.screenHorizontal)
+            HStack {
+                Text("Your Team")
+                    .font(.system(.title3, design: .rounded).bold())
+                    .foregroundStyle(LMSColors.textPrimary)
 
-            if officers.isEmpty {
+                Spacer()
+
+                if !viewModel.officers.isEmpty {
+                    Button(action: {
+                        HapticsManager.triggerImpact(style: .light)
+                        showDetailSheet = true
+                    }) {
+                        HStack(spacing: 4) {
+                            Text("Details")
+                                .font(.system(.subheadline, design: .rounded).bold())
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .bold))
+                        }
+                        .foregroundStyle(LMSColors.actionBlue)
+                    }
+                }
+            }
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
+
+            if viewModel.officers.isEmpty {
                 ContentUnavailableView(
                     "No Loan Officers Tracked",
                     systemImage: "person.2.slash",
@@ -367,9 +216,9 @@ private struct OfficerPerformanceSection: View {
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
             } else {
                 VStack(spacing: 0) {
-                    ForEach(officers.indices, id: \.self) { index in
-                        OfficerPerformanceRow(officer: officers[index])
-                        if index < officers.count - 1 {
+                    ForEach(viewModel.officers.indices, id: \.self) { index in
+                        TeamOfficerRow(officer: viewModel.officers[index])
+                        if index < viewModel.officers.count - 1 {
                             Divider()
                                 .padding(.leading, 56)
                         }
@@ -377,18 +226,17 @@ private struct OfficerPerformanceSection: View {
                 }
                 .background(LMSColors.surfaceElevated)
                 .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
-                        .stroke(LMSColors.separatorLight, lineWidth: 0.5)
-                )
-                .shadow(color: .black.opacity(0.03), radius: 6, x: 0, y: 2)
+                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
             }
+        }
+        .sheet(isPresented: $showDetailSheet) {
+            OfficerPerformanceReportSheet(viewModel: viewModel)
         }
     }
 }
 
-private struct OfficerPerformanceRow: View {
+private struct TeamOfficerRow: View {
     let officer: ManagerOfficer
 
     var body: some View {
@@ -397,18 +245,18 @@ private struct OfficerPerformanceRow: View {
             ZStack {
                 Circle()
                     .fill(LMSColors.brandNavy.opacity(0.10))
-                    .frame(width: 40, height: 40)
+                    .frame(width: 44, height: 44)
                 Text(officer.initials)
-                    .font(.system(.footnote, design: .rounded).weight(.bold))
+                    .font(.system(.subheadline, design: .rounded).weight(.bold))
                     .foregroundStyle(LMSColors.brandNavy)
             }
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(officer.name)
                     .font(.system(.callout, design: .rounded).weight(.semibold))
                     .foregroundStyle(LMSColors.textPrimary)
                 Text(officer.role)
-                    .font(.system(.caption, design: .rounded))
+                    .font(.system(.subheadline, design: .rounded))
                     .foregroundStyle(LMSColors.textSecondary)
             }
 
@@ -418,33 +266,136 @@ private struct OfficerPerformanceRow: View {
                 HStack(spacing: 4) {
                     Image(systemName: "star.fill")
                         .foregroundStyle(LMSColors.amber)
-                        .font(.system(size: 10))
+                        .font(.system(size: 14))
                     Text(String(format: "%.1f", officer.rating))
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .font(.system(.subheadline, design: .rounded).bold())
                         .foregroundStyle(LMSColors.textPrimary)
-                }
-
-                HStack(spacing: 6) {
-                    Text("\(officer.activeCases)/\(officer.maxCapacity)")
-                        .font(.system(.caption2, design: .rounded).weight(.medium))
-                        .foregroundStyle(LMSColors.textSecondary)
-
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(officer.capacityColor.opacity(0.20))
-                                .frame(height: 4)
-                            Capsule()
-                                .fill(officer.capacityColor)
-                                .frame(width: geo.size.width * officer.capacityPercentage, height: 4)
-                        }
-                    }
-                    .frame(width: 32, height: 4)
                 }
             }
         }
         .padding(.vertical, LMSSpacing.md)
         .padding(.horizontal, LMSSpacing.lg)
+    }
+}
+
+
+// MARK: - Officer Performance Report Sheet (moved from ManagerReportsView)
+
+struct OfficerPerformanceReportSheet: View {
+    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Environment(\.dismiss) var dismiss
+
+    private var totalProcessed: Int {
+        viewModel.officers.reduce(0) { $0 + $1.loansProcessedYTD }
+    }
+
+    private var avgApprovalRate: Double {
+        let rates = viewModel.officers.map(\.approvalRate)
+        return rates.isEmpty ? 0 : rates.reduce(0, +) / Double(rates.count)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if viewModel.officers.isEmpty {
+                    ContentUnavailableView(
+                        "No Officers Tracked",
+                        systemImage: "person.2.slash",
+                        description: Text("Officer performance data will appear once staff are assigned to this branch.")
+                    )
+                } else {
+                    List {
+                        Section("Branch Summary") {
+                            LabeledContent("Officers Tracked", value: "\(viewModel.officers.count)")
+                            LabeledContent("Total Loans Processed (YTD)", value: "\(totalProcessed)")
+                            LabeledContent("Avg. Approval Rate", value: String(format: "%.1f%%", avgApprovalRate))
+                        }
+
+                        Section("Individual Performance") {
+                            ForEach(viewModel.officers.sorted(by: { $0.approvalRate > $1.approvalRate })) { officer in
+                                VStack(alignment: .leading, spacing: LMSSpacing.sm) {
+                                    HStack {
+                                        ZStack {
+                                            Circle()
+                                                .fill(LMSColors.brandNavy.opacity(0.10))
+                                                .frame(width: 36, height: 36)
+                                            Text(officer.initials)
+                                                .font(.system(.caption2, design: .rounded).bold())
+                                                .foregroundStyle(LMSColors.brandNavy)
+                                        }
+
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(officer.name)
+                                                .font(.system(.callout, design: .rounded).bold())
+                                                .foregroundStyle(LMSColors.textPrimary)
+                                            Text(officer.role)
+                                                .font(.system(.caption2, design: .rounded))
+                                                .foregroundStyle(LMSColors.textSecondary)
+                                        }
+
+                                        Spacer()
+
+                                        HStack(spacing: 3) {
+                                            Image(systemName: "star.fill")
+                                                .foregroundStyle(LMSColors.amber)
+                                                .font(.system(size: 10))
+                                            Text(String(format: "%.1f", officer.rating))
+                                                .font(.system(.caption, design: .rounded).bold())
+                                                .foregroundStyle(LMSColors.textPrimary)
+                                        }
+                                    }
+
+                                    HStack(spacing: LMSSpacing.lg) {
+                                        PerformanceMetric(label: "Processed", value: "\(officer.loansProcessedYTD)")
+                                        PerformanceMetric(label: "Approval", value: String(format: "%.1f%%", officer.approvalRate))
+                                        PerformanceMetric(label: "Capacity", value: "\(officer.activeCases)/\(officer.maxCapacity)")
+                                    }
+
+                                    GeometryReader { geo in
+                                        ZStack(alignment: .leading) {
+                                            Capsule()
+                                                .fill(officer.capacityColor.opacity(0.15))
+                                                .frame(height: 5)
+                                            Capsule()
+                                                .fill(officer.capacityColor)
+                                                .frame(width: geo.size.width * officer.capacityPercentage, height: 5)
+                                        }
+                                    }
+                                    .frame(height: 5)
+                                }
+                                .padding(.vertical, LMSSpacing.xs)
+                            }
+                        }
+                    }
+                    .listStyle(.insetGrouped)
+                }
+            }
+            .navigationTitle("Officer Performance")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Close") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+private struct PerformanceMetric: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(.system(.caption, design: .rounded).bold())
+                .foregroundStyle(LMSColors.textPrimary)
+                .monospacedDigit()
+            Text(label)
+                .font(.system(size: 9, weight: .medium, design: .rounded))
+                .foregroundStyle(LMSColors.textTertiary)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 

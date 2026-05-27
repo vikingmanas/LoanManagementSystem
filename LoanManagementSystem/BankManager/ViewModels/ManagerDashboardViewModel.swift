@@ -10,7 +10,6 @@ final class ManagerDashboardViewModel: ObservableObject {
 
     @Published var applicants: [ManagerApplicant] = []
     @Published var officers: [ManagerOfficer] = []
-    @Published var kpis: [ManagerKPI] = []
     @Published var notifications: [ManagerNotificationItem] = []
     @Published var conversations: [ManagerChatConversation] = []
     @Published var branchOverview: BranchOverview = BranchOverview(
@@ -397,7 +396,6 @@ final class ManagerDashboardViewModel: ObservableObject {
             rebuildOfficersFromApplicants()
         }
         rebuildBranchOverview()
-        rebuildKPIs()
         rebuildNotifications()
         rebuildConversations()
         rebuildAuditEvents()
@@ -443,26 +441,6 @@ final class ManagerDashboardViewModel: ObservableObject {
         )
     }
 
-    private func rebuildKPIs() {
-        let totalRequested = applicants.reduce(0) { $0 + $1.requestedAmount }
-        let disbursed = applicants
-            .filter { $0.status == .approved || $0.status == .disbursed }
-            .reduce(0) { $0 + $1.requestedAmount }
-        let terminal = applicants.filter { $0.status == .approved || $0.status == .disbursed || $0.status == .rejected }
-        let approvalRate = terminal.isEmpty ? 0 : Double(terminal.filter { $0.status != .rejected }.count) / Double(terminal.count)
-        let queueCount = pendingApplicants.count
-        let activeLoanCount = applicants.filter { $0.status != .rejected }.count
-        let highRiskCount = applicants.filter { $0.riskLevel == .high || $0.riskLevel == .critical }.count
-        let progress = totalRequested == 0 ? 0 : min(1, disbursed / max(totalRequested, 1))
-
-        kpis = [
-            ManagerKPI(title: "TOTAL DISBURSED", value: CurrencyFormatter.shared.format(disbursed), subtitle: "From approved/disbursed loans", icon: "indianrupeesign.circle.fill", tint: LMSColors.emerald, trend: .neutral, trendValue: "Live", progress: progress),
-            ManagerKPI(title: "APPROVAL RATE", value: "\(Int(approvalRate * 100))%", subtitle: "\(terminal.count) decided cases", icon: "checkmark.seal.fill", tint: LMSColors.actionBlue, trend: .neutral, trendValue: "Live", progress: approvalRate),
-            ManagerKPI(title: "CLEARANCE QUEUE", value: "\(queueCount) Loans", subtitle: "Awaiting manager action", icon: "clock.badge.exclamationmark", tint: LMSColors.amber, trend: queueCount == 0 ? .neutral : .up, trendValue: "\(queueCount)", progress: min(1, Double(queueCount) / 10)),
-            ManagerKPI(title: "HIGH RISK", value: "\(highRiskCount)", subtitle: highRiskCount == 0 ? "No flagged profiles" : "Flagged profiles", icon: "shield.lefthalf.filled", tint: LMSColors.coral, trend: .neutral, trendValue: highRiskCount == 0 ? "Clear" : "\(highRiskCount)", progress: applicants.isEmpty ? 0 : Double(highRiskCount) / Double(applicants.count)),
-            ManagerKPI(title: "ACTIVE LOANS", value: "\(activeLoanCount)", subtitle: "Across all types", icon: "doc.text.fill", tint: LMSColors.brandNavy, trend: .neutral, trendValue: "Live", progress: applicants.isEmpty ? 0 : Double(activeLoanCount) / Double(applicants.count))
-        ]
-    }
 
     private func rebuildNotifications() {
         let generated = pendingApplicants.prefix(5).map { applicant in
