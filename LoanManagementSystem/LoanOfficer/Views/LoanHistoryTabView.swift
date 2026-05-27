@@ -15,13 +15,13 @@ struct LoanHistoryTabView: View {
         switch selectedFilter {
         case .all:
             break
-        case .pending:
-            list = list.filter { [.pending, .applied, .documentsPending, .documentsRejected].contains($0.status) }
-        case .review:
-            list = list.filter { [.underReview, .verificationCompleted].contains($0.status) }
-        case .manager:
+        case .newCases:
+            list = list.filter { [.pending, .applied].contains($0.status) }
+        case .underCheck:
+            list = list.filter { [.underReview, .verificationCompleted, .documentsPending, .documentsRejected, .onHold].contains($0.status) }
+        case .approvalQueue:
             list = list.filter { [.sentToManager, .finalApprovalPending].contains($0.status) || $0.sentToManagerDate != nil }
-        case .closed:
+        case .completed:
             list = list.filter { [.approved, .disbursed, .rejected].contains($0.status) }
         }
 
@@ -41,62 +41,83 @@ struct LoanHistoryTabView: View {
 
     var body: some View {
         List {
+            // Style: Perfectly Native Segmented, Function: Scrollable (No Truncation)
             Section {
-                Picker("Stage", selection: $selectedFilter) {
-                    ForEach(RegistryFilter.allCases) { filter in
-                        Text(filter.title).tag(filter)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 0) {
+                        ForEach(RegistryFilter.allCases) { filter in
+                            Button {
+                                withAnimation(.snappy(duration: 0.2)) {
+                                    selectedFilter = filter
+                                }
+                            } label: {
+                                Text(filter.title)
+                                    .font(.subheadline.weight(.medium))
+                                    .padding(.vertical, 7)
+                                    .padding(.horizontal, 16)
+                                    .background {
+                                        if selectedFilter == filter {
+                                            RoundedRectangle(cornerRadius: 6.5, style: .continuous)
+                                                .fill(Color(.systemBackground))
+                                                .shadow(color: .black.opacity(0.1), radius: 1.5, x: 0, y: 1)
+                                        }
+                                    }
+                                    .foregroundStyle(selectedFilter == filter ? Color(.label) : Color(.secondaryLabel))
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
+                    .padding(2)
+                    .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 8.5, style: .continuous))
                 }
-                .pickerStyle(.segmented)
             }
             .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 10, leading: 0, bottom: 10, trailing: 0))
 
             Section {
-                ForEach(filteredApplications) { app in
-                    Button {
-                        activeDetailApp = app
-                    } label: {
-                        RegistryApplicationRow(app: app)
-                    }
-                    .buttonStyle(.plain)
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                if filteredApplications.isEmpty {
+                    ContentUnavailableView(
+                        "No \(selectedFilter.title) Applications",
+                        systemImage: "tray.full",
+                        description: Text("No records found matching this status.")
+                    )
+                } else {
+                    ForEach(filteredApplications) { app in
                         Button {
-                            alertMessage = "Calling \(app.borrowerName) at the verified phone number."
-                            showingCallAlert = true
+                            activeDetailApp = app
                         } label: {
-                            Label("Call", systemImage: "phone")
+                            RegistryApplicationRow(app: app)
                         }
-                        .tint(.green)
+                        .buttonStyle(.plain)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button {
+                                alertMessage = "Calling \(app.borrowerName) at the verified phone number."
+                                showingCallAlert = true
+                            } label: {
+                                Label("Call", systemImage: "phone")
+                            }
+                            .tint(.green)
 
-                        Button {
-                            alertMessage = "\(app.applicationId) is flagged for compliance review."
-                            showingFlagAlert = true
-                        } label: {
-                            Label("Flag", systemImage: "flag")
+                            Button {
+                                alertMessage = "\(app.applicationId) is flagged for compliance review."
+                                showingFlagAlert = true
+                            } label: {
+                                Label("Flag", systemImage: "flag")
+                            }
+                            .tint(.orange)
                         }
-                        .tint(.orange)
                     }
                 }
             } header: {
-                HStack {
-                    Text("\(filteredApplications.count) Applications")
-                    Spacer()
-                    Menu {
-                        Picker("Sort", selection: $sortOrder) {
-                            ForEach(HistorySortOrder.allCases, id: \.self) { order in
-                                Text(order.rawValue).tag(order)
-                            }
-                        }
-                    } label: {
-                        Label(sortOrder.rawValue, systemImage: "arrow.up.arrow.down")
-                    }
+                Text("\(filteredApplications.count) Total Applications")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                     .textCase(nil)
-                }
             }
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Registry")
-        .searchable(text: $viewModel.historySearchQuery, prompt: "Borrower, ID, branch")
+        .searchable(text: $viewModel.historySearchQuery, placement: .navigationBarDrawer(displayMode: .always), prompt: "Borrower, ID, branch")
         .refreshable { await viewModel.fetchDashboardData() }
         .sheet(item: $activeDetailApp) { app in
             LoanApplicationReviewDetailView(applicationId: app.applicationId, viewModel: viewModel)
@@ -118,43 +139,32 @@ struct LoanHistoryTabView: View {
     }
 
     private func syncFilterFromViewModel() {
-        guard let status = viewModel.historyFilter else {
-            selectedFilter = .all
-            return
-        }
-
-        switch status {
-        case .pending, .applied, .documentsPending, .documentsRejected:
-            selectedFilter = .pending
-        case .underReview, .verificationCompleted:
-            selectedFilter = .review
-        case .sentToManager, .finalApprovalPending:
-            selectedFilter = .manager
-        case .approved, .disbursed, .rejected:
-            selectedFilter = .closed
-        default:
-            selectedFilter = .all
+        if let filter = viewModel.historyFilter {
+            selectedFilter = filter
         }
     }
 }
 
-private enum RegistryFilter: String, CaseIterable, Identifiable {
-    case all
-    case pending
-    case review
-    case manager
-    case closed
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .all: return "All"
-        case .pending: return "Pending"
-        case .review: return "Review"
-        case .manager: return "Manager"
-        case .closed: return "Closed"
+// MARK: - Native Styled Filter Chip
+private struct FilterChip: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline.weight(isSelected ? .semibold : .medium))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    isSelected ? Color(.label) : Color(.secondarySystemFill),
+                    in: Capsule()
+                )
+                .foregroundStyle(isSelected ? Color(.systemBackground) : Color(.label))
         }
+        .buttonStyle(.plain)
+        .fixedSize(horizontal: true, vertical: false) // Prevent truncation
     }
 }
 
@@ -166,30 +176,42 @@ private struct RegistryApplicationRow: View {
             OfficerAvatar(name: app.borrowerName, tint: app.loanType.themeColor)
 
             VStack(alignment: .leading, spacing: 4) {
-                HStack {
+                HStack(alignment: .top) {
                     Text(app.borrowerName)
                         .font(.body.weight(.semibold))
                         .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    
                     Spacer()
+                    
                     Text(CurrencyFormatter.shared.format(app.requestedAmount))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
+                        .minimumScaleFactor(0.8)
                 }
 
                 Text("\(app.loanType.rawValue) · \(app.branch)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.9)
 
                 HStack(spacing: 8) {
                     Text(app.applicationId)
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    
+                    Spacer()
+                    
                     Text(app.status.rawValue)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(app.status.themeColor)
                         .padding(.horizontal, 7)
                         .padding(.vertical, 3)
                         .background(app.status.themeColor.opacity(0.12), in: Capsule())
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
             }
         }
