@@ -50,7 +50,7 @@ final class AuthManager: ObservableObject {
     init() {}
 
     /// Restores the Supabase session on app launch if one exists.
-    func configure() {
+    func configure(appState: AppStateManager? = nil) {
         Task {
             let client = SupabaseManager.shared.client
             do {
@@ -67,6 +67,22 @@ final class AuthManager: ObservableObject {
                 )
                 self.isAuthenticated = true
                 self.isAuthStateResolved = true
+                
+                if let appState = appState {
+                    if let role = role {
+                        switch role {
+                        case "admin": appState.selectedRole = .admin
+                        case "manager", "loan_manager": appState.selectedRole = .bankManager
+                        case "loan_officer": appState.selectedRole = .loanOfficer
+                        default: appState.selectedRole = .customer
+                        }
+                    } else {
+                        appState.selectedRole = .customer
+                    }
+                    if appState.selectedRole != .customer {
+                        appState.login()
+                    }
+                }
                 
                 print("[AuthManager] Session restored for user: \(user.email ?? "unknown"), role: \(role ?? "borrower")")
             } catch {
@@ -162,11 +178,11 @@ final class AuthManager: ObservableObject {
     // MARK: - Sign Out
     /// Signs out the current user and resets state.
     func signOut() {
+        self.currentUser = nil
+        self.isAuthenticated = false
+        BorrowerProfileStore.shared.signOut()
         Task {
             try? await AuthService.shared.signOut()
-            self.currentUser = nil
-            self.isAuthenticated = false
-            BorrowerProfileStore.shared.signOut()
         }
     }
 

@@ -182,7 +182,7 @@ private struct OfficerActionItemsRow: View {
                     tint: viewModel.sentToManagerApps.isEmpty ? LMSColors.emerald : LMSColors.coral,
                     action: {
                         HapticsManager.triggerImpact(style: .light)
-                        viewModel.historyFilter = .pending
+                        viewModel.historyFilter = .newCases
                         selectedTab = .registry
                     }
                 )

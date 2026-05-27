@@ -128,7 +128,7 @@ struct ContentView: View {
             value: authManager.isAuthStateResolved
         )
         .onAppear {
-            authManager.configure()
+            authManager.configure(appState: appState)
 
             // MARK: - Splash Delay
             // Skip the splash delay inside SwiftUI Previews for instant canvas rendering.
@@ -142,11 +142,6 @@ struct ContentView: View {
             }
         }
         .onChange(of: authManager.isAuthenticated) {
-            // When AuthManager restores a session on launch, propagate to AppStateManager
-            if authManager.isAuthenticated && !appState.isAuthenticated {
-                appState.login(requiresBorrowerOnboarding: false)
-                appState.selectedRole = .customer
-            }
             syncBorrowerProfileIfNeeded()
         }
         .onChange(of: authManager.userEmail) {
