@@ -178,8 +178,14 @@ struct UnifiedProfileEditContentView: View {
     }
     
     private func saveChanges() {
-        guard var updatedProfile = BorrowerProfileStore.shared.profile ?? viewModel.profile else { return }
-
+        guard var updatedProfile = viewModel.profile else { return }
+        
+        // Build a single comprehensive profile update from ALL form fields at once.
+        // Previously, 5 separate update calls each read the stale viewModel.profile
+        // (due to Combine's .receive(on: .main) delay), causing each call to overwrite
+        // the previous one's changes.
+        
+        // Personal Info
         updatedProfile.fullName = fullName
         updatedProfile.gender = gender
         updatedProfile.maritalStatus = maritalStatus
@@ -187,7 +193,8 @@ struct UnifiedProfileEditContentView: View {
         updatedProfile.dateOfBirth = dateOfBirth
         updatedProfile.aadhaarNumber = aadhaarNumber
         updatedProfile.panNumber = panNumber
-
+        
+        // Contact
         if updatedProfile.mobileNumber != mobileNumber {
             updatedProfile.mobileNumber = mobileNumber
             updatedProfile.isPhoneVerified = false
@@ -197,7 +204,8 @@ struct UnifiedProfileEditContentView: View {
             updatedProfile.isEmailVerified = false
         }
         updatedProfile.alternateNumber = alternateNumber.isEmpty ? nil : alternateNumber
-
+        
+        // Address
         let newAddress = AddressInfo(
             streetAddress: streetAddress,
             city: city,
@@ -208,7 +216,8 @@ struct UnifiedProfileEditContentView: View {
         )
         updatedProfile.currentAddress = newAddress
         updatedProfile.permanentAddress = isSameAsCurrent ? newAddress : updatedProfile.permanentAddress
-
+        
+        // Employment & Income
         updatedProfile.employment = EmploymentInfo(
             employmentType: employmentType,
             companyName: companyName,
@@ -216,15 +225,16 @@ struct UnifiedProfileEditContentView: View {
             workExperienceYears: updatedProfile.employment.workExperienceYears,
             employerAddress: updatedProfile.employment.employerAddress
         )
-        let income = Double(monthlyIncome) ?? 0
+        let incomeValue = Double(monthlyIncome) ?? 0
         updatedProfile.income = IncomeInfo(
-            monthlyIncome: income,
-            annualIncome: income * 12.0,
+            monthlyIncome: incomeValue,
+            annualIncome: incomeValue * 12.0,
             existingEMIs: updatedProfile.income.existingEMIs,
             creditScore: updatedProfile.income.creditScore,
             incomeSource: updatedProfile.income.incomeSource
         )
-
+        
+        // Additional Info
         updatedProfile.occupation = occupation
         updatedProfile.hasExistingBankAccount = hasExistingBankAccount
         updatedProfile.existingCustomerId = existingCustomerId.isEmpty ? nil : existingCustomerId
@@ -233,7 +243,8 @@ struct UnifiedProfileEditContentView: View {
         updatedProfile.emergencyContactNumber = emergencyContactNumber
         updatedProfile.nomineeName = nomineeName
         updatedProfile.nomineeRelationship = nomineeRelationship
-
+        
+        // Single save — all fields preserved
         BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
 }

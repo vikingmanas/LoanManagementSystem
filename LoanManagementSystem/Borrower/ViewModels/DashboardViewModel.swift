@@ -11,12 +11,14 @@ import Combine
 @MainActor
 public final class DashboardViewModel: ObservableObject {
     @Published public var loanAccounts: [DashboardLoanAccount] = []
-    @Published public var bankAccount: BankAccount = BankAccount(accountNumber: "", accountType: .savings, availableBalance: 0)
+    @Published public var bankAccount: BankAccount = BankAccount(accountNumber: "XXXX 7890", accountType: .savings, availableBalance: 0)
     @Published public var bankAccounts: [BankAccount] = []
     @Published public var pendingEMIs: [EMIRecord] = []
     @Published public var transactions: [Transaction] = []
     @Published public var schemes: [GovernmentScheme] = []
     @Published public var isLoading: Bool = true
+    @Published public var profileName: String = ""
+    @Published public var profileCompletionPercentage: Int = 0
     
     // Quick demonstration toggle state (e.g. to mock low balance vs normal)
     @Published public var forceLowBalanceMockState: Bool = false
@@ -38,10 +40,8 @@ public final class DashboardViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Ensure dashboard reflects any newly provisioned borrower OD/link accounts
-        // (triggered from profile store, not always from applications alone).
         BorrowerProfileStore.shared.$profile
-            .dropFirst()
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 Task { await self?.fetchDashboardData() }
             }
@@ -52,11 +52,6 @@ public final class DashboardViewModel: ObservableObject {
     public var totalSanctioned:  Double { loanAccounts.map(\.sanctionedAmount).reduce(0, +) }
     public var totalRepaid:      Double { totalSanctioned - totalOutstanding }
     public var repaidFraction:   Double { totalSanctioned > 0 ? (totalRepaid / totalSanctioned) : 0 }
-
-    public var loansClosedCount: Int {
-        // Closed if outstanding principal has reached 0 (or below due to rounding).
-        loanAccounts.filter { $0.principalOutstanding <= 0.0 }.count
-    }
     
     public var nextEMI: EMIRecord? {
         pendingEMIs.first { $0.status != .paid }
@@ -125,74 +120,38 @@ public final class DashboardViewModel: ObservableObject {
         }
         
         if let profile = BorrowerProfileStore.shared.profile {
+            self.profileName = profile.fullName
+            self.profileCompletionPercentage = profile.profileCompletionPercentage
             let disbursedCredits = disbursementCredits(for: profile)
             self.bankAccounts = buildBankAccounts(from: profile, disbursedCredits: disbursedCredits)
             self.bankAccount = bankAccounts.first(where: { $0.accountType == .savings })
                 ?? bankAccounts.first
-                ?? self.bankAccount
+                ?? BankAccount(accountNumber: "0000000000", bankName: "Default Bank", accountType: .savings, availableBalance: 0)
         } else {
-            self.bankAccounts = []
-            self.bankAccount = bankAccount
+            self.profileName = ""
+            self.profileCompletionPercentage = 0
+            self.bankAccount = BankAccount(accountNumber: "XXXX 0000", bankName: "Default Bank", accountType: .savings, availableBalance: 0.0)
+            self.bankAccounts = [self.bankAccount]
         }
         
         // Load loan accounts from approved/disbursed applications in CentralLoanRepository
         let approvedApps = CentralLoanRepository.shared.applications.filter {
             $0.currentStage == .approved || $0.currentStage == .disbursed
         }
-
-        // Business rule: when a loan is approved, an OD/emis deduction account must exist.
-        // If an OD account wasn't provisioned earlier (due to prior bugs/race conditions),
-        // backfill it here so the dashboard UI stays consistent.
-        if let currentProfile = BorrowerProfileStore.shared.profile {
-            for app in approvedApps {
-                // Only backfill if we don't already have an OD account linked to this loan application.
-                let existingLinkedLoanIDs: Set<UUID> = Set(
-                    (currentProfile.linkedAccounts ?? [])
-                        .compactMap { $0.isOverdraftAccount ? $0.linkedLoanApplicationId : nil }
-                )
-                if existingLinkedLoanIDs.contains(app.id) { continue }
-
-                _ = BorrowerProfileStore.shared.provisionODAccountForApprovedLoan(
-                    email: app.formData.emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? currentProfile.email : app.formData.emailAddress,
-                    applicationId: app.id,
-                    applicationNumber: app.applicationId ?? app.displayIdentifier,
-                    borrowerName: app.formData.fullName,
-                    sanctionedAmount: app.formData.requestedAmountValue
-                )
-            }
-        }
-
-        // Prefer the OD account created for EMI deductions (linked by loan application id).
-        let overdraftByLoanID: [UUID: LinkedBankAccount] = {
-            let linked = BorrowerProfileStore.shared.profile?.linkedAccounts ?? []
-            var dict: [UUID: LinkedBankAccount] = [:]
-            for acc in linked where acc.isOverdraftAccount {
-                guard let loanID = acc.linkedLoanApplicationId else { continue }
-                dict[loanID] = acc
-            }
-            return dict
-        }()
-
-        self.loanAccounts = approvedApps.compactMap { app in
-            // Only show an account card when the OD account for EMI deductions exists.
-            guard let linkedOD = overdraftByLoanID[app.id] else { return nil }
-
-            let totalEMI = app.upcomingEMI > 0
-                ? app.upcomingEMI
-                : (app.formData.requestedAmountValue / Double(max(1, app.formData.preferredTenureMonths)))
-
+        
+        self.loanAccounts = approvedApps.map { app in
+            let totalEMI = app.formData.requestedAmountValue / Double(max(1, app.formData.preferredTenureMonths))
             return DashboardLoanAccount(
                 id: app.id,
-                accountNumber: linkedOD.accountNumber,
+                accountNumber: app.applicationId ?? "L-\(app.id.uuidString.prefix(6).uppercased())",
                 loanType: app.product.type.title,
                 sanctionedAmount: app.formData.requestedAmountValue,
-                principalOutstanding: app.outstandingBalance,
+                principalOutstanding: app.formData.requestedAmountValue,
                 totalEMI: totalEMI,
                 nextEMIDate: Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date(),
                 tenureRemainingMonths: app.formData.preferredTenureMonths,
                 totalTenureMonths: app.formData.preferredTenureMonths,
-                repaidPercentage: 0.0,
-                linkedBankAccountId: linkedOD.id
+                repaidPercentage: 0.0
             )
         }
         
@@ -263,6 +222,12 @@ public final class DashboardViewModel: ObservableObject {
                     accountType: .savings,
                     availableBalance: disbursedCredits[bank.accountNumber, default: 0]
                 )
+            )
+        }
+
+        if accounts.isEmpty {
+            accounts.append(
+                BankAccount(accountNumber: "0000000000", bankName: "Default Bank", accountType: .savings, availableBalance: 0)
             )
         }
 
@@ -408,4 +373,3 @@ public final class DashboardViewModel: ObservableObject {
         }
     }
 }
-
