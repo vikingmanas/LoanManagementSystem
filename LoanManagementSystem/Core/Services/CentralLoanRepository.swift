@@ -54,20 +54,30 @@ final class CentralLoanRepository: ObservableObject {
     // MARK: - Core Operations
     
     func submitApplication(_ app: BorrowerLoanApplication) {
-        if let index = applications.firstIndex(where: { $0.id == app.id }) {
-            applications[index] = app
+        var updatedApp = app
+        if updatedApp.borrowerId == nil, let uidString = resolveCurrentBorrowerUID(), let uid = UUID(uuidString: uidString) {
+            updatedApp.borrowerId = uid
+        }
+        
+        if let index = applications.firstIndex(where: { $0.id == updatedApp.id }) {
+            applications[index] = updatedApp
         } else {
-            applications.insert(app, at: 0)
+            applications.insert(updatedApp, at: 0)
         }
         persistState()
-        syncApplicationToSupabase(app)
+        syncApplicationToSupabase(updatedApp)
     }
     
     func updateApplication(_ app: BorrowerLoanApplication) {
-        if let index = applications.firstIndex(where: { $0.id == app.id }) {
-            applications[index] = app
+        var updatedApp = app
+        if updatedApp.borrowerId == nil, let uidString = resolveCurrentBorrowerUID(), let uid = UUID(uuidString: uidString) {
+            updatedApp.borrowerId = uid
+        }
+        
+        if let index = applications.firstIndex(where: { $0.id == updatedApp.id }) {
+            applications[index] = updatedApp
             persistState()
-            syncApplicationToSupabase(app)
+            syncApplicationToSupabase(updatedApp)
         }
     }
 
@@ -88,16 +98,38 @@ final class CentralLoanRepository: ObservableObject {
                 return dbApp.toBorrowerApplication(product: product)
             }
             
-            // Only assign if there is a difference to avoid infinite re-renders
-            let currentIds = self.applications.map { $0.id }
-            let newIds = mappedApps.map { $0.id }
+            var hasChanges = false
             
-            // Simple check: if counts are different or IDs don't match, update.
-            // Ideally we'd compare the full object, but for avoiding the init loop, this is sufficient.
-            if currentIds != newIds {
-                self.applications = mappedApps
+            // Update existing applications if their values changed, or append new ones.
+            for remoteApp in mappedApps {
+                if let index = self.applications.firstIndex(where: { $0.id == remoteApp.id }) {
+                    if self.applications[index] != remoteApp {
+                        self.applications[index] = remoteApp
+                        hasChanges = true
+                    }
+                } else {
+                    self.applications.append(remoteApp)
+                    hasChanges = true
+                }
+            }
+            
+            // Remove local applications belonging to this borrower that are no longer present on Supabase.
+            let remoteIds = Set(mappedApps.map { $0.id })
+            let initialCount = self.applications.count
+            self.applications.removeAll { localApp in
+                if let localBorrowerId = localApp.borrowerId, localBorrowerId == borrowerId {
+                    return !remoteIds.contains(localApp.id)
+                }
+                return false
+            }
+            if self.applications.count != initialCount {
+                hasChanges = true
+            }
+            
+            if hasChanges {
                 self.persistState()
             }
+            
             print("[CentralLoanRepository] Successfully fetched and synchronized \(mappedApps.count) applications from Supabase.")
         } catch {
             print("[CentralLoanRepository] Failed to fetch applications from Supabase: \(error.localizedDescription)")
@@ -117,14 +149,40 @@ final class CentralLoanRepository: ObservableObject {
                 return dbApp.toBorrowerApplication(product: product)
             }
             
-            // Merge with existing local applications to avoid duplicates
+            var hasChanges = false
+            
+            // Merge with existing local applications, updating any modified data.
             for remoteApp in mappedApps {
-                if !self.applications.contains(where: { $0.id == remoteApp.id }) {
+                if let index = self.applications.firstIndex(where: { $0.id == remoteApp.id }) {
+                    if self.applications[index] != remoteApp {
+                        self.applications[index] = remoteApp
+                        hasChanges = true
+                    }
+                } else {
                     self.applications.append(remoteApp)
+                    hasChanges = true
                 }
             }
-            self.persistState()
-            print("[CentralLoanRepository] Successfully fetched \(mappedApps.count) submitted applications from Supabase for officer view.")
+            
+            // Clean up any non-draft applications locally that are no longer returned in the submitted fetch.
+            let remoteIds = Set(mappedApps.map { $0.id })
+            let initialCount = self.applications.count
+            self.applications.removeAll { localApp in
+                // Only clean up if it's not a draft, meaning it was submitted/in process but is no longer present.
+                if localApp.currentStage != .draft {
+                    return !remoteIds.contains(localApp.id)
+                }
+                return false
+            }
+            if self.applications.count != initialCount {
+                hasChanges = true
+            }
+            
+            if hasChanges {
+                self.persistState()
+            }
+            
+            print("[CentralLoanRepository] Successfully fetched and synchronized \(mappedApps.count) submitted applications from Supabase for officer view.")
         } catch {
             print("[CentralLoanRepository] Failed to fetch all submitted applications: \(error.localizedDescription)")
         }
@@ -161,6 +219,10 @@ final class CentralLoanRepository: ObservableObject {
     private nonisolated func resolveCurrentBorrowerUID() -> String? {
         // Access AuthManager on MainActor since it's @MainActor
         return MainActor.assumeIsolated {
+            // Try to get the UID from AuthManager first
+            if let uid = AuthManager.shared.currentUser?.uid {
+                return uid
+            }
             // Try to get the UID from the Supabase session directly
             if let uid = try? SupabaseManager.shared.client.auth.currentSession?.user.id.uuidString {
                 return uid
@@ -539,5 +601,13 @@ final class CentralLoanRepository: ObservableObject {
     private func persistState() {
         LoanApplicationPersistence.saveApplications(applications)
         LoanApplicationPersistence.saveDisbursements(disbursementEvents)
+    }
+
+    func clearState() {
+        self.applications = []
+        self.disbursementEvents = []
+        self.borrowerNotifications = []
+        UserDefaults.standard.removeObject(forKey: "lms.centralLoanRepository.applications")
+        UserDefaults.standard.removeObject(forKey: "lms.centralLoanRepository.disbursements")
     }
 }

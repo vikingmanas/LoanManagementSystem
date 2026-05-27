@@ -392,6 +392,37 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
     var selectedAddressDoc: String
     var selectedIncomeDoc: String
 
+    enum CodingKeys: String, CodingKey {
+        case fullName
+        case dateOfBirth
+        case gender
+        case mobileNumber
+        case emailAddress
+        case address
+        case occupation
+        case employmentType
+        case employerName
+        case workExperienceYears
+        case monthlyIncome
+        case annualIncome
+        case existingLoans
+        case existingEMIs = "existingEmIs"
+        case creditCardObligations
+        case creditScore
+        case loanAmountRequested
+        case loanPurpose
+        case repaymentPreference
+        case preferredTenureMonths
+        case hasCoApplicant
+        case coApplicantDetails
+        case hasGuarantor
+        case guarantorDetails
+        case gstNumber
+        case selectedIdentityDoc
+        case selectedAddressDoc
+        case selectedIncomeDoc
+    }
+
     var monthlyIncomeValue: Double { monthlyIncome.numericValue }
     var annualIncomeValue: Double { annualIncome.numericValue }
     var existingLoansValue: Double { existingLoans.numericValue }
@@ -757,21 +788,6 @@ struct DBLoanApplication: Codable {
     let stageHistory: [BorrowerStageEntry]
     let submittedAt: Date?
     let updatedAt: Date
-    
-    enum CodingKeys: String, CodingKey {
-        case applicationId = "application_id"
-        case borrowerId = "borrower_id"
-        case officerId = "officer_id"
-        case productId = "product_id"
-        case amountRequested = "amount_requested"
-        case tenureMonths = "tenure_months"
-        case purpose
-        case status
-        case formData = "form_data"
-        case stageHistory = "stage_history"
-        case submittedAt = "submitted_at"
-        case updatedAt = "updated_at"
-    }
     
     func toBorrowerApplication(product: BorrowerLoanProduct, documents: [BorrowerLoanDocumentItem] = []) -> BorrowerLoanApplication {
         return BorrowerLoanApplication(

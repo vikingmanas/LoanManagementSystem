@@ -224,6 +224,14 @@ public struct IncomeInfo: Codable, Equatable {
         self.incomeSource = incomeSource
     }
 
+    enum CodingKeys: String, CodingKey {
+        case monthlyIncome
+        case annualIncome
+        case existingEMIs = "existingEmIs"
+        case creditScore
+        case incomeSource
+    }
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         monthlyIncome = try container.decodeIfPresent(Double.self, forKey: .monthlyIncome) ?? 0.0

@@ -155,6 +155,8 @@ final class ManagerDashboardViewModel: ObservableObject {
     func fetchDashboardData(authManager: AuthManager? = nil) async {
         isLoading = true
 
+        await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
+
         if let authManager {
             configureProfileFromAuth(authManager)
             await loadStaffContext(userId: authManager.currentUser?.uid)
@@ -167,6 +169,7 @@ final class ManagerDashboardViewModel: ObservableObject {
 
     func refreshData() async {
         isRefreshing = true
+        await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
         rebuildDerivedDashboardState()
         isRefreshing = false
     }

@@ -46,6 +46,34 @@ struct StoredLoanFormData: Codable {
     var hasGuarantor: Bool
     var guarantorDetails: String
     var gstNumber: String
+
+    enum CodingKeys: String, CodingKey {
+        case fullName
+        case dateOfBirth
+        case gender
+        case mobileNumber
+        case emailAddress
+        case address
+        case occupation
+        case employmentType
+        case employerName
+        case workExperienceYears
+        case monthlyIncome
+        case annualIncome
+        case existingLoans
+        case existingEMIs = "existingEmIs"
+        case creditCardObligations
+        case creditScore
+        case loanAmountRequested
+        case loanPurpose
+        case repaymentPreference
+        case preferredTenureMonths
+        case hasCoApplicant
+        case coApplicantDetails
+        case hasGuarantor
+        case guarantorDetails
+        case gstNumber
+    }
 }
 
 struct StoredDisbursementEvent: Codable {

@@ -5,6 +5,7 @@ struct MainTabView: View {
     @EnvironmentObject private var appState: AppStateManager
     @StateObject private var tabRouter = BorrowerTabRouter()
     @StateObject private var dashboardViewModel = DashboardViewModel()
+    @StateObject private var loanApplicationViewModel = LoanApplicationViewModel()
 
     var body: some View {
         TabView(selection: $tabRouter.selectedTab) {
@@ -14,7 +15,7 @@ struct MainTabView: View {
                 }
                 .tag(BorrowerTab.dashboard)
 
-            LoanApplicationTabView(viewModel: LoanApplicationViewModel())
+            LoanApplicationTabView(viewModel: loanApplicationViewModel)
                 .tabItem {
                     Label("Loans", systemImage: "doc.text.magnifyingglass")
                 }
