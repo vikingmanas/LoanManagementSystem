@@ -1,7 +1,8 @@
 import Foundation
 import Combine
 import SwiftUI
-import SwiftUI
+import OSLog
+import Supabase
 
 @MainActor
 final class AdminAuditViewModel: ObservableObject {
@@ -35,37 +36,16 @@ final class AdminAuditViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         
-        // Simulating network fetch
         do {
-            try await Task.sleep(nanoseconds: 800_000_000)
-            
-            // Generate some mock entries
-            var mockEntries: [AuditLogEntry] = []
-            let types: [AuditLogType] = [.userAction, .documentAction, .loanAction, .systemAction]
-            let actions = ["Verified Document", "Rejected Application", "Created User", "System Update", "Downloaded Report"]
-            let names = ["System", "Raj Kumar (LO)", "Priya Singh (BM)", "Amit Patel (LO)"]
-            
-            for i in 0..<20 {
-                let entry = AuditLogEntry(
-                    id: UUID(),
-                    userId: UUID(),
-                    userName: names.randomElement()!,
-                    action: actions.randomElement()!,
-                    entityType: "Entity \(i)",
-                    entityId: "ID-\(Int.random(in: 1000...9999))",
-                    timestamp: Date().addingTimeInterval(Double(-i * 3600)),
-                    details: "Automated mock details for entry \(i)",
-                    type: types.randomElement()!
-                )
-                mockEntries.append(entry)
-            }
-            
-            auditEntries = mockEntries
-            
+            let logs = try await AdminDashboardService.shared.fetchAllAuditLogs()
+            auditEntries = logs
         } catch {
+            logger.error("AdminAuditViewModel: Failed to load audit logs: \(error.localizedDescription)")
             errorMessage = "Failed to load audit logs."
         }
         
         isLoading = false
     }
+    
+    private let logger = Logger(subsystem: "galgotias.in.akash", category: "AdminAuditViewModel")
 }

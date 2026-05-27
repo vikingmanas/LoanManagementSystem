@@ -1,32 +1,24 @@
 import Foundation
 import Combine
 import SwiftUI
+import OSLog
 
 @MainActor
 class AdminTemplatesViewModel: ObservableObject {
     @Published var templates: [MessageTemplate] = []
     @Published var isLoading = false
     
-    init() {
-        // Mock data
-        self.templates = [
-            MessageTemplate(
-                id: UUID(),
-                name: "Loan Approval",
-                subject: "Congratulations! Your loan is approved",
-                body: "Dear {{user_name}},\n\nWe are pleased to inform you that your {{loan_type}} loan application for {{amount}} has been approved.",
-                type: .email,
-                isActive: true
-            ),
-            MessageTemplate(
-                id: UUID(),
-                name: "EMI Reminder",
-                subject: "Upcoming EMI Payment",
-                body: "Reminder: Your EMI of {{emi_amount}} is due on {{due_date}}. Please maintain sufficient balance.",
-                type: .sms,
-                isActive: true
-            )
-        ]
+    init() {}
+    
+    func loadTemplates() async {
+        isLoading = true
+        do {
+            let fetched = try await AdminDashboardService.shared.fetchNotificationTemplates()
+            self.templates = fetched
+        } catch {
+            logger.error("AdminTemplatesViewModel: Failed to load templates: \(error.localizedDescription)")
+        }
+        isLoading = false
     }
     
     func saveTemplate(_ template: MessageTemplate) {
@@ -35,9 +27,29 @@ class AdminTemplatesViewModel: ObservableObject {
         } else {
             templates.append(template)
         }
+        
+        Task {
+            do {
+                try await AdminDashboardService.shared.upsertNotificationTemplate(template)
+                logger.info("AdminTemplatesViewModel: Successfully saved template \(template.name) to Supabase.")
+            } catch {
+                logger.error("AdminTemplatesViewModel: Failed to save template: \(error.localizedDescription)")
+            }
+        }
     }
     
     func deleteTemplate(_ template: MessageTemplate) {
         templates.removeAll { $0.id == template.id }
+        
+        Task {
+            do {
+                try await AdminDashboardService.shared.deleteNotificationTemplate(id: template.id)
+                logger.info("AdminTemplatesViewModel: Successfully deleted template from Supabase.")
+            } catch {
+                logger.error("AdminTemplatesViewModel: Failed to delete template: \(error.localizedDescription)")
+            }
+        }
     }
+    
+    private let logger = Logger(subsystem: "galgotias.in.akash", category: "AdminTemplatesViewModel")
 }
