@@ -28,7 +28,7 @@ struct ProfileHeaderView: View {
                                 .foregroundStyle(.secondary.opacity(0.3))
                         }
                     }
-                    .frame(width: 90, height: 90)
+                    .frame(width: 120, height: 120)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(Color(.separator), lineWidth: 0.5))
                     
@@ -36,7 +36,7 @@ struct ProfileHeaderView: View {
                     Image(systemName: "camera.fill")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(.white)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 32, height: 32)
                         .background(Circle().fill(Color.accentColor))
                         .overlay(Circle().stroke(Color(.systemGroupedBackground), lineWidth: 2))
                         .shadow(color: .black.opacity(0.1), radius: 2)
@@ -69,27 +69,37 @@ struct ProfileHeaderView: View {
                     }
                 }
                 
-                Text("Borrower ID: \(id)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+
                 
                 // Native-style progress indicator
                 if completionPercentage < 100 {
-                    HStack(spacing: 8) {
+                    VStack(spacing: 6) {
                         ProgressView(value: Double(completionPercentage), total: 100)
                             .progressViewStyle(.linear)
-                            .frame(width: 100)
+                            .frame(width: 140)
                             .tint(.blue)
                         
                         Text("\(completionPercentage)% Profile Setup")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                     }
-                    .padding(.top, 4)
+                    .padding(.top, 8)
                 }
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
+        .padding(.bottom, 18)
+        .padding(.top, -10)
     }
+}
+
+#Preview {
+    ProfileHeaderView(
+        name: "Demo User",
+        id: "1531491B-E16B-48F2",
+        completionPercentage: 26,
+        isVerified: true,
+        imageData: nil,
+        onPhotoSelected: { _ in }
+    )
 }

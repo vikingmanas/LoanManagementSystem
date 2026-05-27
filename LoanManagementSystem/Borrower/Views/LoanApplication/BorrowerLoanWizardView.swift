@@ -104,8 +104,8 @@ struct BorrowerLoanWizardView: View {
         }
         .onAppear {
             viewModel.setBorrowerAuthContext(
-                email: authManager.userEmail,
-                displayName: authManager.userDisplayName
+                email: authManager.userEmail ?? "",
+                displayName: authManager.userDisplayName ?? ""
             )
             prepareWizardState()
         }

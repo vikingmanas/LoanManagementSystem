@@ -132,7 +132,7 @@ final class AuthService {
         let record = SupabaseUserInsert(id: uid, email: email, role: role, full_name: name, mobile_number: phone, created_at: Date())
         try await client
             .from("users")
-            .insert(record)
+            .upsert(record)
             .execute()
     }
     
@@ -154,5 +154,10 @@ final class AuthService {
     /// Signs out the current authenticated session.
     func signOut() async throws {
         try await client.auth.signOut()
+    }
+    
+    /// Updates the password for the currently signed-in user.
+    func updatePassword(newPassword: String) async throws {
+        _ = try await client.auth.update(user: UserAttributes(password: newPassword))
     }
 }
