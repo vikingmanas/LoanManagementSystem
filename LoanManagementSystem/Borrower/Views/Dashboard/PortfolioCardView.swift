@@ -73,17 +73,17 @@ public struct PortfolioCarouselView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
                     if viewModel.isLoading {
-                        RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous)
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .fill(LMSColors.surfaceElevated)
-                            .frame(width: 300, height: 180)
+                            .frame(width: 310, height: 185)
                             .shimmer(active: true)
                     } else {
                         if viewModel.loanAccounts.isEmpty {
-                            EmptyLoanAccountStateCard()
+                            EmptyPortfolioView()
                                 .frame(width: 310, height: 185)
                         } else {
-                            // Card 1: Portfolio summary (totals)
-                            TotalLoanOutstandingCard(viewModel: viewModel)
+                            // Card 1: Premium Portfolio Card View
+                            PortfolioCardView(viewModel: viewModel)
                                 .frame(width: 310, height: 185)
                             
                             // Cards 2..N: One card per approved/disbursed loan
@@ -110,109 +110,290 @@ public struct PortfolioCarouselView: View {
     }
 }
 
-// MARK: - Empty State Card
-private struct EmptyLoanAccountStateCard: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                Image(systemName: "creditcard.fill")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(LMSColors.brandNavy)
-                    .frame(width: 36, height: 36)
-                    .background(LMSColors.brandNavy.opacity(0.10), in: Circle())
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("No active loan account found")
-                        .font(.system(.subheadline, design: .rounded).bold())
-                        .foregroundStyle(LMSColors.textPrimary)
-                        .lineLimit(2)
-                    Text("Your loan account will be automatically created once a loan application is approved.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(3)
-                }
-            }
-            Spacer()
+// MARK: - Progress Ring View
+public struct ProgressRingView: View {
+    let progress: Double
+    let size: CGFloat
+    let strokeWidth: CGFloat
+    
+    @State private var animatedProgress: Double = 0
+    
+    public init(progress: Double, size: CGFloat = 44, strokeWidth: CGFloat = 5.0) {
+        self.progress = progress
+        self.size = size
+        self.strokeWidth = strokeWidth
+    }
+    
+    public var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.white.opacity(0.12), lineWidth: strokeWidth)
+            
+            Circle()
+                .trim(from: 0.0, to: CGFloat(min(animatedProgress, 1.0)))
+                .stroke(
+                    LinearGradient(
+                        colors: [LMSColors.emerald, LMSColors.emerald.opacity(0.8)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round)
+                )
+                .rotationEffect(Angle(degrees: -90))
+            
+            Text("\(Int(animatedProgress * 100))%")
+                .font(.system(size: size * 0.22, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
         }
-        .padding(LMSSpacing.xl)
-        .background(LMSColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous)
-                .stroke(LMSColors.separatorLight, lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 5)
+        .frame(width: size, height: size)
+        .onAppear {
+            withAnimation(.easeOut(duration: 1.0)) {
+                self.animatedProgress = progress
+            }
+        }
     }
 }
 
-// MARK: - Card 1: Total Loan Outstanding Card
-struct TotalLoanOutstandingCard: View {
+// MARK: - Sparkline View
+public struct SparklineView: View {
+    public init() {}
+    
+    public var body: some View {
+        GeometryReader { geo in
+            Path { path in
+                path.move(to: CGPoint(x: 0, y: geo.size.height * 0.8))
+                path.addLine(to: CGPoint(x: geo.size.width * 0.2, y: geo.size.height * 0.5))
+                path.addLine(to: CGPoint(x: geo.size.width * 0.4, y: geo.size.height * 0.65))
+                path.addLine(to: CGPoint(x: geo.size.width * 0.6, y: geo.size.height * 0.25))
+                path.addLine(to: CGPoint(x: geo.size.width * 0.8, y: geo.size.height * 0.4))
+                path.addLine(to: CGPoint(x: geo.size.width, y: geo.size.height * 0.1))
+            }
+            .stroke(
+                LinearGradient(
+                    colors: [LMSColors.emerald, LMSColors.emerald.opacity(0.3)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                ),
+                style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round)
+            )
+        }
+        .frame(width: 44, height: 18)
+    }
+}
+
+// MARK: - Mini Info Pill
+public struct MiniInfoPill: View {
+    let label: String
+    let value: String
+    let iconName: String
+    
+    public init(label: String, value: String, iconName: String) {
+        self.label = label
+        self.value = value
+        self.iconName = iconName
+    }
+    
+    public var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: iconName)
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundStyle(LMSColors.emerald)
+            
+            VStack(alignment: .leading, spacing: 1) {
+                Text(label)
+                    .font(.system(size: 7, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.55))
+                Text(value)
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.white.opacity(0.06))
+        )
+    }
+}
+
+// MARK: - Empty Portfolio View
+public struct EmptyPortfolioView: View {
+    @EnvironmentObject var tabRouter: BorrowerTabRouter
+    
+    public init() {}
+    
+    public var body: some View {
+        VStack(spacing: 12) {
+            Spacer()
+            
+            ZStack {
+                Circle()
+                    .fill(LMSColors.brandNavy.opacity(0.08))
+                    .frame(width: 44, height: 44)
+                
+                Image(systemName: "wallet.pass.fill")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(LMSColors.brandNavy)
+            }
+            
+            VStack(spacing: 2) {
+                Text("No Active Loans")
+                    .font(.system(.subheadline, design: .rounded).bold())
+                    .foregroundStyle(LMSColors.textPrimary)
+                
+                Text("Explore tailored credit options today")
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundStyle(LMSColors.textSecondary)
+            }
+            
+            Spacer()
+            
+            Button {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                    tabRouter.select(.loans)
+                }
+            } label: {
+                Text("Explore Loans")
+                    .font(.system(.caption, design: .rounded).bold())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+                    .background(
+                        LinearGradient(
+                            colors: [LMSColors.brandNavy, LMSColors.brandNavyLight],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .clipShape(Capsule())
+                    .shadow(color: LMSColors.brandNavy.opacity(0.18), radius: 4, x: 0, y: 2)
+            }
+            .buttonStyle(LMSPressableStyle())
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(LMSColors.surface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(LMSColors.separatorLight, lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 4)
+    }
+}
+
+// MARK: - Portfolio Card View (Premium Overview Card)
+public struct PortfolioCardView: View {
     @ObservedObject var viewModel: DashboardViewModel
     
-    var body: some View {
+    public init(viewModel: DashboardViewModel) {
+        self.viewModel = viewModel
+    }
+    
+    public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Top Row
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Total Active Loans")
-                        .font(.system(.caption, design: .rounded).bold())
-                        .foregroundStyle(.white.opacity(0.8))
-                    Text("\(viewModel.loanAccounts.count)")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                HStack(spacing: 6) {
+                    Image(systemName: "chart.pie.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(LMSColors.emerald)
+                    Text("Portfolio")
+                        .font(.system(.subheadline, design: .rounded).bold())
+                        .foregroundStyle(.white.opacity(0.95))
                 }
+                
                 Spacer()
-                Image(systemName: "doc.plaintext")
-                    .font(.title2)
-                    .foregroundStyle(.white.opacity(0.9))
+                
+                // +8% this month trend badge
+                HStack(spacing: 2) {
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 7, weight: .bold))
+                    Text("+8% this mo")
+                        .font(.system(size: 8, weight: .bold, design: .rounded))
+                }
+                .foregroundStyle(LMSColors.emerald)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(LMSColors.emerald.opacity(0.15), in: Capsule())
             }
             
             Spacer()
             
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Total Outstanding: \(viewModel.totalOutstanding.formattedAsINR())")
-                        .font(.system(.caption2, design: .rounded).bold())
-                        .foregroundStyle(.white.opacity(0.85))
-                    Spacer()
-                    let nextDue = viewModel.nextEMI?.dueDate
-                    Text(nextDue != nil ? "Next EMI: \(nextDue!.formattedAsDDMMMYYYY())" : "Next EMI: N/A")
-                        .font(.system(.caption2, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.7))
+            // Middle Row
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Total Outstanding")
+                        .font(.system(size: 8, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.55))
+                    
+                    Text(viewModel.totalOutstanding.formattedAsINR())
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                    
+                    SparklineView()
+                        .padding(.top, 4)
                 }
-                HStack {
-                    Text("\(viewModel.loansClosedCount) Closed")
-                        .font(.system(.caption2, design: .rounded).bold())
-                        .foregroundStyle(.white.opacity(0.8))
-                    Spacer()
-                    ProgressView(value: viewModel.repaidFraction)
-                        .tint(.white)
-                        .background(Color.white.opacity(0.2))
-                        .scaleEffect(x: 1, y: 1.5)
-                        .clipShape(Capsule())
-                        .frame(width: 120)
-                }
+                
+                Spacer()
+                
+                ProgressRingView(progress: viewModel.repaidFraction, size: 48, strokeWidth: 5.0)
             }
             
             Spacer()
             
-//            HStack {
-//                Text("Manage Loans")
-//                    .font(.system(.caption, design: .rounded).bold())
-//                    .foregroundStyle(.white)
-//                Spacer()
-//                Image(systemName: "chevron.right.circle.fill")
-//                    .foregroundStyle(.white.opacity(0.5))
-//            }
+            // Bottom Row: 3 compact info pills
+            HStack(spacing: 6) {
+                let totalEMI = viewModel.loanAccounts.map(\.totalEMI).reduce(0, +)
+                MiniInfoPill(
+                    label: "EMI",
+                    value: totalEMI > 0 ? totalEMI.formattedAsINR() : "N/A",
+                    iconName: "indianrupeesign.circle.fill"
+                )
+                
+                MiniInfoPill(
+                    label: "Active",
+                    value: "\(viewModel.loanAccounts.count)",
+                    iconName: "doc.plaintext.fill"
+                )
+                
+                let nextDue = viewModel.nextEMI?.dueDate
+                MiniInfoPill(
+                    label: "Due Date",
+                    value: nextDue != nil ? nextDue!.formattedAsDDMMMYYYY() : "N/A",
+                    iconName: "calendar"
+                )
+            }
         }
-        .padding(LMSSpacing.xl)
+        .padding(14)
         .background(
             LinearGradient(
-                colors: [LMSColors.brandNavy, LMSColors.brandNavyLight],
+                colors: [
+                    Color(hex: "0B1528"),
+                    Color(hex: "082820")
+                ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
-        .shadow(color: LMSColors.brandNavy.opacity(0.25), radius: 12, x: 0, y: 6)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [.white.opacity(0.12), .white.opacity(0.02)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        )
+        .shadow(color: Color(hex: "0B1528").opacity(0.35), radius: 12, x: 0, y: 6)
     }
 }
 
@@ -329,8 +510,6 @@ private struct LoanAccountCardRefined: View {
 }
 
 // MARK: - Bank Account Card (legacy adapter)
-// This is no longer used by the main borrower dashboard carousel (loan accounts only),
-// but it is kept to avoid breaking the older `PortfolioCardView` adapter.
 private struct BankAccountCardRefined: View {
     let account: BankAccount
     let isLowBalance: Bool
@@ -453,40 +632,5 @@ struct LoanProtectionCardRefined: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
         .shadow(color: Color(hex: "667EEA").opacity(0.3), radius: 12, x: 0, y: 6)
-    }
-}
-
-// MARK: - Legacy Adapters
-public struct PortfolioCardView: View {
-    public enum CardType: Hashable {
-        case loan(DashboardLoanAccount)
-        case bank(BankAccount)
-        case insurance
-    }
-    
-    let type: CardType
-    let isLowBalance: Bool
-    let isLoading: Bool
-    var onTransferTap: (() -> Void)? = nil
-    
-    public init(type: CardType, isLowBalance: Bool = false, isLoading: Bool = false, onTransferTap: (() -> Void)? = nil) {
-        self.type = type
-        self.isLowBalance = isLowBalance
-        self.isLoading = isLoading
-        self.onTransferTap = onTransferTap
-    }
-    
-    public var body: some View {
-        Group {
-            switch type {
-            case .loan(_):
-                TotalLoanOutstandingCard(viewModel: DashboardViewModel())
-            case .bank(let bank):
-                BankAccountCardRefined(account: bank, isLowBalance: isLowBalance, onTransfer: { onTransferTap?() })
-            case .insurance:
-                LoanProtectionCardRefined()
-            }
-        }
-        .frame(width: 300, height: 180)
     }
 }
