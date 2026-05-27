@@ -132,7 +132,7 @@ final class AuthService {
         let record = SupabaseUserInsert(id: uid, email: email, role: role, full_name: name, mobile_number: phone, created_at: Date())
         try await client
             .from("users")
-            .insert(record)
+            .upsert(record)
             .execute()
     }
     
