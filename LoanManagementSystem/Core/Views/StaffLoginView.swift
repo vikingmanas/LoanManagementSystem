@@ -33,8 +33,12 @@ struct StaffLoginView: View {
                             }
                         }) {
                             HStack(spacing: 6) {
-                                Image(systemName: "chevron.left")
-                                Text("Back to Roles")
+                                Circle()
+                                    .frame(width:50)
+                                    .foregroundStyle(.gray)
+                                    .overlay(
+                                        Image(systemName: "chevron.left")
+                                    )
                             }
                             .font(.system(.body, design: .rounded).weight(.semibold))
                             .foregroundColor(Color.AppTheme.primary)
@@ -44,23 +48,23 @@ struct StaffLoginView: View {
 
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(spacing: 12) {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color.AppTheme.primary.opacity(0.12))
-                                        .frame(width: 44, height: 44)
-
-                                    Image(systemName: appState.selectedRole.icon)
-                                        .font(.title3)
-                                        .foregroundColor(Color.AppTheme.primary)
-                                }
-
-                                Text("Branch Staff")
-                                    .font(.system(.caption, design: .rounded).weight(.bold))
-                                    .foregroundColor(.secondary)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 4)
-                                    .background(Color.secondary.opacity(0.1))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+//                                ZStack {
+//                                    RoundedRectangle(cornerRadius: 12)
+//                                        .fill(Color.AppTheme.primary.opacity(0.12))
+//                                        .frame(width: 44, height: 44)
+//
+//                                    Image(systemName: appState.selectedRole.icon)
+//                                        .font(.title3)
+//                                        .foregroundColor(Color.AppTheme.primary)
+//                                }
+//
+//                                Text("Branch Staff")
+//                                    .font(.system(.caption, design: .rounded).weight(.bold))
+//                                    .foregroundColor(.secondary)
+//                                    .padding(.horizontal, 10)
+//                                    .padding(.vertical, 4)
+//                                    .background(Color.secondary.opacity(0.1))
+//                                    .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
 
                             Text("\(appState.selectedRole.rawValue) Portal")
@@ -71,7 +75,7 @@ struct StaffLoginView: View {
                                 .font(Font.AppTheme.subtitle)
                                 .foregroundColor(Color.AppTheme.textSecondary)
                         }
-                        .padding(.top, 12)
+//                        .padding(.top, 12)
 
 
                         if !generalError.isEmpty {

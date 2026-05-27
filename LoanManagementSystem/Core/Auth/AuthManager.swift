@@ -51,16 +51,31 @@ final class AuthManager: ObservableObject {
 
     /// Restores the Supabase session on app launch if one exists.
     func configure() {
-        // Reset auth state synchronously and immediately to guarantee a clean, unauthenticated onboarding flow
-        // and prevent the splash screen from hanging or waiting for network-dependent sign-out tasks.
-        self.currentUser = nil
-        self.isAuthenticated = false
-        self.isAuthStateResolved = true
-        
-        // Execute the server-side sign-out asynchronously in the background.
         Task {
             let client = SupabaseManager.shared.client
-            try? await client.auth.signOut()
+            do {
+                let session = try await client.auth.session
+                let user = session.user
+                
+                // Fetch role to determine user type
+                let role = try? await AuthService.shared.fetchUserRole(uid: user.id)
+                
+                self.currentUser = AuthSessionUser(
+                    uid: user.id.uuidString,
+                    email: user.email,
+                    displayName: user.userMetadata["display_name"]?.description ?? "User"
+                )
+                self.isAuthenticated = true
+                self.isAuthStateResolved = true
+                
+                print("[AuthManager] Session restored for user: \(user.email ?? "unknown"), role: \(role ?? "borrower")")
+            } catch {
+                // No valid session exists — user needs to log in
+                self.currentUser = nil
+                self.isAuthenticated = false
+                self.isAuthStateResolved = true
+                print("[AuthManager] No existing session found. User must sign in.")
+            }
         }
     }
 

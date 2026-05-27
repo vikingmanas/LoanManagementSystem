@@ -23,6 +23,7 @@ struct StoredLoanApplication: Codable {
 struct StoredLoanFormData: Codable {
     var fullName: String
     var dateOfBirth: Date
+    var gender: String?
     var mobileNumber: String
     var emailAddress: String
     var address: String
@@ -123,6 +124,7 @@ enum LoanApplicationPersistence {
             formData: StoredLoanFormData(
                 fullName: app.formData.fullName,
                 dateOfBirth: app.formData.dateOfBirth,
+                gender: app.formData.gender,
                 mobileNumber: app.formData.mobileNumber,
                 emailAddress: app.formData.emailAddress,
                 address: app.formData.address,
@@ -169,6 +171,7 @@ enum LoanApplicationPersistence {
         let formData = BorrowerLoanFormData(
             fullName: stored.formData.fullName,
             dateOfBirth: stored.formData.dateOfBirth,
+            gender: stored.formData.gender ?? "",
             mobileNumber: stored.formData.mobileNumber,
             emailAddress: stored.formData.emailAddress,
             address: stored.formData.address,

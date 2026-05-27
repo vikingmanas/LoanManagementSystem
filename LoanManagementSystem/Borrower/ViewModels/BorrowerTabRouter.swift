@@ -5,7 +5,6 @@ enum BorrowerTab: Hashable {
     case dashboard
     case loans
     case history
-    case profile
 }
 
 final class BorrowerTabRouter: ObservableObject {

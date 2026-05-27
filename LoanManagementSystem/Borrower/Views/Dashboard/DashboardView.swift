@@ -22,14 +22,14 @@ struct StatusBannerSection: View {
     var body: some View {
         VStack(spacing: 12) {
             // Profile Completion Row (Priority 1)
-            if let profile = BorrowerProfileStore.shared.profile, profile.profileCompletionPercentage < 100 {
+            if viewModel.profileCompletionPercentage < 100 {
                 Button {
                     navigationPath.append(.profile)
                 } label: {
                     HStack(spacing: 12) {
                         Image(systemName: "person.crop.circle.badge.exclamationmark.fill")
-                            .font(.title3)
-                            .foregroundStyle(LMSColors.brandNavy)
+                             .font(.title3)
+                             .foregroundStyle(LMSColors.brandNavy)
                         
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Complete Your Profile")
@@ -37,11 +37,11 @@ struct StatusBannerSection: View {
                                 .foregroundStyle(LMSColors.textPrimary)
                             
                             HStack(spacing: 8) {
-                                ProgressView(value: Double(profile.profileCompletionPercentage), total: 100)
+                                ProgressView(value: Double(viewModel.profileCompletionPercentage), total: 100)
                                     .tint(LMSColors.brandNavy)
                                     .frame(width: 60)
                                 
-                                Text("\(profile.profileCompletionPercentage)% done")
+                                Text("\(viewModel.profileCompletionPercentage)% done")
                                     .font(.system(.caption2, design: .rounded))
                                     .foregroundStyle(LMSColors.textSecondary)
                             }
@@ -168,6 +168,7 @@ public struct DashboardView: View {
     @EnvironmentObject var tabRouter: BorrowerTabRouter
     @ObservedObject var viewModel: DashboardViewModel
     
+    @StateObject private var profileViewModel = BorrowerProfileViewModel()
     @State private var navigationPath = [DashboardRoute]()
     @State private var showingQuickPaySheet = false
     @State private var showingStatementSheet = false
@@ -177,8 +178,8 @@ public struct DashboardView: View {
     @State private var navigateToLinkedBankAccountsAfterTopUp = false
     
     private var greetingSubtitle: String {
-        if let profile = BorrowerProfileStore.shared.profile, !profile.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let firstName = profile.fullName.components(separatedBy: " ").first ?? profile.fullName
+        if !viewModel.profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let firstName = viewModel.profileName.components(separatedBy: " ").first ?? viewModel.profileName
             return "Hi, \(firstName)"
         }
         let authName = authManager.userDisplayName.components(separatedBy: " ").first ?? "User"
@@ -278,6 +279,12 @@ public struct DashboardView: View {
             .task {
                 await viewModel.fetchDashboardData()
             }
+            .task(id: authManager.userEmail) {
+                profileViewModel.loadProfile(
+                    email: authManager.userEmail,
+                    displayName: authManager.userDisplayName
+                )
+            }
             .navigationDestination(for: DashboardRoute.self) { route in
                 switch route {
                 case .loanDetails(let loan):
@@ -295,9 +302,9 @@ public struct DashboardView: View {
                         .environmentObject(authManager)
                         .environmentObject(appState)
                 case .linkedBankAccounts:
-                    LinkedBankAccountsDetailView(viewModel: BorrowerProfileViewModel())
+                    LinkedBankAccountsDetailView(viewModel: profileViewModel)
                 case .profileInfo:
-                    ProfileInfoDetailView(viewModel: BorrowerProfileViewModel())
+                    ProfileInfoDetailView(viewModel: profileViewModel)
                 case .notifications:
                     NotificationsDetailView()
                 }

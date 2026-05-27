@@ -26,15 +26,6 @@ struct MainTabView: View {
                 }
                 .tag(BorrowerTab.history)
 
-            NavigationStack {
-                ProfileView()
-                    .environmentObject(authManager)
-                    .environmentObject(appState)
-            }
-            .tabItem {
-                Label("Profile", systemImage: "person.fill")
-            }
-            .tag(BorrowerTab.profile)
         }
         .tint(LMSColors.brandNavy)
         .toolbarBackground(LMSColors.surfaceElevated, for: .tabBar)

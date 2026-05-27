@@ -17,6 +17,8 @@ public final class DashboardViewModel: ObservableObject {
     @Published public var transactions: [Transaction] = []
     @Published public var schemes: [GovernmentScheme] = []
     @Published public var isLoading: Bool = true
+    @Published public var profileName: String = ""
+    @Published public var profileCompletionPercentage: Int = 0
     
     // Quick demonstration toggle state (e.g. to mock low balance vs normal)
     @Published public var forceLowBalanceMockState: Bool = false
@@ -33,6 +35,13 @@ public final class DashboardViewModel: ObservableObject {
 
         CentralLoanRepository.shared.$applications
             .dropFirst()
+            .sink { [weak self] _ in
+                Task { await self?.fetchDashboardData() }
+            }
+            .store(in: &cancellables)
+
+        BorrowerProfileStore.shared.$profile
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 Task { await self?.fetchDashboardData() }
             }
@@ -111,12 +120,16 @@ public final class DashboardViewModel: ObservableObject {
         }
         
         if let profile = BorrowerProfileStore.shared.profile {
+            self.profileName = profile.fullName
+            self.profileCompletionPercentage = profile.profileCompletionPercentage
             let disbursedCredits = disbursementCredits(for: profile)
             self.bankAccounts = buildBankAccounts(from: profile, disbursedCredits: disbursedCredits)
             self.bankAccount = bankAccounts.first(where: { $0.accountType == .savings })
                 ?? bankAccounts.first
                 ?? BankAccount(accountNumber: "0000000000", bankName: "Default Bank", accountType: .savings, availableBalance: 0)
         } else {
+            self.profileName = ""
+            self.profileCompletionPercentage = 0
             self.bankAccount = BankAccount(accountNumber: "XXXX 0000", bankName: "Default Bank", accountType: .savings, availableBalance: 0.0)
             self.bankAccounts = [self.bankAccount]
         }

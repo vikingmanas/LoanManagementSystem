@@ -67,6 +67,31 @@ final class CentralLoanRepository: ObservableObject {
             persistState()
         }
     }
+
+    func deleteApplication(id: UUID) {
+        applications.removeAll { $0.id == id }
+        persistState()
+    }
+    
+    func fetchApplicationsFromSupabase(borrowerId: UUID) async {
+        do {
+            let products = await ProductService.shared.fetchLoanProducts()
+            let dbApps = try await ApplicationService.shared.fetchApplications(borrowerId: borrowerId)
+            
+            let mappedApps = dbApps.map { dbApp -> BorrowerLoanApplication in
+                let product = products.first(where: { $0.id == dbApp.productId })
+                    ?? BorrowerLoanProduct.sampleProducts.first(where: { $0.id == dbApp.productId })
+                    ?? BorrowerLoanProduct.sampleProducts[0]
+                return dbApp.toBorrowerApplication(product: product)
+            }
+            
+            self.applications = mappedApps
+            self.persistState()
+            print("[CentralLoanRepository] Successfully fetched and synchronized \(mappedApps.count) applications from Supabase.")
+        } catch {
+            print("[CentralLoanRepository] Failed to fetch applications from Supabase: \(error.localizedDescription)")
+        }
+    }
     
     // MARK: - State Transitions
     
