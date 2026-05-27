@@ -178,11 +178,74 @@ struct UnifiedProfileEditContentView: View {
     }
     
     private func saveChanges() {
-        viewModel.updatePersonalInfo(fullName: fullName, gender: gender, maritalStatus: maritalStatus, nationality: nationality, dateOfBirth: dateOfBirth, aadhaarNumber: aadhaarNumber, panNumber: panNumber)
-        viewModel.updateContact(mobile: mobileNumber, email: email, alternate: alternateNumber)
-        viewModel.updateAddress(street: streetAddress, city: city, state: state, zip: zipCode, isSame: isSameAsCurrent)
-        viewModel.updateEmployment(type: employmentType, company: companyName, designation: designation, income: Double(monthlyIncome) ?? 0)
-        viewModel.updateAdditionalInfo(occupation: occupation, hasExistingBankAccount: hasExistingBankAccount, existingCustomerId: existingCustomerId.isEmpty ? nil : existingCustomerId, preferredBranch: preferredBranch, emergencyContactName: emergencyContactName, emergencyContactNumber: emergencyContactNumber, nomineeName: nomineeName, nomineeRelationship: nomineeRelationship)
+        guard var updatedProfile = viewModel.profile else { return }
+        
+        // Build a single comprehensive profile update from ALL form fields at once.
+        // Previously, 5 separate update calls each read the stale viewModel.profile
+        // (due to Combine's .receive(on: .main) delay), causing each call to overwrite
+        // the previous one's changes.
+        
+        // Personal Info
+        updatedProfile.fullName = fullName
+        updatedProfile.gender = gender
+        updatedProfile.maritalStatus = maritalStatus
+        updatedProfile.nationality = nationality
+        updatedProfile.dateOfBirth = dateOfBirth
+        updatedProfile.aadhaarNumber = aadhaarNumber
+        updatedProfile.panNumber = panNumber
+        
+        // Contact
+        if updatedProfile.mobileNumber != mobileNumber {
+            updatedProfile.mobileNumber = mobileNumber
+            updatedProfile.isPhoneVerified = false
+        }
+        if updatedProfile.email != email {
+            updatedProfile.email = email
+            updatedProfile.isEmailVerified = false
+        }
+        updatedProfile.alternateNumber = alternateNumber.isEmpty ? nil : alternateNumber
+        
+        // Address
+        let newAddress = AddressInfo(
+            streetAddress: streetAddress,
+            city: city,
+            state: state,
+            zipCode: zipCode,
+            country: updatedProfile.currentAddress.country,
+            isSameAsCurrent: isSameAsCurrent
+        )
+        updatedProfile.currentAddress = newAddress
+        updatedProfile.permanentAddress = isSameAsCurrent ? newAddress : updatedProfile.permanentAddress
+        
+        // Employment & Income
+        updatedProfile.employment = EmploymentInfo(
+            employmentType: employmentType,
+            companyName: companyName,
+            designation: designation,
+            workExperienceYears: updatedProfile.employment.workExperienceYears,
+            employerAddress: updatedProfile.employment.employerAddress
+        )
+        let incomeValue = Double(monthlyIncome) ?? 0
+        updatedProfile.income = IncomeInfo(
+            monthlyIncome: incomeValue,
+            annualIncome: incomeValue * 12.0,
+            existingEMIs: updatedProfile.income.existingEMIs,
+            creditScore: updatedProfile.income.creditScore,
+            incomeSource: updatedProfile.income.incomeSource
+        )
+        
+        // Additional Info
+        updatedProfile.occupation = occupation
+        updatedProfile.hasExistingBankAccount = hasExistingBankAccount
+        updatedProfile.existingCustomerId = existingCustomerId.isEmpty ? nil : existingCustomerId
+        updatedProfile.preferredBranch = preferredBranch
+        updatedProfile.emergencyContactName = emergencyContactName
+        updatedProfile.emergencyContactNumber = emergencyContactNumber
+        updatedProfile.nomineeName = nomineeName
+        updatedProfile.nomineeRelationship = nomineeRelationship
+        
+        // Single save — all fields preserved
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
 }
 

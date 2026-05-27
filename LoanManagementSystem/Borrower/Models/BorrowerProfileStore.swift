@@ -354,15 +354,17 @@ class BorrowerProfileStore: ObservableObject {
                     var profileWithUid = updatedProfile
                     profileWithUid.id = user.id.uuidString
                     try await DatabaseService.shared.updateProfile(profileWithUid)
-                    print("[BorrowerProfileStore] Profile synchronization completed successfully.")
+                    print("[BorrowerProfileStore] Profile synchronization completed successfully. ✅")
                 } else {
+                    print("[BorrowerProfileStore] No active Supabase session — saving locally only.")
                     if let index = accounts.firstIndex(where: { $0.email == updatedProfile.email }) {
                         accounts[index].profile = updatedProfile
                         accounts[index].isOnboardingCompleted = updatedProfile.isOnboardingCompleted
                     }
                 }
             } catch {
-                print("Error updating profile in Supabase: \(error.localizedDescription)")
+                print("[BorrowerProfileStore] ❌ ERROR syncing profile to Supabase: \(error)")
+                print("[BorrowerProfileStore] ❌ Localized: \(error.localizedDescription)")
             }
         }
     }
