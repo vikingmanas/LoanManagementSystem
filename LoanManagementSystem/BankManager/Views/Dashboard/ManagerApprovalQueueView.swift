@@ -11,8 +11,8 @@ struct ManagerApprovalQueueView: View {
 
             HStack {
                 Text("Approval Queue")
-                    .font(.system(.footnote, design: .rounded).bold())
-                    .foregroundStyle(LMSColors.textSecondary)
+                    .font(.system(.title3, design: .rounded).bold())
+                    .foregroundStyle(LMSColors.textPrimary)
 
                 Spacer()
 
@@ -23,9 +23,9 @@ struct ManagerApprovalQueueView: View {
                     }) {
                         HStack(spacing: 4) {
                             Text("View All")
-                                .font(.system(.footnote, design: .rounded).bold())
+                                .font(.system(.subheadline, design: .rounded).bold())
                             Image(systemName: "chevron.right")
-                                .font(.system(size: 10, weight: .bold))
+                                .font(.system(size: 12, weight: .bold))
                         }
                         .foregroundStyle(LMSColors.actionBlue)
                     }
@@ -91,30 +91,29 @@ private struct ApprovalQueueCard: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
                     Text(applicant.borrowerName)
-                        .font(.system(.callout, design: .rounded).bold())
+                        .font(.system(.body, design: .rounded).bold())
                         .foregroundStyle(LMSColors.textPrimary)
 
                     Spacer()
 
                     Text(CurrencyFormatter.shared.format(applicant.requestedAmount))
-                        .font(.system(.caption, design: .rounded).bold())
+                        .font(.system(.subheadline, design: .rounded).bold())
                         .foregroundStyle(LMSColors.brandNavy)
                 }
 
                 HStack {
                     Text("\(applicant.loanType.rawValue) · CIBIL: \(applicant.cibilScore)")
-                        .font(.system(.caption, design: .rounded))
+                        .font(.system(.subheadline, design: .rounded))
                         .foregroundStyle(LMSColors.textSecondary)
 
                     Spacer()
 
-
-                    HStack(spacing: 3) {
+                    HStack(spacing: 4) {
                         Circle()
                             .fill(applicant.riskLevel.themeColor)
-                            .frame(width: 5, height: 5)
+                            .frame(width: 6, height: 6)
                         Text(applicant.riskLevel.rawValue)
-                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                            .font(.system(.caption2, design: .rounded).bold())
                             .foregroundStyle(applicant.riskLevel.themeColor)
                     }
                     .padding(.horizontal, 6)
@@ -125,19 +124,19 @@ private struct ApprovalQueueCard: View {
 
                 HStack(spacing: 4) {
                     Image(systemName: "person.fill")
-                        .font(.system(size: 8))
+                        .font(.system(size: 10))
                         .foregroundStyle(LMSColors.textTertiary)
                     Text(applicant.assignedOfficer)
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .font(.system(.caption, design: .rounded).weight(.medium))
                         .foregroundStyle(LMSColors.textTertiary)
 
                     Spacer()
 
                     Text(applicant.status.displayName)
-                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .font(.system(.caption2, design: .rounded).bold())
                         .foregroundStyle(applicant.status.themeColor)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
                         .background(applicant.status.themeColor.opacity(0.10))
                         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }

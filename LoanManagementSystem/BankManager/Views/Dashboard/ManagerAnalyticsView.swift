@@ -4,24 +4,6 @@ struct ManagerAnalyticsView: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
     @State private var showPortfolioLedger = false
 
-    private var monthlyDisbursements: [(String, Double)] {
-        let calendar = Calendar.current
-        let months = (0..<6).compactMap { offset in
-            calendar.date(byAdding: .month, value: -offset, to: Date())
-        }.reversed()
-
-        return months.map { date in
-            let amount = viewModel.applicants
-                .filter { applicant in
-                    (applicant.status == .approved || applicant.status == .disbursed) &&
-                    calendar.isDate(applicant.submissionDate, equalTo: date, toGranularity: .month)
-                }
-                .reduce(0) { $0 + $1.requestedAmount / 100_000 }
-
-            return (date.formatted(.dateTime.month(.abbreviated)), amount)
-        }
-    }
-
     private var approvalStats: (approved: Int, rejected: Int, pending: Int) {
         (
             approved: viewModel.applicants.filter { $0.status == .approved || $0.status == .disbursed }.count,
@@ -47,26 +29,18 @@ struct ManagerAnalyticsView: View {
         .sorted { $0.amount > $1.amount }
     }
 
-    @State private var showDisbursementsSheet = false
+    private var highRiskApplicants: [ManagerApplicant] {
+        viewModel.applicants.filter { $0.riskLevel == .high || $0.riskLevel == .critical }
+    }
+
     @State private var showDecisionMixSheet = false
+    @State private var showNPLRateSheet = false
+    @State private var showEscalationsSheet = false
+    @State private var showHighRiskSheet = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
-            AnalyticsCard(action: { showDisbursementsSheet = true }) {
-                HStack {
-                    ChartHeader(
-                        title: "Monthly Disbursements",
-                        subtitle: "Approved and disbursed value"
-                    )
-                    Spacer()
-                    Text("₹ in Lakhs")
-                        .font(LMSFont.caption2)
-                        .foregroundStyle(LMSColors.textTertiary)
-                }
-
-                MonthlyBarChart(data: monthlyDisbursements)
-            }
-
+            // Decision Mix
             AnalyticsCard(action: { showDecisionMixSheet = true }) {
                 ChartHeader(
                     title: "Decision Mix",
@@ -76,6 +50,7 @@ struct ManagerAnalyticsView: View {
                 ApprovalDonutChart(stats: approvalStats)
             }
 
+            // Branch Portfolio
             AnalyticsCard(action: { showPortfolioLedger = true }) {
                 ChartHeader(
                     title: "Branch Portfolio",
@@ -100,19 +75,53 @@ struct ManagerAnalyticsView: View {
                     }
                 }
             }
+
+            // Risk Summary (merged from deleted ManagerRiskPanelView)
+            if viewModel.applicants.isEmpty {
+                AnalyticsCard {
+                    ContentUnavailableView(
+                        "No Risk Data",
+                        systemImage: "shield.slash",
+                        description: Text("Risk metrics will populate once branch applications are submitted.")
+                    )
+                    .frame(minHeight: 120)
+                }
+            } else {
+                VStack(spacing: LMSSpacing.sm) {
+                    HStack(spacing: LMSSpacing.md) {
+                        RiskMetricCard(
+                            title: "NPL Rate",
+                            value: String(format: "%.2f%%", viewModel.branchOverview.nplRate),
+                            icon: "exclamationmark.triangle.fill",
+                            tint: viewModel.branchOverview.nplRate < 1.0 ? LMSColors.emerald : LMSColors.coral,
+                            subtitle: viewModel.branchOverview.nplRate < 1.0 ? "Healthy" : "Needs Attention",
+                            action: { showNPLRateSheet = true }
+                        )
+
+                        RiskMetricCard(
+                            title: "Escalations",
+                            value: "\(viewModel.applicants.filter { $0.status == .escalated }.count)",
+                            icon: "arrow.up.forward.circle.fill",
+                            tint: Color.purple,
+                            subtitle: "Active",
+                            action: { showEscalationsSheet = true }
+                        )
+
+                        RiskMetricCard(
+                            title: "High Risk",
+                            value: "\(highRiskApplicants.count)",
+                            icon: "shield.lefthalf.filled",
+                            tint: highRiskApplicants.isEmpty ? LMSColors.emerald : LMSColors.coral,
+                            subtitle: highRiskApplicants.isEmpty ? "Clear" : "Flagged",
+                            action: { showHighRiskSheet = true }
+                        )
+                    }
+                }
+            }
         }
         .padding(.horizontal, LMSSpacing.screenHorizontal)
         .sheet(isPresented: $showPortfolioLedger) {
             BranchPortfolioLedgerSheet(viewModel: viewModel, portfolioItems: portfolioItems)
-        }
-        .sheet(isPresented: $showDisbursementsSheet) {
-            ManagerApplicantListSheet(
-                title: "Monthly Disbursements",
-                systemImage: "chart.bar.fill",
-                description: "No disbursed loans in this period.",
-                applicants: viewModel.applicants.filter { $0.status == .disbursed || $0.status == .approved },
-                viewModel: viewModel
-            )
         }
         .sheet(isPresented: $showDecisionMixSheet) {
             ManagerApplicantListSheet(
@@ -120,6 +129,33 @@ struct ManagerAnalyticsView: View {
                 systemImage: "chart.pie.fill",
                 description: "No decisions have been made.",
                 applicants: viewModel.applicants,
+                viewModel: viewModel
+            )
+        }
+        .sheet(isPresented: $showNPLRateSheet) {
+            ManagerApplicantListSheet(
+                title: "NPL Loans",
+                systemImage: "exclamationmark.triangle.fill",
+                description: "No non-performing loans found.",
+                applicants: viewModel.applicants.filter { $0.riskLevel == .critical || $0.status == .rejected },
+                viewModel: viewModel
+            )
+        }
+        .sheet(isPresented: $showEscalationsSheet) {
+            ManagerApplicantListSheet(
+                title: "Escalations",
+                systemImage: "arrow.up.circle.fill",
+                description: "No escalated applications.",
+                applicants: viewModel.applicants.filter { $0.status == .escalated },
+                viewModel: viewModel
+            )
+        }
+        .sheet(isPresented: $showHighRiskSheet) {
+            ManagerApplicantListSheet(
+                title: "High-Risk Loans",
+                systemImage: "shield.slash.fill",
+                description: "No high-risk loans detected.",
+                applicants: highRiskApplicants,
                 viewModel: viewModel
             )
         }
@@ -133,6 +169,55 @@ struct LoanPortfolioItem: Identifiable {
     let amount: Double
     let share: Double
 }
+
+
+// MARK: - Risk Metric Card (compact gauge for risk summary row)
+
+private struct RiskMetricCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    let tint: Color
+    let subtitle: String
+    var action: (() -> Void)? = nil
+
+    var body: some View {
+        Button(action: {
+            HapticsManager.triggerImpact(style: .light)
+            action?()
+        }) {
+            VStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(tint)
+
+                Text(value)
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundStyle(LMSColors.textPrimary)
+                    .monospacedDigit()
+
+                VStack(spacing: 2) {
+                    Text(title)
+                        .font(.system(.caption, design: .rounded).bold())
+                        .foregroundStyle(LMSColors.textSecondary)
+                    Text(subtitle)
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .foregroundStyle(tint)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, LMSSpacing.lg)
+            .padding(.horizontal, LMSSpacing.sm)
+            .background(LMSColors.surfaceElevated)
+            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+            .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+
+// MARK: - Shared Card Wrappers
 
 private struct AnalyticsCard<Content: View>: View {
     var action: (() -> Void)? = nil
@@ -176,60 +261,12 @@ private struct ChartHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(LMSFont.footnote.weight(.bold))
+                .font(.system(.headline, design: .rounded).bold())
                 .foregroundStyle(LMSColors.textPrimary)
             Text(subtitle)
-                .font(LMSFont.caption2)
+                .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(LMSColors.textSecondary)
         }
-    }
-}
-
-private struct MonthlyBarChart: View {
-    let data: [(String, Double)]
-    @State private var animated = false
-
-    private var maxValue: Double {
-        max(data.map(\.1).max() ?? 0, 1)
-    }
-
-    var body: some View {
-        HStack(alignment: .bottom, spacing: 12) {
-            ForEach(Array(data.enumerated()), id: \.offset) { index, item in
-                VStack(spacing: 6) {
-                    Text("\(Int(item.1))")
-                        .font(LMSFont.caption2.weight(.bold))
-                        .foregroundStyle(LMSColors.textSecondary)
-
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(monthTint(index).gradient)
-                        .frame(height: animated ? max(CGFloat(item.1 / maxValue) * 108, item.1 > 0 ? 8 : 2) : 0)
-
-                    Text(item.0)
-                        .font(LMSFont.caption2.weight(.semibold))
-                        .foregroundStyle(LMSColors.textSecondary)
-                }
-                .frame(maxWidth: .infinity)
-            }
-        }
-        .frame(height: 148)
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.7).delay(0.15)) {
-                animated = true
-            }
-        }
-    }
-
-    private func monthTint(_ index: Int) -> Color {
-        let colors: [Color] = [
-            LMSColors.brandNavy,
-            LMSColors.teal,
-            LMSColors.emerald,
-            LMSColors.amber,
-            LMSColors.actionBlue,
-            Color.purple
-        ]
-        return colors[index % colors.count]
     }
 }
 
@@ -269,12 +306,12 @@ private struct ApprovalDonutChart: View {
                     .frame(width: 96, height: 96)
                     .rotationEffect(.degrees(-90))
 
-                VStack(spacing: 1) {
+                VStack(spacing: 2) {
                     Text("\(Int(Double(stats.approved) / total * 100))%")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
                         .foregroundStyle(LMSColors.textPrimary)
                     Text("Approved")
-                        .font(.system(size: 8, weight: .semibold, design: .rounded))
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundStyle(LMSColors.textSecondary)
                 }
             }
@@ -299,16 +336,16 @@ private struct DonutLegendItem: View {
     let value: String
 
     var body: some View {
-        HStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
+        HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
                 .fill(color)
-                .frame(width: 10, height: 10)
+                .frame(width: 14, height: 14)
             Text(label)
-                .font(LMSFont.caption)
+                .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(LMSColors.textSecondary)
             Spacer()
             Text(value)
-                .font(LMSFont.caption.weight(.bold))
+                .font(.system(.subheadline, design: .rounded).bold())
                 .foregroundStyle(LMSColors.textPrimary)
                 .monospacedDigit()
         }
@@ -350,10 +387,10 @@ private struct PortfolioTypeRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.loanType.rawValue)
-                    .font(LMSFont.caption.weight(.bold))
+                    .font(.system(.subheadline, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
                 Text("\(item.count) application\(item.count == 1 ? "" : "s")")
-                    .font(LMSFont.caption2)
+                    .font(.system(.caption, design: .rounded))
                     .foregroundStyle(LMSColors.textSecondary)
             }
 
@@ -361,10 +398,10 @@ private struct PortfolioTypeRow: View {
 
             VStack(alignment: .trailing, spacing: 3) {
                 Text(CurrencyFormatter.shared.format(item.amount))
-                    .font(LMSFont.caption.weight(.bold))
+                    .font(.system(.subheadline, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
                 Text("\(Int(item.share * 100))%")
-                    .font(LMSFont.caption2.weight(.semibold))
+                    .font(.system(.caption, design: .rounded).weight(.semibold))
                     .foregroundStyle(item.loanType.themeColor)
             }
         }
