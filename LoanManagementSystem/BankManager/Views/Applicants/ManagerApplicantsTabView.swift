@@ -8,10 +8,29 @@ struct ManagerApplicantsTabView: View {
     var body: some View {
         VStack(spacing: 0) {
 
-            VStack(spacing: 12) {
+            VStack(spacing: LMSSpacing.md) {
+
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .font(.system(size: 14))
+                    TextField("Search by name, ID, or officer…", text: $viewModel.applicantSearchQuery)
+                        .font(.system(.body, design: .rounded))
+                    if !viewModel.applicantSearchQuery.isEmpty {
+                        Button(action: { viewModel.applicantSearchQuery = "" }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(LMSColors.textTertiary)
+                        }
+                    }
+                }
+                .padding(.horizontal, LMSSpacing.lg)
+                .padding(.vertical, 10)
+                .background(LMSColors.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+
 
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: LMSSpacing.sm) {
                         ManagerFilterChip(
                             title: "All",
                             isSelected: viewModel.selectedStatusFilter == nil,
@@ -26,58 +45,55 @@ struct ManagerApplicantsTabView: View {
                             )
                         }
                     }
-                    .padding(.horizontal, 16)
                 }
-                .padding(.horizontal, -16)
 
 
-                HStack(spacing: 0) {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            SecondaryFilterChip(
-                                icon: "shield.fill",
-                                text: viewModel.selectedRiskFilter?.rawValue ?? "Risk",
-                                isActive: viewModel.selectedRiskFilter != nil,
-                                onClear: { viewModel.selectedRiskFilter = nil }
-                            ) {
-                                Button("All Risks") { viewModel.selectedRiskFilter = nil }
-                                ForEach(ManagerRiskLevel.allCases, id: \.self) { risk in
-                                    Button(risk.rawValue) { viewModel.selectedRiskFilter = risk }
-                                }
-                            }
+                HStack(spacing: LMSSpacing.sm) {
 
-
-                            SecondaryFilterChip(
-                                icon: "tag.fill",
-                                text: viewModel.selectedLoanTypeFilter?.rawValue ?? "Loan Type",
-                                isActive: viewModel.selectedLoanTypeFilter != nil,
-                                onClear: { viewModel.selectedLoanTypeFilter = nil }
-                            ) {
-                                Button("All Types") { viewModel.selectedLoanTypeFilter = nil }
-                                ForEach(ManagerLoanType.allCases, id: \.self) { type in
-                                    Button(type.rawValue) { viewModel.selectedLoanTypeFilter = type }
-                                }
-                            }
-
-
-                            SecondaryFilterChip(
-                                icon: "person.fill",
-                                text: viewModel.selectedOfficerFilter != nil
-                                    ? (viewModel.officers.first { $0.id == viewModel.selectedOfficerFilter }?.name.components(separatedBy: " ").first ?? "Officer")
-                                    : "Officer",
-                                isActive: viewModel.selectedOfficerFilter != nil,
-                                onClear: { viewModel.selectedOfficerFilter = nil }
-                            ) {
-                                Button("All Officers") { viewModel.selectedOfficerFilter = nil }
-                                ForEach(viewModel.officers) { officer in
-                                    Button(officer.name) { viewModel.selectedOfficerFilter = officer.id }
-                                }
-                            }
+                    Menu {
+                        Button("All Risks") { viewModel.selectedRiskFilter = nil }
+                        ForEach(ManagerRiskLevel.allCases, id: \.self) { risk in
+                            Button(risk.rawValue) { viewModel.selectedRiskFilter = risk }
                         }
-                        .padding(.leading, 16)
-                        .padding(.trailing, 8)
+                    } label: {
+                        SecondaryFilterLabel(
+                            icon: "shield.fill",
+                            text: viewModel.selectedRiskFilter?.rawValue ?? "Risk",
+                            isActive: viewModel.selectedRiskFilter != nil
+                        )
                     }
-                    .padding(.leading, -16)
+
+
+                    Menu {
+                        Button("All Types") { viewModel.selectedLoanTypeFilter = nil }
+                        ForEach(ManagerLoanType.allCases, id: \.self) { type in
+                            Button(type.rawValue) { viewModel.selectedLoanTypeFilter = type }
+                        }
+                    } label: {
+                        SecondaryFilterLabel(
+                            icon: "tag.fill",
+                            text: viewModel.selectedLoanTypeFilter?.rawValue ?? "Loan Type",
+                            isActive: viewModel.selectedLoanTypeFilter != nil
+                        )
+                    }
+
+
+                    Menu {
+                        Button("All Officers") { viewModel.selectedOfficerFilter = nil }
+                        ForEach(viewModel.officers) { officer in
+                            Button(officer.name) { viewModel.selectedOfficerFilter = officer.id }
+                        }
+                    } label: {
+                        SecondaryFilterLabel(
+                            icon: "person.fill",
+                            text: viewModel.selectedOfficerFilter != nil
+                                ? (viewModel.officers.first { $0.id == viewModel.selectedOfficerFilter }?.name.components(separatedBy: " ").first ?? "Officer")
+                                : "Officer",
+                            isActive: viewModel.selectedOfficerFilter != nil
+                        )
+                    }
+
+                    Spacer()
 
 
                     Menu {
@@ -87,20 +103,37 @@ struct ManagerApplicantsTabView: View {
                             }
                         }
                     } label: {
-                        HStack {
-                            Image(systemName: "arrow.up.arrow.down")
-                                .font(.system(size: 11, weight: .semibold))
+                        Image(systemName: "arrow.up.arrow.down")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(LMSColors.actionBlue)
+                            .frame(width: 32, height: 32)
+                            .background(LMSColors.actionBlue.opacity(0.10))
+                            .clipShape(Circle())
+                    }
+                }
+
+
+                if viewModel.selectedStatusFilter != nil || viewModel.selectedRiskFilter != nil ||
+                   viewModel.selectedLoanTypeFilter != nil || viewModel.selectedOfficerFilter != nil {
+                    Button(action: {
+                        HapticsManager.triggerImpact(style: .light)
+                        viewModel.clearAllFilters()
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 10))
+                            Text("Clear All Filters")
+                                .font(.system(.caption, design: .rounded).bold())
                         }
-                        .foregroundStyle(viewModel.applicantSortOrder != .dateDesc ? Color.blue : Color.primary)
-                        .frame(width: 32, height: 32)
-                        .background(viewModel.applicantSortOrder != .dateDesc ? Color.blue.opacity(0.12) : Color(.systemGray6))
-                        .clipShape(Circle())
+                        .foregroundStyle(LMSColors.coral)
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color(.systemBackground))
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
+            .padding(.vertical, LMSSpacing.md)
+            .background(LMSColors.surface)
+
+            Divider()
 
 
             let filtered = viewModel.filteredApplicants
@@ -114,13 +147,13 @@ struct ManagerApplicantsTabView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
-                    LazyVStack(spacing: 12) {
+                    LazyVStack(spacing: LMSSpacing.sm) {
 
                         Text("\(filtered.count) applicant\(filtered.count == 1 ? "" : "s")")
-                            .font(.system(.caption, design: .default))
-                            .foregroundStyle(.secondary)
+                            .font(.system(.caption2, design: .rounded).bold())
+                            .foregroundStyle(LMSColors.textTertiary)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 4)
+                            .padding(.horizontal, LMSSpacing.xs)
 
                         ForEach(filtered) { applicant in
                             Button(action: {
@@ -132,13 +165,12 @@ struct ManagerApplicantsTabView: View {
                             .buttonStyle(LMSPressableStyle())
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                    .padding(.horizontal, LMSSpacing.screenHorizontal)
+                    .padding(.vertical, LMSSpacing.md)
                 }
             }
         }
-        .background(Color(.systemGroupedBackground))
-        .searchable(text: $viewModel.applicantSearchQuery, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search by name, ID, or officer...")
+        .background(LMSColors.background)
     }
 }
 
@@ -146,7 +178,7 @@ struct ManagerApplicantsTabView: View {
 private struct ManagerFilterChip: View {
     let title: String
     let isSelected: Bool
-    var tint: Color = Color.blue
+    var tint: Color = LMSColors.brandNavy
     let action: () -> Void
 
     var body: some View {
@@ -155,77 +187,43 @@ private struct ManagerFilterChip: View {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { action() }
         }) {
             Text(title)
-                .font(.system(.footnote, design: .default).weight(.semibold))
-                .foregroundStyle(isSelected ? .white : Color.primary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(isSelected ? Color.blue : Color(.systemGray6))
-                .clipShape(Capsule())
+                .font(.system(.caption, design: .rounded).bold())
+                .foregroundStyle(isSelected ? .white : LMSColors.textPrimary)
+                .padding(.horizontal, LMSSpacing.md)
+                .padding(.vertical, LMSSpacing.sm)
+                .background(isSelected ? tint : LMSColors.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: LMSSpacing.xl, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: LMSSpacing.xl, style: .continuous)
+                        .stroke(isSelected ? Color.clear : LMSColors.separatorLight, lineWidth: 0.5)
+                )
         }
     }
 }
 
 
-private struct SecondaryFilterChip<Content: View>: View {
+private struct SecondaryFilterLabel: View {
     let icon: String
     let text: String
     let isActive: Bool
-    let onClear: () -> Void
-    @ViewBuilder let menuContent: () -> Content
 
     var body: some View {
-        if isActive {
-            HStack(spacing: 6) {
-                Menu {
-                    menuContent()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: icon)
-                            .font(.system(size: 11, weight: .semibold))
-                        Text(text)
-                            .font(.system(size: 13, weight: .medium))
-                            .lineLimit(1)
-                    }
-                }
-                .buttonStyle(.plain)
-
-                Button(action: {
-                    HapticsManager.triggerImpact(style: .light)
-                    withAnimation { onClear() }
-                }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.blue.opacity(0.6))
-                }
-                .buttonStyle(.plain)
-            }
-            .foregroundStyle(Color.blue)
-            .padding(.leading, 12)
-            .padding(.trailing, 8)
-            .padding(.vertical, 8)
-            .background(Color.blue.opacity(0.12))
-            .clipShape(Capsule())
-        } else {
-            Menu {
-                menuContent()
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: icon)
-                        .font(.system(size: 11, weight: .semibold))
-                    Text(text)
-                        .font(.system(size: 13, weight: .medium))
-                        .lineLimit(1)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(Color.secondary)
-                }
-                .foregroundStyle(Color.primary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color(.systemGray6))
-                .clipShape(Capsule())
-            }
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .semibold))
+            Text(text)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .lineLimit(1)
         }
+        .foregroundStyle(isActive ? LMSColors.brandNavy : LMSColors.textSecondary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(isActive ? LMSColors.brandNavy.opacity(0.10) : LMSColors.surfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous)
+                .stroke(isActive ? LMSColors.brandNavy.opacity(0.20) : LMSColors.separatorLight, lineWidth: 0.5)
+        )
     }
 }
 
@@ -234,44 +232,44 @@ struct ApplicantListCard: View {
     let applicant: ManagerApplicant
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: LMSSpacing.md) {
 
             ZStack {
-                Circle()
+                RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
                     .fill(applicant.status.themeColor.opacity(0.12))
-                    .frame(width: 40, height: 40)
+                    .frame(width: 48, height: 48)
                 Image(systemName: applicant.status.icon)
                     .foregroundStyle(applicant.status.themeColor)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
             }
 
             VStack(alignment: .leading, spacing: 4) {
 
                 HStack {
                     Text(applicant.borrowerName)
-                        .font(.headline)
-                        .foregroundStyle(Color.primary)
+                        .font(.system(.callout, design: .rounded).bold())
+                        .foregroundStyle(LMSColors.textPrimary)
                     Spacer()
                     Text(CurrencyFormatter.shared.format(applicant.requestedAmount))
-                        .font(.headline)
-                        .foregroundStyle(Color.primary)
+                        .font(.system(.subheadline, design: .rounded).bold())
+                        .foregroundStyle(LMSColors.textPrimary)
                 }
 
 
                 HStack {
                     Text(applicant.applicationId)
-                        .font(.footnote.monospaced())
-                        .foregroundStyle(Color.secondary)
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(LMSColors.textTertiary)
                     Spacer()
                     Text(applicant.loanType.rawValue)
-                        .font(.subheadline)
-                        .foregroundStyle(Color.secondary)
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(LMSColors.textSecondary)
                 }
 
 
-                HStack(spacing: 8) {
+                HStack {
                     Text("CIBIL: \(applicant.cibilScore)")
-                        .font(.subheadline.bold())
+                        .font(.system(.caption2, design: .rounded).bold())
                         .foregroundStyle(cibilColor(applicant.cibilScore))
 
                     Spacer()
@@ -281,33 +279,34 @@ struct ApplicantListCard: View {
                             .fill(applicant.riskLevel.themeColor)
                             .frame(width: 5, height: 5)
                         Text(applicant.riskLevel.rawValue)
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
                             .foregroundStyle(applicant.riskLevel.themeColor)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
                     .background(applicant.riskLevel.themeColor.opacity(0.10))
-                    .clipShape(Capsule())
+                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
 
                     Text(applicant.status.displayName)
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
                         .foregroundStyle(applicant.status.themeColor)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
                         .background(applicant.status.themeColor.opacity(0.10))
-                        .clipShape(Capsule())
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
             }
         }
-        .padding(14)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(LMSSpacing.md)
+        .background(LMSColors.surfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+        .shadow(color: .black.opacity(0.02), radius: 5, x: 0, y: 2)
     }
 
     private func cibilColor(_ score: Int) -> Color {
-        if score >= 750 { return Color(.systemGreen) }
-        if score >= 650 { return Color(.systemOrange) }
-        return Color(.systemRed)
+        if score >= 750 { return LMSColors.emerald }
+        if score >= 650 { return LMSColors.amber }
+        return LMSColors.coral
     }
 }
 
