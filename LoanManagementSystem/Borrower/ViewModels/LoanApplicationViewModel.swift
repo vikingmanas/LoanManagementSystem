@@ -906,4 +906,61 @@ final class LoanApplicationViewModel: ObservableObject {
             )
         ]
     }
+
+    func setBorrowerAuthContext(email: String, displayName: String) {
+        if formData.emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            formData.emailAddress = email
+        }
+        if formData.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            formData.fullName = displayName
+        }
+    }
+
+    func prefillEmptyFieldsFromProfile() {
+        guard let profile = BorrowerProfileStore.shared.profile else { return }
+        
+        if formData.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            formData.fullName = profile.fullName
+        }
+        if formData.emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            formData.emailAddress = profile.email
+        }
+        if formData.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            formData.mobileNumber = profile.mobileNumber
+        }
+        if formData.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let addr = profile.currentAddress
+            let fullAddr = [addr.streetAddress, addr.city, addr.state, addr.zipCode]
+                .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                .joined(separator: ", ")
+            formData.address = fullAddr
+        }
+        if formData.employerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            formData.employerName = profile.employment.companyName
+        }
+        if formData.occupation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            formData.occupation = profile.employment.designation
+        }
+        if formData.monthlyIncome.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || formData.monthlyIncomeValue == 0 {
+            formData.monthlyIncome = String(Int(profile.income.monthlyIncome))
+        }
+        if formData.annualIncome.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || formData.annualIncomeValue == 0 {
+            formData.annualIncome = String(Int(profile.income.annualIncome))
+        }
+        if formData.employmentType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            formData.employmentType = profile.employment.employmentType
+        }
+    }
+
+    func deleteDraft(applicationID: UUID) -> Bool {
+        guard let index = applications.firstIndex(where: { $0.id == applicationID }) else { return false }
+        let app = applications[index]
+        guard app.isDraft else { return false }
+        applications.remove(at: index)
+        CentralLoanRepository.shared.deleteApplication(id: applicationID)
+        if currentDraftID == applicationID {
+            currentDraftID = nil
+        }
+        return true
+    }
 }

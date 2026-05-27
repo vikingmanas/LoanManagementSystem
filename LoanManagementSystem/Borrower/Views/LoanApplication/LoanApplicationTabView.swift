@@ -49,8 +49,8 @@ struct LoanApplicationTabView: View {
             .navigationBarTitleDisplayMode(.large)
             .task(id: authManager.userEmail) {
                 viewModel.setBorrowerAuthContext(
-                    email: authManager.userEmail,
-                    displayName: authManager.userDisplayName
+                    email: authManager.userEmail ?? "",
+                    displayName: authManager.userDisplayName ?? ""
                 )
             }
             .navigationDestination(for: LoanApplicationRoute.self) { route in

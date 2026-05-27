@@ -53,6 +53,11 @@ public final class DashboardViewModel: ObservableObject {
     public var totalRepaid:      Double { totalSanctioned - totalOutstanding }
     public var repaidFraction:   Double { totalSanctioned > 0 ? (totalRepaid / totalSanctioned) : 0 }
     
+    public var loansClosedCount: Int {
+        // Closed if outstanding principal has reached 0 (or below due to rounding).
+        loanAccounts.filter { $0.principalOutstanding <= 0.0 }.count
+    }
+    
     public var nextEMI: EMIRecord? {
         pendingEMIs.first { $0.status != .paid }
     }
