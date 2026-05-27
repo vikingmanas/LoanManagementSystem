@@ -36,6 +36,9 @@ final class AuthManager: ObservableObject {
     /// The currently signed-in user, if any.
     @Published var currentUser: AuthSessionUser? = nil
 
+    /// The detailed profile for the currently signed-in staff member, if any.
+    @Published var currentStaffProfile: StaffMember? = nil
+
     /// Controls the loading overlay in auth views.
     @Published var isLoading: Bool = false
 
@@ -65,6 +68,13 @@ final class AuthManager: ObservableObject {
                     email: user.email,
                     displayName: user.userMetadata["display_name"]?.description ?? "User"
                 )
+                
+                if role == "loan_officer" {
+                    if let officerProfile = try? await DatabaseService.shared.fetchLoanOfficerProfile(userId: user.id) {
+                        self.currentStaffProfile = officerProfile
+                    }
+                }
+                
                 self.isAuthenticated = true
                 self.isAuthStateResolved = true
                 
@@ -104,6 +114,23 @@ final class AuthManager: ObservableObject {
                 email: email,
                 displayName: "Test Staff"
             )
+            if role == "loan_officer" {
+                self.currentStaffProfile = StaffMember(
+                    id: UUID(),
+                    email: email,
+                    role: .loanOfficer,
+                    fullName: "Arjun Kashyap (Test)",
+                    phoneNumber: "+91 80 4991 2099",
+                    status: .active,
+                    createdBy: nil,
+                    createdAt: Date(),
+                    employeeCode: "EMP-2024-9021",
+                    branchId: UUID(),
+                    branchName: "Bengaluru Central Branch (ID: BR-492)",
+                    designation: "Senior Loan Officer",
+                    region: nil
+                )
+            }
             self.isAuthenticated = true
             self.isLoading = false
             return (true, role)
@@ -116,6 +143,12 @@ final class AuthManager: ObservableObject {
             
             // Fetch role from users database table
             let role = try await AuthService.shared.fetchUserRole(uid: user.id)
+            
+            if role == "loan_officer" {
+                if let officerProfile = try? await DatabaseService.shared.fetchLoanOfficerProfile(userId: user.id) {
+                    self.currentStaffProfile = officerProfile
+                }
+            }
             
             self.currentUser = AuthSessionUser(
                 uid: user.id.uuidString,
@@ -177,6 +210,7 @@ final class AuthManager: ObservableObject {
         Task {
             try? await AuthService.shared.signOut()
             self.currentUser = nil
+            self.currentStaffProfile = nil
             self.isAuthenticated = false
             BorrowerProfileStore.shared.signOut()
         }

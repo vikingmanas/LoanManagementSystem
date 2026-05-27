@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import Supabase
 
 enum HistorySortOrder: String, CaseIterable {
     case newest = "Newest"
@@ -17,6 +18,7 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     typealias DocumentType = OfficerDocumentType
     @Published var applications: [LoanApplication] = []
     @Published var activityFeed: [ActivityFeedItem] = []
+    @Published var officerProfile: StaffMember? = nil
     @Published var isLoading: Bool = true
     @Published var hasError: Bool = false
     @Published var selectedTab: Int = 0              // 0=Dashboard, 1=History
@@ -200,6 +202,12 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         hasError = false
         
         do {
+            if let user = try? await SupabaseManager.shared.client.auth.session.user {
+                if let profile = try? await DatabaseService.shared.fetchLoanOfficerProfile(userId: user.id) {
+                    self.officerProfile = profile
+                }
+            }
+            
             // Fetch all submitted applications from Supabase for the officer view
             await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
             
@@ -252,12 +260,13 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }),
            let doc = applications[idx].documents.first(where: { $0.id == docId }) {
             let docName = doc.docType.rawValue
+            let officerName = officerProfile?.fullName ?? "Officer Arjun"
             logActivity(
                 borrowerName: applications[idx].borrowerName,
                 applicationId: applicationId,
                 loanType: applications[idx].loanType.rawValue,
                 eventType: newStatus == .verified ? .consentGiven : .queryRaised,
-                description: newStatus == .verified ? "\(docName) verified successfully by Officer Arjun." : "\(docName) rejected: \(rejectionReason ?? "Incorrect format.")"
+                description: newStatus == .verified ? "\(docName) verified successfully by \(officerName)." : "\(docName) rejected: \(rejectionReason ?? "Incorrect format.")"
             )
         }
     }
@@ -278,14 +287,15 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
     
     func sendForFinalApproval(applicationId: String) {
-        CentralLoanRepository.shared.sendForFinalApproval(applicationId: applicationId)
+        let officerName = officerProfile?.fullName ?? "Officer Arjun"
+        CentralLoanRepository.shared.sendForFinalApproval(applicationId: applicationId, officerName: officerName)
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }) {
             logActivity(
                 borrowerName: applications[idx].borrowerName,
                 applicationId: applicationId,
                 loanType: applications[idx].loanType.rawValue,
                 eventType: .consentGiven,
-                description: "Application verified & forwarded to Manager for final approval."
+                description: "Application verified & forwarded to Manager for final approval by \(officerName)."
             )
         }
     }

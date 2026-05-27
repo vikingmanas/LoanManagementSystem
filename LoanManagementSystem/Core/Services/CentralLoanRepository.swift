@@ -197,7 +197,7 @@ final class CentralLoanRepository: ObservableObject {
         }
     }
     
-    func sendForFinalApproval(applicationId: String) {
+    func sendForFinalApproval(applicationId: String, officerName: String = "Officer") {
         guard let index = applications.firstIndex(where: { $0.applicationId == applicationId }) else { return }
         var app = applications[index]
         app.currentStage = .bankManagerReview
@@ -206,7 +206,7 @@ final class CentralLoanRepository: ObservableObject {
             BorrowerStageEntry(
                 stage: .bankManagerReview,
                 timestamp: Date(),
-                note: "Documents verified by Officer Arjun. Forwarded to Manager for final approval."
+                note: "Documents verified by \(officerName). Forwarded to Manager for final approval."
             )
         )
         applications[index] = app
