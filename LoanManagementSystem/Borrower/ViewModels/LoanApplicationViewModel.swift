@@ -5,6 +5,7 @@ import Combine
 final class LoanApplicationViewModel: ObservableObject {
     @Published var selectedSegment: LoanHubSegment = .discover
     @Published var selectedApplicationFilter: BorrowerApplicationFilter = .all
+    @Published var searchQuery: String = ""
 
     @Published var products: [BorrowerLoanProduct] = BorrowerLoanProduct.sampleProducts
     @Published var applications: [BorrowerLoanApplication] = []
@@ -94,6 +95,17 @@ final class LoanApplicationViewModel: ObservableObject {
         Task {
             let fetchedProducts = await ProductService.shared.fetchLoanProducts()
             self.products = fetchedProducts
+        }
+    }
+
+    var filteredProducts: [BorrowerLoanProduct] {
+        if searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return products
+        } else {
+            let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+            return products.filter { product in
+                product.type.title.localizedCaseInsensitiveContains(query)
+            }
         }
     }
 
