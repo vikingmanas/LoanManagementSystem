@@ -29,6 +29,20 @@ final class AdminStaffViewModel: ObservableObject {
             return matchesSearch && matchesRole && matchesStatus
         }
     }
+    
+    var filteredBranches: [BranchInfo] {
+        if searchText.isEmpty {
+            return branches
+        }
+        return branches.filter {
+            $0.name.localizedCaseInsensitiveContains(searchText) ||
+            $0.code.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+    
+    func staff(for branchId: UUID) -> [StaffMember] {
+        return staffMembers.filter { $0.branchId == branchId }
+    }
 
 
     func loadData() async {

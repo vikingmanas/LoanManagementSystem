@@ -5,6 +5,8 @@ struct ManagerApplicantsTabView: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
     var onSelectApplicant: (ManagerApplicant) -> Void
 
+    @State private var assignmentTarget: ManagerApplicant?
+
     var body: some View {
         VStack(spacing: 0) {
 
@@ -163,6 +165,20 @@ struct ManagerApplicantsTabView: View {
                                 ApplicantListCard(applicant: applicant)
                             }
                             .buttonStyle(LMSPressableStyle())
+                            .contextMenu {
+                                Button {
+                                    HapticsManager.triggerImpact(style: .light)
+                                    assignmentTarget = applicant
+                                } label: {
+                                    Label("Assign / Reassign Officer", systemImage: "arrow.triangle.2.circlepath")
+                                }
+                                Button {
+                                    HapticsManager.triggerImpact(style: .medium)
+                                    onSelectApplicant(applicant)
+                                } label: {
+                                    Label("View Details", systemImage: "doc.text.magnifyingglass")
+                                }
+                            }
                         }
                     }
                     .padding(.horizontal, LMSSpacing.screenHorizontal)
@@ -171,6 +187,16 @@ struct ManagerApplicantsTabView: View {
             }
         }
         .background(LMSColors.background)
+        .sheet(item: $assignmentTarget) { applicant in
+            ApplicationAssignmentSheet(
+                applicant: applicant,
+                officers: viewModel.officers,
+                onAssign: { officerId in
+                    viewModel.reassignApplicant(applicant.id, to: officerId)
+                    assignmentTarget = nil
+                }
+            )
+        }
     }
 }
 
@@ -232,72 +258,107 @@ struct ApplicantListCard: View {
     let applicant: ManagerApplicant
 
     var body: some View {
-        HStack(spacing: LMSSpacing.md) {
+        VStack(spacing: 0) {
+            HStack(spacing: LMSSpacing.md) {
 
-            ZStack {
-                RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
-                    .fill(applicant.status.themeColor.opacity(0.12))
-                    .frame(width: 48, height: 48)
-                Image(systemName: applicant.status.icon)
-                    .foregroundStyle(applicant.status.themeColor)
-                    .font(.system(size: 20, weight: .semibold))
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-
-                HStack {
-                    Text(applicant.borrowerName)
-                        .font(.system(.callout, design: .rounded).bold())
-                        .foregroundStyle(LMSColors.textPrimary)
-                    Spacer()
-                    Text(CurrencyFormatter.shared.format(applicant.requestedAmount))
-                        .font(.system(.subheadline, design: .rounded).bold())
-                        .foregroundStyle(LMSColors.textPrimary)
-                }
-
-
-                HStack {
-                    Text(applicant.applicationId)
-                        .font(.system(.caption2, design: .monospaced))
-                        .foregroundStyle(LMSColors.textTertiary)
-                    Spacer()
-                    Text(applicant.loanType.rawValue)
-                        .font(.system(.caption, design: .rounded))
-                        .foregroundStyle(LMSColors.textSecondary)
-                }
-
-
-                HStack {
-                    Text("CIBIL: \(applicant.cibilScore)")
-                        .font(.system(.caption2, design: .rounded).bold())
-                        .foregroundStyle(cibilColor(applicant.cibilScore))
-
-                    Spacer()
-
-                    HStack(spacing: 3) {
-                        Circle()
-                            .fill(applicant.riskLevel.themeColor)
-                            .frame(width: 5, height: 5)
-                        Text(applicant.riskLevel.rawValue)
-                            .font(.system(size: 9, weight: .bold, design: .rounded))
-                            .foregroundStyle(applicant.riskLevel.themeColor)
-                    }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(applicant.riskLevel.themeColor.opacity(0.10))
-                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-
-                    Text(applicant.status.displayName)
-                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                // Status icon avatar
+                ZStack {
+                    RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
+                        .fill(applicant.status.themeColor.opacity(0.12))
+                        .frame(width: 48, height: 48)
+                    Image(systemName: applicant.status.icon)
                         .foregroundStyle(applicant.status.themeColor)
+                        .font(.system(size: 20, weight: .semibold))
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+
+                    // Row 1: Borrower name + Amount
+                    HStack {
+                        Text(applicant.borrowerName)
+                            .font(.system(.callout, design: .rounded).bold())
+                            .foregroundStyle(LMSColors.textPrimary)
+                        Spacer()
+                        Text(CurrencyFormatter.shared.format(applicant.requestedAmount))
+                            .font(.system(.subheadline, design: .rounded).bold())
+                            .foregroundStyle(LMSColors.textPrimary)
+                    }
+
+                    // Row 2: App ID + Loan Type badge
+                    HStack(spacing: LMSSpacing.sm) {
+                        Text(applicant.applicationId)
+                            .font(.system(.caption2, design: .monospaced))
+                            .foregroundStyle(LMSColors.textTertiary)
+                        Spacer()
+                        HStack(spacing: 3) {
+                            Image(systemName: applicant.loanType.symbol)
+                                .font(.system(size: 8, weight: .bold))
+                            Text(applicant.loanType.rawValue)
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                        }
+                        .foregroundStyle(applicant.loanType.themeColor)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(applicant.status.themeColor.opacity(0.10))
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .background(applicant.loanType.themeColor.opacity(0.10))
+                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    }
+
+                    // Row 3: CIBIL + Risk + Status
+                    HStack {
+                        Text("CIBIL: \(applicant.cibilScore)")
+                            .font(.system(.caption2, design: .rounded).bold())
+                            .foregroundStyle(cibilColor(applicant.cibilScore))
+
+                        Spacer()
+
+                        HStack(spacing: 3) {
+                            Circle()
+                                .fill(applicant.riskLevel.themeColor)
+                                .frame(width: 5, height: 5)
+                            Text(applicant.riskLevel.rawValue)
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .foregroundStyle(applicant.riskLevel.themeColor)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(applicant.riskLevel.themeColor.opacity(0.10))
+                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+
+                        Text(applicant.status.displayName)
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                            .foregroundStyle(applicant.status.themeColor)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(applicant.status.themeColor.opacity(0.10))
+                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    }
                 }
             }
+            .padding(.horizontal, LMSSpacing.md)
+            .padding(.top, LMSSpacing.md)
+            .padding(.bottom, LMSSpacing.sm)
+
+            // Officer assignment footer
+            Divider()
+                .padding(.horizontal, LMSSpacing.md)
+
+            HStack(spacing: LMSSpacing.xs) {
+                Image(systemName: "person.badge.shield.checkmark.fill")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(LMSColors.brandNavy)
+                Text("Assigned to")
+                    .font(.system(size: 10, design: .rounded))
+                    .foregroundStyle(LMSColors.textSecondary)
+                Text(applicant.assignedOfficer)
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .lineLimit(1)
+                Spacer()
+            }
+            .padding(.horizontal, LMSSpacing.md)
+            .padding(.vertical, LMSSpacing.sm)
+            .background(LMSColors.brandNavy.opacity(0.04))
         }
-        .padding(LMSSpacing.md)
         .background(LMSColors.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
         .shadow(color: .black.opacity(0.02), radius: 5, x: 0, y: 2)

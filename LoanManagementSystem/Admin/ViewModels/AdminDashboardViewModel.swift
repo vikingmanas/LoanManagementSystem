@@ -49,4 +49,32 @@ final class AdminDashboardViewModel: ObservableObject {
         
         isLoading = false
     }
+    
+    func getBranchBreakdown(for kpi: AdminKPI) -> [KPIBranchData] {
+        // Mock data generator for branch breakdown based on the selected KPI
+        let branches = [
+            ("BR-001", "Main Branch, Mumbai"),
+            ("BR-002", "Connaught Place, Delhi"),
+            ("BR-003", "Koramangala, Bangalore"),
+            ("BR-004", "Bandra West, Mumbai"),
+            ("BR-005", "Salt Lake, Kolkata")
+        ]
+        
+        return branches.map { code, name in
+            let trend = Double.random(in: -5.0...12.0)
+            let value: String
+            
+            if kpi.title.contains("Total Disbursed") {
+                value = String(format: "₹%.1f Cr", Double.random(in: 2.0...15.0))
+            } else if kpi.title.contains("Applications") {
+                value = "\(Int.random(in: 100...900))"
+            } else if kpi.title.contains("Active Loans") {
+                value = "\(Int.random(in: 50...400))"
+            } else {
+                value = "\(Int.random(in: 10...50))"
+            }
+            
+            return KPIBranchData(branchName: name, branchCode: code, value: value, trend: trend)
+        }.sorted { $0.trend > $1.trend }
+    }
 }

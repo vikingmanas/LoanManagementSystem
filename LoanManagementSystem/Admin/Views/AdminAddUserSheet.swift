@@ -68,14 +68,14 @@ struct AdminAddUserSheet: View {
                     TextField("Employee Code", text: $employeeCode)
 
                     if !viewModel.branches.isEmpty {
-                        Picker("Department", selection: $selectedBranchId) {
-                            Text("Select Department").tag(nil as UUID?)
+                        Picker("Branch", selection: $selectedBranchId) {
+                            Text("Select Branch").tag(nil as UUID?)
                             ForEach(viewModel.branches) { branch in
                                 Text(branch.name).tag(branch.id as UUID?)
                             }
                         }
                     } else if viewModel.isLoading {
-                        Text("Loading departments...")
+                        Text("Loading branches...")
                             .foregroundStyle(.secondary)
                     }
 
@@ -179,7 +179,7 @@ struct AdminAddUserSheet: View {
         }
 
         if selectedBranchId == nil {
-            validationErrors["branchId"] = "Please select a department"
+            validationErrors["branchId"] = "Please select a branch"
         }
 
         if role == .loanOfficer && designation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

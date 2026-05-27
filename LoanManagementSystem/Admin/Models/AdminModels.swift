@@ -16,6 +16,15 @@ struct AdminKPI: Identifiable, Hashable {
     let themeColor: Color
 }
 
+// MARK: - Branch KPI Data
+struct KPIBranchData: Identifiable, Hashable {
+    let id = UUID()
+    let branchName: String
+    let branchCode: String
+    let value: String
+    let trend: Double // Positive for up, negative for down
+}
+
 // MARK: - System Health
 struct SystemHealth: Equatable {
     var serverUptime: Double // Percentage (e.g. 99.98)

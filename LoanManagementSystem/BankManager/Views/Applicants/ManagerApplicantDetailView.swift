@@ -2,7 +2,7 @@ import SwiftUI
 
 
 struct ManagerApplicantDetailView: View {
-    let applicant: ManagerApplicant
+    let applicantId: UUID
     @ObservedObject var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
 
@@ -16,149 +16,212 @@ struct ManagerApplicantDetailView: View {
         var id: String { String(describing: self) }
     }
 
+    /// Always reads the freshest copy from the view model so assignment
+    /// changes (reassign, approve, etc.) are reflected immediately.
+    private var currentApplicant: ManagerApplicant? {
+        viewModel.applicants.first { $0.id == applicantId }
+    }
+
+    /// Finds the full ManagerOfficer record for the current applicant (if any).
+    private var assignedOfficerRecord: ManagerOfficer? {
+        guard let applicant = currentApplicant else { return nil }
+        return viewModel.officers.first { $0.id == applicant.assignedOfficerId }
+    }
+
     var body: some View {
         NavigationStack {
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: LMSSpacing.xl) {
+            Group {
+                if let applicant = currentApplicant {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(spacing: LMSSpacing.xl) {
 
+                            // ── Borrower Hero ──────────────────────────────────
+                            VStack(spacing: LMSSpacing.md) {
+                                ZStack {
+                                    Circle()
+                                        .fill(applicant.loanType.themeColor.opacity(0.15))
+                                        .frame(width: 72, height: 72)
+                                    Text(applicant.borrowerInitials)
+                                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                                        .foregroundStyle(applicant.loanType.themeColor)
+                                }
 
-                    VStack(spacing: LMSSpacing.md) {
-                        ZStack {
-                            Circle()
-                                .fill(applicant.loanType.themeColor.opacity(0.15))
-                                .frame(width: 72, height: 72)
-                            Text(applicant.borrowerInitials)
-                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                Text(applicant.borrowerName)
+                                    .font(.system(.title3, design: .rounded).bold())
+                                    .foregroundStyle(LMSColors.textPrimary)
+
+                                HStack(spacing: LMSSpacing.sm) {
+                                    Text(applicant.applicationId)
+                                        .font(.system(.caption, design: .monospaced).bold())
+                                        .foregroundStyle(LMSColors.textSecondary)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 4)
+                                        .background(LMSColors.textSecondary.opacity(0.12))
+                                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+
+                                    LMSStatusPill(
+                                        text: applicant.status.displayName,
+                                        style: statusPillStyle(applicant.status),
+                                        icon: applicant.status.icon
+                                    )
+                                }
+
+                                // Loan type badge
+                                HStack(spacing: 5) {
+                                    Image(systemName: applicant.loanType.symbol)
+                                        .font(.system(size: 11, weight: .bold))
+                                    Text(applicant.loanType.rawValue)
+                                        .font(.system(.caption, design: .rounded).bold())
+                                }
                                 .foregroundStyle(applicant.loanType.themeColor)
-                        }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 5)
+                                .background(applicant.loanType.themeColor.opacity(0.12))
+                                .clipShape(Capsule())
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, LMSSpacing.xl)
+                            .background(LMSColors.surfaceElevated)
+                            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.xl, style: .continuous))
 
-                        Text(applicant.borrowerName)
+                            // ── Assigned Loan Officer Card ────────────────────
+                            AssignedOfficerCard(
+                                applicant: applicant,
+                                officerRecord: assignedOfficerRecord,
+                                onReassign: { showReassignSheet = true }
+                            )
+
+                            // ── Loan Details ──────────────────────────────────
+                            VStack(spacing: 0) {
+                                DetailRow(label: "LOAN TYPE", value: applicant.loanType.rawValue, icon: applicant.loanType.symbol)
+                                Divider()
+                                DetailRow(label: "REQUESTED AMOUNT", value: CurrencyFormatter.shared.format(applicant.requestedAmount))
+                                Divider()
+                                DetailRow(label: "TENURE", value: "\(applicant.tenure) months")
+                                Divider()
+                                DetailRow(label: "INTEREST RATE", value: String(format: "%.2f%% p.a.", applicant.interestRate))
+                                Divider()
+                                DetailRow(label: "SUBMISSION DATE", value: RelativeDateFormatter.shared.absoluteString(from: applicant.submissionDate))
+                            }
+                            .background(LMSColors.surfaceElevated)
+                            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+
+                            CIBILScoreCard(score: applicant.cibilScore)
+
+                            VerificationProgressCard(progress: applicant.verificationProgress)
+
+                            DocumentsSection(documents: applicant.documents)
+
+                            OfficerRecommendationCard(
+                                officerName: applicant.assignedOfficer,
+                                remarks: applicant.officerRemarks
+                            )
+
+                            if !applicant.managerRemarks.isEmpty {
+                                ManagerRemarksCard(remarks: applicant.managerRemarks)
+                            }
+
+                            // ── Action Buttons ────────────────────────────────
+                            if applicant.status == .sentToManager || applicant.status == .needsClarification {
+                                VStack(spacing: LMSSpacing.md) {
+
+                                    Button(action: { actionType = .approve }) {
+                                        Text("Approve & Disburse Clearance")
+                                            .font(.system(.body, design: .rounded).weight(.bold))
+                                            .foregroundStyle(.white)
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 52)
+                                            .background(LMSColors.emerald)
+                                            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+                                    }
+
+                                    HStack(spacing: LMSSpacing.md) {
+                                        Button(action: { actionType = .reject }) {
+                                            Text("Reject")
+                                                .font(.system(.body, design: .rounded).weight(.semibold))
+                                                .foregroundStyle(LMSColors.coral)
+                                                .frame(maxWidth: .infinity)
+                                                .frame(height: 52)
+                                                .background(LMSColors.coral.opacity(0.12))
+                                                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+                                        }
+
+                                        Button(action: { actionType = .escalate }) {
+                                            Text("Escalate")
+                                                .font(.system(.body, design: .rounded).weight(.semibold))
+                                                .foregroundStyle(Color.purple)
+                                                .frame(maxWidth: .infinity)
+                                                .frame(height: 52)
+                                                .background(Color.purple.opacity(0.12))
+                                                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+                                        }
+                                    }
+
+                                    Button(action: { actionType = .sendBack }) {
+                                        Text("Request Officer Clarification")
+                                            .font(.system(.body, design: .rounded).weight(.semibold))
+                                            .foregroundStyle(LMSColors.brandNavy)
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 52)
+                                            .background(LMSColors.brandNavy.opacity(0.12))
+                                            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+                                    }
+
+                                    Button(action: { showReassignSheet = true }) {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "arrow.triangle.2.circlepath")
+                                            Text("Reassign to Another Officer")
+                                        }
+                                        .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                                        .foregroundStyle(LMSColors.textSecondary)
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 44)
+                                    }
+                                }
+                            }
+
+                            Spacer().frame(height: LMSSpacing.xl)
+                        }
+                        .padding(.horizontal, LMSSpacing.screenHorizontal)
+                        .padding(.top, LMSSpacing.md)
+                    }
+                    .sheet(item: $actionType) { action in
+                        ManagerApplicantActionSheet(
+                            applicant: applicant,
+                            actionType: action,
+                            viewModel: viewModel,
+                            onComplete: { dismiss() }
+                        )
+                    }
+                    .sheet(isPresented: $showReassignSheet) {
+                        ApplicationAssignmentSheet(
+                            applicant: applicant,
+                            officers: viewModel.officers,
+                            onAssign: { officerId in
+                                viewModel.reassignApplicant(applicant.id, to: officerId)
+                            }
+                        )
+                    }
+                } else {
+                    // Applicant was removed from queue (approved / rejected)
+                    VStack(spacing: LMSSpacing.lg) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 48))
+                            .foregroundStyle(LMSColors.emerald)
+                        Text("Application no longer pending")
                             .font(.system(.title3, design: .rounded).bold())
                             .foregroundStyle(LMSColors.textPrimary)
-
-                        HStack(spacing: LMSSpacing.sm) {
-                            Text(applicant.applicationId)
-                                .font(.system(.caption, design: .monospaced).bold())
-                                .foregroundStyle(LMSColors.textSecondary)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .background(LMSColors.textSecondary.opacity(0.12))
-                                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-
-                            LMSStatusPill(
-                                text: applicant.status.displayName,
-                                style: statusPillStyle(applicant.status),
-                                icon: applicant.status.icon
-                            )
-                        }
+                        Text("It may have been approved, rejected, or moved.")
+                            .font(.system(.callout, design: .rounded))
+                            .foregroundStyle(LMSColors.textSecondary)
+                            .multilineTextAlignment(.center)
+                        Button("Close") { dismiss() }
+                            .font(.system(.body, design: .rounded).bold())
+                            .foregroundStyle(LMSColors.actionBlue)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, LMSSpacing.xl)
-                    .background(LMSColors.surfaceElevated)
-                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.xl, style: .continuous))
-
-
-                    VStack(spacing: 0) {
-                        DetailRow(label: "LOAN TYPE", value: applicant.loanType.rawValue, icon: applicant.loanType.symbol)
-                        Divider()
-                        DetailRow(label: "REQUESTED AMOUNT", value: CurrencyFormatter.shared.format(applicant.requestedAmount))
-                        Divider()
-                        DetailRow(label: "TENURE", value: "\(applicant.tenure) months")
-                        Divider()
-                        DetailRow(label: "INTEREST RATE", value: String(format: "%.2f%% p.a.", applicant.interestRate))
-                        Divider()
-                        DetailRow(label: "SUBMISSION DATE", value: RelativeDateFormatter.shared.absoluteString(from: applicant.submissionDate))
-                    }
-                    .background(LMSColors.surfaceElevated)
-                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-
-
-                    CIBILScoreCard(score: applicant.cibilScore)
-
-
-                    VerificationProgressCard(progress: applicant.verificationProgress)
-
-
-                    DocumentsSection(documents: applicant.documents)
-
-
-                    OfficerRecommendationCard(
-                        officerName: applicant.assignedOfficer,
-                        remarks: applicant.officerRemarks
-                    )
-
-
-                    if !applicant.managerRemarks.isEmpty {
-                        ManagerRemarksCard(remarks: applicant.managerRemarks)
-                    }
-
-
-                    if applicant.status == .sentToManager || applicant.status == .needsClarification {
-                        VStack(spacing: LMSSpacing.md) {
-
-                            Button(action: { actionType = .approve }) {
-                                Text("Approve & Disburse Clearance")
-                                    .font(.system(.body, design: .rounded).weight(.bold))
-                                    .foregroundStyle(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 52)
-                                    .background(LMSColors.emerald)
-                                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
-                            }
-
-                            HStack(spacing: LMSSpacing.md) {
-
-                                Button(action: { actionType = .reject }) {
-                                    Text("Reject")
-                                        .font(.system(.body, design: .rounded).weight(.semibold))
-                                        .foregroundStyle(LMSColors.coral)
-                                        .frame(maxWidth: .infinity)
-                                        .frame(height: 52)
-                                        .background(LMSColors.coral.opacity(0.12))
-                                        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
-                                }
-
-
-                                Button(action: { actionType = .escalate }) {
-                                    Text("Escalate")
-                                        .font(.system(.body, design: .rounded).weight(.semibold))
-                                        .foregroundStyle(Color.purple)
-                                        .frame(maxWidth: .infinity)
-                                        .frame(height: 52)
-                                        .background(Color.purple.opacity(0.12))
-                                        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
-                                }
-                            }
-
-
-                            Button(action: { actionType = .sendBack }) {
-                                Text("Request Officer Clarification")
-                                    .font(.system(.body, design: .rounded).weight(.semibold))
-                                    .foregroundStyle(LMSColors.brandNavy)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 52)
-                                    .background(LMSColors.brandNavy.opacity(0.12))
-                                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
-                            }
-
-
-                            Button(action: { showReassignSheet = true }) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "arrow.triangle.2.circlepath")
-                                    Text("Reassign to Another Officer")
-                                }
-                                .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                                .foregroundStyle(LMSColors.textSecondary)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 44)
-                            }
-                        }
-                    }
-
-                    Spacer().frame(height: LMSSpacing.xl)
+                    .padding(LMSSpacing.xl)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .padding(.horizontal, LMSSpacing.screenHorizontal)
-                .padding(.top, LMSSpacing.md)
             }
             .background(LMSColors.background)
             .navigationTitle("Application Review")
@@ -168,24 +231,6 @@ struct ManagerApplicantDetailView: View {
                     Button("Close") { dismiss() }
                         .font(.system(.body, design: .rounded).bold())
                 }
-            }
-            .sheet(item: $actionType) { action in
-                ManagerApplicantActionSheet(
-                    applicant: applicant,
-                    actionType: action,
-                    viewModel: viewModel,
-                    onComplete: { dismiss() }
-                )
-            }
-            .sheet(isPresented: $showReassignSheet) {
-                ReassignOfficerSheet(
-                    applicant: applicant,
-                    officers: viewModel.officers,
-                    onReassign: { officerId in
-                        viewModel.reassignApplicant(applicant.id, to: officerId)
-                        showReassignSheet = false
-                    }
-                )
             }
         }
     }
@@ -473,66 +518,153 @@ private struct ManagerRemarksCard: View {
 }
 
 
-private struct ReassignOfficerSheet: View {
+/// Prominent card showing the currently assigned Loan Officer with real-time
+/// data pulled from viewModel.officers, plus the loan type badge and a
+/// quick-reassign button.
+private struct AssignedOfficerCard: View {
     let applicant: ManagerApplicant
-    let officers: [ManagerOfficer]
-    let onReassign: (UUID) -> Void
-    @Environment(\.dismiss) var dismiss
+    let officerRecord: ManagerOfficer?
+    let onReassign: () -> Void
 
     var body: some View {
-        NavigationStack {
-            List {
-                ForEach(officers) { officer in
-                    Button(action: {
-                        HapticsManager.triggerImpact(style: .medium)
-                        onReassign(officer.id)
-                        dismiss()
-                    }) {
-                        HStack(spacing: LMSSpacing.md) {
-                            ZStack {
-                                Circle()
-                                    .fill(LMSColors.brandNavy.opacity(0.10))
-                                    .frame(width: 40, height: 40)
-                                Text(officer.initials)
-                                    .font(.system(.caption, design: .rounded).bold())
-                                    .foregroundStyle(LMSColors.brandNavy)
-                            }
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
 
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(officer.name)
-                                    .font(.system(.callout, design: .rounded).bold())
-                                    .foregroundStyle(LMSColors.textPrimary)
-                                Text("\(officer.role) · \(officer.activeCases)/\(officer.maxCapacity) cases")
-                                    .font(.system(.caption, design: .rounded))
-                                    .foregroundStyle(LMSColors.textSecondary)
-                            }
+            // Section header
+            HStack {
+                Image(systemName: "person.crop.circle.badge.checkmark")
+                    .foregroundStyle(LMSColors.actionBlue)
+                Text("ASSIGNED LOAN OFFICER")
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                    .foregroundStyle(LMSColors.textSecondary)
+                Spacer()
+                // Loan type pill
+                HStack(spacing: 4) {
+                    Image(systemName: applicant.loanType.symbol)
+                        .font(.system(size: 9, weight: .bold))
+                    Text(applicant.loanType.rawValue)
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                }
+                .foregroundStyle(applicant.loanType.themeColor)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(applicant.loanType.themeColor.opacity(0.12))
+                .clipShape(Capsule())
+            }
 
-                            Spacer()
+            // Officer identity row
+            HStack(spacing: LMSSpacing.md) {
+                // Avatar
+                ZStack {
+                    Circle()
+                        .fill(LMSColors.brandNavy.opacity(0.12))
+                        .frame(width: 50, height: 50)
+                    Text(officerRecord?.initials ?? String(applicant.assignedOfficer.prefix(2)).uppercased())
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(LMSColors.brandNavy)
+                }
+                .overlay(
+                    Circle()
+                        .stroke(LMSColors.brandNavy.opacity(0.15), lineWidth: 1)
+                )
 
-                            if officer.id == applicant.assignedOfficerId {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(LMSColors.emerald)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(applicant.assignedOfficer)
+                        .font(.system(.callout, design: .rounded).bold())
+                        .foregroundStyle(LMSColors.textPrimary)
+
+                    Text(officerRecord?.role ?? "Loan Officer")
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(LMSColors.textSecondary)
+
+                    // Active cases bar
+                    if let record = officerRecord {
+                        HStack(spacing: LMSSpacing.xs) {
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    Capsule()
+                                        .fill(LMSColors.separatorLight)
+                                        .frame(height: 4)
+                                    Capsule()
+                                        .fill(record.capacityColor)
+                                        .frame(width: geo.size.width * min(1, record.capacityPercentage), height: 4)
+                                }
                             }
+                            .frame(height: 4)
+
+                            Text("\(record.activeCases)/\(record.maxCapacity) cases")
+                                .font(.system(size: 9, weight: .semibold, design: .rounded))
+                                .foregroundStyle(record.capacityColor)
+                                .monospacedDigit()
                         }
                     }
                 }
+
+                Spacer()
+
+                // Approval rate ring (only if we have the full record)
+                if let record = officerRecord, record.loansProcessedYTD > 0 {
+                    VStack(spacing: 2) {
+                        ZStack {
+                            Circle()
+                                .stroke(LMSColors.emerald.opacity(0.15), lineWidth: 4)
+                                .frame(width: 38, height: 38)
+                            Circle()
+                                .trim(from: 0, to: record.approvalRate / 100)
+                                .stroke(LMSColors.emerald, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                                .frame(width: 38, height: 38)
+                                .rotationEffect(.degrees(-90))
+                            Text("\(Int(record.approvalRate))%")
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .foregroundStyle(LMSColors.textPrimary)
+                                .monospacedDigit()
+                        }
+                        Text("approval")
+                            .font(.system(size: 8, design: .rounded))
+                            .foregroundStyle(LMSColors.textTertiary)
+                    }
+                }
             }
-            .listStyle(.insetGrouped)
-            .navigationTitle("Reassign Officer")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Cancel") { dismiss() }
+
+            // Quick reassign button (only for pending applications)
+            if applicant.status == .sentToManager || applicant.status == .needsClarification {
+                Button(action: {
+                    HapticsManager.triggerImpact(style: .light)
+                    onReassign()
+                }) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text("Reassign Officer")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundStyle(LMSColors.actionBlue)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 34)
+                    .background(LMSColors.actionBlue.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous)
+                            .stroke(LMSColors.actionBlue.opacity(0.20), lineWidth: 0.5)
+                    )
                 }
             }
         }
+        .padding(LMSSpacing.lg)
+        .background(LMSColors.actionBlue.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                .stroke(LMSColors.actionBlue.opacity(0.15), lineWidth: 0.5)
+        )
     }
 }
+
+
 
 #Preview {
     NavigationStack {
         ManagerApplicantDetailView(
-            applicant: PreviewSupport.sampleManagerApplicant,
+            applicantId: PreviewSupport.sampleManagerApplicant.id,
             viewModel: PreviewSupport.managerViewModel
         )
     }

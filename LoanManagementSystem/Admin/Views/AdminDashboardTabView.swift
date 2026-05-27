@@ -59,31 +59,37 @@ struct AdminDashboardTabView: View {
     private var kpiSection: some View {
         LazyVGrid(columns: columns, spacing: 16) {
             ForEach(viewModel.kpis) { kpi in
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Image(systemName: kpi.icon)
-                            .font(.title2)
-                            .foregroundStyle(kpi.themeColor)
-                        Spacer()
-                        HStack(spacing: 2) {
-                            Image(systemName: kpi.trend >= 0 ? "arrow.up.right" : "arrow.down.right")
-                            Text("\(abs(kpi.trend), specifier: "%.1f")%")
+                NavigationLink {
+                    AdminBranchKPIView(kpi: kpi, viewModel: viewModel)
+                } label: {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: kpi.icon)
+                                .font(.title2)
+                                .foregroundStyle(kpi.themeColor)
+                            Spacer()
+                            HStack(spacing: 2) {
+                                Image(systemName: kpi.trend >= 0 ? "arrow.up.right" : "arrow.down.right")
+                                Text("\(abs(kpi.trend), specifier: "%.1f")%")
+                            }
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(kpi.trend >= 0 ? LMSColors.emerald : LMSColors.coral)
                         }
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(kpi.trend >= 0 ? LMSColors.emerald : LMSColors.coral)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(kpi.value)
+                                .font(LMSFont.title)
+                                .foregroundStyle(LMSColors.textPrimary)
+                            Text(kpi.title)
+                                .font(LMSFont.caption)
+                                .foregroundStyle(LMSColors.textSecondary)
+                        }
                     }
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(kpi.value)
-                            .font(LMSFont.title)
-                        Text(kpi.title)
-                            .font(LMSFont.caption)
-                            .foregroundStyle(LMSColors.textSecondary)
-                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg))
                 }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg))
+                .buttonStyle(PlainButtonStyle())
             }
         }
     }
