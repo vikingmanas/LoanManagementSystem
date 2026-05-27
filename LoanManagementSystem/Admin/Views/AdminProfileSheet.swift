@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AdminProfileSheet: View {
     @EnvironmentObject private var authManager: AuthManager
+    @EnvironmentObject private var appState: AppStateManager
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -76,6 +77,7 @@ struct AdminProfileSheet: View {
                 Section {
                     Button(role: .destructive) {
                         dismiss()
+                        appState.logout()
                         authManager.signOut()
                     } label: {
                         Text("Sign Out")

@@ -61,6 +61,7 @@ enum OfficerWorkspaceTab: Hashable {
 // MARK: - Dashboard Main View
 
 private struct LoanOfficerTodayView: View {
+    @EnvironmentObject var authManager: AuthManager
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Binding var selectedTab: OfficerWorkspaceTab
     var onNotifications: () -> Void
@@ -119,7 +120,7 @@ private struct LoanOfficerTodayView: View {
                 .accessibilityLabel("Notifications")
 
                 Button(action: onProfile) {
-                    Text("AK")
+                    Text(authManager.currentStaffProfile?.initials ?? "AK")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(.white)
                         .frame(width: 30, height: 30)

@@ -35,6 +35,25 @@ class ApplicationService {
         }
     }
     
+    /// Fetches all submitted (non-draft) applications from Supabase for loan officer view.
+    func fetchAllSubmittedApplications() async throws -> [DBLoanApplication] {
+        logger.info("ApplicationService: Fetching all submitted applications for officer dashboard...")
+        do {
+            let dbApps: [DBLoanApplication] = try await client
+                .from("loan_applications")
+                .select()
+                .neq("status", value: "draft")
+                .execute()
+                .value
+            
+            logger.info("ApplicationService: Successfully fetched \(dbApps.count) submitted applications.")
+            return dbApps
+        } catch {
+            logger.error("ApplicationService FetchAll Error: \(error.localizedDescription)")
+            throw error
+        }
+    }
+    
     /// Inserts or updates an application record in Supabase.
     func upsertApplication(_ app: DBLoanApplication) async throws {
         logger.info("ApplicationService: Upserting application ID: \(app.applicationId) with borrower_id: \(app.borrowerId), product_id: \(app.productId), status: \(app.status)")

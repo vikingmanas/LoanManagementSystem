@@ -153,7 +153,7 @@ struct ContentView: View {
         if appState.selectedRole == .customer {
             return authManager.isAuthenticated
         }
-        return appState.isAuthenticated
+        return authManager.isAuthenticated && appState.isAuthenticated
     }
 
     private func syncBorrowerProfileIfNeeded() {

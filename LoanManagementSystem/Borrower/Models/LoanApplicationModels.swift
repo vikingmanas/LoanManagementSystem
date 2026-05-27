@@ -392,6 +392,37 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
     var selectedAddressDoc: String
     var selectedIncomeDoc: String
 
+    enum CodingKeys: String, CodingKey {
+        case fullName
+        case dateOfBirth
+        case gender
+        case mobileNumber
+        case emailAddress
+        case address
+        case occupation
+        case employmentType
+        case employerName
+        case workExperienceYears
+        case monthlyIncome
+        case annualIncome
+        case existingLoans
+        case existingEMIs = "existingEmIs"
+        case creditCardObligations
+        case creditScore
+        case loanAmountRequested
+        case loanPurpose
+        case repaymentPreference
+        case preferredTenureMonths
+        case hasCoApplicant
+        case coApplicantDetails
+        case hasGuarantor
+        case guarantorDetails
+        case gstNumber
+        case selectedIdentityDoc
+        case selectedAddressDoc
+        case selectedIncomeDoc
+    }
+
     var monthlyIncomeValue: Double { monthlyIncome.numericValue }
     var annualIncomeValue: Double { annualIncome.numericValue }
     var existingLoansValue: Double { existingLoans.numericValue }
@@ -723,6 +754,7 @@ struct BorrowerStageEntry: Codable, Identifiable, Hashable {
 struct BorrowerLoanApplication: Identifiable, Hashable {
     let id: UUID
     var applicationId: String?
+    var borrowerId: UUID?
     var product: BorrowerLoanProduct
     var formData: BorrowerLoanFormData
     var documents: [BorrowerLoanDocumentItem]
@@ -757,25 +789,11 @@ struct DBLoanApplication: Codable {
     let submittedAt: Date?
     let updatedAt: Date
     
-    enum CodingKeys: String, CodingKey {
-        case applicationId
-        case borrowerId
-        case officerId
-        case productId
-        case amountRequested
-        case tenureMonths
-        case purpose
-        case status
-        case formData
-        case stageHistory
-        case submittedAt
-        case updatedAt
-    }
-    
     func toBorrowerApplication(product: BorrowerLoanProduct, documents: [BorrowerLoanDocumentItem] = []) -> BorrowerLoanApplication {
         return BorrowerLoanApplication(
             id: applicationId,
             applicationId: "APP-\(applicationId.uuidString.prefix(6).uppercased())",
+            borrowerId: borrowerId,
             product: product,
             formData: formData,
             documents: documents.isEmpty ? BorrowerLoanDocumentItem.defaultRequirements(for: product) : documents,

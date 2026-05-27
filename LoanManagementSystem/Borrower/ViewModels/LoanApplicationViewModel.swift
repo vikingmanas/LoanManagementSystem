@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import Supabase
 
 @MainActor
 final class LoanApplicationViewModel: ObservableObject {
@@ -559,6 +560,9 @@ final class LoanApplicationViewModel: ObservableObject {
 
     @discardableResult
     func submitCurrentApplication() -> BorrowerLoanApplication? {
+        // Cancel any pending autosave task to prevent post-submit race conditions
+        autosaveTask?.cancel()
+
         // Autofill missing or invalid inputs right before submission to ensure we never get blocked by simulated fields
         if formData.fullName.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 {
             formData.fullName = "Akash Kashyap"
@@ -595,7 +599,6 @@ final class LoanApplicationViewModel: ObservableObject {
         for index in documents.indices {
             documents[index].status = .verified
         }
-        performAutosave()
 
         guard canSubmitApplication,
               let currentDraftID,
@@ -605,6 +608,10 @@ final class LoanApplicationViewModel: ObservableObject {
 
         let now = Date()
         var draft = applications[index]
+        
+        // Copy latest user input to the draft before status transition
+        draft.formData = formData
+        draft.documents = documents
         let generatedApplicationID = draft.applicationId ?? generateApplicationID()
 
         draft.applicationId = generatedApplicationID
