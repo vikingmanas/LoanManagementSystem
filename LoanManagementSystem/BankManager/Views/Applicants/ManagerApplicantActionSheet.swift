@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Manager Applicant Action Sheet
+
 struct ManagerApplicantActionSheet: View {
     let applicant: ManagerApplicant
     let actionType: ManagerApplicantDetailView.ActionType
@@ -10,11 +10,12 @@ struct ManagerApplicantActionSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var remarks = ""
     @State private var isProcessing = false
+    @State private var validationMessage: String?
 
     var body: some View {
         NavigationStack {
             VStack(spacing: LMSSpacing.xl) {
-                // Action Icon
+
                 ZStack {
                     Circle()
                         .fill(actionColor.opacity(0.12))
@@ -25,13 +26,13 @@ struct ManagerApplicantActionSheet: View {
                 }
                 .padding(.top, LMSSpacing.xl)
 
-                // Title
+
                 Text(actionTitle)
                     .font(.system(.title3, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
                     .multilineTextAlignment(.center)
 
-                // Summary
+
                 VStack(spacing: LMSSpacing.sm) {
                     HStack {
                         Text("Borrower")
@@ -62,7 +63,7 @@ struct ManagerApplicantActionSheet: View {
                 .background(LMSColors.surfaceElevated)
                 .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
 
-                // Remarks
+
                 VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                     Text("Remarks (Required)")
                         .font(.system(.caption, design: .rounded).bold())
@@ -78,11 +79,20 @@ struct ManagerApplicantActionSheet: View {
                             RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
                                 .stroke(LMSColors.separatorLight, lineWidth: 0.5)
                         )
+                        .onChange(of: remarks) { _, _ in
+                            validationMessage = nil
+                        }
+
+                    if let validationMessage {
+                        Text(validationMessage)
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundStyle(LMSColors.coral)
+                    }
                 }
 
                 Spacer()
 
-                // Confirm Button
+
                 Button(action: performAction) {
                     Group {
                         if isProcessing {
@@ -117,9 +127,11 @@ struct ManagerApplicantActionSheet: View {
         }
     }
 
-    // MARK: - Perform Action
+
     private func performAction() {
-        guard !remarks.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || actionType == .escalate else {
+        let trimmedRemarks = remarks.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedRemarks.isEmpty || actionType == .escalate else {
+            validationMessage = "Please enter remarks before confirming."
             HapticsManager.triggerNotification(type: .warning)
             return
         }
@@ -127,27 +139,34 @@ struct ManagerApplicantActionSheet: View {
         isProcessing = true
         HapticsManager.triggerImpact(style: .heavy)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            switch actionType {
-            case .approve:
-                viewModel.approveApplicant(applicant.id, remarks: remarks)
-            case .reject:
-                viewModel.rejectApplicant(applicant.id, remarks: remarks)
-            case .sendBack:
-                viewModel.sendBackApplicant(applicant.id, remarks: remarks)
-            case .escalate:
-                viewModel.escalateApplicant(applicant.id)
-            }
-
-            isProcessing = false
-            dismiss()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                onComplete()
-            }
+        let succeeded: Bool
+        switch actionType {
+        case .approve:
+            succeeded = viewModel.approveApplicant(applicant.id, remarks: trimmedRemarks)
+        case .reject:
+            viewModel.rejectApplicant(applicant.id, remarks: trimmedRemarks)
+            succeeded = true
+        case .sendBack:
+            viewModel.sendBackApplicant(applicant.id, remarks: trimmedRemarks)
+            succeeded = true
+        case .escalate:
+            viewModel.escalateApplicant(applicant.id)
+            succeeded = true
         }
+
+        isProcessing = false
+
+        guard succeeded else {
+            validationMessage = "Unable to approve this application. Confirm it is still awaiting manager review."
+            HapticsManager.triggerNotification(type: .error)
+            return
+        }
+
+        dismiss()
+        onComplete()
     }
 
-    // MARK: - Computed Properties
+
     private var actionTitle: String {
         switch actionType {
         case .approve:  return "Approve Application"
@@ -193,3 +212,4 @@ struct ManagerApplicantActionSheet: View {
         onComplete: {}
     )
 }
+

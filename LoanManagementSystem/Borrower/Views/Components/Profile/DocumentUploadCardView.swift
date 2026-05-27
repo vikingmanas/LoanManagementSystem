@@ -6,25 +6,25 @@ struct DocumentUploadCardView: View {
     var fileName: String? = nil
     var onUpload: () -> Void
     var onDelete: () -> Void
-    
+
     var body: some View {
         HStack(spacing: 16) {
             ZStack {
                 Circle()
                     .fill(Color.AppTheme.primary.opacity(0.1))
                     .frame(width: 40, height: 40)
-                
+
                 Image(systemName: iconForStatus)
                     .foregroundStyle(colorForStatus)
                     .font(.system(size: 18))
             }
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(documentName)
                     .font(Font.AppTheme.body)
                     .fontWeight(.medium)
                     .foregroundStyle(Color.AppTheme.textPrimary)
-                
+
                 if let fileName = fileName {
                     HStack(spacing: 4) {
                         Image(systemName: "doc.text.fill")
@@ -39,9 +39,9 @@ struct DocumentUploadCardView: View {
                         .foregroundStyle(colorForStatus)
                 }
             }
-            
+
             Spacer()
-            
+
             if status == .pending || status == .rejected {
                 Button(action: onUpload) {
                     Text("Upload")
@@ -69,7 +69,7 @@ struct DocumentUploadCardView: View {
                 .stroke(Color.gray.opacity(0.2), lineWidth: 1)
         )
     }
-    
+
     private var iconForStatus: String {
         if fileName != nil { return "doc.richtext.fill" }
         switch status {
@@ -79,7 +79,7 @@ struct DocumentUploadCardView: View {
         case .rejected: return "xmark.octagon.fill"
         }
     }
-    
+
     private var colorForStatus: Color {
         if fileName != nil { return Color.AppTheme.primary }
         switch status {
@@ -100,3 +100,4 @@ struct DocumentUploadCardView: View {
     )
     .padding()
 }
+

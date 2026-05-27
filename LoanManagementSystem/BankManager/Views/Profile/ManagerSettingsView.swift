@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Manager Settings View
+
 struct ManagerSettingsView: View {
     @Environment(\.dismiss) var dismiss
 
@@ -18,7 +18,7 @@ struct ManagerSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                // MARK: — Branch Configuration
+
                 Section {
                     HStack {
                         Text("Home Loan Limit (₹ Cr)")
@@ -51,7 +51,7 @@ struct ManagerSettingsView: View {
                     Label("Branch Loan Configuration", systemImage: "building.columns.fill")
                 }
 
-                // MARK: — Risk Thresholds
+
                 Section {
                     HStack {
                         Text("Minimum CIBIL Score")
@@ -75,7 +75,7 @@ struct ManagerSettingsView: View {
                     Label("Risk Thresholds", systemImage: "shield.fill")
                 }
 
-                // MARK: — Security Settings
+
                 Section {
                     Toggle(isOn: $twoFactorEnabled) {
                         Text("Two-Factor Authentication")
@@ -93,7 +93,7 @@ struct ManagerSettingsView: View {
                     Label("Security", systemImage: "lock.shield.fill")
                 }
 
-                // MARK: — Notification Preferences
+
                 Section {
                     Toggle(isOn: $notifApprovals) {
                         Text("Approval Requests")
@@ -108,7 +108,7 @@ struct ManagerSettingsView: View {
                     Label("Notifications", systemImage: "bell.fill")
                 }
 
-                // MARK: — Permissions
+
                 Section {
                     VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                         PermissionRow(label: "Loan Approval", value: "Up to ₹1 Cr", color: LMSColors.emerald)
@@ -120,7 +120,7 @@ struct ManagerSettingsView: View {
                     Label("Permissions Overview", systemImage: "key.fill")
                 }
 
-                // MARK: — Save
+
                 Section {
                     Button(action: {
                         HapticsManager.triggerNotification(type: .success)
@@ -147,7 +147,7 @@ struct ManagerSettingsView: View {
     }
 }
 
-// MARK: - Permission Row
+
 private struct PermissionRow: View {
     let label: String
     let value: String
@@ -175,3 +175,4 @@ private struct PermissionRow: View {
     }
     .previewManagerEnvironment()
 }
+

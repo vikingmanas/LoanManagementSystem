@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Manager Approval Queue View
+
 struct ManagerApprovalQueueView: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
     var onViewAll: () -> Void
@@ -8,7 +8,7 @@ struct ManagerApprovalQueueView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
-            // Header
+
             HStack {
                 Text("Approval Queue")
                     .font(.system(.footnote, design: .rounded).bold())
@@ -34,7 +34,7 @@ struct ManagerApprovalQueueView: View {
             .padding(.horizontal, LMSSpacing.screenHorizontal)
 
             if viewModel.pendingApplicants.isEmpty {
-                // Empty state
+
                 VStack(spacing: LMSSpacing.lg) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 44))
@@ -72,13 +72,13 @@ struct ManagerApprovalQueueView: View {
     }
 }
 
-// MARK: - Approval Queue Card
+
 private struct ApprovalQueueCard: View {
     let applicant: ManagerApplicant
 
     var body: some View {
         HStack(spacing: LMSSpacing.md) {
-            // Status icon
+
             ZStack {
                 RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
                     .fill(applicant.status.themeColor.opacity(0.12))
@@ -108,7 +108,7 @@ private struct ApprovalQueueCard: View {
 
                     Spacer()
 
-                    // Risk indicator
+
                     HStack(spacing: 3) {
                         Circle()
                             .fill(applicant.riskLevel.themeColor)
@@ -159,3 +159,4 @@ private struct ApprovalQueueCard: View {
     .padding()
     .previewManagerEnvironment()
 }
+

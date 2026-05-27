@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Manager Communication Tab View (Tab 2)
+
 struct ManagerCommunicationTabView: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
 
@@ -9,9 +9,9 @@ struct ManagerCommunicationTabView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // MARK: — Search + Filters
+
             VStack(spacing: LMSSpacing.md) {
-                // Search Bar
+
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(LMSColors.textSecondary)
@@ -30,7 +30,7 @@ struct ManagerCommunicationTabView: View {
                 .background(LMSColors.surfaceElevated)
                 .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
 
-                // Segmented Filter
+
                 Picker("Filter", selection: $viewModel.selectedChatFilter) {
                     ForEach(ManagerDashboardViewModel.ChatFilterMode.allCases, id: \.self) { mode in
                         Text(mode.rawValue).tag(mode)
@@ -44,23 +44,16 @@ struct ManagerCommunicationTabView: View {
 
             Divider()
 
-            // MARK: — Conversations List
+
             let filtered = viewModel.filteredConversations
 
             if filtered.isEmpty {
-                Spacer()
-                VStack(spacing: LMSSpacing.lg) {
-                    Image(systemName: "bubble.left.and.bubble.right")
-                        .font(.system(size: 48))
-                        .foregroundStyle(LMSColors.textTertiary)
-                    Text("No Conversations")
-                        .font(.system(.headline, design: .rounded))
-                        .foregroundStyle(LMSColors.textPrimary)
-                    Text("Start communicating with your loan officers.")
-                        .font(.system(.subheadline, design: .rounded))
-                        .foregroundStyle(LMSColors.textSecondary)
-                }
-                Spacer()
+                ContentUnavailableView(
+                    "No Conversations",
+                    systemImage: "bubble.left.and.bubble.right",
+                    description: Text("Loan officer conversations and branch announcements will appear here.")
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List {
                     ForEach(filtered) { conversation in
@@ -83,31 +76,17 @@ struct ManagerCommunicationTabView: View {
             }
         }
         .background(LMSColors.background)
-        .overlay(alignment: .bottomTrailing) {
-            // Broadcast FAB
-            Button(action: {
-                HapticsManager.triggerImpact(style: .medium)
-                showBroadcastSheet = true
-            }) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [LMSColors.brandNavy, LMSColors.actionBlue],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 56, height: 56)
-                        .shadow(color: LMSColors.brandNavy.opacity(0.30), radius: 10, x: 0, y: 5)
-
-                    Image(systemName: "megaphone.fill")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(.white)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button(action: {
+                    HapticsManager.triggerImpact(style: .medium)
+                    showBroadcastSheet = true
+                }) {
+                    Label("Broadcast", systemImage: "megaphone")
                 }
+                .disabled(viewModel.officers.isEmpty)
+                .accessibilityLabel("Broadcast announcement")
             }
-            .padding(.trailing, LMSSpacing.xl)
-            .padding(.bottom, 100) // above tab bar
         }
         .sheet(item: $activeConversation) { conversation in
             ManagerChatDetailView(
@@ -116,18 +95,18 @@ struct ManagerCommunicationTabView: View {
             )
         }
         .sheet(isPresented: $showBroadcastSheet) {
-            BroadcastAnnouncementSheet(officers: viewModel.officers)
+            BroadcastAnnouncementSheet(viewModel: viewModel)
         }
     }
 }
 
-// MARK: - Conversation Row
+
 private struct ConversationRow: View {
     let conversation: ManagerChatConversation
 
     var body: some View {
         HStack(spacing: LMSSpacing.md) {
-            // Avatar with priority indicator
+
             ZStack(alignment: .bottomTrailing) {
                 Circle()
                     .fill(LMSColors.brandNavy.opacity(0.10))
@@ -196,7 +175,7 @@ private struct ConversationRow: View {
     }
 }
 
-// MARK: - Chat Detail View
+
 private struct ManagerChatDetailView: View {
     let conversation: ManagerChatConversation
     @ObservedObject var viewModel: ManagerDashboardViewModel
@@ -211,7 +190,7 @@ private struct ManagerChatDetailView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Officer Header
+
                 HStack(spacing: LMSSpacing.md) {
                     ZStack(alignment: .bottomTrailing) {
                         Circle()
@@ -244,7 +223,7 @@ private struct ManagerChatDetailView: View {
 
                 Divider()
 
-                // Messages
+
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(spacing: LMSSpacing.md) {
@@ -266,7 +245,7 @@ private struct ManagerChatDetailView: View {
 
                 Divider()
 
-                // Input Bar
+
                 HStack(spacing: 10) {
                     TextField("Type a message…", text: $chatText, axis: .vertical)
                         .font(.system(.subheadline, design: .rounded))
@@ -303,7 +282,7 @@ private struct ManagerChatDetailView: View {
     }
 }
 
-// MARK: - Chat Message Bubble
+
 private struct ManagerChatBubble: View {
     let message: ManagerChatMessage
 
@@ -361,9 +340,9 @@ private struct ManagerChatBubble: View {
     }
 }
 
-// MARK: - Broadcast Announcement Sheet
+
 private struct BroadcastAnnouncementSheet: View {
-    let officers: [ManagerOfficer]
+    @ObservedObject var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
 
     @State private var subject = ""
@@ -373,7 +352,7 @@ private struct BroadcastAnnouncementSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: LMSSpacing.xl) {
-                // Icon
+
                 ZStack {
                     Circle()
                         .fill(
@@ -394,7 +373,7 @@ private struct BroadcastAnnouncementSheet: View {
                     .font(.system(.title3, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
 
-                Text("This message will be sent to \(officers.count) officers at \(ManagerMockData.branchName).")
+                Text("This message will be sent to \(viewModel.officers.count) officers at \(viewModel.branchOverview.name).")
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(LMSColors.textSecondary)
                     .multilineTextAlignment(.center)
@@ -423,9 +402,9 @@ private struct BroadcastAnnouncementSheet: View {
                 Button(action: {
                     isSending = true
                     HapticsManager.triggerImpact(style: .heavy)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        viewModel.broadcastAnnouncement(subject: subject, message: message)
                         isSending = false
-                        HapticsManager.triggerNotification(type: .success)
                         dismiss()
                     }
                 }) {

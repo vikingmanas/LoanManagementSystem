@@ -1,11 +1,11 @@
 import SwiftUI
 
-/// Shared mock data and environment objects for SwiftUI previews across the app.
+
 @MainActor
 enum PreviewSupport {
-    
-    // MARK: - Core
-    
+
+
+
     static func appState(
         role: PortalRole = .customer,
         authenticated: Bool = true,
@@ -17,15 +17,15 @@ enum PreviewSupport {
         state.showRoleSelection = showRoleSelection
         return state
     }
-    
+
     static var authManager: AuthManager { AuthManager() }
-    
-    // MARK: - Borrower
-    
+
+
+
     static var borrowerProfileViewModel: BorrowerProfileViewModel {
         BorrowerProfileViewModel()
     }
-    
+
     static var dashboardViewModel: DashboardViewModel {
         let vm = DashboardViewModel()
         vm.loanAccounts = [MockData.home, MockData.business, MockData.car]
@@ -46,13 +46,13 @@ enum PreviewSupport {
         vm.isLoading = false
         return vm
     }
-    
+
     static var loanApplicationViewModel: LoanApplicationViewModel {
         LoanApplicationViewModel()
     }
-    
-    // MARK: - Loan Officer
-    
+
+
+
     static var loanOfficerViewModel: LoanOfficerDashboardViewModel {
         let vm = LoanOfficerDashboardViewModel()
         vm.applications = LoanOfficerMockData.createApplications()
@@ -61,7 +61,7 @@ enum PreviewSupport {
         vm.updateUnreadCount()
         return vm
     }
-    
+
     static var sampleDocumentQueueItem: DocumentQueueItem {
         let app = LoanOfficerMockData.createApplications()[0]
         let doc = app.documents.first(where: { $0.status == .reUploaded }) ?? app.documents[0]
@@ -74,13 +74,13 @@ enum PreviewSupport {
             applicationId: app.applicationId
         )
     }
-    
+
     static var sampleActivityFeedItem: ActivityFeedItem {
         LoanOfficerMockData.createActivityFeed()[0]
     }
-    
-    // MARK: - Bank Manager
-    
+
+
+
     static var managerViewModel: ManagerDashboardViewModel {
         let vm = ManagerDashboardViewModel()
         vm.applicants = ManagerMockData.applicants
@@ -92,9 +92,9 @@ enum PreviewSupport {
         vm.isLoading = false
         return vm
     }
-    
-    // MARK: - Admin
-    
+
+
+
     static var adminStaffViewModel: AdminStaffViewModel {
         let vm = AdminStaffViewModel()
         let branchId1 = UUID()
@@ -137,26 +137,26 @@ enum PreviewSupport {
         ]
         return vm
     }
-    
+
     static var sampleManagerApplicant: ManagerApplicant {
         ManagerMockData.applicants[0]
     }
-    
+
     static var sampleBorrowerProfile: BorrowerProfile {
         BorrowerProfileStore.shared.ensureProfile(
             email: "rahul.sharma@example.com",
             name: "Rahul Sharma"
         )
     }
-    
+
     static var sampleLoanApplicationId: String {
         LoanOfficerMockData.createApplications().first?.applicationId ?? "APP-2024-0892"
     }
-    
+
     static var borrowerTabRouter: BorrowerTabRouter { BorrowerTabRouter() }
 }
 
-// MARK: - View modifiers for previews
+
 
 extension View {
     func previewBorrowerEnvironment() -> some View {
@@ -165,22 +165,23 @@ extension View {
             .environmentObject(PreviewSupport.authManager)
             .environmentObject(PreviewSupport.borrowerTabRouter)
     }
-    
+
     func previewLoanOfficerEnvironment() -> some View {
         self
             .environmentObject(PreviewSupport.appState(role: .loanOfficer))
             .environmentObject(PreviewSupport.authManager)
     }
-    
+
     func previewManagerEnvironment() -> some View {
         self
             .environmentObject(PreviewSupport.appState(role: .bankManager))
             .environmentObject(PreviewSupport.authManager)
     }
-    
+
     func previewAdminEnvironment() -> some View {
         self
             .environmentObject(PreviewSupport.appState(role: .admin))
             .environmentObject(PreviewSupport.authManager)
     }
 }
+

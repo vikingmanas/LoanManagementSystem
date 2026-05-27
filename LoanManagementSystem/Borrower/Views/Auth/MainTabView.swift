@@ -25,11 +25,24 @@ struct MainTabView: View {
                     Label("History", systemImage: "clock.fill")
                 }
                 .tag(BorrowerTab.history)
+
+            NavigationStack {
+                ProfileView()
+                    .environmentObject(authManager)
+                    .environmentObject(appState)
+            }
+            .tabItem {
+                Label("Profile", systemImage: "person.fill")
+            }
+            .tag(BorrowerTab.profile)
         }
         .tint(LMSColors.brandNavy)
         .toolbarBackground(LMSColors.surfaceElevated, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .environmentObject(tabRouter)
+        .task {
+            await dashboardViewModel.fetchDashboardData()
+        }
     }
 }
 
@@ -38,3 +51,4 @@ struct MainTabView: View {
         .environmentObject(AppStateManager())
         .environmentObject(AuthManager())
 }
+
