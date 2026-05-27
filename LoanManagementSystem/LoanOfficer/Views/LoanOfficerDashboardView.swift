@@ -33,7 +33,7 @@ struct LoanOfficerDashboardView: View {
             .tag(OfficerWorkspaceTab.dashboard)
 
             NavigationStack {
-                LoanOfficerReviewQueueView(viewModel: viewModel)
+                LoanApprovalWorkflowView(viewModel: viewModel)
             }
             .tabItem { Label("Review", systemImage: "checklist.checked") }
             .badge(viewModel.pendingDocumentCount > 0 ? viewModel.pendingDocumentCount : 0)

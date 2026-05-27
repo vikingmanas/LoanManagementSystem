@@ -287,6 +287,14 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         }
     }
     
+    func approveApplication(id: UUID, remarks: String) {
+        CentralLoanRepository.shared.approveApplication(id: id, remarks: remarks)
+    }
+    
+    func rejectApplication(id: UUID, remarks: String) {
+        CentralLoanRepository.shared.rejectApplication(id: id, remarks: remarks)
+    }
+    
     func logActivity(borrowerName: String, applicationId: String, loanType: String, eventType: ActivityEventType, description: String) {
         let newFeed = ActivityFeedItem(
             id: UUID(),
