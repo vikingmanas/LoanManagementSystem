@@ -71,19 +71,18 @@ private struct LoanDiscoveryContent: View {
     let onSelectProduct: (BorrowerLoanProduct) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Select Your Loan")
                     .font(.headline)
                     .foregroundStyle(LMSColors.textPrimary)
-                Text("Explore premium financial products with competitive rates.")
+                Text("Compare amount, rate, and processing time.")
                     .font(.subheadline)
                     .foregroundStyle(LMSColors.textSecondary)
             }
             .padding(.horizontal, 16)
 
-            // Loan Cards with substantial spacing
-            VStack(spacing: 20) {
+            VStack(spacing: 14) {
                 ForEach(viewModel.products) { product in
                     LoanProductCard(product: product)
                         .onTapGesture {
@@ -101,86 +100,99 @@ private struct LoanProductCard: View {
     let product: BorrowerLoanProduct
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Top Section: Icon and Title
-            HStack(spacing: 16) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(LMSColors.brandNavy.opacity(0.1))
-                        .frame(width: 52, height: 52)
-                    Image(systemName: product.type.iconName)
-                        .font(.title2.weight(.bold))
-                        .foregroundStyle(LMSColors.brandNavy)
-                }
-                
-                VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 14) {
+                Image(systemName: product.type.iconName)
+                    .font(.system(size: 21, weight: .bold))
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .frame(width: 46, height: 46)
+                    .background(LMSColors.brandNavy.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 4) {
                     Text(product.type.title)
-                        .font(.headline)
+                        .font(.system(.headline, design: .rounded).weight(.bold))
                         .foregroundStyle(LMSColors.textPrimary)
+                        .lineLimit(1)
+
                     Text(product.shortDescription)
-                        .font(.caption)
+                        .font(.system(.caption, design: .rounded))
                         .foregroundStyle(LMSColors.textSecondary)
                         .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
-                
-                Spacer()
-                
+
+                Spacer(minLength: 8)
+
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(LMSColors.textTertiary)
+                    .padding(.top, 4)
             }
-            
-            // Bottom Info Bar: High Contrast
-            HStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("INTEREST RATE")
-                        .font(.system(size: 9, weight: .black, design: .rounded))
-                        .foregroundStyle(LMSColors.textSecondary)
-                    Text(product.interestRateRange)
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(LMSColors.brandNavy)
-                }
-                
-                Spacer()
-                Divider().frame(height: 24).padding(.horizontal, 12)
-                Spacer()
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("UP TO AMOUNT")
-                        .font(.system(size: 9, weight: .black, design: .rounded))
-                        .foregroundStyle(LMSColors.textSecondary)
-                    Text(product.maximumAmount.formattedAsINR())
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(LMSColors.textPrimary)
-                }
-                
-                Spacer()
-                Divider().frame(height: 24).padding(.horizontal, 12)
-                Spacer()
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("DISBURSAL")
-                        .font(.system(size: 9, weight: .black, design: .rounded))
-                        .foregroundStyle(LMSColors.textSecondary)
-                    Text(product.estimatedProcessingTime)
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(LMSColors.emerald)
-                }
+
+            HStack(spacing: 8) {
+                LoanProductMetricChip(
+                    title: "Amount",
+                    value: product.maximumAmount.formattedAsCompactINR(),
+                    icon: "indianrupeesign.circle.fill",
+                    tint: LMSColors.textPrimary
+                )
+
+                LoanProductMetricChip(
+                    title: "Rate",
+                    value: product.interestRateRange,
+                    icon: "percent",
+                    tint: LMSColors.brandNavy
+                )
+
+                LoanProductMetricChip(
+                    title: "Time",
+                    value: product.estimatedProcessingTime,
+                    icon: "clock.fill",
+                    tint: LMSColors.emerald
+                )
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 12)
-            .background(LMSColors.background.opacity(0.5), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .padding(16)
-        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(LMSColors.separatorLight, lineWidth: 0.5)
-        )
-        .shadow(color: Color.black.opacity(0.04), radius: 12, x: 0, y: 6)
+            )
+        .shadow(color: Color.black.opacity(0.035), radius: 10, x: 0, y: 5)
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
+
+private struct LoanProductMetricChip: View {
+    let title: String
+    let value: String
+    let icon: String
+    let tint: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 9, weight: .bold))
+                Text(title.uppercased())
+                    .font(.system(size: 8, weight: .black, design: .rounded))
+            }
+            .foregroundStyle(LMSColors.textSecondary)
+
+            Text(value)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(tint)
+                .lineLimit(2)
+                .minimumScaleFactor(0.78)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 10)
+        .background(LMSColors.background.opacity(0.55), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+
 
 // MARK: - Loan Overview Screen
 private struct LoanOverviewScreen: View {

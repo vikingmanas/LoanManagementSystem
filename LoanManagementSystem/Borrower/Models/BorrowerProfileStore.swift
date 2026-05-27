@@ -92,31 +92,41 @@ class BorrowerProfileStore: ObservableObject {
             return current
         }
 
+        let customerId = "C-\(Int.random(in: 100000...999999))"
+        let placeholderProfile = makeEmptyProfile(
+            name: name ?? cleanedEmail,
+            email: cleanedEmail,
+            phone: phone ?? "",
+            alternatePhone: alternatePhone,
+            customerId: customerId
+        )
+        self.profile = placeholderProfile
+        self.currentEmail = cleanedEmail
+
         Task {
             if let session = try? await SupabaseManager.shared.client.auth.session {
                 let user = session.user
                 if user.email?.lowercased() == cleanedEmail {
-                    await fetchProfileFromSupabase(uid: user.id.uuidString, email: cleanedEmail, name: name, phone: phone, alternatePhone: alternatePhone)
+                    await fetchProfileFromSupabase(
+                        uid: user.id.uuidString,
+                        email: cleanedEmail,
+                        name: name,
+                        phone: phone,
+                        alternatePhone: alternatePhone
+                    )
                     return
                 }
             }
-
 
             if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
                 if let account = accounts.first(where: { $0.email == cleanedEmail }) {
                     self.profile = account.profile
                     self.currentEmail = cleanedEmail
-                    return
                 }
             }
-
-            let customerId = "C-\(Int.random(in: 100000...999999))"
-            let fallbackProfile = makeEmptyProfile(name: name ?? cleanedEmail, email: cleanedEmail, phone: phone ?? "", alternatePhone: alternatePhone, customerId: customerId)
-            self.profile = fallbackProfile
-            self.currentEmail = cleanedEmail
         }
 
-        return self.profile ?? makeEmptyProfile(name: name ?? cleanedEmail, email: cleanedEmail, phone: phone ?? "", alternatePhone: alternatePhone, customerId: "")
+        return placeholderProfile
     }
 
     func fetchProfileFromSupabase(uid: String, email: String, name: String? = nil, phone: String? = nil, alternatePhone: String? = nil) async {
@@ -153,6 +163,167 @@ class BorrowerProfileStore: ObservableObject {
             }
             self.currentEmail = email
         }
+    }
+
+    func borrowerProfile(matchingEmail email: String) -> BorrowerProfile? {
+        let normalized = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !normalized.isEmpty else { return nil }
+
+        if let current = profile, current.email.lowercased() == normalized {
+            return current
+        }
+
+        if let account = accounts.first(where: { $0.email.lowercased() == normalized }) {
+            return account.profile
+        }
+
+        return nil
+    }
+
+    @discardableResult
+    func provisionODAccountForApprovedLoan(
+        email: String,
+        applicationId: UUID,
+        applicationNumber: String,
+        borrowerName: String,
+        sanctionedAmount: Double
+    ) -> String? {
+        let normalized = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !normalized.isEmpty, sanctionedAmount > 0,
+              var borrowerProfile = borrowerProfile(matchingEmail: normalized) else {
+            return nil
+        }
+
+        var linkedAccounts = borrowerProfile.linkedAccounts ?? []
+        if let existingIndex = linkedAccounts.firstIndex(where: {
+            $0.linkedLoanApplicationId == applicationId && $0.isOverdraftAccount
+        }) {
+            linkedAccounts[existingIndex].balance = max(linkedAccounts[existingIndex].balance, sanctionedAmount)
+            linkedAccounts[existingIndex].odSanctionLimit = max(
+                linkedAccounts[existingIndex].odSanctionLimit ?? 0,
+                sanctionedAmount
+            )
+            borrowerProfile.linkedAccounts = linkedAccounts
+            persistBorrowerProfile(borrowerProfile, email: normalized)
+            return linkedAccounts[existingIndex].accountNumber
+        }
+
+        let customerId = borrowerProfile.existingCustomerId ?? borrowerProfile.id
+        let holderName = borrowerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? borrowerProfile.fullName
+            : borrowerName
+        let bank = borrowerProfile.bankDetails
+        let odAccountNumber = makeODAccountNumber(customerId: customerId, applicationNumber: applicationNumber)
+
+        let odAccount = LinkedBankAccount(
+            bankName: bank.bankName.isEmpty ? "LMS Bank" : bank.bankName,
+            accountNumber: odAccountNumber,
+            ifscCode: bank.ifscCode.isEmpty ? "LMSB0000001" : bank.ifscCode,
+            balance: sanctionedAmount,
+            branch: borrowerProfile.preferredBranch.isEmpty ? "Home Branch" : borrowerProfile.preferredBranch,
+            customerId: customerId,
+            accountHolderName: holderName,
+            accountKind: .overdraft,
+            linkedLoanApplicationId: applicationId,
+            odSanctionLimit: sanctionedAmount
+        )
+
+        linkedAccounts.append(odAccount)
+        borrowerProfile.linkedAccounts = linkedAccounts
+        borrowerProfile.loanOverview = LoanOverview(
+            activeLoans: borrowerProfile.loanOverview.activeLoans + 1,
+            loanHistoryCount: borrowerProfile.loanOverview.loanHistoryCount + 1,
+            nextEmiDueDate: Calendar.current.date(byAdding: .month, value: 1, to: Date()),
+            remainingBalance: borrowerProfile.loanOverview.remainingBalance + sanctionedAmount,
+            currentLoanStatus: "Approved"
+        )
+
+        persistBorrowerProfile(borrowerProfile, email: normalized)
+        return odAccountNumber
+    }
+
+    func updateLinkedAccountBalance(accountId: UUID, balance: Double) {
+        guard var borrowerProfile = profile,
+              var linkedAccounts = borrowerProfile.linkedAccounts,
+              let index = linkedAccounts.firstIndex(where: { $0.id == accountId }) else {
+            return
+        }
+
+        linkedAccounts[index].balance = balance
+        borrowerProfile.linkedAccounts = linkedAccounts
+        updateProfile(borrowerProfile)
+    }
+
+    func creditBorrower(email: String, amount: Double, accountNumber: String) {
+        let normalized = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !normalized.isEmpty, amount > 0 else { return }
+
+        guard var borrowerProfile = borrowerProfile(matchingEmail: normalized) else { return }
+
+        var linkedAccounts = borrowerProfile.linkedAccounts ?? []
+        if let index = linkedAccounts.firstIndex(where: { $0.accountNumber == accountNumber }) {
+            linkedAccounts[index].balance += amount
+        } else if !borrowerProfile.bankDetails.accountNumber.isEmpty {
+            let bank = borrowerProfile.bankDetails
+            linkedAccounts.append(
+                LinkedBankAccount(
+                    id: UUID(),
+                    bankName: bank.bankName.isEmpty ? "Primary Account" : bank.bankName,
+                    accountNumber: bank.accountNumber,
+                    ifscCode: bank.ifscCode,
+                    balance: amount,
+                    branch: borrowerProfile.preferredBranch,
+                    customerId: borrowerProfile.existingCustomerId ?? borrowerProfile.id
+                )
+            )
+        } else if accountNumber != "0000000000" {
+            linkedAccounts.append(
+                LinkedBankAccount(
+                    id: UUID(),
+                    bankName: "Loan Disbursement Account",
+                    accountNumber: accountNumber,
+                    ifscCode: "",
+                    balance: amount,
+                    branch: "",
+                    customerId: borrowerProfile.existingCustomerId ?? borrowerProfile.id
+                )
+            )
+        }
+        borrowerProfile.linkedAccounts = linkedAccounts
+        borrowerProfile.loanOverview = LoanOverview(
+            activeLoans: borrowerProfile.loanOverview.activeLoans + 1,
+            loanHistoryCount: borrowerProfile.loanOverview.loanHistoryCount + 1,
+            nextEmiDueDate: Calendar.current.date(byAdding: .month, value: 1, to: Date()),
+            remainingBalance: borrowerProfile.loanOverview.remainingBalance + amount,
+            currentLoanStatus: "Approved"
+        )
+
+        persistBorrowerProfile(borrowerProfile, email: normalized)
+    }
+
+    private func persistBorrowerProfile(_ borrowerProfile: BorrowerProfile, email normalizedEmail: String) {
+        if profile?.email.lowercased() == normalizedEmail {
+            updateProfile(borrowerProfile)
+            return
+        }
+
+        if let index = accounts.firstIndex(where: { $0.email.lowercased() == normalizedEmail }) {
+            accounts[index].profile = borrowerProfile
+        }
+    }
+
+    private func makeODAccountNumber(customerId: String, applicationNumber: String) -> String {
+        let customerDigits = customerId.filter(\.isNumber)
+        let customerSuffix = customerDigits.isEmpty
+            ? String(customerId.suffix(4)).uppercased()
+            : String(customerDigits.suffix(6))
+        let applicationSuffix = applicationNumber
+            .replacingOccurrences(of: "APP-", with: "")
+            .filter(\.isNumber)
+        let applicationPart = applicationSuffix.isEmpty
+            ? String(Int.random(in: 1000...9999))
+            : String(applicationSuffix.suffix(4))
+        return "OD\(customerSuffix)\(applicationPart)"
     }
 
     func updateProfile(_ updatedProfile: BorrowerProfile) {

@@ -134,7 +134,7 @@ struct MockSignUpView: View {
         }
         .onChange(of: viewModel.showSuccess) { _, success in
             if success {
-                appState.login()
+                appState.login(requiresBorrowerOnboarding: true)
             }
         }
         .sheet(isPresented: $showTermsSheet) {
