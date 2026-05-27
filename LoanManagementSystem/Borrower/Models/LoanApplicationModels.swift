@@ -723,6 +723,7 @@ struct BorrowerStageEntry: Codable, Identifiable, Hashable {
 struct BorrowerLoanApplication: Identifiable, Hashable {
     let id: UUID
     var applicationId: String?
+    var borrowerId: UUID?
     var product: BorrowerLoanProduct
     var formData: BorrowerLoanFormData
     var documents: [BorrowerLoanDocumentItem]
@@ -776,6 +777,7 @@ struct DBLoanApplication: Codable {
         return BorrowerLoanApplication(
             id: applicationId,
             applicationId: "APP-\(applicationId.uuidString.prefix(6).uppercased())",
+            borrowerId: borrowerId,
             product: product,
             formData: formData,
             documents: documents.isEmpty ? BorrowerLoanDocumentItem.defaultRequirements(for: product) : documents,

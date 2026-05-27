@@ -130,16 +130,23 @@ final class CentralLoanRepository: ObservableObject {
         }
     }
     
-    /// Syncs a single application to Supabase in the background.
     private func syncApplicationToSupabase(_ app: BorrowerLoanApplication) {
-        // Resolve the borrower's user ID from AuthManager or the app's form data email
-        guard let uidString = resolveCurrentBorrowerUID(),
-              let borrowerUUID = UUID(uuidString: uidString) else {
-            print("[CentralLoanRepository] Cannot sync to Supabase: no authenticated user ID found.")
+        // Prefer the application's existing borrower ID (so Officers/Managers don't overwrite it with their own ID)
+        // Fallback to the current user's ID for new applications created by the borrower
+        let resolvedUUID: UUID
+        if let existingId = app.borrowerId {
+            resolvedUUID = existingId
+        } else if let uidString = resolveCurrentBorrowerUID(), let uid = UUID(uuidString: uidString) {
+            resolvedUUID = uid
+        } else {
+            print("[CentralLoanRepository] Cannot sync to Supabase: no borrower ID could be resolved.")
             return
         }
         
-        let dbApp = DBLoanApplication.from(borrowerApplication: app, borrowerId: borrowerUUID)
+        var syncedApp = app
+        syncedApp.borrowerId = resolvedUUID
+        
+        let dbApp = DBLoanApplication.from(borrowerApplication: syncedApp, borrowerId: resolvedUUID)
         Task {
             do {
                 try await ApplicationService.shared.upsertApplication(dbApp)
@@ -150,7 +157,7 @@ final class CentralLoanRepository: ObservableObject {
         }
     }
     
-    /// Resolves the current authenticated user's UID for use as borrower_id.
+    /// Resolves the current authenticated user's UID for use as a fallback borrower_id.
     private nonisolated func resolveCurrentBorrowerUID() -> String? {
         // Access AuthManager on MainActor since it's @MainActor
         return MainActor.assumeIsolated {
@@ -186,6 +193,7 @@ final class CentralLoanRepository: ObservableObject {
             recomputeVerificationStage(app: &app)
             applications[index] = app
             persistState()
+            syncApplicationToSupabase(app)
         }
     }
     
@@ -203,6 +211,7 @@ final class CentralLoanRepository: ObservableObject {
         )
         applications[index] = app
         persistState()
+        syncApplicationToSupabase(app)
     }
     
     @discardableResult
@@ -269,6 +278,7 @@ final class CentralLoanRepository: ObservableObject {
         )
 
         persistState()
+        syncApplicationToSupabase(app)
         return true
     }
     
@@ -286,6 +296,7 @@ final class CentralLoanRepository: ObservableObject {
         )
         applications[index] = app
         persistState()
+        syncApplicationToSupabase(app)
     }
     
     func sendBackApplication(id: UUID, remarks: String) {
@@ -302,6 +313,7 @@ final class CentralLoanRepository: ObservableObject {
         )
         applications[index] = app
         persistState()
+        syncApplicationToSupabase(app)
     }
     
     // MARK: - Private Helpers
