@@ -90,7 +90,6 @@ struct ManagerDashboardView: View {
     private var applicantsToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             HStack(spacing: LMSSpacing.sm) {
-                searchButton
                 notificationButton
                 profileButton
             }
