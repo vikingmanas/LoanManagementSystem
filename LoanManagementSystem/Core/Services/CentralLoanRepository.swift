@@ -84,6 +84,15 @@ final class CentralLoanRepository: ObservableObject {
     func deleteApplication(id: UUID) {
         applications.removeAll { $0.id == id }
         persistState()
+        
+        Task {
+            do {
+                try await ApplicationService.shared.deleteApplication(id: id)
+                print("[CentralLoanRepository] Successfully deleted application \(id) from Supabase.")
+            } catch {
+                print("[CentralLoanRepository] Failed to delete application \(id) from Supabase: \(error.localizedDescription)")
+            }
+        }
     }
     
     func fetchApplicationsFromSupabase(borrowerId: UUID) async {

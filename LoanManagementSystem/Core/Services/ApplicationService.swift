@@ -68,5 +68,21 @@ class ApplicationService {
             throw error
         }
     }
+    
+    /// Deletes an application record from Supabase.
+    func deleteApplication(id: UUID) async throws {
+        logger.info("ApplicationService: Deleting application ID: \(id.uuidString)")
+        do {
+            try await client
+                .from("loan_applications")
+                .delete()
+                .eq("application_id", value: id.uuidString)
+                .execute()
+            logger.info("ApplicationService: Successfully deleted application ID: \(id.uuidString).")
+        } catch {
+            logger.error("ApplicationService Delete Error for \(id.uuidString): \(error.localizedDescription)")
+            throw error
+        }
+    }
 }
 
