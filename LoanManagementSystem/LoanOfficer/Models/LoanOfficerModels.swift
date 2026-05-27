@@ -37,6 +37,7 @@ public enum RegistryFilter: String, CaseIterable, Identifiable {
     case underCheck
     case approvalQueue
     case completed
+    
 
     public var id: String { rawValue }
 
