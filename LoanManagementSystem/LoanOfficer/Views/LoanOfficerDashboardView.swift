@@ -140,17 +140,17 @@ private struct LoanOfficerTodayView: View {
 
     private var workloadStrip: some View {
         HStack(spacing: LMSSpacing.md) {
-            OfficerMetricPill(title: "Pending", value: "\(viewModel.pendingCount)", icon: "clock", tint: .orange) {
+            OfficerMetricPill(title: "New Cases", value: "\(viewModel.pendingCount)", icon: "sparkles", tint: .orange) {
                 HapticsManager.triggerImpact(style: .light)
-                routeRegistry(.pending)
+                routeRegistry(.newCases)
             }
-            OfficerMetricPill(title: "Docs", value: "\(viewModel.pendingDocumentCount)", icon: "doc.badge.clock", tint: .blue) {
+            OfficerMetricPill(title: "Under Check", value: "\(viewModel.pendingDocumentCount)", icon: "magnifyingglass.circle", tint: .blue) {
                 HapticsManager.triggerImpact(style: .light)
-                selectedTab = .review
+                routeRegistry(.underCheck)
             }
-            OfficerMetricPill(title: "Ready", value: "\(viewModel.sentToManagerApps.count)", icon: "paperplane", tint: .green) {
+            OfficerMetricPill(title: "Completed", value: "\(viewModel.closedThisMonthCount)", icon: "checkmark.seal", tint: .green) {
                 HapticsManager.triggerImpact(style: .light)
-                selectedTab = .registry
+                routeRegistry(.completed)
             }
         }
     }
@@ -299,8 +299,8 @@ private struct LoanOfficerTodayView: View {
         }
     }
 
-    private func routeRegistry(_ status: OfficerApplicationStatus?) {
-        viewModel.historyFilter = status
+    private func routeRegistry(_ filter: RegistryFilter?) {
+        viewModel.historyFilter = filter
         selectedTab = .registry
     }
 }

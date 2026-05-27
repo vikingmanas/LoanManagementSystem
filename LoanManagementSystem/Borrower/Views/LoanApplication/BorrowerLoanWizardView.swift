@@ -104,8 +104,8 @@ struct BorrowerLoanWizardView: View {
         }
         .onAppear {
             viewModel.setBorrowerAuthContext(
-                email: authManager.userEmail,
-                displayName: authManager.userDisplayName
+                email: authManager.userEmail ?? "",
+                displayName: authManager.userDisplayName ?? ""
             )
             prepareWizardState()
         }
@@ -129,14 +129,26 @@ struct BorrowerLoanWizardView: View {
                 HStack {
                     Button(action: handleBackAction) {
                         Image(systemName: "chevron.backward")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(LMSColors.brandNavy)
                             .frame(width: 38, height: 38)
-                            .background(LMSColors.surfaceTertiary, in: Circle())
+                            .background(Circle().fill(Color.white.opacity(0.35)))
+                            .background(Circle().fill(.ultraThinMaterial))
                             .overlay(
                                 Circle()
-                                    .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+                                    .stroke(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.white.opacity(0.60),
+                                                Color.white.opacity(0.15)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 1
+                                    )
                             )
+                            .shadow(color: Color.black.opacity(0.06), radius: 3, x: 0, y: 1.5)
                     }
                     .buttonStyle(LMSPressableStyle())
                     .accessibilityLabel(currentStep > 1 ? "Previous step" : "Back")
@@ -573,6 +585,7 @@ private struct Step1SelectionView: View {
                         .frame(width: 80, height: 80)
                     Image(systemName: product.type.iconName)
                         .font(.system(size: 38, weight: .bold))
+                        .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(LMSColors.brandNavy)
                 }
                 
@@ -589,11 +602,12 @@ private struct Step1SelectionView: View {
                 .padding(.bottom, 8)
                 
                 // Key metrics row
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
+                HStack(spacing: 10) {
                     LoanMetricChip(title: "Max Amount", value: product.maximumAmount.formattedAsINR(), tint: LMSColors.brandNavy)
                     LoanMetricChip(title: "Rate", value: product.interestRateRange, tint: LMSColors.brandNavy)
                     LoanMetricChip(title: "Approval", value: product.estimatedProcessingTime, tint: LMSColors.emerald)
                 }
+                .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.vertical, 26)
             .padding(.horizontal, 18)
@@ -649,9 +663,8 @@ private struct LoanMetricChip: View {
                 .foregroundStyle(tint)
                 .lineLimit(2)
                 .minimumScaleFactor(0.75)
-                .frame(minHeight: 38, alignment: .topLeading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(.horizontal, 10)
         .padding(.vertical, 12)
         .background(LMSColors.surfaceTertiary, in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))

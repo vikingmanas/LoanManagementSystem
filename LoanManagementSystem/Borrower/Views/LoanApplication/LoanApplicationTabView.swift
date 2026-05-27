@@ -49,8 +49,8 @@ struct LoanApplicationTabView: View {
             .navigationBarTitleDisplayMode(.large)
             .task(id: authManager.userEmail) {
                 viewModel.setBorrowerAuthContext(
-                    email: authManager.userEmail,
-                    displayName: authManager.userDisplayName
+                    email: authManager.userEmail ?? "",
+                    displayName: authManager.userDisplayName ?? ""
                 )
             }
             .navigationDestination(for: LoanApplicationRoute.self) { route in
@@ -93,27 +93,67 @@ private struct LoanDiscoveryContent: View {
     let onSelectProduct: (BorrowerLoanProduct) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Select Your Loan")
-                    .font(.headline)
-                    .foregroundStyle(LMSColors.textPrimary)
-                Text("Compare amount, rate, and processing time.")
-                    .font(.subheadline)
-                    .foregroundStyle(LMSColors.textSecondary)
+        VStack(spacing: 14) {
+            // Search Bar
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .font(.system(size: 15, weight: .semibold))
+                
+                TextField("Search loans...", text: $viewModel.searchQuery)
+                    .font(.system(.body, design: .rounded))
+                    .foregroundColor(LMSColors.textPrimary)
+                    .autocorrectionDisabled()
+                
+                if !viewModel.searchQuery.isEmpty {
+                    Button(action: {
+                        viewModel.searchQuery = ""
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(LMSColors.textSecondary)
+                            .font(.system(size: 16))
+                    }
+                }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+            )
+            .padding(.bottom, 6)
 
-            VStack(spacing: 14) {
-                ForEach(viewModel.products) { product in
+            if viewModel.filteredProducts.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 40))
+                        .foregroundStyle(LMSColors.brandNavy)
+                        .symbolRenderingMode(.hierarchical)
+                        .padding(.top, 24)
+                    
+                    Text("No Loans Found")
+                        .font(.system(.headline, design: .rounded).weight(.bold))
+                        .foregroundColor(LMSColors.textPrimary)
+                    
+                    Text("We couldn't find any loans matching \"\(viewModel.searchQuery)\". Try searching for other terms like 'home', 'personal', or 'gold'.")
+                        .font(.system(.subheadline, design: .rounded))
+                        .foregroundColor(LMSColors.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                }
+                .padding(.vertical, 20)
+            } else {
+                ForEach(viewModel.filteredProducts) { product in
                     LoanProductCard(product: product)
                         .onTapGesture {
                             onSelectProduct(product)
                         }
                 }
             }
-            .padding(.horizontal, 16)
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
 }
 
@@ -127,6 +167,7 @@ private struct LoanProductCard: View {
                 Image(systemName: product.type.iconName)
                     .font(.system(size: 21, weight: .bold))
                     .foregroundStyle(LMSColors.brandNavy)
+                    .symbolRenderingMode(.hierarchical)
                     .frame(width: 46, height: 46)
                     .background(LMSColors.brandNavy.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
@@ -172,6 +213,7 @@ private struct LoanProductCard: View {
                     tint: LMSColors.emerald
                 )
             }
+            .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
         .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -195,10 +237,11 @@ private struct LoanProductMetricChip: View {
             HStack(spacing: 4) {
                 Image(systemName: icon)
                     .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(tint)
                 Text(title.uppercased())
                     .font(.system(size: 8, weight: .black, design: .rounded))
+                    .foregroundStyle(LMSColors.textSecondary)
             }
-            .foregroundStyle(LMSColors.textSecondary)
 
             Text(value)
                 .font(.system(size: 13, weight: .bold, design: .rounded))
@@ -207,7 +250,7 @@ private struct LoanProductMetricChip: View {
                 .minimumScaleFactor(0.78)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(.horizontal, 10)
         .padding(.vertical, 10)
         .background(LMSColors.background.opacity(0.55), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -654,6 +697,13 @@ private struct BorrowerApplicationsContent: View {
 
             if !viewModel.draftApplications.isEmpty {
                 Section {
+                    Text("DRAFTS")
+                        .font(.caption.bold())
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .listRowInsets(EdgeInsets(top: 14, leading: 16, bottom: 6, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+
                     ForEach(viewModel.draftApplications) { app in
                         ApplicationCard(application: app)
                             .contentShape(Rectangle())
@@ -672,14 +722,19 @@ private struct BorrowerApplicationsContent: View {
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                     }
-                } header: {
-                    Text("DRAFTS")
-                        .font(.caption.bold())
-                        .foregroundStyle(LMSColors.textSecondary)
                 }
             }
 
             Section {
+                if !viewModel.filteredSubmittedApplications.isEmpty {
+                    Text("RECENT APPLICATIONS")
+                        .font(.caption.bold())
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .listRowInsets(EdgeInsets(top: 14, leading: 16, bottom: 6, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                }
+
                 ForEach(viewModel.filteredSubmittedApplications) { app in
                     ApplicationCard(application: app)
                         .contentShape(Rectangle())
@@ -690,10 +745,6 @@ private struct BorrowerApplicationsContent: View {
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                 }
-            } header: {
-                Text("RECENT APPLICATIONS")
-                    .font(.caption.bold())
-                    .foregroundStyle(LMSColors.textSecondary)
             }
         }
         .listStyle(.plain)

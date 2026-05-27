@@ -7,7 +7,7 @@ enum LoanHubSegment: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-enum BorrowerLoanProductType: String, CaseIterable, Identifiable, Hashable {
+enum BorrowerLoanProductType: String, Codable, CaseIterable, Identifiable, Hashable {
     case personal
     case home
     case education
@@ -46,17 +46,43 @@ enum BorrowerLoanProductType: String, CaseIterable, Identifiable, Hashable {
     }
 }
 
-struct BorrowerLoanFAQ: Identifiable, Hashable {
-    let id = UUID()
+struct BorrowerLoanFAQ: Codable, Identifiable, Hashable {
+    let id: UUID
     var question: String
     var answer: String
+    
+    init(id: UUID = UUID(), question: String, answer: String) {
+        self.id = id
+        self.question = question
+        self.answer = answer
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case question
+        case answer
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        self.question = try container.decode(String.self, forKey: .question)
+        self.answer = try container.decode(String.self, forKey: .answer)
+    }
 }
 
-struct BorrowerLoanProduct: Identifiable, Hashable {
+struct BorrowerLoanProduct: Codable, Identifiable, Hashable {
     let id: UUID
+    var name: String
     var type: BorrowerLoanProductType
-    var shortDescription: String
+    var minAmount: Double
     var maximumAmount: Double
+    var minTenureMonths: Int
+    var maxTenureMonths: Int
+    var baseInterestRate: Double
+    var processingFeePct: Double
+    
+    var shortDescription: String
     var interestRateRange: String
     var estimatedProcessingTime: String
     var eligibilitySnapshot: String
@@ -69,9 +95,160 @@ struct BorrowerLoanProduct: Identifiable, Hashable {
     var processingFees: String
     var faqs: [BorrowerLoanFAQ]
     var loanSpecificDocuments: [String]
+    
+    // Custom Memberwise Initializer for Backwards Compatibility
+    init(
+        id: UUID,
+        type: BorrowerLoanProductType,
+        shortDescription: String,
+        maximumAmount: Double,
+        interestRateRange: String,
+        estimatedProcessingTime: String,
+        eligibilitySnapshot: String,
+        purpose: String,
+        benefits: [String],
+        eligibilityCriteria: [String],
+        minimumRequirements: [String],
+        interestInformation: String,
+        repaymentOverview: String,
+        processingFees: String,
+        faqs: [BorrowerLoanFAQ],
+        loanSpecificDocuments: [String]
+    ) {
+        self.id = id
+        self.name = type.title
+        self.type = type
+        self.minAmount = 0
+        self.maximumAmount = maximumAmount
+        self.minTenureMonths = 12
+        self.maxTenureMonths = 360
+        self.baseInterestRate = 0
+        self.processingFeePct = 0
+        
+        self.shortDescription = shortDescription
+        self.interestRateRange = interestRateRange
+        self.estimatedProcessingTime = estimatedProcessingTime
+        self.eligibilitySnapshot = eligibilitySnapshot
+        self.purpose = purpose
+        self.benefits = benefits
+        self.eligibilityCriteria = eligibilityCriteria
+        self.minimumRequirements = minimumRequirements
+        self.interestInformation = interestInformation
+        self.repaymentOverview = repaymentOverview
+        self.processingFees = processingFees
+        self.faqs = faqs
+        self.loanSpecificDocuments = loanSpecificDocuments
+    }
+    
+    // Custom Codable Mapping for Supabase Flat & JSONB Columns
+    enum CodingKeys: String, CodingKey {
+        case id = "productId"
+        case name
+        case type = "loanType"
+        case minAmount
+        case maximumAmount = "maxAmount"
+        case minTenureMonths
+        case maxTenureMonths
+        case baseInterestRate
+        case processingFeePct
+        case richDetails
+    }
+    
+    enum RichDetailsKeys: String, CodingKey {
+        case shortDescription
+        case interestRateRange
+        case estimatedProcessingTime
+        case eligibilitySnapshot
+        case purpose
+        case benefits
+        case eligibilityCriteria
+        case minimumRequirements
+        case interestInformation
+        case repaymentOverview
+        case processingFees
+        case faqs
+        case loanSpecificDocuments
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        self.id = try container.decode(UUID.self, forKey: .id)
+        self.name = try container.decode(String.self, forKey: .name)
+        
+        let rawType = try container.decode(String.self, forKey: .type)
+        self.type = BorrowerLoanProductType(rawValue: rawType) ?? .other
+        
+        self.minAmount = try container.decode(Double.self, forKey: .minAmount)
+        self.maximumAmount = try container.decode(Double.self, forKey: .maximumAmount)
+        self.minTenureMonths = try container.decode(Int.self, forKey: .minTenureMonths)
+        self.maxTenureMonths = try container.decode(Int.self, forKey: .maxTenureMonths)
+        self.baseInterestRate = try container.decode(Double.self, forKey: .baseInterestRate)
+        self.processingFeePct = try container.decode(Double.self, forKey: .processingFeePct)
+        
+        if container.contains(.richDetails) {
+            let richContainer = try container.nestedContainer(keyedBy: RichDetailsKeys.self, forKey: .richDetails)
+            self.shortDescription = try richContainer.decodeIfPresent(String.self, forKey: .shortDescription) ?? ""
+            self.interestRateRange = try richContainer.decodeIfPresent(String.self, forKey: .interestRateRange) ?? ""
+            self.estimatedProcessingTime = try richContainer.decodeIfPresent(String.self, forKey: .estimatedProcessingTime) ?? ""
+            self.eligibilitySnapshot = try richContainer.decodeIfPresent(String.self, forKey: .eligibilitySnapshot) ?? ""
+            self.purpose = try richContainer.decodeIfPresent(String.self, forKey: .purpose) ?? ""
+            self.benefits = try richContainer.decodeIfPresent([String].self, forKey: .benefits) ?? []
+            self.eligibilityCriteria = try richContainer.decodeIfPresent([String].self, forKey: .eligibilityCriteria) ?? []
+            self.minimumRequirements = try richContainer.decodeIfPresent([String].self, forKey: .minimumRequirements) ?? []
+            self.interestInformation = try richContainer.decodeIfPresent(String.self, forKey: .interestInformation) ?? ""
+            self.repaymentOverview = try richContainer.decodeIfPresent(String.self, forKey: .repaymentOverview) ?? ""
+            self.processingFees = try richContainer.decodeIfPresent(String.self, forKey: .processingFees) ?? ""
+            self.faqs = try richContainer.decodeIfPresent([BorrowerLoanFAQ].self, forKey: .faqs) ?? []
+            self.loanSpecificDocuments = try richContainer.decodeIfPresent([String].self, forKey: .loanSpecificDocuments) ?? []
+        } else {
+            self.shortDescription = ""
+            self.interestRateRange = ""
+            self.estimatedProcessingTime = ""
+            self.eligibilitySnapshot = ""
+            self.purpose = ""
+            self.benefits = []
+            self.eligibilityCriteria = []
+            self.minimumRequirements = []
+            self.interestInformation = ""
+            self.repaymentOverview = ""
+            self.processingFees = ""
+            self.faqs = []
+            self.loanSpecificDocuments = []
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(type.rawValue, forKey: .type)
+        try container.encode(minAmount, forKey: .minAmount)
+        try container.encode(maximumAmount, forKey: .maximumAmount)
+        try container.encode(minTenureMonths, forKey: .minTenureMonths)
+        try container.encode(maxTenureMonths, forKey: .maxTenureMonths)
+        try container.encode(baseInterestRate, forKey: .baseInterestRate)
+        try container.encode(processingFeePct, forKey: .processingFeePct)
+        
+        var richContainer = container.nestedContainer(keyedBy: RichDetailsKeys.self, forKey: .richDetails)
+        try richContainer.encode(shortDescription, forKey: .shortDescription)
+        try richContainer.encode(interestRateRange, forKey: .interestRateRange)
+        try richContainer.encode(estimatedProcessingTime, forKey: .estimatedProcessingTime)
+        try richContainer.encode(eligibilitySnapshot, forKey: .eligibilitySnapshot)
+        try richContainer.encode(purpose, forKey: .purpose)
+        try richContainer.encode(benefits, forKey: .benefits)
+        try richContainer.encode(eligibilityCriteria, forKey: .eligibilityCriteria)
+        try richContainer.encode(minimumRequirements, forKey: .minimumRequirements)
+        try richContainer.encode(interestInformation, forKey: .interestInformation)
+        try richContainer.encode(repaymentOverview, forKey: .repaymentOverview)
+        try richContainer.encode(processingFees, forKey: .processingFees)
+        try richContainer.encode(faqs, forKey: .faqs)
+        try richContainer.encode(loanSpecificDocuments, forKey: .loanSpecificDocuments)
+    }
 }
 
-enum BorrowerDocumentCategory: String, CaseIterable, Identifiable, Hashable {
+enum BorrowerDocumentCategory: String, Codable, CaseIterable, Identifiable, Hashable {
     case identityVerification = "Identity Verification"
     case addressVerification = "Address Verification"
     case incomeVerification = "Income Verification"
@@ -80,7 +257,7 @@ enum BorrowerDocumentCategory: String, CaseIterable, Identifiable, Hashable {
     var id: String { rawValue }
 }
 
-enum BorrowerDocumentStatus: String, CaseIterable, Hashable {
+enum BorrowerDocumentStatus: String, Codable, CaseIterable, Hashable {
     case pendingUpload = "Pending Upload"
     case uploaded = "Uploaded"
     case underVerification = "Under Verification"
@@ -167,7 +344,7 @@ enum BorrowerDocumentUploadSource: String, CaseIterable, Identifiable, Hashable 
     }
 }
 
-struct BorrowerLoanDocumentItem: Identifiable, Hashable {
+struct BorrowerLoanDocumentItem: Codable, Identifiable, Hashable {
     let id: UUID
     var name: String
     var category: BorrowerDocumentCategory
@@ -179,7 +356,7 @@ struct BorrowerLoanDocumentItem: Identifiable, Hashable {
     var isLocked: Bool
 }
 
-struct BorrowerLoanFormData: Equatable, Hashable {
+struct BorrowerLoanFormData: Codable, Equatable, Hashable {
     var fullName: String
     var dateOfBirth: Date
     var gender: String
@@ -432,7 +609,7 @@ enum BorrowerLoanFormField: String, CaseIterable, Hashable {
     case guarantorDetails
 }
 
-enum BorrowerApplicationStage: String, CaseIterable, Identifiable, Hashable {
+enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hashable {
     case draft = "Draft"
     case submitted = "Submitted"
     case underReview = "Under Review"
@@ -444,6 +621,35 @@ enum BorrowerApplicationStage: String, CaseIterable, Identifiable, Hashable {
     case disbursed = "Disbursed"
 
     var id: String { rawValue }
+
+    var databaseValue: String {
+        switch self {
+        case .draft: return "draft"
+        case .submitted: return "submitted"
+        case .underReview: return "under_review"
+        case .documentVerification: return "document_verification"
+        case .loanOfficerReview: return "officer_review"
+        case .bankManagerReview: return "manager_review"
+        case .approved: return "approved"
+        case .rejected: return "rejected"
+        case .disbursed: return "disbursed"
+        }
+    }
+    
+    static func from(databaseValue: String) -> BorrowerApplicationStage {
+        switch databaseValue.lowercased() {
+        case "draft": return .draft
+        case "submitted": return .submitted
+        case "under_review", "under review": return .underReview
+        case "document_verification", "document verification": return .documentVerification
+        case "officer_review", "loan officer review", "loan_officer_review": return .loanOfficerReview
+        case "manager_review", "bank manager review", "bank_manager_review": return .bankManagerReview
+        case "approved": return .approved
+        case "rejected": return .rejected
+        case "disbursed": return .disbursed
+        default: return .draft
+        }
+    }
 
     var iconName: String {
         switch self {
@@ -485,11 +691,33 @@ enum BorrowerApplicationStage: String, CaseIterable, Identifiable, Hashable {
     }
 }
 
-struct BorrowerStageEntry: Identifiable, Hashable {
-    let id = UUID()
+struct BorrowerStageEntry: Codable, Identifiable, Hashable {
+    let id: UUID
     var stage: BorrowerApplicationStage
     var timestamp: Date
     var note: String
+    
+    init(id: UUID = UUID(), stage: BorrowerApplicationStage, timestamp: Date, note: String) {
+        self.id = id
+        self.stage = stage
+        self.timestamp = timestamp
+        self.note = note
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case stage
+        case timestamp
+        case note
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        self.stage = try container.decode(BorrowerApplicationStage.self, forKey: .stage)
+        self.timestamp = try container.decode(Date.self, forKey: .timestamp)
+        self.note = try container.decode(String.self, forKey: .note)
+    }
 }
 
 struct BorrowerLoanApplication: Identifiable, Hashable {
@@ -512,6 +740,70 @@ struct BorrowerLoanApplication: Identifiable, Hashable {
 
     var displayIdentifier: String {
         applicationId ?? "Draft-\(id.uuidString.prefix(6).uppercased())"
+    }
+}
+
+struct DBLoanApplication: Codable {
+    let applicationId: UUID
+    let borrowerId: UUID
+    let officerId: UUID?
+    let productId: UUID
+    let amountRequested: Double
+    let tenureMonths: Int
+    let purpose: String
+    let status: String
+    let formData: BorrowerLoanFormData
+    let stageHistory: [BorrowerStageEntry]
+    let submittedAt: Date?
+    let updatedAt: Date
+    
+    enum CodingKeys: String, CodingKey {
+        case applicationId
+        case borrowerId
+        case officerId
+        case productId
+        case amountRequested
+        case tenureMonths
+        case purpose
+        case status
+        case formData
+        case stageHistory
+        case submittedAt
+        case updatedAt
+    }
+    
+    func toBorrowerApplication(product: BorrowerLoanProduct, documents: [BorrowerLoanDocumentItem] = []) -> BorrowerLoanApplication {
+        return BorrowerLoanApplication(
+            id: applicationId,
+            applicationId: "APP-\(applicationId.uuidString.prefix(6).uppercased())",
+            product: product,
+            formData: formData,
+            documents: documents.isEmpty ? BorrowerLoanDocumentItem.defaultRequirements(for: product) : documents,
+            currentStage: BorrowerApplicationStage.from(databaseValue: status),
+            stageHistory: stageHistory,
+            submittedAt: submittedAt,
+            updatedAt: updatedAt,
+            assignedQueue: status == "draft" ? nil : "Retail Loan Officer Queue",
+            outstandingBalance: max(0, amountRequested * 0.92),
+            upcomingEMI: max(0, amountRequested / Double(max(1, tenureMonths)))
+        )
+    }
+    
+    static func from(borrowerApplication app: BorrowerLoanApplication, borrowerId: UUID) -> DBLoanApplication {
+        return DBLoanApplication(
+            applicationId: app.id,
+            borrowerId: borrowerId,
+            officerId: nil,
+            productId: app.product.id,
+            amountRequested: app.formData.requestedAmountValue,
+            tenureMonths: app.formData.preferredTenureMonths,
+            purpose: app.formData.loanPurpose,
+            status: app.currentStage.databaseValue,
+            formData: app.formData,
+            stageHistory: app.stageHistory,
+            submittedAt: app.submittedAt,
+            updatedAt: app.updatedAt
+        )
     }
 }
 
