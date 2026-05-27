@@ -17,6 +17,8 @@ public final class DashboardViewModel: ObservableObject {
     @Published public var transactions: [Transaction] = []
     @Published public var schemes: [GovernmentScheme] = []
     @Published public var isLoading: Bool = true
+    @Published public var profileName: String = ""
+    @Published public var profileCompletionPercentage: Int = 0
     
     // Quick demonstration toggle state (e.g. to mock low balance vs normal)
     @Published public var forceLowBalanceMockState: Bool = false
@@ -37,12 +39,24 @@ public final class DashboardViewModel: ObservableObject {
                 Task { await self?.fetchDashboardData() }
             }
             .store(in: &cancellables)
+
+        BorrowerProfileStore.shared.$profile
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                Task { await self?.fetchDashboardData() }
+            }
+            .store(in: &cancellables)
     }
     
     public var totalOutstanding: Double { loanAccounts.map(\.principalOutstanding).reduce(0, +) }
     public var totalSanctioned:  Double { loanAccounts.map(\.sanctionedAmount).reduce(0, +) }
     public var totalRepaid:      Double { totalSanctioned - totalOutstanding }
     public var repaidFraction:   Double { totalSanctioned > 0 ? (totalRepaid / totalSanctioned) : 0 }
+    
+    public var loansClosedCount: Int {
+        // Closed if outstanding principal has reached 0 (or below due to rounding).
+        loanAccounts.filter { $0.principalOutstanding <= 0.0 }.count
+    }
     
     public var nextEMI: EMIRecord? {
         pendingEMIs.first { $0.status != .paid }
@@ -111,12 +125,16 @@ public final class DashboardViewModel: ObservableObject {
         }
         
         if let profile = BorrowerProfileStore.shared.profile {
+            self.profileName = profile.fullName
+            self.profileCompletionPercentage = profile.profileCompletionPercentage
             let disbursedCredits = disbursementCredits(for: profile)
             self.bankAccounts = buildBankAccounts(from: profile, disbursedCredits: disbursedCredits)
             self.bankAccount = bankAccounts.first(where: { $0.accountType == .savings })
                 ?? bankAccounts.first
                 ?? BankAccount(accountNumber: "0000000000", bankName: "Default Bank", accountType: .savings, availableBalance: 0)
         } else {
+            self.profileName = ""
+            self.profileCompletionPercentage = 0
             self.bankAccount = BankAccount(accountNumber: "XXXX 0000", bankName: "Default Bank", accountType: .savings, availableBalance: 0.0)
             self.bankAccounts = [self.bankAccount]
         }

@@ -4,10 +4,25 @@ struct LinkedBankAccountsDetailView: View {
     @ObservedObject var viewModel: BorrowerProfileViewModel
     @State private var showingEditSheet = false
     @State private var showingAddSheet = false
+    @State private var accountToDelete: LinkedBankAccount?
+    @State private var showingDeleteAlert = false
     
+    private var hasPrimaryBank: Bool {
+        guard let bank = viewModel.profile?.bankDetails else { return false }
+        return !bank.bankName.isEmpty && !bank.accountNumber.isEmpty
+    }
+
+    private var linkedAccounts: [LinkedBankAccount] {
+        viewModel.profile?.linkedAccounts ?? []
+    }
+
+    private var hasAnyBankAccount: Bool {
+        hasPrimaryBank || !linkedAccounts.isEmpty
+    }
+
     var body: some View {
         Form {
-            if let bank = viewModel.profile?.bankDetails {
+            if let bank = viewModel.profile?.bankDetails, hasPrimaryBank {
                 Section {
                     LabeledContent("Bank Name", value: bank.bankName)
                     LabeledContent("Account Holder", value: bank.accountHolderName)
@@ -34,40 +49,53 @@ struct LinkedBankAccountsDetailView: View {
                 } header: {
                     Text("Primary Account")
                 }
+            }
 
-                let linkedAccounts = viewModel.profile?.linkedAccounts ?? []
-                let odAccounts = linkedAccounts.filter(\.isOverdraftAccount)
-                let savingsAccounts = linkedAccounts.filter { !$0.isOverdraftAccount }
+            let odAccounts = linkedAccounts.filter(\.isOverdraftAccount)
+            let savingsAccounts = linkedAccounts.filter { !$0.isOverdraftAccount }
 
-                if !odAccounts.isEmpty {
-                    Section {
-                        ForEach(odAccounts) { account in
-                            linkedAccountDetails(account, isOD: true)
-                        }
-                    } header: {
-                        Text("OD Accounts (EMI Deduction)")
-                    } footer: {
-                        Text("Loan disbursement is credited here and monthly EMIs are deducted from this account.")
+            if !odAccounts.isEmpty {
+                Section {
+                    ForEach(odAccounts) { account in
+                        linkedAccountDetails(account, isOD: true)
                     }
-                }
-
-                if !savingsAccounts.isEmpty {
-                    Section {
-                        ForEach(savingsAccounts) { account in
-                            linkedAccountDetails(account, isOD: false)
+                    .onDelete { indexSet in
+                        if let index = indexSet.first {
+                            accountToDelete = odAccounts[index]
+                            showingDeleteAlert = true
                         }
-                    } header: {
-                        Text("Additional Accounts")
                     }
+                } header: {
+                    Text("OD Accounts (EMI Deduction)")
+                } footer: {
+                    Text("Loan disbursement is credited here and monthly EMIs are deducted from this account.")
                 }
+            }
 
+            if !savingsAccounts.isEmpty {
+                Section {
+                    ForEach(savingsAccounts) { account in
+                        linkedAccountDetails(account, isOD: false)
+                    }
+                    .onDelete { indexSet in
+                        if let index = indexSet.first {
+                            accountToDelete = savingsAccounts[index]
+                            showingDeleteAlert = true
+                        }
+                    }
+                } header: {
+                    Text("Additional Accounts")
+                }
+            }
+
+            if hasAnyBankAccount {
                 Section {
                     Button {
                         showingAddSheet = true
                     } label: {
                         HStack {
                             Spacer()
-                            Label("Add Another Account", systemImage: "plus.circle.fill")
+                            Label(hasPrimaryBank ? "Add Another Account" : "Add Account", systemImage: "plus.circle.fill")
                                 .fontWeight(.semibold)
                             Spacer()
                         }
@@ -107,6 +135,14 @@ struct LinkedBankAccountsDetailView: View {
         .sheet(isPresented: $showingAddSheet) {
             AddLinkedBankAccountView(viewModel: viewModel)
         }
+        .alert("Delete Bank Account?", isPresented: $showingDeleteAlert, presenting: accountToDelete) { account in
+            Button("Delete", role: .destructive) {
+                viewModel.deleteLinkedBankAccount(withId: account.id)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { account in
+            Text("Are you sure you want to delete the account ending in \(String(account.accountNumber.suffix(4)))?")
+        }
     }
     
     private func maskAccountNumber(_ number: String) -> String {
@@ -125,9 +161,21 @@ struct LinkedBankAccountsDetailView: View {
 
                 Spacer()
 
-                Text(maskAccountNumber(account.accountNumber))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    Text(maskAccountNumber(account.accountNumber))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    Button(role: .destructive) {
+                        accountToDelete = account
+                        showingDeleteAlert = true
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.subheadline)
+                            .foregroundStyle(.red)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
 
             if !account.accountHolderName.isEmpty {

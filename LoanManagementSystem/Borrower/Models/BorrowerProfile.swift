@@ -159,6 +159,25 @@ struct AddressInfo: Codable, Equatable {
     let zipCode: String
     let country: String
     let isSameAsCurrent: Bool
+
+    init(streetAddress: String, city: String, state: String, zipCode: String, country: String, isSameAsCurrent: Bool) {
+        self.streetAddress = streetAddress
+        self.city = city
+        self.state = state
+        self.zipCode = zipCode
+        self.country = country
+        self.isSameAsCurrent = isSameAsCurrent
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        streetAddress = try container.decodeIfPresent(String.self, forKey: .streetAddress) ?? ""
+        city = try container.decodeIfPresent(String.self, forKey: .city) ?? ""
+        state = try container.decodeIfPresent(String.self, forKey: .state) ?? ""
+        zipCode = try container.decodeIfPresent(String.self, forKey: .zipCode) ?? ""
+        country = try container.decodeIfPresent(String.self, forKey: .country) ?? ""
+        isSameAsCurrent = try container.decodeIfPresent(Bool.self, forKey: .isSameAsCurrent) ?? false
+    }
 }
 
 struct EmploymentInfo: Codable, Equatable {
@@ -167,6 +186,23 @@ struct EmploymentInfo: Codable, Equatable {
     let designation: String
     let workExperienceYears: Int
     let employerAddress: String
+
+    init(employmentType: String, companyName: String, designation: String, workExperienceYears: Int, employerAddress: String) {
+        self.employmentType = employmentType
+        self.companyName = companyName
+        self.designation = designation
+        self.workExperienceYears = workExperienceYears
+        self.employerAddress = employerAddress
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        employmentType = try container.decodeIfPresent(String.self, forKey: .employmentType) ?? ""
+        companyName = try container.decodeIfPresent(String.self, forKey: .companyName) ?? ""
+        designation = try container.decodeIfPresent(String.self, forKey: .designation) ?? ""
+        workExperienceYears = try container.decodeIfPresent(Int.self, forKey: .workExperienceYears) ?? 0
+        employerAddress = try container.decodeIfPresent(String.self, forKey: .employerAddress) ?? ""
+    }
 }
 
 struct IncomeInfo: Codable, Equatable {
@@ -179,6 +215,23 @@ struct IncomeInfo: Codable, Equatable {
     var eligibility: String {
         return creditScore > 750 ? "High" : (creditScore > 650 ? "Medium" : "Low")
     }
+
+    init(monthlyIncome: Double, annualIncome: Double, existingEMIs: Double, creditScore: Int, incomeSource: String) {
+        self.monthlyIncome = monthlyIncome
+        self.annualIncome = annualIncome
+        self.existingEMIs = existingEMIs
+        self.creditScore = creditScore
+        self.incomeSource = incomeSource
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        monthlyIncome = try container.decodeIfPresent(Double.self, forKey: .monthlyIncome) ?? 0.0
+        annualIncome = try container.decodeIfPresent(Double.self, forKey: .annualIncome) ?? 0.0
+        existingEMIs = try container.decodeIfPresent(Double.self, forKey: .existingEMIs) ?? 0.0
+        creditScore = try container.decodeIfPresent(Int.self, forKey: .creditScore) ?? 700
+        incomeSource = try container.decodeIfPresent(String.self, forKey: .incomeSource) ?? ""
+    }
 }
 
 struct BankDetails: Codable, Equatable {
@@ -188,6 +241,25 @@ struct BankDetails: Codable, Equatable {
     let ifscCode: String
     let upiID: String?
     let isVerified: Bool
+
+    init(bankName: String, accountHolderName: String, accountNumber: String, ifscCode: String, upiID: String?, isVerified: Bool) {
+        self.bankName = bankName
+        self.accountHolderName = accountHolderName
+        self.accountNumber = accountNumber
+        self.ifscCode = ifscCode
+        self.upiID = upiID
+        self.isVerified = isVerified
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        bankName = try container.decodeIfPresent(String.self, forKey: .bankName) ?? ""
+        accountHolderName = try container.decodeIfPresent(String.self, forKey: .accountHolderName) ?? ""
+        accountNumber = try container.decodeIfPresent(String.self, forKey: .accountNumber) ?? ""
+        ifscCode = try container.decodeIfPresent(String.self, forKey: .ifscCode) ?? ""
+        upiID = try container.decodeIfPresent(String.self, forKey: .upiID)
+        isVerified = try container.decodeIfPresent(Bool.self, forKey: .isVerified) ?? false
+    }
 }
 
 enum LinkedAccountKind: String, Codable, Equatable {
@@ -273,6 +345,27 @@ struct KYCVerification: Codable, Equatable {
             return .pending
         }
     }
+
+    init(aadhaarStatus: VerificationStatus, panStatus: VerificationStatus, addressProofStatus: VerificationStatus, selfieStatus: VerificationStatus, aadhaarFileName: String? = nil, panFileName: String? = nil, addressProofFileName: String? = nil) {
+        self.aadhaarStatus = aadhaarStatus
+        self.panStatus = panStatus
+        self.addressProofStatus = addressProofStatus
+        self.selfieStatus = selfieStatus
+        self.aadhaarFileName = aadhaarFileName
+        self.panFileName = panFileName
+        self.addressProofFileName = addressProofFileName
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        aadhaarStatus = try container.decodeIfPresent(VerificationStatus.self, forKey: .aadhaarStatus) ?? .pending
+        panStatus = try container.decodeIfPresent(VerificationStatus.self, forKey: .panStatus) ?? .pending
+        addressProofStatus = try container.decodeIfPresent(VerificationStatus.self, forKey: .addressProofStatus) ?? .pending
+        selfieStatus = try container.decodeIfPresent(VerificationStatus.self, forKey: .selfieStatus) ?? .pending
+        aadhaarFileName = try container.decodeIfPresent(String.self, forKey: .aadhaarFileName)
+        panFileName = try container.decodeIfPresent(String.self, forKey: .panFileName)
+        addressProofFileName = try container.decodeIfPresent(String.self, forKey: .addressProofFileName)
+    }
 }
 
 struct LoanOverview: Codable, Equatable {
@@ -281,6 +374,23 @@ struct LoanOverview: Codable, Equatable {
     let nextEmiDueDate: Date?
     let remainingBalance: Double
     let currentLoanStatus: String
+
+    init(activeLoans: Int, loanHistoryCount: Int, nextEmiDueDate: Date?, remainingBalance: Double, currentLoanStatus: String) {
+        self.activeLoans = activeLoans
+        self.loanHistoryCount = loanHistoryCount
+        self.nextEmiDueDate = nextEmiDueDate
+        self.remainingBalance = remainingBalance
+        self.currentLoanStatus = currentLoanStatus
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        activeLoans = try container.decodeIfPresent(Int.self, forKey: .activeLoans) ?? 0
+        loanHistoryCount = try container.decodeIfPresent(Int.self, forKey: .loanHistoryCount) ?? 0
+        nextEmiDueDate = try container.decodeIfPresent(Date.self, forKey: .nextEmiDueDate)
+        remainingBalance = try container.decodeIfPresent(Double.self, forKey: .remainingBalance) ?? 0.0
+        currentLoanStatus = try container.decodeIfPresent(String.self, forKey: .currentLoanStatus) ?? "None"
+    }
 }
 
 enum VerificationStatus: String, Codable, Equatable {
