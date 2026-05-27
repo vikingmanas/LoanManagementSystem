@@ -1,9 +1,9 @@
-//
-//  SignInViewModel.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 22/05/26.
-//
+
+
+
+
+
+
 
 import Foundation
 import Combine
@@ -30,7 +30,7 @@ class SignInViewModel: ObservableObject {
         passwordError = ""
         generalError = ""
 
-        // Basic validation
+
         if emailOrPhone.isEmpty {
             emailError = "Email or Phone cannot be empty"
         }
@@ -53,7 +53,7 @@ class SignInViewModel: ObservableObject {
         isLoading = false
 
         if result.success {
-            // Map Supabase fetched DB role to PortalRole
+
             if let role = result.role {
                 switch role {
                 case "admin":
@@ -66,15 +66,16 @@ class SignInViewModel: ObservableObject {
                     appState.selectedRole = .customer
                 }
             }
-            
-            // Initialize borrower profile local state
+
+
             if appState.selectedRole == .customer {
+                appState.requiresBorrowerOnboarding = false
                 BorrowerProfileStore.shared.ensureProfile(
                     email: cleanedEmail,
                     name: authManager.userDisplayName
                 )
             }
-            
+
             showSuccess = true
         } else {
             generalError = authManager.errorMessage ?? "Incorrect email or password. Please try again."

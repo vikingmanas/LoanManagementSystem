@@ -12,16 +12,44 @@ class BorrowerProfileViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     init() {
-        // Observe changes from the shared store
+        profile = BorrowerProfileStore.shared.profile
+
         BorrowerProfileStore.shared.$profile
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] updatedProfile in
                 self?.profile = updatedProfile
+                if updatedProfile != nil {
+                    self?.isLoading = false
+                }
             }
             .store(in: &cancellables)
     }
+
+    @MainActor
+    func loadProfile(email: String?, displayName: String?) {
+        isLoading = true
+
+        let cleanedEmail = email?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased() ?? ""
+
+        if !cleanedEmail.isEmpty {
+            _ = BorrowerProfileStore.shared.ensureProfile(
+                email: cleanedEmail,
+                name: displayName
+            )
+        }
+
+        profile = BorrowerProfileStore.shared.profile
+        isLoading = false
+    }
     
+    private var activeProfile: BorrowerProfile? {
+        BorrowerProfileStore.shared.profile ?? profile
+    }
+
     func updatePersonalInfo(fullName: String, gender: String, maritalStatus: String, nationality: String, dateOfBirth: Date, aadhaarNumber: String, panNumber: String) {
-        guard var updatedProfile = profile else { return }
+        guard var updatedProfile = activeProfile else { return }
         updatedProfile.fullName = fullName
         updatedProfile.gender = gender
         updatedProfile.maritalStatus = maritalStatus
@@ -34,7 +62,7 @@ class BorrowerProfileViewModel: ObservableObject {
     }
     
     func updateContact(mobile: String, email: String, alternate: String) {
-        guard var updatedProfile = profile else { return }
+        guard var updatedProfile = activeProfile else { return }
         if updatedProfile.mobileNumber != mobile {
             updatedProfile.mobileNumber = mobile
             updatedProfile.isPhoneVerified = false
@@ -49,7 +77,7 @@ class BorrowerProfileViewModel: ObservableObject {
     }
     
     func updateAddress(street: String, city: String, state: String, zip: String, isSame: Bool) {
-        guard var updatedProfile = profile else { return }
+        guard var updatedProfile = activeProfile else { return }
         let newAddress = AddressInfo(streetAddress: street, city: city, state: state, zipCode: zip, country: updatedProfile.currentAddress.country, isSameAsCurrent: isSame)
         updatedProfile.currentAddress = newAddress
         updatedProfile.permanentAddress = isSame ? newAddress : updatedProfile.permanentAddress
@@ -58,7 +86,7 @@ class BorrowerProfileViewModel: ObservableObject {
     }
     
     func updateEmployment(type: String, company: String, designation: String, income: Double) {
-        guard var updatedProfile = profile else { return }
+        guard var updatedProfile = activeProfile else { return }
         updatedProfile.employment = EmploymentInfo(
             employmentType: type,
             companyName: company,
@@ -87,7 +115,7 @@ class BorrowerProfileViewModel: ObservableObject {
         nomineeName: String,
         nomineeRelationship: String
     ) {
-        guard var updatedProfile = profile else { return }
+        guard var updatedProfile = activeProfile else { return }
         updatedProfile.occupation = occupation
         updatedProfile.hasExistingBankAccount = hasExistingBankAccount
         updatedProfile.existingCustomerId = existingCustomerId
@@ -101,7 +129,7 @@ class BorrowerProfileViewModel: ObservableObject {
     }
     
     func updateBankDetails(bank: String, holder: String, account: String, ifsc: String, upi: String) {
-        guard var updatedProfile = profile else { return }
+        guard var updatedProfile = activeProfile else { return }
         updatedProfile.bankDetails = BankDetails(
             bankName: bank,
             accountHolderName: holder,
@@ -114,6 +142,60 @@ class BorrowerProfileViewModel: ObservableObject {
         BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
     
+    func deletePrimaryBankDetails() {
+        guard var updatedProfile = activeProfile else { return }
+        updatedProfile.bankDetails = BankDetails(
+            bankName: "",
+            accountHolderName: "",
+            accountNumber: "",
+            ifscCode: "",
+            upiID: nil,
+            isVerified: false
+        )
+        
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
+    }
+
+    func deleteLinkedBankAccount(withId id: UUID) {
+        guard var updatedProfile = activeProfile else { return }
+        var accounts = updatedProfile.linkedAccounts ?? []
+        accounts.removeAll { $0.id == id }
+        updatedProfile.linkedAccounts = accounts
+        
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
+    }
+
+    func addLinkedBankAccount(bank: String, account: String, ifsc: String, branch: String, customerId: String) {
+        guard var updatedProfile = activeProfile else { return }
+
+        let linkedAccount = LinkedBankAccount(
+            id: UUID(),
+            bankName: bank,
+            accountNumber: account,
+            ifscCode: ifsc,
+            balance: 0,
+            branch: branch,
+            customerId: customerId
+        )
+
+        var accounts = updatedProfile.linkedAccounts ?? []
+        accounts.append(linkedAccount)
+        updatedProfile.linkedAccounts = accounts
+
+        if updatedProfile.bankDetails.bankName.isEmpty && updatedProfile.bankDetails.accountNumber.isEmpty {
+            updatedProfile.bankDetails = BankDetails(
+                bankName: bank,
+                accountHolderName: updatedProfile.fullName,
+                accountNumber: account,
+                ifscCode: ifsc,
+                upiID: nil,
+                isVerified: false
+            )
+        }
+
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
+    }
+    
     func updateKYC(
         aadhaar: VerificationStatus,
         pan: VerificationStatus,
@@ -122,7 +204,7 @@ class BorrowerProfileViewModel: ObservableObject {
         panFile: String? = nil,
         addressProofFile: String? = nil
     ) {
-        guard var updatedProfile = profile else { return }
+        guard var updatedProfile = activeProfile else { return }
         updatedProfile.kycVerification = KYCVerification(
             aadhaarStatus: aadhaar,
             panStatus: pan,
@@ -137,7 +219,7 @@ class BorrowerProfileViewModel: ObservableObject {
     }
     
     func updateKYCDoc(type: KYCDocumentType, status: VerificationStatus, fileName: String? = nil) {
-        guard var updatedProfile = profile else { return }
+        guard var updatedProfile = activeProfile else { return }
         var currentKYC = updatedProfile.kycVerification
         
         switch type {
@@ -157,19 +239,19 @@ class BorrowerProfileViewModel: ObservableObject {
     }
     
     func verifyMobile() {
-        guard var updatedProfile = profile else { return }
+        guard var updatedProfile = activeProfile else { return }
         updatedProfile.isPhoneVerified = true
         BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
     
     func verifyEmail() {
-        guard var updatedProfile = profile else { return }
+        guard var updatedProfile = activeProfile else { return }
         updatedProfile.isEmailVerified = true
         BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
     
     func updateProfileImage(data: Data) {
-        guard var updatedProfile = profile else { return }
+        guard var updatedProfile = activeProfile else { return }
         updatedProfile.profileImageData = data
         BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }

@@ -25,11 +25,15 @@ struct MainTabView: View {
                     Label("History", systemImage: "clock.fill")
                 }
                 .tag(BorrowerTab.history)
+
         }
         .tint(LMSColors.brandNavy)
         .toolbarBackground(LMSColors.surfaceElevated, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .environmentObject(tabRouter)
+        .task {
+            await dashboardViewModel.fetchDashboardData()
+        }
     }
 }
 
@@ -38,3 +42,4 @@ struct MainTabView: View {
         .environmentObject(AppStateManager())
         .environmentObject(AuthManager())
 }
+

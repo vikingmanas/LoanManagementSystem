@@ -182,6 +182,7 @@ struct BorrowerLoanDocumentItem: Identifiable, Hashable {
 struct BorrowerLoanFormData: Equatable, Hashable {
     var fullName: String
     var dateOfBirth: Date
+    var gender: String
     var mobileNumber: String
     var emailAddress: String
     var address: String
@@ -225,6 +226,7 @@ struct BorrowerLoanFormData: Equatable, Hashable {
     init(
         fullName: String,
         dateOfBirth: Date,
+        gender: String = "",
         mobileNumber: String,
         emailAddress: String,
         address: String,
@@ -253,6 +255,7 @@ struct BorrowerLoanFormData: Equatable, Hashable {
     ) {
         self.fullName = fullName
         self.dateOfBirth = dateOfBirth
+        self.gender = gender
         self.mobileNumber = mobileNumber
         self.emailAddress = emailAddress
         self.address = address
@@ -283,6 +286,7 @@ struct BorrowerLoanFormData: Equatable, Hashable {
     static let empty = BorrowerLoanFormData(
         fullName: "",
         dateOfBirth: Calendar.current.date(byAdding: .year, value: -26, to: Date()) ?? Date(),
+        gender: "",
         mobileNumber: "",
         emailAddress: "",
         address: "",
@@ -311,36 +315,105 @@ struct BorrowerLoanFormData: Equatable, Hashable {
     )
 
     static func prefilled(from profile: BorrowerProfile?) -> BorrowerLoanFormData {
-        guard let profile else { return .empty }
-        return BorrowerLoanFormData(
-            fullName: profile.fullName,
-            dateOfBirth: profile.dateOfBirth,
-            mobileNumber: profile.mobileNumber,
-            emailAddress: profile.email,
-            address: profile.currentAddress.streetAddress,
-            occupation: profile.occupation,
-            employmentType: profile.employment.employmentType.isEmpty ? "Salaried" : profile.employment.employmentType,
-            employerName: profile.employment.companyName,
-            workExperienceYears: profile.employment.workExperienceYears,
-            monthlyIncome: profile.income.monthlyIncome > 0 ? String(Int(profile.income.monthlyIncome)) : "",
-            annualIncome: profile.income.annualIncome > 0 ? String(Int(profile.income.annualIncome)) : "",
-            existingLoans: profile.existingLoansCount > 0 ? String(profile.existingLoansCount) : "",
-            existingEMIs: profile.income.existingEMIs > 0 ? String(Int(profile.income.existingEMIs)) : "",
-            creditCardObligations: "",
-            creditScore: profile.income.creditScore > 0 ? String(profile.income.creditScore) : "",
-            loanAmountRequested: "",
-            loanPurpose: "",
-            repaymentPreference: "EMI Auto-Debit",
-            preferredTenureMonths: 60,
-            hasCoApplicant: false,
-            coApplicantDetails: "",
-            hasGuarantor: false,
-            guarantorDetails: "",
-            gstNumber: profile.gstNumber ?? "",
-            selectedIdentityDoc: "Aadhaar Card",
-            selectedAddressDoc: "Utility Bill",
-            selectedIncomeDoc: "Salary Slips"
-        )
+        .empty.mergedWithProfile(profile)
+    }
+
+    static func formattedAddress(from address: AddressInfo) -> String {
+        var components: [String] = []
+        if !address.streetAddress.isEmpty { components.append(address.streetAddress) }
+        if !address.city.isEmpty { components.append(address.city) }
+        if !address.state.isEmpty { components.append(address.state) }
+        if !address.zipCode.isEmpty { components.append(address.zipCode) }
+        return components.joined(separator: ", ")
+    }
+
+    func isPlaceholderDateOfBirth() -> Bool {
+        Calendar.current.isDate(dateOfBirth, inSameDayAs: Self.empty.dateOfBirth)
+    }
+
+    func mergedWithProfile(
+        _ profile: BorrowerProfile?,
+        authEmail: String? = nil,
+        authDisplayName: String? = nil
+    ) -> BorrowerLoanFormData {
+        var result = self
+
+        let resolvedName: String = {
+            if let profile, !profile.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return profile.fullName
+            }
+            return authDisplayName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        }()
+
+        let resolvedEmail: String = {
+            if let profile, !profile.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return profile.email
+            }
+            return authEmail?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+        }()
+
+        if result.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !resolvedName.isEmpty {
+            result.fullName = resolvedName
+        }
+        if result.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let profile, !profile.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            result.mobileNumber = profile.mobileNumber
+        }
+        if result.emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !resolvedEmail.isEmpty {
+            result.emailAddress = resolvedEmail
+        }
+        if result.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let profile {
+            let formatted = Self.formattedAddress(from: profile.currentAddress)
+            if !formatted.isEmpty {
+                result.address = formatted
+            }
+        }
+        if result.isPlaceholderDateOfBirth(), let profile {
+            result.dateOfBirth = profile.dateOfBirth
+        }
+        if result.gender.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let profile, !profile.gender.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            result.gender = profile.gender
+        }
+
+        guard let profile else { return result }
+
+        if result.employmentType.isEmpty || result.employmentType == "Salaried" {
+            if !profile.employment.employmentType.isEmpty {
+                result.employmentType = profile.employment.employmentType
+            }
+        }
+        if result.employerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            result.employerName = profile.employment.companyName
+        }
+        if result.occupation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let designation = profile.employment.designation.trimmingCharacters(in: .whitespacesAndNewlines)
+            result.occupation = designation.isEmpty ? profile.occupation : profile.employment.designation
+        }
+        if result.workExperienceYears == 0, profile.employment.workExperienceYears > 0 {
+            result.workExperienceYears = profile.employment.workExperienceYears
+        }
+        if result.monthlyIncome.isEmpty, profile.income.monthlyIncome > 0 {
+            result.monthlyIncome = String(Int(profile.income.monthlyIncome))
+        }
+        if result.annualIncome.isEmpty, profile.income.annualIncome > 0 {
+            result.annualIncome = String(Int(profile.income.annualIncome))
+        }
+        if result.existingLoans.isEmpty, profile.existingLoansCount > 0 {
+            result.existingLoans = String(profile.existingLoansCount)
+        }
+        if result.existingEMIs.isEmpty, profile.income.existingEMIs > 0 {
+            result.existingEMIs = String(Int(profile.income.existingEMIs))
+        }
+        if result.creditScore.isEmpty, profile.income.creditScore > 0 {
+            result.creditScore = String(profile.income.creditScore)
+        }
+        if result.gstNumber.isEmpty, let gst = profile.gstNumber, !gst.isEmpty {
+            result.gstNumber = gst
+        }
+
+        return result
     }
 }
 
@@ -729,3 +802,4 @@ private extension String {
         return Double(filtered) ?? 0
     }
 }
+

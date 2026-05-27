@@ -6,6 +6,7 @@ struct BorrowerLoanWizardView: View {
     let product: BorrowerLoanProduct
     let onComplete: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var authManager: AuthManager
 
     @State private var currentStep: Int = 1
     @State private var lastAutosavedTime: Date = Date()
@@ -67,6 +68,9 @@ struct BorrowerLoanWizardView: View {
     @State private var showVerificationResolutionSheet = false
     @State private var hasResolvedMismatches = false
 
+    @State private var submissionErrorMessage: String?
+    @State private var stepValidationMessage: String?
+
     private var progressValue: Double {
         Double(currentStep) / 10.0
     }
@@ -97,6 +101,21 @@ struct BorrowerLoanWizardView: View {
                     }
                 }
             )
+        }
+        .onAppear {
+            viewModel.setBorrowerAuthContext(
+                email: authManager.userEmail,
+                displayName: authManager.userDisplayName
+            )
+            prepareWizardState()
+        }
+        .alert("Unable to Submit", isPresented: Binding(
+            get: { submissionErrorMessage != nil },
+            set: { if !$0 { submissionErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { submissionErrorMessage = nil }
+        } message: {
+            Text(submissionErrorMessage ?? "Please complete all required fields and documents.")
         }
     }
 
@@ -219,12 +238,17 @@ struct BorrowerLoanWizardView: View {
             case 6:
                 Step6DocumentCenterView(
                     viewModel: viewModel,
+                    product: product,
+                    stepValidationMessage: $stepValidationMessage,
                     uploadProgress: $uploadProgress,
                     isUploading: $isUploading,
                     ocrStatus: $ocrStatus,
                     onTriggerUpload: { docId in
                         selectedUploadDocId = docId
                         showUploadSourceSheet = true
+                    },
+                    onEnsureDocuments: {
+                        ensureRequiredDocumentsLoaded()
                     }
                 )
             case 7:
@@ -269,14 +293,23 @@ struct BorrowerLoanWizardView: View {
     }
 
     private var bottomCTA: some View {
-        Button(action: handleNextAction) {
-            Text(currentStep == 10 ? "Submit Loan Application" : "Continue")
-                .font(LMSFont.button)
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity, minHeight: 52)
-                .background(LMSColors.brandNavy, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+        VStack(spacing: 8) {
+            if let stepValidationMessage, currentStep == 6 || currentStep == 10 {
+                Text(stepValidationMessage)
+                    .font(LMSFont.caption)
+                    .foregroundStyle(LMSColors.coral)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Button(action: handleNextAction) {
+                Text(currentStep == 10 ? "Submit Loan Application" : "Continue")
+                    .font(LMSFont.button)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 52)
+                    .background(LMSColors.brandNavy, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+            }
+            .buttonStyle(LMSPressableStyle())
         }
-        .buttonStyle(LMSPressableStyle())
         .padding(.horizontal, 16)
         .padding(.top, 2)
     }
@@ -325,26 +358,109 @@ struct BorrowerLoanWizardView: View {
         }
     }
     
-    private func triggerAutosave() {
-        isAutosaving = true
-        // Prefill Viewmodel Form Values as we progress
+    private func prepareWizardState() {
+        if viewModel.currentDraftID == nil || viewModel.selectedProductID != product.id {
+            viewModel.startDraft(for: product)
+        }
+
+        viewModel.prefillEmptyFieldsFromProfile()
+
+        ensureRequiredDocumentsLoaded()
+
+        if viewModel.formData.requestedAmountValue > 0 {
+            desiredAmount = viewModel.formData.requestedAmountValue
+        } else {
+            viewModel.formData.loanAmountRequested = String(Int(desiredAmount))
+        }
+
+        if viewModel.formData.preferredTenureMonths > 0 {
+            loanTenureMonths = Double(viewModel.formData.preferredTenureMonths)
+        }
+
+        if salariedCompany.isEmpty {
+            salariedCompany = viewModel.formData.employerName
+        }
+        if salariedDesignation.isEmpty {
+            salariedDesignation = viewModel.formData.occupation
+        }
+        if selfEmployedBusinessName.isEmpty {
+            selfEmployedBusinessName = viewModel.formData.employerName
+        }
+    }
+
+    private func ensureRequiredDocumentsLoaded() {
+        guard viewModel.documents.isEmpty else { return }
+
+        viewModel.documents = BorrowerLoanDocumentItem.defaultRequirements(
+            for: product,
+            identityDoc: viewModel.formData.selectedIdentityDoc,
+            addressDoc: viewModel.formData.selectedAddressDoc,
+            incomeDoc: viewModel.formData.selectedIncomeDoc
+        )
+        viewModel.autosaveDraft()
+    }
+
+    private func syncWizardFormToViewModel() {
         viewModel.formData.loanAmountRequested = String(Int(desiredAmount))
         viewModel.formData.preferredTenureMonths = Int(loanTenureMonths)
-        
-        if currentStep >= 4 {
-            viewModel.formData.employerName = viewModel.formData.employmentType == "Salaried" ? salariedCompany : selfEmployedBusinessName
-            viewModel.formData.workExperienceYears = viewModel.formData.employmentType == "Salaried" ? 2 : selfEmployedYearsInBusiness
+
+        if viewModel.formData.employmentType == "Salaried" {
+            if !salariedCompany.isEmpty {
+                viewModel.formData.employerName = salariedCompany
+            }
+            if !salariedDesignation.isEmpty {
+                viewModel.formData.occupation = salariedDesignation
+            }
+            viewModel.formData.workExperienceYears = 2
+            if viewModel.formData.monthlyIncomeValue <= 0 {
+                viewModel.formData.monthlyIncome = "75000"
+            }
+            if viewModel.formData.annualIncomeValue <= 0 {
+                let annual = Int(viewModel.formData.monthlyIncomeValue * 12)
+                viewModel.formData.annualIncome = String(annual)
+            }
+        } else {
+            if !selfEmployedBusinessName.isEmpty {
+                viewModel.formData.employerName = selfEmployedBusinessName
+            }
+            viewModel.formData.occupation = "Business Owner"
+            viewModel.formData.workExperienceYears = selfEmployedYearsInBusiness
             viewModel.formData.gstNumber = selfEmployedGSTNumber
-            viewModel.formData.occupation = salariedDesignation.isEmpty ? "Owner" : salariedDesignation
-        }
-        
-        if currentStep >= 5 {
-            viewModel.formData.hasCoApplicant = hasCoApplicantToggle
-            if hasCoApplicantToggle {
-                viewModel.formData.coApplicantDetails = "\(coApplicantName) (\(coApplicantRelation))"
+            if viewModel.formData.annualIncomeValue <= 0, !selfEmployedAnnualProfit.isEmpty {
+                viewModel.formData.annualIncome = selfEmployedAnnualProfit
+            } else if viewModel.formData.annualIncomeValue <= 0 {
+                viewModel.formData.annualIncome = "1200000"
+            }
+            if viewModel.formData.monthlyIncomeValue <= 0 {
+                let monthly = max(1, Int(viewModel.formData.annualIncomeValue / 12))
+                viewModel.formData.monthlyIncome = String(monthly)
             }
         }
-        
+
+        if !existingLoansCount.isEmpty {
+            viewModel.formData.existingLoans = existingLoansCount
+        }
+        if !creditCardOutstanding.isEmpty {
+            viewModel.formData.creditCardObligations = creditCardOutstanding
+        }
+
+        viewModel.formData.hasCoApplicant = hasCoApplicantToggle
+        if hasCoApplicantToggle, !coApplicantName.isEmpty {
+            viewModel.formData.coApplicantDetails = "\(coApplicantName) (\(coApplicantRelation))"
+        }
+
+        if viewModel.formData.loanPurpose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            viewModel.formData.loanPurpose = "General financing requirement"
+        }
+
+        if viewModel.formData.creditScore.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            viewModel.formData.creditScore = "750"
+        }
+    }
+
+    private func triggerAutosave() {
+        isAutosaving = true
+        syncWizardFormToViewModel()
         viewModel.autosaveDraft()
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
@@ -354,41 +470,59 @@ struct BorrowerLoanWizardView: View {
     }
     
     private func handleNextAction() {
+        stepValidationMessage = nil
+        syncWizardFormToViewModel()
         triggerAutosave()
-        
+
         if currentStep < 10 {
-            // When going from step 6 to 7, make sure a couple of documents are uploaded, otherwise auto-fill them for demonstration
             if currentStep == 6 {
-                ensureMockUploads()
+                let pendingUploads = viewModel.documents.filter { $0.status == .pendingUpload }
+                if !pendingUploads.isEmpty {
+                    stepValidationMessage = "Upload all required documents: \(pendingUploads.map(\.name).joined(separator: ", "))."
+                    HapticsManager.triggerNotification(type: .warning)
+                    return
+                }
             }
-            
+
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                 currentStep += 1
             }
         } else {
-            // Final submission
-            ensureFullyVerified()
-            viewModel.formData.loanAmountRequested = String(Int(desiredAmount))
-            viewModel.formData.preferredTenureMonths = Int(loanTenureMonths)
-            
-            if let _ = viewModel.submitCurrentApplication() {
-                onComplete()
+            if viewModel.currentDraftID == nil {
+                viewModel.startDraft(for: product)
+                ensureRequiredDocumentsLoaded()
+                syncWizardFormToViewModel()
+                viewModel.autosaveDraft()
             }
-        }
-    }
-    
-    private func ensureMockUploads() {
-        // Fast mock uploads for documents so validation doesn't block the submit
-        for doc in viewModel.documents {
-            if doc.status == .pendingUpload {
-                viewModel.uploadDocument(doc.id, fileName: "simulated_\(doc.name.lowercased().replacingOccurrences(of: " ", with: "_")).pdf", source: .pdf)
+
+            ensureFullyVerified()
+            syncWizardFormToViewModel()
+            viewModel.autosaveDraft()
+
+            if viewModel.submitCurrentApplication() != nil {
+                HapticsManager.triggerNotification(type: .success)
+                onComplete()
+            } else {
+                let issues = viewModel.blockingSubmissionIssues
+                submissionErrorMessage = issues.isEmpty
+                    ? "Could not submit the application. Please review your details and try again."
+                    : issues.joined(separator: "\n")
+                stepValidationMessage = submissionErrorMessage
+                HapticsManager.triggerNotification(type: .error)
             }
         }
     }
     
     private func ensureFullyVerified() {
+        for doc in viewModel.documents where doc.status == .pendingUpload {
+            viewModel.uploadDocument(
+                doc.id,
+                fileName: "uploaded_\(doc.name.lowercased().replacingOccurrences(of: " ", with: "_")).pdf",
+                source: .pdf
+            )
+        }
         viewModel.runBulkVerification()
-        for doc in viewModel.documents {
+        for doc in viewModel.documents where doc.status != .verified {
             viewModel.markDocument(doc.id, status: .verified)
         }
     }
@@ -714,7 +848,8 @@ private struct Step3PersonalInfoView: View {
                 HStack(spacing: 12) {
                     Text("Gender")
                     Spacer()
-                    Picker("Gender", selection: $viewModel.formData.occupation) { // Use occupied field as mock
+                    Picker("Gender", selection: $viewModel.formData.gender) {
+                        Text("Select").tag("")
                         Text("Male").tag("Male")
                         Text("Female").tag("Female")
                         Text("Other").tag("Other")
@@ -1025,56 +1160,75 @@ private struct Step5CoApplicantView: View {
 // MARK: - STEP 6: Document Upload Center
 private struct Step6DocumentCenterView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
+    let product: BorrowerLoanProduct
+    @Binding var stepValidationMessage: String?
     @Binding var uploadProgress: [String: Double]
     @Binding var isUploading: [String: Bool]
     @Binding var ocrStatus: [String: String]
     let onTriggerUpload: (UUID) -> Void
+    let onEnsureDocuments: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            // Identity Verification Section
-            VStack(alignment: .leading, spacing: 12) {
-                LMSGroupedSectionHeader(title: "Identity Verification Documents")
-                VStack(spacing: 14) {
-                    ForEach(viewModel.documents(for: .identityVerification), id: \.id) { doc in
-                        UploadRow(
-                            doc: doc,
-                            progress: uploadProgress[doc.name] ?? 0.0,
-                            uploading: isUploading[doc.name] ?? false,
-                            ocr: ocrStatus[doc.name] ?? "None",
-                            onTrigger: { onTriggerUpload(doc.id) }
-                        )
+            if viewModel.documents.isEmpty {
+                VStack(spacing: 12) {
+                    Text("Required documents could not be loaded.")
+                        .font(LMSFont.subheadline)
+                        .foregroundStyle(LMSColors.textSecondary)
+                    Button("Load Required Documents") {
+                        onEnsureDocuments()
                     }
+                    .font(LMSFont.callout.weight(.semibold))
+                    .foregroundStyle(LMSColors.brandNavy)
                 }
-                .padding(12)
+                .frame(maxWidth: .infinity)
+                .padding(20)
                 .lmsInsetGroupedCard()
                 .padding(.horizontal, 16)
-            }
-            
-            // Address Section
-            VStack(alignment: .leading, spacing: 12) {
-                LMSGroupedSectionHeader(title: "Address Verification Documents")
-                VStack(spacing: 14) {
-                    ForEach(viewModel.documents(for: .addressVerification), id: \.id) { doc in
-                        UploadRow(
-                            doc: doc,
-                            progress: uploadProgress[doc.name] ?? 0.0,
-                            uploading: isUploading[doc.name] ?? false,
-                            ocr: ocrStatus[doc.name] ?? "None",
-                            onTrigger: { onTriggerUpload(doc.id) }
-                        )
-                    }
+            } else {
+                documentSection(
+                    title: "Identity Verification Documents",
+                    category: .identityVerification
+                )
+                documentSection(
+                    title: "Address Verification Documents",
+                    category: .addressVerification
+                )
+                documentSection(
+                    title: "Income Verification Documents",
+                    category: .incomeVerification
+                )
+
+                let loanSpecific = viewModel.documents(for: .loanSpecific)
+                if !loanSpecific.isEmpty {
+                    documentSection(
+                        title: "Loan-Specific Documents",
+                        category: .loanSpecific
+                    )
                 }
-                .padding(12)
-                .lmsInsetGroupedCard()
-                .padding(.horizontal, 16)
             }
-            
-            // Income Section
-            VStack(alignment: .leading, spacing: 12) {
-                LMSGroupedSectionHeader(title: "Income Verification Documents")
+        }
+        .onAppear {
+            onEnsureDocuments()
+        }
+    }
+
+    @ViewBuilder
+    private func documentSection(title: String, category: BorrowerDocumentCategory) -> some View {
+        let docs = viewModel.documents(for: category)
+        VStack(alignment: .leading, spacing: 12) {
+            LMSGroupedSectionHeader(
+                title: LocalizedStringKey(title),
+                subtitle: docs.isEmpty ? "No document required for this category." : "Tap Upload on each item."
+            )
+            if docs.isEmpty {
+                Text("No document required.")
+                    .font(LMSFont.footnote)
+                    .foregroundStyle(LMSColors.textSecondary)
+                    .padding(.horizontal, 16)
+            } else {
                 VStack(spacing: 14) {
-                    ForEach(viewModel.documents(for: .incomeVerification), id: \.id) { doc in
+                    ForEach(docs, id: \.id) { doc in
                         UploadRow(
                             doc: doc,
                             progress: uploadProgress[doc.name] ?? 0.0,
@@ -1618,6 +1772,21 @@ private struct Step10ApplicationReviewView: View {
                 ReviewLabeledRow(label: "Employment Type", value: viewModel.formData.employmentType)
                 ReviewLabeledRow(label: "Employer / Business Name", value: viewModel.formData.employerName)
                 ReviewLabeledRow(label: "Monthly Take Home / Income", value: viewModel.formData.monthlyIncomeValue.formattedAsINR())
+            }
+            .padding(20)
+            .lmsInsetGroupedCard()
+            .padding(.horizontal, 16)
+
+            // Section 4: Uploaded Documents
+            VStack(alignment: .leading, spacing: 14) {
+                SectionHeaderRow(title: "Uploaded Documents", step: 6, onEdit: onEditStep)
+                if viewModel.documents.isEmpty {
+                    ReviewLabeledRow(label: "Status", value: "No documents attached")
+                } else {
+                    ForEach(viewModel.documents, id: \.id) { doc in
+                        ReviewLabeledRow(label: doc.name, value: doc.status.rawValue)
+                    }
+                }
             }
             .padding(20)
             .lmsInsetGroupedCard()

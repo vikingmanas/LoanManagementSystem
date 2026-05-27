@@ -1,10 +1,11 @@
 import SwiftUI
 
-// MARK: - Manager Reports & AI Insights View
+
 struct ManagerReportsView: View {
-    @State private var showExportSheet = false
+    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @State private var showReportSheet = false
     @State private var showAuditLog = false
-    @State private var isExporting = false
+    @State private var showPerformanceSheet = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
@@ -14,14 +15,14 @@ struct ManagerReportsView: View {
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
 
             VStack(spacing: LMSSpacing.md) {
-                // Quick Action Buttons
+
                 HStack(spacing: LMSSpacing.md) {
                     ReportButton(
                         icon: "doc.text.fill",
                         title: "Monthly Report",
                         tint: LMSColors.brandNavy
                     ) {
-                        showExportSheet = true
+                        showReportSheet = true
                     }
 
                     ReportButton(
@@ -39,51 +40,36 @@ struct ManagerReportsView: View {
                         title: "Performance",
                         tint: LMSColors.emerald
                     ) {
-                        HapticsManager.triggerImpact(style: .light)
+                        showPerformanceSheet = true
                     }
 
                     ReportButton(
-                        icon: "square.and.arrow.up.fill",
-                        title: "Export CSV",
+                        icon: "paperplane.fill",
+                        title: "Publish",
                         tint: LMSColors.actionBlue
                     ) {
-                        HapticsManager.triggerImpact(style: .light)
+                        viewModel.publishMonthlyReport()
                     }
                 }
 
-                // AI Insight Placeholder
-                AIInsightCard()
+
+                ManagerInsightCard(viewModel: viewModel)
             }
             .padding(.horizontal, LMSSpacing.screenHorizontal)
         }
-        .sheet(isPresented: $showExportSheet) {
-            ManagerReportExportSheet(isExporting: $isExporting)
+        .sheet(isPresented: $showReportSheet) {
+            ManagerReportSheet(viewModel: viewModel)
         }
         .sheet(isPresented: $showAuditLog) {
-            ManagerAuditLogSheet()
+            ManagerAuditLogSheet(events: viewModel.auditEvents)
         }
-        .overlay {
-            if isExporting {
-                ZStack {
-                    Color.black.opacity(0.4).edgesIgnoringSafeArea(.all)
-                    VStack(spacing: LMSSpacing.xl) {
-                        ProgressView()
-                            .scaleEffect(1.5)
-                            .tint(.white)
-                        Text("Generating Report…")
-                            .font(.system(.headline, design: .rounded))
-                            .foregroundStyle(.white)
-                    }
-                    .padding(LMSSpacing.xxxl)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: LMSRadius.xl, style: .continuous))
-                }
-                .transition(.opacity)
-            }
+        .sheet(isPresented: $showPerformanceSheet) {
+            OfficerPerformanceReportSheet(viewModel: viewModel)
         }
     }
 }
 
-// MARK: - Report Button
+
 private struct ReportButton: View {
     let icon: String
     let title: String
@@ -111,8 +97,20 @@ private struct ReportButton: View {
     }
 }
 
-// MARK: - AI Insight Card
-private struct AIInsightCard: View {
+
+private struct ManagerInsightCard: View {
+    @ObservedObject var viewModel: ManagerDashboardViewModel
+
+    private var insightText: String {
+        if let highRisk = viewModel.applicants.first(where: { $0.riskLevel == .high || $0.riskLevel == .critical }) {
+            return "\(highRisk.applicationId) needs closer risk review before branch clearance."
+        }
+        if viewModel.pendingApplicants.isEmpty {
+            return "Approval queue is clear for \(viewModel.branchOverview.name)."
+        }
+        return "\(viewModel.pendingApplicants.count) application\(viewModel.pendingApplicants.count == 1 ? "" : "s") awaiting manager decision."
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: LMSSpacing.md) {
             ZStack {
@@ -131,11 +129,11 @@ private struct AIInsightCard: View {
             }
 
             VStack(alignment: .leading, spacing: LMSSpacing.xs) {
-                Text("AI Insight")
+                Text("Branch Insight")
                     .font(.system(.caption, design: .rounded).bold())
                     .foregroundStyle(Color.purple)
 
-                Text("Your branch approval rate has increased by 2.1% this quarter. Consider redistributing Neha Singh's workload — she's at 93% capacity.")
+                Text(insightText)
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(LMSColors.textSecondary)
                     .lineSpacing(3)
@@ -158,41 +156,41 @@ private struct AIInsightCard: View {
     }
 }
 
-// MARK: - Report Export Sheet
-private struct ManagerReportExportSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @Binding var isExporting: Bool
-    @State private var reportType = "Monthly Performance"
-    @State private var format = "PDF Document"
 
-    let reportTypes = ["Monthly Performance", "NPL Status", "Disbursement Log", "Supervisor Action Queue"]
-    let formats = ["PDF Document", "CSV Spreadsheet"]
+private struct ManagerReportSheet: View {
+    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Environment(\.dismiss) var dismiss
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section(header: Text("Report Details")) {
-                    Picker("Report Type", selection: $reportType) {
-                        ForEach(reportTypes, id: \.self) { Text($0) }
-                    }
-                    Picker("Export Format", selection: $format) {
-                        ForEach(formats, id: \.self) { Text($0) }
+            List {
+                Section("Branch") {
+                    LabeledContent("Name", value: viewModel.branchOverview.name)
+                    LabeledContent("Region", value: viewModel.branchOverview.region)
+                    LabeledContent("Active Loans", value: "\(viewModel.branchOverview.activeLoanCount)")
+                    LabeledContent("Disbursed", value: CurrencyFormatter.shared.format(viewModel.branchOverview.totalDisbursed))
+                }
+
+                Section("Performance") {
+                    LabeledContent("Pending Approvals", value: "\(viewModel.pendingApplicants.count)")
+                    LabeledContent("Approved/Disbursed", value: "\(viewModel.applicants.filter { $0.status == .approved || $0.status == .disbursed }.count)")
+                    LabeledContent("Rejected", value: "\(viewModel.applicants.filter { $0.status == .rejected }.count)")
+                    LabeledContent("Officers Tracked", value: "\(viewModel.officers.count)")
+                }
+
+                if let lastReportPublishedAt = viewModel.lastReportPublishedAt {
+                    Section("Published") {
+                        LabeledContent("Last Published", value: lastReportPublishedAt.formatted(date: .abbreviated, time: .shortened))
                     }
                 }
 
                 Section {
                     Button(action: {
                         HapticsManager.triggerImpact(style: .medium)
+                        viewModel.publishMonthlyReport()
                         dismiss()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            withAnimation { isExporting = true }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                                withAnimation { isExporting = false }
-                                HapticsManager.triggerNotification(type: .success)
-                            }
-                        }
                     }) {
-                        Text("Export Now")
+                        Text("Publish Monthly Report")
                             .font(.system(.body, design: .rounded).weight(.bold))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
@@ -201,7 +199,7 @@ private struct ManagerReportExportSheet: View {
                     .listRowBackground(LMSColors.brandNavy)
                 }
             }
-            .navigationTitle("Export Report")
+            .navigationTitle("Monthly Report")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -212,48 +210,46 @@ private struct ManagerReportExportSheet: View {
     }
 }
 
-// MARK: - Audit Log Sheet
+
 private struct ManagerAuditLogSheet: View {
     @Environment(\.dismiss) var dismiss
-
-    private let events: [ManagerAuditEvent] = [
-        ManagerAuditEvent(id: UUID(), timestamp: Date().addingTimeInterval(-600), action: "Approved APP-2026-0750 (Rohan Kapoor)", user: "Ramanathan Swamy", severity: .success),
-        ManagerAuditEvent(id: UUID(), timestamp: Date().addingTimeInterval(-3600), action: "Branch config updated: Home Loan Limit → ₹5.0 Cr", user: "Ramanathan Swamy", severity: .info),
-        ManagerAuditEvent(id: UUID(), timestamp: Date().addingTimeInterval(-7200), action: "Escalated APP-2026-0988 (Vikram Joshi) — Fraud Risk", user: "Priya Menon", severity: .critical),
-        ManagerAuditEvent(id: UUID(), timestamp: Date().addingTimeInterval(-14400), action: "Requested clarification on APP-2026-0801", user: "Rohan Gupta", severity: .warning),
-        ManagerAuditEvent(id: UUID(), timestamp: Date().addingTimeInterval(-86400), action: "Generated Monthly Performance PDF Report", user: "Ramanathan Swamy", severity: .info),
-        ManagerAuditEvent(id: UUID(), timestamp: Date().addingTimeInterval(-90000), action: "Disbursed APP-2026-0944 (Kavitha Nair)", user: "Rohan Gupta", severity: .success)
-    ]
+    let events: [ManagerAuditEvent]
 
     var body: some View {
         NavigationStack {
-            List(events) { event in
-                HStack(alignment: .top, spacing: LMSSpacing.md) {
-                    Image(systemName: event.severity.icon)
-                        .foregroundStyle(event.severity.color)
-                        .font(.system(size: 20))
-                        .padding(.top, 2)
+            Group {
+                if events.isEmpty {
+                    ContentUnavailableView("No audit events", systemImage: "list.bullet.clipboard", description: Text("Manager decisions and document exceptions will appear here."))
+                } else {
+                    List(events) { event in
+                        HStack(alignment: .top, spacing: LMSSpacing.md) {
+                            Image(systemName: event.severity.icon)
+                                .foregroundStyle(event.severity.color)
+                                .font(.system(size: 20))
+                                .padding(.top, 2)
 
-                    VStack(alignment: .leading, spacing: LMSSpacing.xs) {
-                        Text(event.action)
-                            .font(.system(.body, design: .rounded).weight(.semibold))
-                            .foregroundStyle(LMSColors.textPrimary)
-                            .fixedSize(horizontal: false, vertical: true)
+                            VStack(alignment: .leading, spacing: LMSSpacing.xs) {
+                                Text(event.action)
+                                    .font(.system(.body, design: .rounded).weight(.semibold))
+                                    .foregroundStyle(LMSColors.textPrimary)
+                                    .fixedSize(horizontal: false, vertical: true)
 
-                        HStack {
-                            Text(event.user)
-                                .font(.system(.caption, design: .rounded))
-                                .foregroundStyle(LMSColors.textSecondary)
-                            Spacer()
-                            Text(event.timestamp, style: .relative)
-                                .font(.system(.caption2, design: .rounded).bold())
-                                .foregroundStyle(LMSColors.textTertiary)
+                                HStack {
+                                    Text(event.user)
+                                        .font(.system(.caption, design: .rounded))
+                                        .foregroundStyle(LMSColors.textSecondary)
+                                    Spacer()
+                                    Text(event.timestamp, style: .relative)
+                                        .font(.system(.caption2, design: .rounded).bold())
+                                        .foregroundStyle(LMSColors.textTertiary)
+                                }
+                            }
                         }
+                        .padding(.vertical, LMSSpacing.xs)
                     }
+                    .listStyle(.plain)
                 }
-                .padding(.vertical, LMSSpacing.xs)
             }
-            .listStyle(.plain)
             .navigationTitle("Branch Audit Logs")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -265,9 +261,127 @@ private struct ManagerAuditLogSheet: View {
     }
 }
 
+struct OfficerPerformanceReportSheet: View {
+    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Environment(\.dismiss) var dismiss
+
+    private var totalProcessed: Int {
+        viewModel.officers.reduce(0) { $0 + $1.loansProcessedYTD }
+    }
+
+    private var avgApprovalRate: Double {
+        let rates = viewModel.officers.map(\.approvalRate)
+        return rates.isEmpty ? 0 : rates.reduce(0, +) / Double(rates.count)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if viewModel.officers.isEmpty {
+                    ContentUnavailableView(
+                        "No Officers Tracked",
+                        systemImage: "person.2.slash",
+                        description: Text("Officer performance data will appear once staff are assigned to this branch.")
+                    )
+                } else {
+                    List {
+                        Section("Branch Summary") {
+                            LabeledContent("Officers Tracked", value: "\(viewModel.officers.count)")
+                            LabeledContent("Total Loans Processed (YTD)", value: "\(totalProcessed)")
+                            LabeledContent("Avg. Approval Rate", value: String(format: "%.1f%%", avgApprovalRate))
+                        }
+
+                        Section("Individual Performance") {
+                            ForEach(viewModel.officers.sorted(by: { $0.approvalRate > $1.approvalRate })) { officer in
+                                VStack(alignment: .leading, spacing: LMSSpacing.sm) {
+                                    HStack {
+                                        ZStack {
+                                            Circle()
+                                                .fill(LMSColors.brandNavy.opacity(0.10))
+                                                .frame(width: 36, height: 36)
+                                            Text(officer.initials)
+                                                .font(.system(.caption2, design: .rounded).bold())
+                                                .foregroundStyle(LMSColors.brandNavy)
+                                        }
+
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(officer.name)
+                                                .font(.system(.callout, design: .rounded).bold())
+                                                .foregroundStyle(LMSColors.textPrimary)
+                                            Text(officer.role)
+                                                .font(.system(.caption2, design: .rounded))
+                                                .foregroundStyle(LMSColors.textSecondary)
+                                        }
+
+                                        Spacer()
+
+                                        HStack(spacing: 3) {
+                                            Image(systemName: "star.fill")
+                                                .foregroundStyle(LMSColors.amber)
+                                                .font(.system(size: 10))
+                                            Text(String(format: "%.1f", officer.rating))
+                                                .font(.system(.caption, design: .rounded).bold())
+                                                .foregroundStyle(LMSColors.textPrimary)
+                                        }
+                                    }
+
+                                    HStack(spacing: LMSSpacing.lg) {
+                                        PerformanceMetric(label: "Processed", value: "\(officer.loansProcessedYTD)")
+                                        PerformanceMetric(label: "Approval", value: String(format: "%.1f%%", officer.approvalRate))
+                                        PerformanceMetric(label: "Capacity", value: "\(officer.activeCases)/\(officer.maxCapacity)")
+                                    }
+
+                                    GeometryReader { geo in
+                                        ZStack(alignment: .leading) {
+                                            Capsule()
+                                                .fill(officer.capacityColor.opacity(0.15))
+                                                .frame(height: 5)
+                                            Capsule()
+                                                .fill(officer.capacityColor)
+                                                .frame(width: geo.size.width * officer.capacityPercentage, height: 5)
+                                        }
+                                    }
+                                    .frame(height: 5)
+                                }
+                                .padding(.vertical, LMSSpacing.xs)
+                            }
+                        }
+                    }
+                    .listStyle(.insetGrouped)
+                }
+            }
+            .navigationTitle("Officer Performance")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Close") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+private struct PerformanceMetric: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(.system(.caption, design: .rounded).bold())
+                .foregroundStyle(LMSColors.textPrimary)
+                .monospacedDigit()
+            Text(label)
+                .font(.system(size: 9, weight: .medium, design: .rounded))
+                .foregroundStyle(LMSColors.textTertiary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
 #Preview {
     ScrollView {
-        ManagerReportsView()
+        ManagerReportsView(viewModel: PreviewSupport.managerViewModel)
     }
     .padding()
     .previewManagerEnvironment()

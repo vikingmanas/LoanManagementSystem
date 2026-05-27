@@ -28,7 +28,11 @@ class LoanOfficerDashboardViewModel: ObservableObject {
             .map { apps in
                 apps.compactMap { CentralLoanRepository.shared.toOfficerApplication(from: $0) }
             }
-            .assign(to: &$applications)
+            .sink { [weak self] mappedApps in
+                guard let self = self else { return }
+                self.applications = mappedApps
+            }
+            .store(in: &cancellables)
     }
     
     // Tab 2 History Filter parameters

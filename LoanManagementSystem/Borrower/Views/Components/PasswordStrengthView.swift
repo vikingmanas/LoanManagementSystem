@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Animated password strength indicator with progress bar and requirement checks.
+
 struct PasswordStrengthView: View {
     var isMinLength: Bool
     var hasUppercase: Bool
@@ -35,7 +35,7 @@ struct PasswordStrengthView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
-            // Strength bar
+
             HStack(spacing: LMSSpacing.sm) {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
@@ -58,7 +58,7 @@ struct PasswordStrengthView: View {
                     .animation(.easeInOut, value: metCount)
             }
 
-            // Requirements grid
+
             HStack(spacing: LMSSpacing.lg) {
                 VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                     RequirementRow(isMet: isMinLength, text: "Min 8 characters")
@@ -96,3 +96,4 @@ struct RequirementRow: View {
     PasswordStrengthView(isMinLength: true, hasUppercase: false, hasNumber: true, hasSpecialChar: false)
         .padding()
 }
+

@@ -68,11 +68,6 @@ public struct PortfolioCarouselView: View {
         self.onTransferTap = onTransferTap
     }
     
-    private var totalCardCount: Int {
-        if viewModel.isLoading { return 1 }
-        return 1 + viewModel.bankAccounts.count + 1
-    }
-    
     public var body: some View {
         VStack(spacing: 16) {
             ScrollView(.horizontal, showsIndicators: false) {
@@ -83,41 +78,69 @@ public struct PortfolioCarouselView: View {
                             .frame(width: 300, height: 180)
                             .shimmer(active: true)
                     } else {
-                        // Card 1: Total Loan Outstanding
-                        TotalLoanOutstandingCard(viewModel: viewModel)
-                            .frame(width: 310, height: 185)
-                            .onTapGesture {
-                                if let firstLoan = viewModel.loanAccounts.first {
-                                    onNavigateToLoan(firstLoan)
+                        if viewModel.loanAccounts.isEmpty {
+                            EmptyLoanAccountStateCard()
+                                .frame(width: 310, height: 185)
+                        } else {
+                            // Card 1: Portfolio summary (totals)
+                            TotalLoanOutstandingCard(viewModel: viewModel)
+                                .frame(width: 310, height: 185)
+                            
+                            // Cards 2..N: One card per approved/disbursed loan
+                            ForEach(viewModel.loanAccounts) { loan in
+                                LoanAccountCardRefined(
+                                    loan: loan
+                                ) {
+                                    onNavigateToLoan(loan)
                                 }
+                                .frame(width: 310, height: 185)
                             }
-                        
-                        // Cards 2...N: Bank accounts
-                        ForEach(viewModel.bankAccounts.indices, id: \.self) { index in
-                            let account = viewModel.bankAccounts[index]
-                            BankAccountCardRefined(
-                                account: account,
-                                isLowBalance: viewModel.isLowBalance(account),
-                                onTransfer: { onTransferTap(account) }
-                            )
-                            .frame(width: 310, height: 185)
-                            .onTapGesture {
-                                onNavigateToBank(account)
-                            }
+                            
+                            // Card Last: Insurance
+                            LoanProtectionCardRefined()
+                                .frame(width: 310, height: 185)
+                                .onTapGesture { onNavigateToInsurance() }
                         }
-                        
-                        // Card Last: Insurance
-                        LoanProtectionCardRefined()
-                            .frame(width: 310, height: 185)
-                            .onTapGesture {
-                                onNavigateToInsurance()
-                            }
                     }
                 }
                 .padding(.horizontal, LMSSpacing.lg)
                 .padding(.vertical, LMSSpacing.xs)
             }
         }
+    }
+}
+
+// MARK: - Empty State Card
+private struct EmptyLoanAccountStateCard: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: "creditcard.fill")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .frame(width: 36, height: 36)
+                    .background(LMSColors.brandNavy.opacity(0.10), in: Circle())
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("No active loan account found")
+                        .font(.system(.subheadline, design: .rounded).bold())
+                        .foregroundStyle(LMSColors.textPrimary)
+                        .lineLimit(2)
+                    Text("Your loan account will be automatically created once a loan application is approved.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(3)
+                }
+            }
+            Spacer()
+        }
+        .padding(LMSSpacing.xl)
+        .background(LMSColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous)
+                .stroke(LMSColors.separatorLight, lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 5)
     }
 }
 
@@ -129,15 +152,15 @@ struct TotalLoanOutstandingCard: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Total Outstanding")
+                    Text("Total Active Loans")
                         .font(.system(.caption, design: .rounded).bold())
                         .foregroundStyle(.white.opacity(0.8))
-                    Text(viewModel.totalOutstanding.formattedAsINR())
+                    Text("\(viewModel.loanAccounts.count)")
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                 }
                 Spacer()
-                Image(systemName: "chart.pie.fill")
+                Image(systemName: "doc.plaintext")
                     .font(.title2)
                     .foregroundStyle(.white.opacity(0.9))
             }
@@ -146,32 +169,39 @@ struct TotalLoanOutstandingCard: View {
             
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("\(Int(viewModel.repaidFraction * 100))% Repaid")
+                    Text("Total Outstanding: \(viewModel.totalOutstanding.formattedAsINR())")
                         .font(.system(.caption2, design: .rounded).bold())
-                        .foregroundStyle(.white.opacity(0.9))
+                        .foregroundStyle(.white.opacity(0.85))
                     Spacer()
-                    Text("\(viewModel.loanAccounts.count) Active Loans")
+                    let nextDue = viewModel.nextEMI?.dueDate
+                    Text(nextDue != nil ? "Next EMI: \(nextDue!.formattedAsDDMMMYYYY())" : "Next EMI: N/A")
                         .font(.system(.caption2, design: .rounded))
                         .foregroundStyle(.white.opacity(0.7))
                 }
-                
-                ProgressView(value: viewModel.repaidFraction)
-                    .tint(.white)
-                    .background(Color.white.opacity(0.2))
-                    .scaleEffect(x: 1, y: 1.5)
-                    .clipShape(Capsule())
+                HStack {
+                    Text("\(viewModel.loansClosedCount) Closed")
+                        .font(.system(.caption2, design: .rounded).bold())
+                        .foregroundStyle(.white.opacity(0.8))
+                    Spacer()
+                    ProgressView(value: viewModel.repaidFraction)
+                        .tint(.white)
+                        .background(Color.white.opacity(0.2))
+                        .scaleEffect(x: 1, y: 1.5)
+                        .clipShape(Capsule())
+                        .frame(width: 120)
+                }
             }
             
             Spacer()
             
-            HStack {
-                Text("Manage Loans")
-                    .font(.system(.caption, design: .rounded).bold())
-                    .foregroundStyle(.white)
-                Spacer()
-                Image(systemName: "chevron.right.circle.fill")
-                    .foregroundStyle(.white.opacity(0.5))
-            }
+//            HStack {
+//                Text("Manage Loans")
+//                    .font(.system(.caption, design: .rounded).bold())
+//                    .foregroundStyle(.white)
+//                Spacer()
+//                Image(systemName: "chevron.right.circle.fill")
+//                    .foregroundStyle(.white.opacity(0.5))
+//            }
         }
         .padding(LMSSpacing.xl)
         .background(
@@ -186,8 +216,122 @@ struct TotalLoanOutstandingCard: View {
     }
 }
 
-// MARK: - Bank Account Card
-struct BankAccountCardRefined: View {
+// MARK: - Loan Account Card
+private struct LoanAccountCardRefined: View {
+    let loan: DashboardLoanAccount
+    let onOpen: () -> Void
+    
+    private var statusText: String { loan.principalOutstanding <= 0 ? "Closed" : "Active" }
+    private var statusColor: Color { loan.principalOutstanding <= 0 ? .gray : LMSColors.emerald }
+    
+    private var loanIconName: String {
+        let s = loan.loanType.lowercased()
+        if s.contains("education") { return "graduationcap.fill" }
+        if s.contains("home") { return "house.fill" }
+        if s.contains("personal") { return "person.text.rectangle.fill" }
+        if s.contains("business") { return "briefcase.fill" }
+        if s.contains("vehicle") { return "car.fill" }
+        if s.contains("gold") { return "seal.fill" }
+        return "building.columns.fill"
+    }
+    
+    private func maskAccountNumber(_ number: String) -> String {
+        let suffix = number.suffix(4)
+        return "•••• \(suffix.isEmpty ? "0000" : suffix)"
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 12) {
+                Image(systemName: loanIconName)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .frame(width: 36, height: 36)
+                    .background(LMSColors.brandNavy.opacity(0.10), in: Circle())
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(loan.loanType)
+                        .font(.system(.subheadline, design: .rounded).bold())
+                        .foregroundStyle(LMSColors.textPrimary)
+                        .lineLimit(1)
+                    
+                    Text(maskAccountNumber(loan.accountNumber))
+                        .font(.caption2)
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .lineLimit(1)
+                }
+                
+                Spacer()
+                
+                Text(statusText)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(statusColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(statusColor.opacity(0.12), in: Capsule())
+            }
+            
+            Spacer()
+            
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Loan Amount")
+                        .font(.caption2)
+                        .foregroundStyle(LMSColors.textSecondary)
+                    Spacer()
+                    Text(loan.sanctionedAmount.formattedAsINR())
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(LMSColors.textPrimary)
+                }
+                
+                HStack {
+                    Text("Outstanding")
+                        .font(.caption2)
+                        .foregroundStyle(LMSColors.textSecondary)
+                    Spacer()
+                    Text(loan.principalOutstanding.formattedAsINR())
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(LMSColors.textPrimary)
+                }
+                
+                HStack {
+                    Text("EMI")
+                        .font(.caption2)
+                        .foregroundStyle(LMSColors.textSecondary)
+                    Spacer()
+                    Text(loan.totalEMI.formattedAsINR())
+                        .font(.caption2.bold())
+                        .foregroundStyle(LMSColors.textPrimary)
+                }
+                
+                HStack {
+                    Text("Next EMI")
+                        .font(.caption2)
+                        .foregroundStyle(LMSColors.textSecondary)
+                    Spacer()
+                    Text(loan.nextEMIDate.formattedAsDDMMMYYYY())
+                        .font(.caption2.bold())
+                        .foregroundStyle(LMSColors.textPrimary)
+                }
+            }
+        }
+        .padding(LMSSpacing.xl)
+        .background(LMSColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous)
+                .stroke(LMSColors.separatorLight, lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 5)
+        .contentShape(Rectangle())
+        .onTapGesture { onOpen() }
+    }
+}
+
+// MARK: - Bank Account Card (legacy adapter)
+// This is no longer used by the main borrower dashboard carousel (loan accounts only),
+// but it is kept to avoid breaking the older `PortfolioCardView` adapter.
+private struct BankAccountCardRefined: View {
     let account: BankAccount
     let isLowBalance: Bool
     let onTransfer: () -> Void
@@ -205,9 +349,11 @@ struct BankAccountCardRefined: View {
                     VStack(alignment: .leading, spacing: 0) {
                         Text(account.bankName)
                             .font(.system(.subheadline, design: .rounded).bold())
+                            .lineLimit(1)
                         Text(account.accountType.displayName)
                             .font(.system(.caption2, design: .rounded))
                             .foregroundStyle(LMSColors.textSecondary)
+                            .lineLimit(1)
                     }
                 }
                 Spacer()
@@ -219,7 +365,7 @@ struct BankAccountCardRefined: View {
             Spacer()
             
             VStack(alignment: .leading, spacing: 4) {
-                Text("Available Balance")
+                Text(account.accountType == .overdraft ? "OD Available Balance" : "Available Balance")
                     .font(.system(.caption2, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textSecondary)
                 Text(account.availableBalance.formattedAsINR())
@@ -228,42 +374,6 @@ struct BankAccountCardRefined: View {
             }
             
             Spacer()
-            
-            HStack {
-                if isLowBalance {
-                    HStack(spacing: 4) {
-                        Circle().fill(.red).frame(width: 6, height: 6)
-                        Text("Low Balance")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.red)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.red.opacity(0.1), in: Capsule())
-                } else {
-                    HStack(spacing: 4) {
-                        Image(systemName: "checkmark.shield.fill")
-                            .font(.system(size: 10))
-                        Text("Verified")
-                            .font(.system(size: 10, weight: .bold))
-                    }
-                    .foregroundStyle(LMSColors.emerald)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(LMSColors.emerald.opacity(0.1), in: Capsule())
-                }
-                
-                Spacer()
-                
-                Button(action: onTransfer) {
-                    Text("Add Funds")
-                        .font(.system(.caption, design: .rounded).bold())
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(LMSColors.brandNavy, in: Capsule())
-                }
-            }
         }
         .padding(LMSSpacing.xl)
         .background(LMSColors.surface)
@@ -273,6 +383,7 @@ struct BankAccountCardRefined: View {
                 .stroke(LMSColors.separatorLight, lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 5)
+        .onTapGesture { onTransfer() }
     }
 }
 

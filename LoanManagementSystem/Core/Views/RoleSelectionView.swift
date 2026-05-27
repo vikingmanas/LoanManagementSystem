@@ -7,7 +7,7 @@ struct RoleSelectionView: View {
 
     var body: some View {
         ZStack {
-            // Premium gradient background
+
             LinearGradient(
                 colors: [
                     LMSColors.brandNavy,
@@ -19,7 +19,7 @@ struct RoleSelectionView: View {
             )
             .ignoresSafeArea()
 
-            // Ambient glow orbs for depth
+
             VStack {
                 HStack {
                     Circle()
@@ -42,7 +42,7 @@ struct RoleSelectionView: View {
             .ignoresSafeArea()
 
             VStack(spacing: LMSSpacing.xl) {
-                // Header
+
                 VStack(spacing: LMSSpacing.md) {
                     Button(action: {
                         HapticsManager.triggerImpact(style: .medium)
@@ -67,7 +67,7 @@ struct RoleSelectionView: View {
                 .padding(.top, LMSSpacing.xxxl)
                 .padding(.bottom, LMSSpacing.sm)
 
-                // Role cards
+
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: LMSSpacing.md) {
                         ForEach(PortalRole.allCases) { role in
@@ -87,7 +87,7 @@ struct RoleSelectionView: View {
                     .padding(.vertical, LMSSpacing.sm)
                 }
 
-                // Continue button
+
                 VStack(spacing: LMSSpacing.lg) {
                     Button(action: {
                         HapticsManager.triggerImpact(style: .heavy)
@@ -127,7 +127,7 @@ struct RoleSelectionView: View {
     }
 }
 
-// MARK: - Role Card View
+
 struct RoleCardView: View {
     let role: PortalRole
     let isSelected: Bool
@@ -136,7 +136,7 @@ struct RoleCardView: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: LMSSpacing.lg) {
-                // Icon
+
                 ZStack {
                     RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
                         .fill(isSelected ? Color.white.opacity(0.16) : Color.white.opacity(0.06))
@@ -147,7 +147,7 @@ struct RoleCardView: View {
                         .foregroundStyle(isSelected ? .white : .white.opacity(0.7))
                 }
 
-                // Label
+
                 VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                     Text(role.rawValue)
                         .font(LMSFont.callout.weight(.bold))
@@ -162,7 +162,7 @@ struct RoleCardView: View {
 
                 Spacer()
 
-                // Radio indicator
+
                 ZStack {
                     Circle()
                         .stroke(isSelected ? LMSColors.actionBlue : Color.white.opacity(0.2), lineWidth: 2)
@@ -198,3 +198,4 @@ struct RoleCardView: View {
     RoleSelectionView()
         .environmentObject(AppStateManager())
 }
+
