@@ -50,7 +50,7 @@ struct LoanApplicationTabView: View {
             .task(id: authManager.userEmail) {
                 viewModel.setBorrowerAuthContext(
                     email: authManager.userEmail ?? "",
-                    displayName: authManager.userDisplayName ?? ""
+                    displayName: authManager.userDisplayName
                 )
             }
             .navigationDestination(for: LoanApplicationRoute.self) { route in
@@ -701,7 +701,7 @@ private struct BorrowerApplicationsContent: View {
         .background(LMSColors.background)
         .alert("Delete Draft?", isPresented: $showDeleteDraftConfirmation, presenting: draftPendingDeletion) { app in
             Button("Delete", role: .destructive) {
-                viewModel.deleteDraft(applicationID: app.id)
+                _ = viewModel.deleteDraft(applicationID: app.id)
                 draftPendingDeletion = nil
             }
             Button("Cancel", role: .cancel) {

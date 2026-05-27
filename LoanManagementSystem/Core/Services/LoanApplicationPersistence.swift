@@ -60,6 +60,7 @@ struct StoredDisbursementEvent: Codable {
     var creditedAt: Date
 }
 
+@MainActor
 enum LoanApplicationPersistence {
     private static let applicationsKey = "lms.centralLoanRepository.applications"
     private static let disbursementsKey = "lms.centralLoanRepository.disbursements"
