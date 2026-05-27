@@ -199,9 +199,12 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         isLoading = true
         hasError = false
         
-        // Simulate 0.8s network delay
         do {
-            try await Task.sleep(nanoseconds: 800_000_000)
+            // Fetch all submitted applications from Supabase for the officer view
+            await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
+            
+            // Simulate brief loading delay for UI
+            try await Task.sleep(nanoseconds: 400_000_000)
             
             // Starts empty to remove mock feed items
             self.activityFeed = []

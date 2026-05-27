@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import SwiftUI
+import Supabase
 
 struct LoanDisbursementEvent: Identifiable, Hashable {
     let id: UUID
@@ -59,12 +60,14 @@ final class CentralLoanRepository: ObservableObject {
             applications.insert(app, at: 0)
         }
         persistState()
+        syncApplicationToSupabase(app)
     }
     
     func updateApplication(_ app: BorrowerLoanApplication) {
         if let index = applications.firstIndex(where: { $0.id == app.id }) {
             applications[index] = app
             persistState()
+            syncApplicationToSupabase(app)
         }
     }
 
@@ -85,11 +88,77 @@ final class CentralLoanRepository: ObservableObject {
                 return dbApp.toBorrowerApplication(product: product)
             }
             
-            self.applications = mappedApps
-            self.persistState()
+            // Only assign if there is a difference to avoid infinite re-renders
+            let currentIds = self.applications.map { $0.id }
+            let newIds = mappedApps.map { $0.id }
+            
+            // Simple check: if counts are different or IDs don't match, update.
+            // Ideally we'd compare the full object, but for avoiding the init loop, this is sufficient.
+            if currentIds != newIds {
+                self.applications = mappedApps
+                self.persistState()
+            }
             print("[CentralLoanRepository] Successfully fetched and synchronized \(mappedApps.count) applications from Supabase.")
         } catch {
             print("[CentralLoanRepository] Failed to fetch applications from Supabase: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Fetches ALL submitted (non-draft) applications from Supabase for the Loan Officer dashboard.
+    func fetchAllSubmittedApplicationsFromSupabase() async {
+        do {
+            let products = await ProductService.shared.fetchLoanProducts()
+            let dbApps = try await ApplicationService.shared.fetchAllSubmittedApplications()
+            
+            let mappedApps = dbApps.map { dbApp -> BorrowerLoanApplication in
+                let product = products.first(where: { $0.id == dbApp.productId })
+                    ?? BorrowerLoanProduct.sampleProducts.first(where: { $0.id == dbApp.productId })
+                    ?? BorrowerLoanProduct.sampleProducts[0]
+                return dbApp.toBorrowerApplication(product: product)
+            }
+            
+            // Merge with existing local applications to avoid duplicates
+            for remoteApp in mappedApps {
+                if !self.applications.contains(where: { $0.id == remoteApp.id }) {
+                    self.applications.append(remoteApp)
+                }
+            }
+            self.persistState()
+            print("[CentralLoanRepository] Successfully fetched \(mappedApps.count) submitted applications from Supabase for officer view.")
+        } catch {
+            print("[CentralLoanRepository] Failed to fetch all submitted applications: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Syncs a single application to Supabase in the background.
+    private func syncApplicationToSupabase(_ app: BorrowerLoanApplication) {
+        // Resolve the borrower's user ID from AuthManager or the app's form data email
+        guard let uidString = resolveCurrentBorrowerUID(),
+              let borrowerUUID = UUID(uuidString: uidString) else {
+            print("[CentralLoanRepository] Cannot sync to Supabase: no authenticated user ID found.")
+            return
+        }
+        
+        let dbApp = DBLoanApplication.from(borrowerApplication: app, borrowerId: borrowerUUID)
+        Task {
+            do {
+                try await ApplicationService.shared.upsertApplication(dbApp)
+                print("[CentralLoanRepository] Successfully synced application \(app.displayIdentifier) to Supabase.")
+            } catch {
+                print("[CentralLoanRepository] Failed to sync application \(app.displayIdentifier) to Supabase: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    /// Resolves the current authenticated user's UID for use as borrower_id.
+    private nonisolated func resolveCurrentBorrowerUID() -> String? {
+        // Access AuthManager on MainActor since it's @MainActor
+        return MainActor.assumeIsolated {
+            // Try to get the UID from the Supabase session directly
+            if let uid = try? SupabaseManager.shared.client.auth.currentSession?.user.id.uuidString {
+                return uid
+            }
+            return nil
         }
     }
     

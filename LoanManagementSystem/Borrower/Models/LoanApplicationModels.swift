@@ -758,18 +758,18 @@ struct DBLoanApplication: Codable {
     let updatedAt: Date
     
     enum CodingKeys: String, CodingKey {
-        case applicationId
-        case borrowerId
-        case officerId
-        case productId
-        case amountRequested
-        case tenureMonths
+        case applicationId = "application_id"
+        case borrowerId = "borrower_id"
+        case officerId = "officer_id"
+        case productId = "product_id"
+        case amountRequested = "amount_requested"
+        case tenureMonths = "tenure_months"
         case purpose
         case status
-        case formData
-        case stageHistory
-        case submittedAt
-        case updatedAt
+        case formData = "form_data"
+        case stageHistory = "stage_history"
+        case submittedAt = "submitted_at"
+        case updatedAt = "updated_at"
     }
     
     func toBorrowerApplication(product: BorrowerLoanProduct, documents: [BorrowerLoanDocumentItem] = []) -> BorrowerLoanApplication {

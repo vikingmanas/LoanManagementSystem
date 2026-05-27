@@ -69,6 +69,11 @@ final class AuthManager: ObservableObject {
                 self.isAuthStateResolved = true
                 
                 print("[AuthManager] Session restored for user: \(user.email ?? "unknown"), role: \(role ?? "borrower")")
+                
+                // Fetch borrower's applications from Supabase on session restore
+                if role == "borrower" || role == nil {
+                    await CentralLoanRepository.shared.fetchApplicationsFromSupabase(borrowerId: user.id)
+                }
             } catch {
                 // No valid session exists — user needs to log in
                 self.currentUser = nil
@@ -119,6 +124,13 @@ final class AuthManager: ObservableObject {
             )
             self.isAuthenticated = true
             self.isLoading = false
+            
+            // Fetch borrower's applications from Supabase after login
+            if role == "borrower" {
+                Task {
+                    await CentralLoanRepository.shared.fetchApplicationsFromSupabase(borrowerId: user.id)
+                }
+            }
             
             return (true, role)
         } catch {
