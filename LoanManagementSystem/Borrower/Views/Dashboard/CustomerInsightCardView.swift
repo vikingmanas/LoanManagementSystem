@@ -1,9 +1,14 @@
 import SwiftUI
+import Foundation
 
-struct CustomerInsightCardView: View {
-    var profile: BorrowerProfile
-
-    var body: some View {
+public struct CustomerInsightCardView: View {
+    public var profile: BorrowerProfile
+    
+    public init(profile: BorrowerProfile) {
+        self.profile = profile
+    }
+    
+    public var body: some View {
         VStack(spacing: 0) {
 
             HStack(alignment: .top) {
@@ -137,12 +142,18 @@ struct CustomerInsightCardView: View {
     }
 }
 
-struct InsightSummaryItem: View {
-    let title: String
-    let value: String
-    let icon: String
-
-    var body: some View {
+public struct InsightSummaryItem: View {
+    public let title: String
+    public let value: String
+    public let icon: String
+    
+    public init(title: String, value: String, icon: String) {
+        self.title = title
+        self.value = value
+        self.icon = icon
+    }
+    
+    public var body: some View {
         VStack(spacing: 6) {
             Image(systemName: icon)
                 .font(.system(size: 14))

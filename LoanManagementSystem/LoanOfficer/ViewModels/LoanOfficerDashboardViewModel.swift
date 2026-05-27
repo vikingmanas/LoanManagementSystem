@@ -38,7 +38,7 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
     
     // Tab 2 History Filter parameters
-    @Published var historyFilter: ApplicationStatus? = nil
+    @Published var historyFilter: RegistryFilter? = nil
     @Published var historyLoanTypeFilter: LoanType? = nil
     @Published var historySortOrder: HistorySortOrder = .newest
     @Published var historySearchQuery: String = ""
@@ -155,9 +155,22 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     var filteredApplications: [LoanApplication] {
         var list = applications
         
-        // 1. Filter by Status
+        // 1. Filter by Status (Registry Category)
         if let filter = historyFilter {
-            list = list.filter { $0.status == filter }
+            list = list.filter { app in
+                switch filter {
+                case .all:
+                    return true
+                case .newCases:
+                    return [.pending, .applied].contains(app.status)
+                case .underCheck:
+                    return [.underReview, .verificationCompleted, .documentsPending, .documentsRejected, .onHold].contains(app.status)
+                case .approvalQueue:
+                    return [.sentToManager, .finalApprovalPending].contains(app.status) || app.sentToManagerDate != nil
+                case .completed:
+                    return [.approved, .disbursed, .rejected].contains(app.status)
+                }
+            }
         }
         
         // 2. Filter by Loan Type

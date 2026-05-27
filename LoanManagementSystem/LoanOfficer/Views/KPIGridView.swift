@@ -1,9 +1,8 @@
 import SwiftUI
 
 struct KPIGridView: View {
-    typealias ApplicationStatus = OfficerApplicationStatus
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
-    var onCardSelected: (ApplicationStatus?) -> Void
+    var onCardSelected: (RegistryFilter?) -> Void
     
     var body: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: LMSSpacing.md), GridItem(.flexible(), spacing: LMSSpacing.md)], spacing: LMSSpacing.md) {
@@ -13,83 +12,80 @@ struct KPIGridView: View {
                 symbol: "doc.text.fill",
                 symbolColor: LMSColors.actionBlue,
                 value: "\(viewModel.totalApplications)",
-                label: "Total Applications",
-                sub: "This Month",
+                label: "All Records",
+                sub: "Historical database",
                 bottomContent: AnyView(
                     HStack(spacing: 4) {
-                        Image(systemName: "arrow.up.right")
+                        Image(systemName: "arrow.right.circle.fill")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(LMSColors.emerald)
-                        Text("+12%")
+                            .foregroundStyle(LMSColors.actionBlue)
+                        Text("View all activity")
                             .font(.system(.caption2, design: .rounded).bold())
-                            .foregroundStyle(LMSColors.emerald)
-                        Text("vs last month")
-                            .font(.system(.caption2, design: .rounded))
-                            .foregroundStyle(LMSColors.textSecondary)
+                            .foregroundStyle(LMSColors.actionBlue)
                     }
                 ),
-                accessibilityLabel: "Total Applications: \(viewModel.totalApplications). Twelve percent increase since last month."
+                accessibilityLabel: "Total Records: \(viewModel.totalApplications)."
             )
             .onTapGesture {
                 HapticsManager.triggerImpact(style: .light)
-                onCardSelected(nil) // Shows all history
+                onCardSelected(.all)
             }
             
-            // Card A2: Pending Review
+            // Card A2: New Cases
             KPICard(
-                symbol: "hourglass.circle.fill",
+                symbol: "sparkles",
                 symbolColor: LMSColors.amber,
                 value: "\(viewModel.pendingCount)",
-                label: "Pending Review",
-                sub: "Awaiting your action",
+                label: "New Cases",
+                sub: "Pending initial review",
                 bottomContent: AnyView(
-                    Text("Oldest: 3 days ago")
+                    Text("Action required")
                         .font(.system(.caption2, design: .rounded).weight(.semibold))
-                        .foregroundStyle(LMSColors.coral)
+                        .foregroundStyle(LMSColors.amber)
                 ),
-                accessibilityLabel: "Pending Review: \(viewModel.pendingCount). Awaiting action. Oldest submitted three days ago."
+                accessibilityLabel: "New Cases: \(viewModel.pendingCount)."
             )
             .onTapGesture {
                 HapticsManager.triggerImpact(style: .light)
-                onCardSelected(.pending) // Filter history to Pending
+                onCardSelected(.newCases)
             }
             
-            // Card A3: Approved
+            // Card A3: Approval Queue
             KPICard(
-                symbol: "checkmark.circle.fill",
-                symbolColor: LMSColors.emerald,
-                value: "\(viewModel.approvedCount)",
-                label: "Approved",
+                symbol: "person.badge.shield.checkmark",
+                symbolColor: LMSColors.brandNavy,
+                value: "\(viewModel.sentToManagerApps.count)",
+                label: "Approval Queue",
                 sub: "Sent to Manager",
                 bottomContent: AnyView(
-                    Text("₹ 4.2 Cr disbursed")
+                    Text("Awaiting sign-off")
                         .font(.system(.caption2, design: .rounded).weight(.semibold))
-                        .foregroundStyle(LMSColors.emerald)
+                        .foregroundStyle(LMSColors.brandNavy)
                 ),
-                accessibilityLabel: "Approved Applications: \(viewModel.approvedCount). Sent to Manager. Four point two Crore Rupees disbursed."
+                accessibilityLabel: "Approval Queue: \(viewModel.sentToManagerApps.count)."
             )
             .onTapGesture {
                 HapticsManager.triggerImpact(style: .light)
-                onCardSelected(.approved) // Filter history to Approved
+                onCardSelected(.approvalQueue)
             }
             
-            // Card A4: Rejected / On Hold
+            // Card A4: Completed
             KPICard(
-                symbol: "xmark.circle.fill",
-                symbolColor: LMSColors.coral,
-                value: "\(viewModel.rejectedOrHoldCount)",
-                label: "Rejected / On Hold",
-                sub: "Requires re-evaluation",
+                symbol: "checkmark.seal.fill",
+                symbolColor: LMSColors.emerald,
+                value: "\(viewModel.closedThisMonthCount)",
+                label: "Completed",
+                sub: "Closed cases",
                 bottomContent: AnyView(
-                    Text("6 rejected · 5 on hold")
+                    Text("Disbursed/Declined")
                         .font(.system(.caption2, design: .rounded))
                         .foregroundStyle(LMSColors.textSecondary)
                 ),
-                accessibilityLabel: "Rejected or On Hold: \(viewModel.rejectedOrHoldCount). Requires re-evaluation."
+                accessibilityLabel: "Completed Cases: \(viewModel.closedThisMonthCount)."
             )
             .onTapGesture {
                 HapticsManager.triggerImpact(style: .light)
-                onCardSelected(.onHold) // Filter history to On Hold
+                onCardSelected(.completed)
             }
         }
     }
