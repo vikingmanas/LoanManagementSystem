@@ -81,6 +81,65 @@ struct GlobalLoanRules: Codable, Equatable {
     var minCibilScore: Int
     var maxDTI: Double // Debt-to-Income ratio max percentage
     var maxLTV: Double // Loan-to-Value ratio max percentage
+
+    enum CodingKeys: String, CodingKey {
+        case minCibilScore, maxDTI, maxLTV
+        case minCibilScoreSnake = "min_cibil_score"
+        case maxDTISnake = "max_dti"
+        case maxLTVSnake = "max_ltv"
+    }
+
+    init(minCibilScore: Int, maxDTI: Double, maxLTV: Double) {
+        self.minCibilScore = minCibilScore
+        self.maxDTI = maxDTI
+        self.maxLTV = maxLTV
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // Decode minCibilScore (try camelCase, snake_case, or auto-converted key)
+        if let val = try? container.decode(Int.self, forKey: .minCibilScore) {
+            self.minCibilScore = val
+        } else if let val = try? container.decode(Int.self, forKey: .minCibilScoreSnake) {
+            self.minCibilScore = val
+        } else {
+            self.minCibilScore = try container.decode(Int.self, forKey: .minCibilScore)
+        }
+
+        // Decode maxDTI (try Double then Int)
+        if let val = try? container.decode(Double.self, forKey: .maxDTI) {
+            self.maxDTI = val
+        } else if let val = try? container.decode(Int.self, forKey: .maxDTI) {
+            self.maxDTI = Double(val)
+        } else if let val = try? container.decode(Double.self, forKey: .maxDTISnake) {
+            self.maxDTI = val
+        } else if let val = try? container.decode(Int.self, forKey: .maxDTISnake) {
+            self.maxDTI = Double(val)
+        } else {
+            self.maxDTI = try container.decode(Double.self, forKey: .maxDTI)
+        }
+
+        // Decode maxLTV (try Double then Int)
+        if let val = try? container.decode(Double.self, forKey: .maxLTV) {
+            self.maxLTV = val
+        } else if let val = try? container.decode(Int.self, forKey: .maxLTV) {
+            self.maxLTV = Double(val)
+        } else if let val = try? container.decode(Double.self, forKey: .maxLTVSnake) {
+            self.maxLTV = val
+        } else if let val = try? container.decode(Int.self, forKey: .maxLTVSnake) {
+            self.maxLTV = Double(val)
+        } else {
+            self.maxLTV = try container.decode(Double.self, forKey: .maxLTV)
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(minCibilScore, forKey: .minCibilScore)
+        try container.encode(maxDTI, forKey: .maxDTI)
+        try container.encode(maxLTV, forKey: .maxLTV)
+    }
 }
 
 // MARK: - Message Templates

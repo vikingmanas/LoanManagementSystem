@@ -355,23 +355,67 @@ final class AdminDashboardService {
             .execute()
             .value
         
-        return dbTemps.map { dbTemp in
-            let tempType: MessageTemplateType
-            switch dbTemp.notifType.lowercased() {
-            case "email": tempType = .email
-            case "sms": tempType = .sms
-            default: tempType = .push
+        return dbTemps
+            .filter { $0.titleTemplate != "system_rules" }
+            .map { dbTemp in
+                let tempType: MessageTemplateType
+                switch dbTemp.notifType.lowercased() {
+                case "email": tempType = .email
+                case "sms": tempType = .sms
+                default: tempType = .push
+                }
+                
+                return MessageTemplate(
+                    id: dbTemp.templateId,
+                    name: dbTemp.titleTemplate,
+                    subject: dbTemp.titleTemplate,
+                    body: dbTemp.bodyTemplate,
+                    type: tempType,
+                    isActive: dbTemp.isActive
+                )
             }
-            
-            return MessageTemplate(
-                id: dbTemp.templateId,
-                name: dbTemp.titleTemplate,
-                subject: dbTemp.titleTemplate,
-                body: dbTemp.bodyTemplate,
-                type: tempType,
-                isActive: dbTemp.isActive
-            )
+    }
+    
+    struct DBSystemSetting: Codable {
+        let key: String
+        let value: GlobalLoanRules
+        let updatedBy: UUID?
+    }
+
+    // MARK: - Global Threshold Rules
+    func fetchGlobalRules() async throws -> GlobalLoanRules {
+        logger.info("AdminDashboardService: Fetching global rules from system_settings table...")
+        let dbSettings: [DBSystemSetting] = try await client
+            .from("system_settings")
+            .select()
+            .eq("key", value: "global_loan_rules")
+            .execute()
+            .value
+        
+        if let setting = dbSettings.first {
+            return setting.value
         }
+        
+        // Fallback to local default if table row doesn't exist yet
+        let defaultRules = GlobalLoanRules(minCibilScore: 700, maxDTI: 50.0, maxLTV: 80.0)
+        try? await updateGlobalRules(defaultRules)
+        return defaultRules
+    }
+    
+    func updateGlobalRules(_ rules: GlobalLoanRules) async throws {
+        logger.info("AdminDashboardService: Saving global rules to system_settings table...")
+        let adminId = client.auth.currentSession?.user.id
+        
+        let dbSetting = DBSystemSetting(
+            key: "global_loan_rules",
+            value: rules,
+            updatedBy: adminId
+        )
+        
+        try await client
+            .from("system_settings")
+            .upsert(dbSetting, onConflict: "key")
+            .execute()
     }
     
     func upsertNotificationTemplate(_ temp: MessageTemplate) async throws {

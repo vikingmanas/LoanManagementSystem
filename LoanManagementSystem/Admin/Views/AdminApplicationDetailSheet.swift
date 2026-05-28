@@ -219,7 +219,7 @@ struct AdminApplicationDetailSheet: View {
     private func cibilColor(_ score: Int) -> Color {
         if score >= 750 {
             return LMSColors.emerald
-        } else if score >= 650 {
+        } else if score >= CentralLoanRepository.shared.globalRules.minCibilScore {
             return LMSColors.amber
         } else {
             return LMSColors.coral

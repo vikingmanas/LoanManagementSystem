@@ -12,7 +12,7 @@ final class AdminLoanRulesViewModel: ObservableObject {
     @Published var errorMessage: String?
     
     init() {
-        // Load global rules from UserDefaults if saved
+        // Load global rules from UserDefaults if saved (local fallback)
         if let data = UserDefaults.standard.data(forKey: "GlobalLoanRules"),
            let savedRules = try? JSONDecoder().decode(GlobalLoanRules.self, from: data) {
             self.globalRules = savedRules
@@ -26,6 +26,14 @@ final class AdminLoanRulesViewModel: ObservableObject {
         do {
             let products = try await AdminDashboardService.shared.fetchLoanProducts()
             loanProducts = products
+            
+            let rules = try await AdminDashboardService.shared.fetchGlobalRules()
+            self.globalRules = rules
+            
+            // Sync local cache
+            if let encoded = try? JSONEncoder().encode(rules) {
+                UserDefaults.standard.set(encoded, forKey: "GlobalLoanRules")
+            }
         } catch {
             logger.error("AdminLoanRulesViewModel: Failed to load rules: \(error.localizedDescription)")
             errorMessage = "Failed to load loan rules."
@@ -61,9 +69,18 @@ final class AdminLoanRulesViewModel: ObservableObject {
     }
     
     func updateGlobalRules(_ rules: GlobalLoanRules) async {
+        errorMessage = nil
         globalRules = rules
-        if let encoded = try? JSONEncoder().encode(rules) {
-            UserDefaults.standard.set(encoded, forKey: "GlobalLoanRules")
+        do {
+            try await AdminDashboardService.shared.updateGlobalRules(rules)
+            if let encoded = try? JSONEncoder().encode(rules) {
+                UserDefaults.standard.set(encoded, forKey: "GlobalLoanRules")
+            }
+            // Update central repository singleton in real-time for current session
+            CentralLoanRepository.shared.globalRules = rules
+        } catch {
+            logger.error("AdminLoanRulesViewModel: Failed to save rules to Supabase: \(error.localizedDescription)")
+            errorMessage = "Failed to save global thresholds to Supabase: \(error.localizedDescription)"
         }
     }
     

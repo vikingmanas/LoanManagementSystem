@@ -3,6 +3,9 @@ import SwiftUI
 struct AdminLoanRulesTabView: View {
     @StateObject private var viewModel = AdminLoanRulesViewModel()
     @State private var showingAddSheet = false
+    @State private var showingAlert = false
+    @State private var alertTitle = ""
+    @State private var alertMessage = ""
     
     var body: some View {
         NavigationStack {
@@ -41,6 +44,30 @@ struct AdminLoanRulesTabView: View {
                         Label("Max LTV Ratio", systemImage: "house.fill")
                             .font(LMSFont.body)
                     }
+                    
+                    Button(action: {
+                        Task {
+                            await viewModel.updateGlobalRules(viewModel.globalRules)
+                            if let error = viewModel.errorMessage {
+                                alertTitle = "Error"
+                                alertMessage = error
+                                showingAlert = true
+                            } else {
+                                alertTitle = "Success"
+                                alertMessage = "Global thresholds updated successfully."
+                                showingAlert = true
+                            }
+                        }
+                    }) {
+                        HStack {
+                            Spacer()
+                            Text("Save Global Thresholds")
+                                .font(LMSFont.button)
+                                .bold()
+                            Spacer()
+                        }
+                    }
+                    .foregroundColor(LMSColors.actionBlue)
                 }
                 
                 Section("Loan Products") {
@@ -93,6 +120,17 @@ struct AdminLoanRulesTabView: View {
             }
             .sheet(isPresented: $showingAddSheet) {
                 AdminAddLoanProductSheet(viewModel: viewModel)
+            }
+            .alert(alertTitle, isPresented: $showingAlert) {
+                Button("OK", role: .cancel) {
+                    if alertTitle == "Error" {
+                        Task {
+                            await viewModel.loadRules()
+                        }
+                    }
+                }
+            } message: {
+                Text(alertMessage)
             }
         }
     }

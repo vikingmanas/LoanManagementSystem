@@ -234,14 +234,14 @@ private struct CIBILScoreCard: View {
 
     private var color: Color {
         if score >= 750 { return LMSColors.emerald }
-        if score >= 650 { return LMSColors.amber }
+        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return LMSColors.amber }
         return LMSColors.coral
     }
 
     private var rating: String {
         if score >= 750 { return "Excellent" }
         if score >= 700 { return "Good" }
-        if score >= 650 { return "Fair" }
+        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return "Fair" }
         return "Poor"
     }
 

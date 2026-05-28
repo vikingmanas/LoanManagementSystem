@@ -228,7 +228,7 @@ final class LoanApplicationViewModel: ObservableObject {
     var preSubmissionWarnings: [String] {
         var warnings = blockingSubmissionIssues
 
-        if formData.creditScoreValue > 0 && formData.creditScoreValue < 650 {
+        if formData.creditScoreValue > 0 && formData.creditScoreValue < CentralLoanRepository.shared.globalRules.minCibilScore {
             warnings.append("Credit score appears low. Approval chance may reduce unless liabilities are improved.")
         }
 
@@ -239,7 +239,7 @@ final class LoanApplicationViewModel: ObservableObject {
 
         if formData.monthlyIncomeValue > 0 {
             let liabilityRatio = (formData.existingEMIsValue + formData.creditCardObligationsValue) / formData.monthlyIncomeValue
-            if liabilityRatio > 0.45 {
+            if liabilityRatio > (CentralLoanRepository.shared.globalRules.maxDTI / 100.0) {
                 warnings.append("Existing liability ratio is high; consider reducing obligations before submission.")
             }
         }
@@ -255,7 +255,7 @@ final class LoanApplicationViewModel: ObservableObject {
         var summary: [String] = []
 
         if formData.creditScoreValue > 0 {
-            let scoreBand = formData.creditScoreValue >= 750 ? "Strong" : (formData.creditScoreValue >= 650 ? "Moderate" : "Low")
+            let scoreBand = formData.creditScoreValue >= 750 ? "Strong" : (formData.creditScoreValue >= CentralLoanRepository.shared.globalRules.minCibilScore ? "Moderate" : "Low")
             summary.append("Credit strength: \(scoreBand) (\(formData.creditScoreValue)).")
         }
 
@@ -665,7 +665,7 @@ final class LoanApplicationViewModel: ObservableObject {
         case .loanOfficerReview:
             nextStage = .bankManagerReview
         case .bankManagerReview:
-            nextStage = application.formData.creditScoreValue < 650 ? .rejected : .approved
+            nextStage = application.formData.creditScoreValue < CentralLoanRepository.shared.globalRules.minCibilScore ? .rejected : .approved
         case .approved:
             nextStage = .disbursed
         case .draft, .rejected, .disbursed:
