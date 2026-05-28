@@ -247,14 +247,7 @@ enum ManagerMockData {
     ]
 
 
-    static let kpis: [ManagerKPI] = [
-        ManagerKPI(title: "TOTAL DISBURSED", value: "₹4.8 Cr", subtitle: "Goal: ₹6.0 Cr", icon: "indianrupeesign.circle.fill", tint: LMSColors.emerald, trend: .up, trendValue: "+12.4%", progress: 0.80),
-        ManagerKPI(title: "APPROVAL RATE", value: "92.4%", subtitle: "Target: >90%", icon: "checkmark.seal.fill", tint: LMSColors.actionBlue, trend: .up, trendValue: "+2.1%", progress: 0.924),
-        ManagerKPI(title: "CLEARANCE QUEUE", value: "3 Loans", subtitle: "Awaiting action", icon: "clock.badge.exclamationmark", tint: LMSColors.amber, trend: .neutral, trendValue: "–", progress: 0.40),
-        ManagerKPI(title: "RECOVERY RATE", value: "97.8%", subtitle: "Excellent", icon: "arrow.uturn.backward.circle.fill", tint: LMSColors.teal, trend: .up, trendValue: "+0.5%", progress: 0.978),
-        ManagerKPI(title: "NPL RATE", value: "0.45%", subtitle: "Risk: Low", icon: "shield.checkmark.fill", tint: LMSColors.coral, trend: .down, trendValue: "−0.12%", progress: 0.045),
-        ManagerKPI(title: "ACTIVE LOANS", value: "247", subtitle: "Across all types", icon: "doc.text.fill", tint: LMSColors.brandNavy, trend: .up, trendValue: "+18", progress: 0.72)
-    ]
+
 
 
     static let branchOverview = BranchOverview(

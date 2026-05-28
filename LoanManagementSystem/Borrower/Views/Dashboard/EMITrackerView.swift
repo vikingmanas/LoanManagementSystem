@@ -143,7 +143,7 @@ struct UpcomingEMICard: View {
                 onPayTap()
             } label: {
                 HStack {
-                    Text(isSufficient ? "Authorize Payment" : "Add Funds to Pay")
+                    Text(isSufficient ? "Authorize Payment" : "Insufficient Balance")
                         .font(.system(.body, design: .rounded).bold())
                     Spacer()
                     Image(systemName: "arrow.right")

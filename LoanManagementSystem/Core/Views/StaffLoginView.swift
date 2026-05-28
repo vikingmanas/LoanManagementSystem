@@ -29,38 +29,42 @@ struct StaffLoginView: View {
                         Button(action: {
                             HapticsManager.triggerImpact(style: .medium)
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                appState.showRoleSelection = true
+                                appState.selectedRole = .customer
                             }
                         }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "chevron.left")
-                                Text("Back to Roles")
-                            }
-                            .font(.system(.body, design: .rounded).weight(.semibold))
-                            .foregroundColor(Color.AppTheme.primary)
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(Color.AppTheme.textPrimary)
+                                .frame(width: 44, height: 44)
+                                .background(Circle().fill(Color(UIColor.systemGray5)))
+                                .overlay(
+                                    Circle()
+                                        .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+                                )
                         }
+                        .buttonStyle(.plain)
                         .padding(.top, 16)
 
 
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(spacing: 12) {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color.AppTheme.primary.opacity(0.12))
-                                        .frame(width: 44, height: 44)
-
-                                    Image(systemName: appState.selectedRole.icon)
-                                        .font(.title3)
-                                        .foregroundColor(Color.AppTheme.primary)
-                                }
-
-                                Text("Branch Staff")
-                                    .font(.system(.caption, design: .rounded).weight(.bold))
-                                    .foregroundColor(.secondary)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 4)
-                                    .background(Color.secondary.opacity(0.1))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+//                                ZStack {
+//                                    RoundedRectangle(cornerRadius: 12)
+//                                        .fill(Color.AppTheme.primary.opacity(0.12))
+//                                        .frame(width: 44, height: 44)
+//
+//                                    Image(systemName: appState.selectedRole.icon)
+//                                        .font(.title3)
+//                                        .foregroundColor(Color.AppTheme.primary)
+//                                }
+//
+//                                Text("Branch Staff")
+//                                    .font(.system(.caption, design: .rounded).weight(.bold))
+//                                    .foregroundColor(.secondary)
+//                                    .padding(.horizontal, 10)
+//                                    .padding(.vertical, 4)
+//                                    .background(Color.secondary.opacity(0.1))
+//                                    .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
 
                             Text("\(appState.selectedRole.rawValue) Portal")
@@ -71,7 +75,7 @@ struct StaffLoginView: View {
                                 .font(Font.AppTheme.subtitle)
                                 .foregroundColor(Color.AppTheme.textSecondary)
                         }
-                        .padding(.top, 12)
+//                        .padding(.top, 12)
 
 
                         if !generalError.isEmpty {
@@ -90,12 +94,11 @@ struct StaffLoginView: View {
                         }
 
 
-                        VStack(spacing: 20) {
+                        VStack(alignment: .leading, spacing: 20) {
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("EMPLOYEE ID")
-                                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                                Text("Employee ID")
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
                                     .foregroundColor(Color.AppTheme.textSecondary)
-                                    .padding(.leading, 4)
 
                                 CustomTextField(
                                     icon: "person.text.rectangle",
@@ -107,10 +110,9 @@ struct StaffLoginView: View {
                             }
 
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("PASSWORD")
-                                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                                Text("Password")
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
                                     .foregroundColor(Color.AppTheme.textSecondary)
-                                    .padding(.leading, 4)
 
                                 SecureInputField(
                                     placeholder: "Branch Password",
@@ -119,30 +121,39 @@ struct StaffLoginView: View {
                                     errorMessage: passwordError
                                 )
                             }
-                        }
 
+                            HStack(alignment: .top, spacing: 8) {
+                                Image(systemName: "info.circle")
+                                    .foregroundColor(.secondary)
+                                    .font(.footnote)
 
-                        HStack(alignment: .top, spacing: 8) {
-                            Image(systemName: "info.circle")
-                                .foregroundColor(.secondary)
-                                .font(.footnote)
-
-                            Text("Staff IDs correspond to branch assignments (e.g. Loan Officer starts with 'LO', Bank Manager with 'BM', Admin with 'AD').")
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.top, 4)
-
-
-                        PrimaryButton(
-                            title: "Authorize Portal Access",
-                            isLoading: isLoading,
-                            isDisabled: !isFormValid,
-                            action: {
-                                handleStaffLogin()
+                                Text("Staff IDs correspond to branch assignments (e.g. Loan Officer starts with 'LO', Bank Manager with 'BM', Admin with 'AD').")
+                                    .font(LMSFont.caption)
+                                    .foregroundColor(Color.AppTheme.textSecondary)
                             }
-                        )
-                        .padding(.top, 12)
+
+                            Button {
+                                handleStaffLogin()
+                            } label: {
+                                HStack(spacing: 10) {
+                                    if isLoading {
+                                        ProgressView()
+                                            .progressViewStyle(.circular)
+                                            .tint(.white)
+                                    }
+                                    Text("Sign In")
+                                        .font(LMSFont.button)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 50)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.blue)
+                            .disabled(!isFormValid || isLoading)
+                            .accessibilityLabel("Sign In")
+                            .accessibilityAddTraits(.isButton)
+                            .padding(.top, 4)
+                        }
 
                         Spacer()
                             .frame(height: 40)

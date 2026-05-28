@@ -1,97 +1,136 @@
 import SwiftUI
 
-// MARK: - Navigation Route
-private enum LoanApplicationRoute: Hashable {
-    case overview(BorrowerLoanProduct)
-    case combinedApplication
-    case verificationResult
-    case tracking(BorrowerLoanApplication)
-}
+// MARK: - Loans Tab (Marketplace only — no applications here)
 
-// MARK: - Main Tab View
 struct LoanApplicationTabView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
+    @EnvironmentObject private var authManager: AuthManager
+    @EnvironmentObject private var tabRouter: BorrowerTabRouter
     @State private var navigationPath = NavigationPath()
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // MARK: Native Segmented Control
-                    Picker("Loan Hub", selection: $viewModel.selectedSegment) {
-                        ForEach(LoanHubSegment.allCases) { segment in
-                            Text(segment.rawValue).tag(segment)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal, 16)
-                    
-                    Group {
-                        switch viewModel.selectedSegment {
-                        case .discover:
-                            LoanDiscoveryContent(viewModel: viewModel) { product in
-                                viewModel.startDraft(for: product)
-                                navigationPath.append(LoanApplicationRoute.overview(product))
-                            }
-                        case .applications:
-                            BorrowerApplicationsContent(viewModel: viewModel) { application in
-                                navigationPath.append(LoanApplicationRoute.tracking(application))
-                            }
-                        }
-                    }
+            LoansMarketplaceView(
+                viewModel: viewModel,
+                onProductDetail: { product in
+                    navigationPath.append(LoanApplicationRoute.productDetail(product))
+                },
+                onApply: { product in
+                    viewModel.startDraft(for: product)
+                    navigationPath.append(LoanApplicationRoute.applicationWizard(product))
                 }
-                .padding(.top, 12)
-                .padding(.bottom, 32)
-            }
+            )
             .background(LMSColors.background)
             .navigationTitle("Loans")
             .navigationBarTitleDisplayMode(.large)
+            .task(id: authManager.userEmail) {
+                viewModel.setBorrowerAuthContext(
+                    email: authManager.userEmail ?? "",
+                    displayName: authManager.userDisplayName
+                )
+            }
             .navigationDestination(for: LoanApplicationRoute.self) { route in
                 switch route {
-                case .overview(let product):
+                case .productDetail(let product):
+                    LoanProductDetailView(product: product) {
+                        viewModel.startDraft(for: product)
+                        navigationPath.append(LoanApplicationRoute.applicationWizard(product))
+                    }
+                case .applicationWizard(let product):
                     BorrowerLoanWizardView(viewModel: viewModel, product: product) {
                         navigationPath = NavigationPath()
-                        viewModel.selectedSegment = .applications
+                        tabRouter.select(.applications)
                     }
-                case .combinedApplication:
-                    EmptyView()
-                case .verificationResult:
-                    EmptyView()
+                    .environmentObject(authManager)
                 case .tracking(let application):
-                    LoanApplicationTrackingScreen(viewModel: viewModel, application: application)
+                    LoanApplicationTrackingScreen(
+                        viewModel: viewModel,
+                        application: application,
+                        onResume: {
+                            viewModel.resumeDraft(application)
+                            navigationPath.append(LoanApplicationRoute.applicationWizard(application.product))
+                        },
+                        onDelete: {
+                            if viewModel.deleteDraft(applicationID: application.id),
+                               !navigationPath.isEmpty {
+                                navigationPath.removeLast()
+                            }
+                        }
+                    )
                 }
             }
         }
     }
 }
 
-// MARK: - Discovery Content
+// MARK: - Legacy discovery (kept for reference — superseded by LoansMarketplaceView)
+#if false
 private struct LoanDiscoveryContent: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let onSelectProduct: (BorrowerLoanProduct) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Select Your Loan")
-                    .font(.headline)
-                    .foregroundStyle(LMSColors.textPrimary)
-                Text("Compare amount, rate, and processing time.")
-                    .font(.subheadline)
-                    .foregroundStyle(LMSColors.textSecondary)
+        VStack(spacing: 14) {
+            // Search Bar
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .font(.system(size: 15, weight: .semibold))
+                
+                TextField("Search loans...", text: $viewModel.searchQuery)
+                    .font(.system(.body, design: .rounded))
+                    .foregroundColor(LMSColors.textPrimary)
+                    .autocorrectionDisabled()
+                
+                if !viewModel.searchQuery.isEmpty {
+                    Button(action: {
+                        viewModel.searchQuery = ""
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(LMSColors.textSecondary)
+                            .font(.system(size: 16))
+                    }
+                }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+            )
+            .padding(.bottom, 6)
 
-            VStack(spacing: 14) {
-                ForEach(viewModel.products) { product in
+            if viewModel.filteredProducts.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 40))
+                        .foregroundStyle(LMSColors.brandNavy)
+                        .symbolRenderingMode(.hierarchical)
+                        .padding(.top, 24)
+                    
+                    Text("No Loans Found")
+                        .font(.system(.headline, design: .rounded).weight(.bold))
+                        .foregroundColor(LMSColors.textPrimary)
+                    
+                    Text("We couldn't find any loans matching \"\(viewModel.searchQuery)\". Try searching for other terms like 'home', 'personal', or 'gold'.")
+                        .font(.system(.subheadline, design: .rounded))
+                        .foregroundColor(LMSColors.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                }
+                .padding(.vertical, 20)
+            } else {
+                ForEach(viewModel.filteredProducts) { product in
                     LoanProductCard(product: product)
                         .onTapGesture {
                             onSelectProduct(product)
                         }
                 }
             }
-            .padding(.horizontal, 16)
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
 }
 
@@ -105,6 +144,7 @@ private struct LoanProductCard: View {
                 Image(systemName: product.type.iconName)
                     .font(.system(size: 21, weight: .bold))
                     .foregroundStyle(LMSColors.brandNavy)
+                    .symbolRenderingMode(.hierarchical)
                     .frame(width: 46, height: 46)
                     .background(LMSColors.brandNavy.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
@@ -150,6 +190,7 @@ private struct LoanProductCard: View {
                     tint: LMSColors.emerald
                 )
             }
+            .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
         .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -173,10 +214,11 @@ private struct LoanProductMetricChip: View {
             HStack(spacing: 4) {
                 Image(systemName: icon)
                     .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(tint)
                 Text(title.uppercased())
                     .font(.system(size: 8, weight: .black, design: .rounded))
+                    .foregroundStyle(LMSColors.textSecondary)
             }
-            .foregroundStyle(LMSColors.textSecondary)
 
             Text(value)
                 .font(.system(size: 13, weight: .bold, design: .rounded))
@@ -185,7 +227,7 @@ private struct LoanProductMetricChip: View {
                 .minimumScaleFactor(0.78)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(.horizontal, 10)
         .padding(.vertical, 10)
         .background(LMSColors.background.opacity(0.55), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -614,43 +656,87 @@ private struct BorrowerApplicationsContent: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let onSelectApplication: (BorrowerLoanApplication) -> Void
 
-    var body: some View {
-        VStack(spacing: 20) {
-            // Metrics Section
-            HStack(spacing: 12) {
-                MetricBadge(title: "Active", value: "\(viewModel.dashboardMetrics.activeApplications)", color: .blue)
-                MetricBadge(title: "Approved", value: "\(viewModel.dashboardMetrics.approvedLoans)", color: .green)
-                MetricBadge(title: "Drafts", value: "\(viewModel.dashboardMetrics.draftApplications)", color: .gray)
-            }
-            .padding(.horizontal, 16)
+    @State private var draftPendingDeletion: BorrowerLoanApplication?
+    @State private var showDeleteDraftConfirmation = false
 
-            // Application Rows with spacing
-            VStack(alignment: .leading, spacing: 12) {
-                if !viewModel.draftApplications.isEmpty {
+    var body: some View {
+        List {
+            Section {
+                HStack(spacing: 12) {
+                    MetricBadge(title: "Active", value: "\(viewModel.dashboardMetrics.activeApplications)", color: .blue)
+                    MetricBadge(title: "Approved", value: "\(viewModel.dashboardMetrics.approvedLoans)", color: .green)
+                    MetricBadge(title: "Drafts", value: "\(viewModel.dashboardMetrics.draftApplications)", color: .gray)
+                }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+            }
+
+            if !viewModel.draftApplications.isEmpty {
+                Section {
                     Text("DRAFTS")
                         .font(.caption.bold())
                         .foregroundStyle(LMSColors.textSecondary)
-                        .padding(.horizontal, 16)
-                    
+                        .listRowInsets(EdgeInsets(top: 14, leading: 16, bottom: 6, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+
                     ForEach(viewModel.draftApplications) { app in
                         ApplicationCard(application: app)
-                            .onTapGesture { onSelectApplication(app) }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                onSelectApplication(app)
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    draftPendingDeletion = app
+                                    showDeleteDraftConfirmation = true
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
                     }
-                    .padding(.horizontal, 16)
+                }
+            }
+
+            Section {
+                if !viewModel.filteredSubmittedApplications.isEmpty {
+                    Text("RECENT APPLICATIONS")
+                        .font(.caption.bold())
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .listRowInsets(EdgeInsets(top: 14, leading: 16, bottom: 6, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                 }
 
-                Text("RECENT APPLICATIONS")
-                    .font(.caption.bold())
-                    .foregroundStyle(LMSColors.textSecondary)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                
                 ForEach(viewModel.filteredSubmittedApplications) { app in
                     ApplicationCard(application: app)
-                        .onTapGesture { onSelectApplication(app) }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            onSelectApplication(app)
+                        }
+                        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                 }
-                .padding(.horizontal, 16)
             }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(LMSColors.background)
+        .alert("Delete Draft?", isPresented: $showDeleteDraftConfirmation, presenting: draftPendingDeletion) { app in
+            Button("Delete", role: .destructive) {
+                viewModel.deleteDraft(applicationID: app.id)
+                draftPendingDeletion = nil
+            }
+            Button("Cancel", role: .cancel) {
+                draftPendingDeletion = nil
+            }
+        } message: { app in
+            Text("This will permanently delete draft \(app.displayIdentifier). You cannot undo this action.")
         }
     }
 }
@@ -722,11 +808,16 @@ private struct ApplicationCard: View {
     }
 }
 
+#endif
+
 // MARK: - Loan Application Tracking Screen
-private struct LoanApplicationTrackingScreen: View {
+struct LoanApplicationTrackingScreen: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let application: BorrowerLoanApplication
-    @Environment(\.dismiss) private var dismiss
+    let onResume: () -> Void
+    let onDelete: () -> Void
+
+    @State private var showDeleteConfirmation = false
 
     var body: some View {
         List {
@@ -766,6 +857,20 @@ private struct LoanApplicationTrackingScreen: View {
                                 .foregroundStyle(application.currentStage.tintColor)
                         }
                     }
+
+                    if application.isDraft {
+                        Button(action: onResume) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "arrow.uturn.forward.circle.fill")
+                                Text("Resume Application")
+                                    .fontWeight(.semibold)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(LMSColors.brandNavy)
+                    }
                 }
                 .padding(.vertical, 12)
             }
@@ -797,6 +902,23 @@ private struct LoanApplicationTrackingScreen: View {
         }
         .navigationTitle("Tracking")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if application.isDraft {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(role: .destructive) {
+                        showDeleteConfirmation = true
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                }
+            }
+        }
+        .alert("Delete Draft?", isPresented: $showDeleteConfirmation) {
+            Button("Delete", role: .destructive, action: onDelete)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will permanently delete draft \(application.displayIdentifier). You cannot undo this action.")
+        }
     }
 
     private func isStageCompleted(_ stage: BorrowerApplicationStage, current: BorrowerApplicationStage, stages: [BorrowerApplicationStage]) -> Bool {

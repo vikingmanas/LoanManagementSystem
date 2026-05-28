@@ -11,7 +11,7 @@ import SwiftUI
 struct LoanManagementSystemApp: App {
     
     /// Shared authentication manager injected into the environment.
-    @StateObject private var authManager = AuthManager()
+    @StateObject private var authManager = AuthManager.shared
     
     init() {}
     

@@ -1,18 +1,6 @@
 import SwiftUI
 import UIKit
 
-fileprivate struct VisualEffectView: UIViewRepresentable {
-    var effect: UIVisualEffect?
-
-    func makeUIView(context: Context) -> UIVisualEffectView {
-        UIVisualEffectView(effect: effect)
-    }
-
-    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
-        uiView.effect = effect
-    }
-}
-
 struct LoanOfficerDashboardView: View {
     @StateObject private var viewModel = LoanOfficerDashboardViewModel()
     @State private var selectedTab: OfficerWorkspaceTab = .dashboard
@@ -73,6 +61,7 @@ enum OfficerWorkspaceTab: Hashable {
 // MARK: - Dashboard Main View
 
 private struct LoanOfficerTodayView: View {
+    @EnvironmentObject var authManager: AuthManager
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Binding var selectedTab: OfficerWorkspaceTab
     var onNotifications: () -> Void
@@ -90,16 +79,36 @@ private struct LoanOfficerTodayView: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: LMSSpacing.lg) {
-                workloadStrip
-                nextBestActionCard
-                reviewSnapshot
-                escalationsSection
-                toolsGrid
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: LMSSpacing.xl) {
+                
+                OfficerActionItemsRow(
+                    viewModel: viewModel,
+                    selectedTab: $selectedTab,
+                    showingEscalationSheet: $showingEscalationSheet
+                )
+                .padding(.top, LMSSpacing.md)
+
+                if let app = nextApplication {
+                    OfficerNextActionCard(app: app, selectedApp: $selectedApplication)
+                }
+
+                OfficerReviewSnapshotView(
+                    viewModel: viewModel,
+                    selectedTab: $selectedTab,
+                    selectedApplication: $selectedApplication
+                )
+
+                OfficerEscalationsSection(
+                    viewModel: viewModel,
+                    selectedApplication: $selectedApplication
+                )
+
+                OfficerAnalyticsSection(viewModel: viewModel)
+                
+                Spacer()
+                    .frame(height: LMSSpacing.xxxl)
             }
-            .padding(.horizontal, LMSSpacing.screenHorizontal)
-            .padding(.bottom, LMSSpacing.xxl)
         }
         .background(LMSColors.background)
         .navigationTitle("Dashboard")
@@ -111,7 +120,7 @@ private struct LoanOfficerTodayView: View {
                 .accessibilityLabel("Notifications")
 
                 Button(action: onProfile) {
-                    Text("AK")
+                    Text(authManager.currentStaffProfile?.initials ?? "AK")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(.white)
                         .frame(width: 30, height: 30)
@@ -135,77 +144,187 @@ private struct LoanOfficerTodayView: View {
             OfficerEscalationSheet()
         }
     }
+}
 
-    // MARK: - Workload KPI Strip
+// MARK: - Action Items
 
-    private var workloadStrip: some View {
-        HStack(spacing: LMSSpacing.md) {
-            OfficerMetricPill(title: "Pending", value: "\(viewModel.pendingCount)", icon: "clock", tint: .orange) {
-                HapticsManager.triggerImpact(style: .light)
-                routeRegistry(.pending)
+private struct OfficerActionItemsRow: View {
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Binding var selectedTab: OfficerWorkspaceTab
+    @Binding var showingEscalationSheet: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            Text("Action Items")
+                .font(.system(.title3, design: .rounded).bold())
+                .foregroundStyle(LMSColors.textPrimary)
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+
+            HStack(spacing: LMSSpacing.md) {
+                OfficerActionCard(
+                    title: "Pending Docs",
+                    value: "\(viewModel.pendingDocumentCount)",
+                    icon: "doc.badge.clock",
+                    tint: viewModel.pendingDocumentCount == 0 ? LMSColors.emerald : LMSColors.actionBlue,
+                    action: {
+                        HapticsManager.triggerImpact(style: .light)
+                        selectedTab = .review
+                    }
+                )
+
+                OfficerActionCard(
+                    title: "Ready to Send",
+                    value: "\(viewModel.sentToManagerApps.count)",
+                    icon: "paperplane.fill",
+                    tint: viewModel.sentToManagerApps.isEmpty ? LMSColors.emerald : LMSColors.coral,
+                    action: {
+                        HapticsManager.triggerImpact(style: .light)
+                        viewModel.historyFilter = .newCases
+                        selectedTab = .registry
+                    }
+                )
             }
-            OfficerMetricPill(title: "Docs", value: "\(viewModel.pendingDocumentCount)", icon: "doc.badge.clock", tint: .blue) {
-                HapticsManager.triggerImpact(style: .light)
-                selectedTab = .review
-            }
-            OfficerMetricPill(title: "Ready", value: "\(viewModel.sentToManagerApps.count)", icon: "paperplane", tint: .green) {
-                HapticsManager.triggerImpact(style: .light)
-                selectedTab = .registry
-            }
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
         }
     }
+}
 
-    // MARK: - Next Best Action
+private struct OfficerActionCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    let tint: Color
+    let action: () -> Void
 
-    private var nextBestActionCard: some View {
-        NativeGlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Label("Next best action", systemImage: "sparkles")
-                    .font(.headline)
-                    .foregroundStyle(.primary)
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: LMSSpacing.md) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous)
+                        .fill(tint.opacity(0.12))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: icon)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(tint)
+                }
 
-                if let app = nextApplication {
-                    HStack(alignment: .center, spacing: 12) {
-                        OfficerAvatar(name: app.borrowerName, tint: app.loanType.themeColor)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(app.borrowerName)
-                                .font(.body.weight(.semibold))
-                            Text("\(app.loanType.rawValue) · \(CurrencyFormatter.shared.format(app.requestedAmount))")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Text(app.status.rawValue)
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(app.status.themeColor)
-                        }
-
-                        Spacer()
-
-                        Button {
-                            selectedApplication = app
-                        } label: {
-                            Image(systemName: "chevron.right")
-                                .font(.headline.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Open application")
-                    }
-                } else {
-                    ContentUnavailableView("No urgent case", systemImage: "checkmark.seal", description: Text("All priority work is clear."))
-                        .frame(minHeight: 100)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(value)
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(LMSColors.textPrimary)
+                    Text(title)
+                        .font(.system(.subheadline, design: .rounded).bold())
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(LMSSpacing.lg)
+            .background(LMSColors.surfaceElevated)
+            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+            .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Next Action Card
+
+private struct OfficerNextActionCard: View {
+    let app: OfficerLoanApplication
+    @Binding var selectedApp: OfficerLoanApplication?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            Text("Next Best Action")
+                .font(.system(.title3, design: .rounded).bold())
+                .foregroundStyle(LMSColors.textPrimary)
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+
+            Button {
+                selectedApp = app
+            } label: {
+                HStack(alignment: .center, spacing: 12) {
+                    OfficerAvatar(name: app.borrowerName, tint: app.loanType.themeColor)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(app.borrowerName)
+                            .font(.system(.body, design: .rounded).weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                        Text("\(app.loanType.rawValue) · \(CurrencyFormatter.shared.format(app.requestedAmount))")
+                            .font(.system(.subheadline, design: .rounded))
+                            .foregroundStyle(LMSColors.textSecondary)
+                        Text(app.status.rawValue)
+                            .font(.system(.caption, design: .rounded).weight(.semibold))
+                            .foregroundStyle(app.status.themeColor)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(.headline, design: .rounded).weight(.semibold))
+                        .foregroundStyle(LMSColors.textTertiary)
+                }
+                .padding(LMSSpacing.lg)
+                .background(LMSColors.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
         }
     }
+}
 
-    // MARK: - Review Snapshot
+// MARK: - Review Queue Snapshot
 
-    private var reviewSnapshot: some View {
+private struct OfficerReviewSnapshotView: View {
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Binding var selectedTab: OfficerWorkspaceTab
+    @Binding var selectedApplication: OfficerLoanApplication?
+
+    var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
-            SectionTitle("Review queue", subtitle: "Newest uploads and re-uploads")
+            HStack {
+                Text("Review Queue")
+                    .font(.system(.title3, design: .rounded).bold())
+                    .foregroundStyle(LMSColors.textPrimary)
 
-            NativeGlassCard(padding: 0) {
+                Spacer()
+
+                Button(action: {
+                    HapticsManager.triggerImpact(style: .light)
+                    selectedTab = .review
+                }) {
+                    HStack(spacing: 4) {
+                        Text("View All")
+                            .font(.system(.subheadline, design: .rounded).bold())
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .bold))
+                    }
+                    .foregroundStyle(LMSColors.actionBlue)
+                }
+            }
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
+
+            if viewModel.documentQueueList.isEmpty {
+                ContentUnavailableView(
+                    "Queue Clear",
+                    systemImage: "checkmark.circle.fill",
+                    description: Text("No documents currently require your review.")
+                )
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, LMSSpacing.xl)
+                .background(LMSColors.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                        .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+                )
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+            } else {
                 VStack(spacing: 0) {
                     ForEach(Array(viewModel.documentQueueList.prefix(4).enumerated()), id: \.element.id) { index, item in
                         NavigationLink {
@@ -213,60 +332,42 @@ private struct LoanOfficerTodayView: View {
                         } label: {
                             OfficerDocumentRow(item: item)
                                 .padding(.horizontal, LMSSpacing.lg)
+                                .padding(.vertical, 4)
                         }
                         .buttonStyle(.plain)
 
                         if index < min(viewModel.documentQueueList.count, 4) - 1 {
-                            Divider().padding(.leading, 76)
+                            Divider()
+                                .padding(.leading, 72)
                         }
                     }
-
-                    Divider()
-
-                    Button {
-                        selectedTab = .review
-                    } label: {
-                        HStack {
-                            Text("Open full review queue")
-                                .font(.subheadline.weight(.semibold))
-                            Spacer()
-                            Image(systemName: "arrow.right")
-                                .font(.caption.weight(.bold))
-                        }
-                        .foregroundStyle(LMSColors.actionBlue)
-                        .padding(LMSSpacing.lg)
-                    }
-                    .buttonStyle(.plain)
                 }
+                .background(LMSColors.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
             }
         }
     }
+}
 
-    // MARK: - Escalations (formerly Manager Follow-Up)
+// MARK: - Escalations Section
 
-    private var escalationsSection: some View {
+private struct OfficerEscalationsSection: View {
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Binding var selectedApplication: OfficerLoanApplication?
+
+    var body: some View {
         let needsClarification = viewModel.sentToManagerApps.filter { $0.managerStatus == .needsClarification }
 
-        return VStack(alignment: .leading, spacing: LMSSpacing.md) {
-            SectionTitle("Escalations", subtitle: "Manager clarifications & approval status")
+        if !needsClarification.isEmpty {
+            VStack(alignment: .leading, spacing: LMSSpacing.md) {
+                Text("Escalations")
+                    .font(.system(.title3, design: .rounded).bold())
+                    .foregroundStyle(LMSColors.textPrimary)
+                    .padding(.horizontal, LMSSpacing.screenHorizontal)
 
-            NativeGlassCard(padding: 0) {
-                if needsClarification.isEmpty {
-                    HStack(spacing: 12) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                            .font(.title3)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("No escalations pending")
-                                .font(.subheadline.weight(.semibold))
-                            Text("All submitted cases are awaiting manager action.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                    }
-                    .padding(LMSSpacing.lg)
-                } else {
+                VStack(spacing: 0) {
                     ForEach(Array(needsClarification.enumerated()), id: \.element.id) { index, app in
                         Button {
                             selectedApplication = app
@@ -280,32 +381,163 @@ private struct LoanOfficerTodayView: View {
                         }
                     }
                 }
+                .background(LMSColors.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
             }
         }
-    }
-
-    // MARK: - Tools Grid
-
-    private var toolsGrid: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
-            SectionTitle("Officer tools", subtitle: "Quick utilities")
-
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: LMSSpacing.md) {
-                OfficerToolCard(title: "Review docs", icon: "doc.text.magnifyingglass", tint: .blue) { selectedTab = .review }
-                OfficerToolCard(title: "Messages", icon: "message.badge", tint: .teal) { selectedTab = .messages }
-                OfficerToolCard(title: "Reports", icon: "chart.bar.xaxis", tint: .purple) { showingReportConfirmation = true }
-                OfficerToolCard(title: "Escalate", icon: "arrow.up.forward.circle", tint: .red) { showingEscalationSheet = true }
-            }
-        }
-    }
-
-    private func routeRegistry(_ status: OfficerApplicationStatus?) {
-        viewModel.historyFilter = status
-        selectedTab = .registry
     }
 }
 
-// MARK: - Review Queue
+// MARK: - Analytics Section
+
+private struct OfficerAnalyticsSection: View {
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @State private var showPipelineDetails = false
+
+    private var stats: (pending: Int, underReview: Int, sentToManager: Int, completed: Int) {
+        let pending = viewModel.applications.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending || $0.status == .documentsRejected }.count
+        let underReview = viewModel.applications.filter { $0.status == .underReview }.count
+        let sent = viewModel.applications.filter { $0.status == .verificationCompleted || $0.status == .sentToManager || $0.status == .finalApprovalPending }.count
+        let completed = viewModel.applications.filter { $0.status == .approved || $0.status == .disbursed || $0.status == .rejected }.count
+        return (pending, underReview, sent, completed)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            Text("Case Pipeline")
+                .font(.system(.title3, design: .rounded).bold())
+                .foregroundStyle(LMSColors.textPrimary)
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+            
+            Button(action: {
+                HapticsManager.triggerImpact(style: .medium)
+                showPipelineDetails = true
+            }) {
+                VStack(alignment: .leading, spacing: LMSSpacing.md) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Current Caseload")
+                            .font(.system(.headline, design: .rounded).bold())
+                            .foregroundStyle(LMSColors.textPrimary)
+                        Text("Breakdown of all applications assigned to you")
+                            .font(.system(.subheadline, design: .rounded))
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+                    
+                    OfficerPipelineChart(stats: stats)
+                }
+                .padding(LMSSpacing.lg)
+                .background(LMSColors.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
+        }
+        .sheet(isPresented: $showPipelineDetails) {
+            LoanOfficerPipelineDetailsSheet(viewModel: viewModel)
+        }
+    }
+}
+
+private struct OfficerPipelineChart: View {
+    let stats: (pending: Int, underReview: Int, sentToManager: Int, completed: Int)
+    @State private var animated = false
+
+    private var total: Double {
+        max(Double(stats.pending + stats.underReview + stats.sentToManager + stats.completed), 1)
+    }
+
+    var body: some View {
+        HStack(spacing: LMSSpacing.xl) {
+            ZStack {
+                Circle()
+                    .stroke(LMSColors.separatorLight, lineWidth: 11)
+                    .frame(width: 96, height: 96)
+
+                Circle()
+                    .trim(from: 0, to: animated ? Double(stats.pending) / total : 0)
+                    .stroke(LMSColors.amber, style: StrokeStyle(lineWidth: 11, lineCap: .round))
+                    .frame(width: 96, height: 96)
+                    .rotationEffect(.degrees(-90))
+
+                Circle()
+                    .trim(from: Double(stats.pending) / total, to: animated ? Double(stats.pending + stats.underReview) / total : Double(stats.pending) / total)
+                    .stroke(LMSColors.actionBlue, style: StrokeStyle(lineWidth: 11, lineCap: .round))
+                    .frame(width: 96, height: 96)
+                    .rotationEffect(.degrees(-90))
+                    
+                Circle()
+                    .trim(from: Double(stats.pending + stats.underReview) / total, to: animated ? Double(stats.pending + stats.underReview + stats.sentToManager) / total : Double(stats.pending + stats.underReview) / total)
+                    .stroke(Color.purple, style: StrokeStyle(lineWidth: 11, lineCap: .round))
+                    .frame(width: 96, height: 96)
+                    .rotationEffect(.degrees(-90))
+
+                Circle()
+                    .trim(
+                        from: Double(stats.pending + stats.underReview + stats.sentToManager) / total,
+                        to: animated ? 1.0 : Double(stats.pending + stats.underReview + stats.sentToManager) / total
+                    )
+                    .stroke(LMSColors.emerald, style: StrokeStyle(lineWidth: 11, lineCap: .round))
+                    .frame(width: 96, height: 96)
+                    .rotationEffect(.degrees(-90))
+
+                VStack(spacing: 2) {
+                    Text("\(Int(total))")
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .foregroundStyle(LMSColors.textPrimary)
+                    Text("Total")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+            }
+            
+            VStack(alignment: .leading, spacing: 10) {
+                ChartLegendRow(color: LMSColors.amber, label: "Pending Docs", count: stats.pending)
+                ChartLegendRow(color: LMSColors.actionBlue, label: "In Review", count: stats.underReview)
+                ChartLegendRow(color: Color.purple, label: "Manager Auth", count: stats.sentToManager)
+                ChartLegendRow(color: LMSColors.emerald, label: "Completed", count: stats.completed)
+            }
+            
+            Spacer(minLength: 0)
+            
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(LMSColors.textTertiary)
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.8).delay(0.2)) {
+                animated = true
+            }
+        }
+    }
+}
+
+private struct ChartLegendRow: View {
+    let color: Color
+    let label: String
+    let count: Int
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
+            Text(label)
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundStyle(LMSColors.textSecondary)
+                .lineLimit(1)
+            Spacer()
+            Text("\(count)")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(LMSColors.textPrimary)
+        }
+    }
+}
+
+
+// MARK: - Review Queue Tab
 
 private struct LoanOfficerReviewQueueView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
@@ -405,103 +637,6 @@ private struct OfficerEscalationSheet: View {
     }
 }
 
-// MARK: - Glass Card
-
-private struct NativeGlassCard<Content: View>: View {
-    var padding: CGFloat = 16
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        content
-            .padding(padding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .nativeOfficerGlass(cornerRadius: LMSRadius.card)
-    }
-}
-
-// MARK: - Section Title
-
-private struct SectionTitle: View {
-    let title: String
-    let subtitle: String?
-
-    init(_ title: String, subtitle: String? = nil) {
-        self.title = title
-        self.subtitle = subtitle
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(.headline)
-            if let subtitle {
-                Text(subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-// MARK: - Metric Pill
-
-private struct OfficerMetricPill: View {
-    let title: String
-    let value: String
-    let icon: String
-    let tint: Color
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 8) {
-                Image(systemName: icon)
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(tint)
-                Text(value)
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(.primary)
-                Text(title)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(LMSSpacing.lg)
-            .nativeOfficerGlass(cornerRadius: LMSRadius.xl, interactive: true)
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-// MARK: - Tool Card
-
-private struct OfficerToolCard: View {
-    let title: String
-    let icon: String
-    let tint: Color
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(tint)
-                    .frame(width: 36, height: 36)
-                    .background(tint.opacity(0.12), in: Circle())
-                Text(title)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
-                Spacer()
-            }
-            .padding(LMSSpacing.lg)
-            .nativeOfficerGlass(cornerRadius: LMSRadius.xl, interactive: true)
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 // MARK: - Document Row
 
 struct OfficerDocumentRow: View {
@@ -510,19 +645,19 @@ struct OfficerDocumentRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: item.docType.symbol)
-                .font(.headline.weight(.semibold))
+                .font(.system(.headline, design: .rounded).weight(.semibold))
                 .foregroundStyle(item.docType.iconColor)
                 .frame(width: 44, height: 44)
                 .background(item.docType.iconColor.opacity(0.12), in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.borrowerName)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .font(.system(.body, design: .rounded).weight(.semibold))
+                    .foregroundStyle(LMSColors.textPrimary)
                     .lineLimit(1)
                 Text("\(item.docType.rawValue) · \(item.applicationId)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundStyle(LMSColors.textSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.9)
             }
@@ -530,7 +665,7 @@ struct OfficerDocumentRow: View {
             Spacer(minLength: 4)
 
             Text(item.status.rawValue)
-                .font(.caption.weight(.semibold))
+                .font(.system(.caption, design: .rounded).weight(.semibold))
                 .foregroundStyle(item.status.themeColor)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 5)
@@ -555,23 +690,24 @@ struct OfficerApplicationCompactRow: View {
             OfficerAvatar(name: app.borrowerName, tint: app.loanType.themeColor)
             VStack(alignment: .leading, spacing: 4) {
                 Text(app.borrowerName)
-                    .font(.body.weight(.semibold))
+                    .font(.system(.body, design: .rounded).weight(.semibold))
+                    .foregroundStyle(LMSColors.textPrimary)
                 Text("\(app.loanType.rawValue) · \(app.applicationId)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundStyle(LMSColors.textSecondary)
             }
             Spacer()
             if let accessory {
                 Text(accessory)
-                    .font(.caption.weight(.semibold))
+                    .font(.system(.caption, design: .rounded).weight(.semibold))
                     .foregroundStyle(LMSColors.actionBlue)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(LMSColors.actionBlue.opacity(0.12), in: Capsule())
             } else {
                 Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.tertiary)
+                    .font(.system(.caption, design: .rounded).weight(.bold))
+                    .foregroundStyle(LMSColors.textTertiary)
             }
         }
         .padding(LMSSpacing.lg)
@@ -590,28 +726,10 @@ struct OfficerAvatar: View {
 
     var body: some View {
         Text(initials)
-            .font(.subheadline.weight(.bold))
+            .font(.system(.subheadline, design: .rounded).weight(.bold))
             .foregroundStyle(tint)
             .frame(width: 44, height: 44)
             .background(tint.opacity(0.12), in: Circle())
-    }
-}
-
-// MARK: - Glass Effect
-
-extension View {
-    @ViewBuilder
-    func nativeOfficerGlass(cornerRadius: CGFloat = LMSRadius.xl, interactive: Bool = false) -> some View {
-        if #available(iOS 26.0, *) {
-            self.glassEffect(interactive ? .regular.interactive() : .regular, in: .rect(cornerRadius: cornerRadius))
-        } else {
-            self
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .stroke(Color.primary.opacity(0.06), lineWidth: 0.5)
-                )
-        }
     }
 }
 
@@ -675,6 +793,161 @@ struct NotificationsFeedSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+        }
+    }
+}
+private struct LoanOfficerPipelineDetailsSheet: View {
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Environment(\.dismiss) var dismiss
+
+    private var pendingApps: [OfficerLoanApplication] {
+        viewModel.applications.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending || $0.status == .documentsRejected }
+    }
+    
+    private var underReviewApps: [OfficerLoanApplication] {
+        viewModel.applications.filter { $0.status == .underReview }
+    }
+    
+    private var sentToManagerApps: [OfficerLoanApplication] {
+        viewModel.applications.filter { $0.status == .verificationCompleted || $0.status == .sentToManager || $0.status == .finalApprovalPending }
+    }
+    
+    private var completedApps: [OfficerLoanApplication] {
+        viewModel.applications.filter { $0.status == .approved || $0.status == .disbursed || $0.status == .rejected }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if viewModel.applications.isEmpty {
+                    ContentUnavailableView(
+                        "No Cases",
+                        systemImage: "folder.badge.minus",
+                        description: Text("No applications have been assigned to you yet.")
+                    )
+                } else {
+                    List {
+                        PipelineSection(title: "Pending Action", applications: pendingApps, icon: "clock.fill", tint: LMSColors.amber)
+                        PipelineSection(title: "In Review", applications: underReviewApps, icon: "magnifyingglass", tint: LMSColors.actionBlue)
+                        PipelineSection(title: "Submitted", applications: sentToManagerApps, icon: "paperplane.fill", tint: Color.purple)
+                        PipelineSection(title: "Completed", applications: completedApps, icon: "checkmark.seal.fill", tint: LMSColors.emerald)
+                    }
+                    .listStyle(.insetGrouped)
+                }
+            }
+            .navigationTitle("Pipeline Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Close") { dismiss() }
+                        .font(.system(.body, design: .rounded).bold())
+                }
+            }
+        }
+    }
+}
+
+private struct PipelineSection: View {
+    let title: String
+    let applications: [OfficerLoanApplication]
+    let icon: String
+    let tint: Color
+
+    var body: some View {
+        if !applications.isEmpty {
+            Section {
+                ForEach(applications) { app in
+                    HStack(spacing: LMSSpacing.md) {
+                        OfficerAvatar(name: app.borrowerName, tint: app.loanType.themeColor)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(app.borrowerName)
+                                .font(.system(.callout, design: .rounded).bold())
+                                .foregroundStyle(LMSColors.textPrimary)
+                            Text("\(app.loanType.rawValue) · \(app.applicationId)")
+                                .font(.system(.caption, design: .rounded))
+                                .foregroundStyle(LMSColors.textSecondary)
+                        }
+
+                        Spacer()
+
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text(CurrencyFormatter.shared.format(app.requestedAmount))
+                                .font(.system(.subheadline, design: .rounded).bold())
+                                .foregroundStyle(LMSColors.textPrimary)
+                            
+                            Text(app.status.displayName)
+                                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                .foregroundStyle(app.status.themeColor)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(app.status.themeColor.opacity(0.12), in: Capsule())
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            } header: {
+                HStack {
+                    Image(systemName: icon)
+                    Text(title)
+                    Spacer()
+                    Text("\(applications.count)")
+                }
+                .font(.system(.subheadline, design: .rounded).bold())
+                .foregroundStyle(tint)
+            }
+        }
+    }
+}
+
+private struct OfficerApplicationListSheet: View {
+    let title: String
+    let systemImage: String
+    let description: String
+    let applications: [OfficerLoanApplication]
+    
+    @Environment(\.dismiss) var dismiss
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @State private var selectedApplication: OfficerLoanApplication?
+    
+    var body: some View {
+        NavigationStack {
+            Group {
+                if applications.isEmpty {
+                    ContentUnavailableView(
+                        title,
+                        systemImage: systemImage,
+                        description: Text(description)
+                    )
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: LMSSpacing.sm) {
+                            ForEach(applications) { application in
+                                Button(action: {
+                                    HapticsManager.triggerImpact(style: .medium)
+                                    selectedApplication = application
+                                }) {
+                                    OfficerApplicationCompactRow(app: application, accessory: "View")
+                                }
+                                .buttonStyle(LMSPressableStyle())
+                            }
+                        }
+                        .padding(LMSSpacing.screenHorizontal)
+                        .padding(.vertical, LMSSpacing.md)
+                    }
+                    .background(LMSColors.background)
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Close") { dismiss() }
+                }
+            }
+            .sheet(item: $selectedApplication) { application in
+                LoanApplicationReviewDetailView(applicationId: application.applicationId, viewModel: viewModel)
             }
         }
     }

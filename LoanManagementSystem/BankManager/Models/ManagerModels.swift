@@ -214,38 +214,6 @@ struct ManagerStaffProfile: Hashable {
 }
 
 
-struct ManagerKPI: Identifiable, Hashable {
-    let id = UUID()
-    var title: String
-    var value: String
-    var subtitle: String
-    var icon: String
-    var tint: Color
-    var trend: KPITrend
-    var trendValue: String
-    var progress: Double
-
-    enum KPITrend: String, Hashable {
-        case up, down, neutral
-
-        var icon: String {
-            switch self {
-            case .up:      return "arrow.up.right"
-            case .down:    return "arrow.down.right"
-            case .neutral: return "minus"
-            }
-        }
-
-        var color: Color {
-            switch self {
-            case .up:      return LMSColors.emerald
-            case .down:    return LMSColors.coral
-            case .neutral: return LMSColors.textSecondary
-            }
-        }
-    }
-}
-
 
 struct ManagerNotificationItem: Identifiable, Hashable {
     let id: UUID

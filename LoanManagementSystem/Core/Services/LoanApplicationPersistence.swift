@@ -18,11 +18,13 @@ struct StoredLoanApplication: Codable {
     var assignedQueue: String?
     var outstandingBalance: Double
     var upcomingEMI: Double
+    var documents: [BorrowerLoanDocumentItem]?
 }
 
 struct StoredLoanFormData: Codable {
     var fullName: String
     var dateOfBirth: Date
+    var gender: String?
     var mobileNumber: String
     var emailAddress: String
     var address: String
@@ -45,6 +47,34 @@ struct StoredLoanFormData: Codable {
     var hasGuarantor: Bool
     var guarantorDetails: String
     var gstNumber: String
+
+    enum CodingKeys: String, CodingKey {
+        case fullName
+        case dateOfBirth
+        case gender
+        case mobileNumber
+        case emailAddress
+        case address
+        case occupation
+        case employmentType
+        case employerName
+        case workExperienceYears
+        case monthlyIncome
+        case annualIncome
+        case existingLoans
+        case existingEMIs = "existingEmIs"
+        case creditCardObligations
+        case creditScore
+        case loanAmountRequested
+        case loanPurpose
+        case repaymentPreference
+        case preferredTenureMonths
+        case hasCoApplicant
+        case coApplicantDetails
+        case hasGuarantor
+        case guarantorDetails
+        case gstNumber
+    }
 }
 
 struct StoredDisbursementEvent: Codable {
@@ -123,6 +153,7 @@ enum LoanApplicationPersistence {
             formData: StoredLoanFormData(
                 fullName: app.formData.fullName,
                 dateOfBirth: app.formData.dateOfBirth,
+                gender: app.formData.gender,
                 mobileNumber: app.formData.mobileNumber,
                 emailAddress: app.formData.emailAddress,
                 address: app.formData.address,
@@ -154,7 +185,8 @@ enum LoanApplicationPersistence {
             updatedAt: app.updatedAt,
             assignedQueue: app.assignedQueue,
             outstandingBalance: app.outstandingBalance,
-            upcomingEMI: app.upcomingEMI
+            upcomingEMI: app.upcomingEMI,
+            documents: app.documents
         )
     }
 
@@ -169,6 +201,7 @@ enum LoanApplicationPersistence {
         let formData = BorrowerLoanFormData(
             fullName: stored.formData.fullName,
             dateOfBirth: stored.formData.dateOfBirth,
+            gender: stored.formData.gender ?? "",
             mobileNumber: stored.formData.mobileNumber,
             emailAddress: stored.formData.emailAddress,
             address: stored.formData.address,
@@ -203,7 +236,7 @@ enum LoanApplicationPersistence {
             applicationId: stored.applicationId,
             product: product,
             formData: formData,
-            documents: BorrowerLoanDocumentItem.defaultRequirements(for: product),
+            documents: stored.documents ?? BorrowerLoanDocumentItem.defaultRequirements(for: product),
             currentStage: stage,
             stageHistory: history.isEmpty ? [BorrowerStageEntry(stage: stage, timestamp: stored.updatedAt, note: "Restored application")] : history,
             submittedAt: stored.submittedAt,
