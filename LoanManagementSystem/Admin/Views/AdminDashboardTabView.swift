@@ -7,6 +7,7 @@ struct AdminDashboardTabView: View {
     @EnvironmentObject private var authManager: AuthManager
     
     let columns = [GridItem(.flexible()), GridItem(.flexible())]
+    @State private var selectedKPI: KPIType? = nil
 
     var body: some View {
         NavigationStack {
@@ -41,6 +42,9 @@ struct AdminDashboardTabView: View {
             .task {
                 await viewModel.loadDashboardData()
             }
+            .sheet(item: $selectedKPI) { kpi in
+                AdminApplicationListSheet(kpiType: kpi, applications: viewModel.rawApplications)
+            }
         }
     }
     
@@ -60,31 +64,40 @@ struct AdminDashboardTabView: View {
     private var kpiSection: some View {
         LazyVGrid(columns: columns, spacing: 16) {
             ForEach(viewModel.kpis) { kpi in
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Image(systemName: kpi.icon)
-                            .font(.title2)
-                            .foregroundStyle(kpi.themeColor)
-                        Spacer()
-                        HStack(spacing: 2) {
-                            Image(systemName: kpi.trend >= 0 ? "arrow.up.right" : "arrow.down.right")
-                            Text("\(abs(kpi.trend), specifier: "%.1f")%")
+                Button {
+                    selectedKPI = KPIType(rawValue: kpi.title)
+                } label: {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: kpi.icon)
+                                .font(.title2)
+                                .foregroundStyle(kpi.themeColor)
+                            Spacer()
+                            HStack(spacing: 2) {
+                                Image(systemName: kpi.trend >= 0 ? "arrow.up.right" : "arrow.down.right")
+                                Text("\(abs(kpi.trend), specifier: "%.1f")%")
+                            }
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(kpi.trend >= 0 ? LMSColors.emerald : LMSColors.coral)
                         }
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(kpi.trend >= 0 ? LMSColors.emerald : LMSColors.coral)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(kpi.value)
+                                .font(LMSFont.title)
+                            Text(kpi.title)
+                                .font(LMSFont.caption)
+                                .foregroundStyle(LMSColors.textSecondary)
+                        }
                     }
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(kpi.value)
-                            .font(LMSFont.title)
-                        Text(kpi.title)
-                            .font(LMSFont.caption)
-                            .foregroundStyle(LMSColors.textSecondary)
-                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: LMSRadius.lg)
+                            .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+                    )
                 }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg))
+                .buttonStyle(.plain)
             }
         }
     }
@@ -182,3 +195,14 @@ struct AdminDashboardTabView: View {
         }
     }
 }
+
+// MARK: - KPI Type Enum
+enum KPIType: String, Identifiable, CaseIterable {
+    case totalApplications = "Total Applications"
+    case activeLoans = "Active Loans"
+    case pendingApprovals = "Pending Approvals"
+    case totalDisbursed = "Total Disbursed"
+    
+    var id: String { rawValue }
+}
+

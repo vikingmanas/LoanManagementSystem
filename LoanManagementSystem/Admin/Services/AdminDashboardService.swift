@@ -89,6 +89,7 @@ final class AdminDashboardService {
         let serverUptime: Double
         let lastBackupTime: Date
         let recentAuditLogs: [AuditLogEntry]
+        let rawApplications: [DBLoanApplication]
     }
     
     // MARK: - Core Dashboard Operations
@@ -207,7 +208,8 @@ final class AdminDashboardService {
             activeSessions: max(1, activeSessionsCount),
             serverUptime: Double(String(format: "%.2f", serverUptime)) ?? 99.98,
             lastBackupTime: lastBackupTime,
-            recentAuditLogs: mappedLogs
+            recentAuditLogs: mappedLogs,
+            rawApplications: dbApps
         )
     }
     

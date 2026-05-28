@@ -9,6 +9,7 @@ final class AdminDashboardViewModel: ObservableObject {
     @Published var systemHealth = SystemHealth(serverUptime: 100.0, activeSessions: 0, lastBackupTime: Date())
     @Published var recentAuditLogs: [AuditLogEntry] = []
     @Published var approvalBreakdown: (approved: Int, rejected: Int, pending: Int) = (0, 0, 0)
+    @Published var rawApplications: [DBLoanApplication] = []
     
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -37,6 +38,7 @@ final class AdminDashboardViewModel: ObservableObject {
             )
             
             recentAuditLogs = Array(data.recentAuditLogs.prefix(3))
+            rawApplications = data.rawApplications
             
         } catch {
             logger.error("AdminDashboardViewModel: Failed to load dashboard data: \(error.localizedDescription)")
