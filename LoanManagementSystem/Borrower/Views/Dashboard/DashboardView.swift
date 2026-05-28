@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreImage.CIFilterBuiltins
+import UIKit
 
 // MARK: - Navigation Destinations
 public enum DashboardRoute: Hashable {
@@ -194,6 +195,15 @@ public struct DashboardView: View {
 
                     LoanPortfolioSummarySection(viewModel: viewModel)
 
+                    DashboardQuickActionsSection(
+                        onApplyLoan: { tabRouter.select(.loans) },
+                        onPayEMI: { showingQuickPaySheet = true },
+                        onStatement: { showingStatementSheet = true },
+                        onSupport: { showingSupportSheet = true },
+                        onCalculator: { showingCalculatorAlert = true },
+                        onForeclosure: { showingForeclosureSheet = true }
+                    )
+
                     ActiveLoanAccountsSection(
                         viewModel: viewModel,
                         onLoanTap: { loan in
@@ -204,26 +214,18 @@ public struct DashboardView: View {
                         }
                     )
 
-                    UpcomingPaymentSection(
-                        viewModel: viewModel,
-                        onPayNow: { showingQuickPaySheet = true },
-                        onViewAll: { navigationPath.append(.allPendingEMIs) }
-                    )
-
-                    DashboardQuickActionsSection(
-                        onApplyLoan: { tabRouter.select(.loans) },
-                        onPayEMI: { showingQuickPaySheet = true },
-                        onStatement: { showingStatementSheet = true },
-                        onSupport: { showingSupportSheet = true },
-                        onCalculator: { showingCalculatorAlert = true }
-                    )
-
                     TransactionHistorySection(
                         transactions: viewModel.recentTransactions,
                         accounts: viewModel.bankAccounts,
                         onViewAll: {
                             navigationPath.append(.transactionHistory)
                         }
+                    )
+
+                    UpcomingPaymentSection(
+                        viewModel: viewModel,
+                        onPayNow: { showingQuickPaySheet = true },
+                        onViewAll: { navigationPath.append(.allPendingEMIs) }
                     )
                 }
                 .padding(.top, LMSSpacing.sm)
@@ -309,7 +311,7 @@ public struct DashboardView: View {
                 StatementSheet(viewModel: viewModel)
             }
             .sheet(isPresented: $showingForeclosureSheet) {
-                ForeclosureSheet()
+                ForeclosureSheet(viewModel: viewModel)
             }
             .sheet(isPresented: $showingSupportSheet) {
                 SupportSheet()
@@ -630,65 +632,784 @@ struct StatementSheet: View {
 }
 
 struct ForeclosureSheet: View {
+    @ObservedObject var viewModel: DashboardViewModel
     @Environment(\.dismiss) var dismiss
-    @State private var showingToast = false
-    
+    @State private var step: ForeclosureStep = .selectLoan
+    @State private var selectedLoan: DashboardLoanAccount?
+    @State private var reason: ForeclosureReason = .financiallyStable
+    @State private var reasonDetails = ""
+    @State private var documents = ForeclosureDocument.defaultDocuments
+    @State private var signatureImage: UIImage?
+    @State private var confirmedClosure = false
+    @State private var acceptedCharges = false
+    @State private var authorizedBank = false
+    @State private var selectedUploadTarget: ForeclosureUploadTarget?
+    @State private var showingUploadSource = false
+    @State private var showingImagePicker = false
+    @State private var showingSuccess = false
+    @State private var isSubmitting = false
+    @State private var requestID = ""
+
+    private var activeLoans: [DashboardLoanAccount] {
+        viewModel.loanAccounts.filter { $0.principalOutstanding > 0 }
+    }
+
+    private var selectedSummary: ForeclosureAmountSummary? {
+        selectedLoan.map(ForeclosureAmountSummary.init)
+    }
+
+    private var canContinue: Bool {
+        switch step {
+        case .selectLoan:
+            return selectedLoan != nil
+        case .details:
+            return selectedLoan != nil
+        case .reason:
+            return reasonDetails.trimmingCharacters(in: .whitespacesAndNewlines).count >= 20
+        case .documents:
+            return documents.filter(\.isRequired).allSatisfy { $0.status == .uploaded || $0.status == .pendingVerification }
+        case .authorization:
+            return signatureImage != nil && confirmedClosure && acceptedCharges && authorizedBank
+        case .review:
+            return true
+        }
+    }
+
+    private var ctaTitle: String {
+        switch step {
+        case .review:
+            return isSubmitting ? "Submitting..." : "Submit Foreclosure Request"
+        case .authorization:
+            return "Review Request"
+        default:
+            return "Continue"
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    VStack(spacing: 16) {
-                        Image(systemName: "lock.shield.fill")
-                            .font(.system(size: 64))
-                            .foregroundStyle(LMSColors.coral)
-                        
-                        Text("Loan Foreclosure")
-                            .font(.title2.bold())
-                        
-                        Text("Securely close your active loan account before the tenure ends.")
-                            .multilineTextAlignment(.center)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 24)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 24)
-                }
-                .listRowBackground(Color.clear)
-                
-                Section {
-                    Text("Standard foreclosure charges (1-2%) apply on the outstanding principal. Our advisor will walk you through the final steps and calculation.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } header: {
-                    Text("Information")
-                }
-                
-                Section {
-                    Button {
-                        showingToast = true
-                    } label: {
-                        HStack {
-                            Spacer()
-                            Text("Schedule Advisor Call")
-                                .fontWeight(.bold)
-                            Spacer()
-                        }
-                    }
-                }
+                foreclosureHeader
+                stepContent
             }
+            .scrollContentBackground(.hidden)
+            .background(LMSColors.background)
             .navigationTitle("Foreclosure")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
+                if step != .selectLoan && !showingSuccess {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Back") {
+                            withAnimation(.smooth(duration: 0.22)) {
+                                step = step.previous
+                            }
+                        }
+                    }
+                }
             }
-            .alert("Callback Scheduled", isPresented: $showingToast) {
-                Button("OK", role: .cancel) { dismiss() }
+            .safeAreaInset(edge: .bottom) {
+                if !showingSuccess {
+                    bottomCTA
+                }
+            }
+            .confirmationDialog("Upload Document", isPresented: $showingUploadSource, titleVisibility: .visible) {
+                Button("Choose PNG, JPG or JPEG from Gallery") {
+                    showingImagePicker = true
+                }
+                Button("Cancel", role: .cancel) {}
             } message: {
-                Text("An expert will call you within 24 business hours to assist with the closure.")
+                Text("Gallery upload only")
             }
+            .sheet(isPresented: $showingImagePicker) {
+                ForeclosureImagePicker { image in
+                    showingImagePicker = false
+                    handleUpload(image)
+                } onCancel: {
+                    showingImagePicker = false
+                }
+            }
+            .fullScreenCover(isPresented: $showingSuccess) {
+                ForeclosureSuccessView(requestID: requestID) {
+                    showingSuccess = false
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var stepContent: some View {
+        switch step {
+        case .selectLoan:
+            loanSelectionSection
+        case .details:
+            foreclosureDetailsSection
+        case .reason:
+            reasonSection
+        case .documents:
+            requiredDocumentsSection
+        case .authorization:
+            authorizationSection
+        case .review:
+            reviewSection
+        }
+    }
+
+    private var foreclosureHeader: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(step.title)
+                            .font(.system(.title3, design: .rounded).weight(.bold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                        Text(step.subtitle)
+                            .font(.subheadline)
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+                    Spacer()
+                    Image(systemName: "lock.open.shield.fill")
+                        .font(.title2)
+                        .foregroundStyle(Color.orange)
+                        .frame(width: 42, height: 42)
+                        .background(Color.orange.opacity(0.12), in: Circle())
+                }
+
+                ProgressView(value: Double(step.rawValue + 1), total: Double(ForeclosureStep.allCases.count))
+                    .tint(Color.orange)
+
+                HStack(spacing: 6) {
+                    ForEach(ForeclosureStep.allCases, id: \.self) { item in
+                        Capsule()
+                            .fill(item.rawValue <= step.rawValue ? Color.orange : LMSColors.separatorLight)
+                            .frame(height: 5)
+                    }
+                }
+            }
+            .padding(.vertical, 6)
+        }
+        .listRowBackground(LMSColors.surface)
+    }
+
+    private var loanSelectionSection: some View {
+        Section {
+            if activeLoans.isEmpty {
+                ContentUnavailableView("No active loan accounts", systemImage: "building.columns", description: Text("Foreclosure requests can be started after a loan is active."))
+            } else {
+                ForEach(activeLoans) { loan in
+                    ForeclosureLoanCard(
+                        loan: loan,
+                        isSelected: selectedLoan?.id == loan.id
+                    ) {
+                        withAnimation(.smooth(duration: 0.2)) {
+                            selectedLoan = loan
+                        }
+                        HapticsManager.triggerImpact(style: .light)
+                    }
+                    .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+                    .listRowBackground(Color.clear)
+                }
+            }
+        } header: {
+            Text("Select Loan Account")
+        }
+    }
+
+    private var foreclosureDetailsSection: some View {
+        Group {
+            if let summary = selectedSummary {
+                Section {
+                    LabeledContent("Outstanding Principal", value: summary.principal.formattedAsINR())
+                    LabeledContent("Interest Due", value: summary.interestDue.formattedAsINR())
+                    LabeledContent("Foreclosure Charges", value: summary.charges.formattedAsINR())
+                    LabeledContent("GST", value: summary.gst.formattedAsINR())
+                    LabeledContent("Total Payable", value: summary.total.formattedAsINR())
+                        .font(.headline)
+                } header: {
+                    Text("Foreclosure Details")
+                } footer: {
+                    Text("Final amount may vary by payment date, loan product, and bank policy.")
+                }
+
+                Section {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("Things to Know Before Foreclosure", systemImage: "exclamationmark.triangle.fill")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(Color.orange)
+                        ForEach(ForeclosureAmountSummary.notices, id: \.self) { notice in
+                            Label(notice, systemImage: "circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(LMSColors.textSecondary)
+                        }
+                    }
+                    .padding(.vertical, 6)
+                }
+                .listRowBackground(Color.orange.opacity(0.10))
+            }
+        }
+    }
+
+    private var reasonSection: some View {
+        Section {
+            Picker("Reason", selection: $reason) {
+                ForEach(ForeclosureReason.allCases) { reason in
+                    Text(reason.rawValue).tag(reason)
+                }
+            }
+
+            TextField("Please explain your foreclosure request briefly.", text: $reasonDetails, axis: .vertical)
+                .lineLimit(5, reservesSpace: true)
+                .textInputAutocapitalization(.sentences)
+
+            HStack {
+                Text("Minimum 20 characters")
+                Spacer()
+                Text("\(reasonDetails.trimmingCharacters(in: .whitespacesAndNewlines).count)/20")
+            }
+            .font(.caption)
+            .foregroundStyle(canContinue ? LMSColors.emerald : LMSColors.textSecondary)
+        } header: {
+            Text("Reason for Closure")
+        } footer: {
+            Text("This helps the servicing team validate the closure request and prepare the correct foreclosure statement.")
+        }
+    }
+
+    private var requiredDocumentsSection: some View {
+        Section {
+            ForEach(documents) { document in
+                ForeclosureDocumentRow(document: document) {
+                    selectedUploadTarget = .document(document.id)
+                    showingUploadSource = true
+                }
+            }
+        } header: {
+            Text("Required Documents")
+        } footer: {
+            Text("Only PNG, JPG, and JPEG images are accepted. Camera and PDF upload are disabled for this request.")
+        }
+    }
+
+    private var authorizationSection: some View {
+        Group {
+            Section {
+                if let signatureImage {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Image(uiImage: signatureImage)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: .infinity, minHeight: 90, maxHeight: 120)
+                            .padding(10)
+                            .background(LMSColors.surfaceTertiary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        HStack {
+                            Button("Replace") {
+                                selectedUploadTarget = .signature
+                                showingUploadSource = true
+                            }
+                            Spacer()
+                            Button("Remove", role: .destructive) {
+                                self.signatureImage = nil
+                            }
+                        }
+                        .font(.caption.weight(.bold))
+                    }
+                } else {
+                    Button {
+                        selectedUploadTarget = .signature
+                        showingUploadSource = true
+                    } label: {
+                        Label("Upload Signature Image", systemImage: "signature")
+                    }
+                }
+            } header: {
+                Text("Signature & Authorization")
+            } footer: {
+                Text("PNG with transparent background is preferred. JPG and JPEG are also accepted.")
+            }
+
+            Section {
+                Toggle("I confirm I want to close this loan account.", isOn: $confirmedClosure)
+                Toggle("I understand foreclosure charges may apply.", isOn: $acceptedCharges)
+                Toggle("I authorize the bank to process this closure request.", isOn: $authorizedBank)
+            } header: {
+                Text("Legal Consent")
+            }
+        }
+    }
+
+    private var reviewSection: some View {
+        Group {
+            if let loan = selectedLoan, let summary = selectedSummary {
+                Section {
+                    LabeledContent("Loan", value: loan.loanType)
+                    LabeledContent("Account", value: maskedAccount(loan.accountNumber))
+                    LabeledContent("Total Payable", value: summary.total.formattedAsINR())
+                    LabeledContent("Charges + GST", value: (summary.charges + summary.gst).formattedAsINR())
+                } header: {
+                    Text("Selected Loan")
+                }
+
+                Section {
+                    Text(reason.rawValue)
+                        .font(.subheadline.weight(.semibold))
+                    Text(reasonDetails)
+                        .font(.caption)
+                        .foregroundStyle(LMSColors.textSecondary)
+                } header: {
+                    Text("Closure Reason")
+                }
+
+                Section {
+                    ForEach(documents) { document in
+                        Label(document.title, systemImage: document.status.icon)
+                            .foregroundStyle(document.status.tint)
+                    }
+                } header: {
+                    Text("Uploaded Documents")
+                }
+
+                Section {
+                    if let signatureImage {
+                        Image(uiImage: signatureImage)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: .infinity, maxHeight: 110)
+                    }
+                } header: {
+                    Text("Signature Preview")
+                }
+            }
+        }
+    }
+
+    private var bottomCTA: some View {
+        VStack(spacing: 8) {
+            Button {
+                handleCTA()
+            } label: {
+                HStack {
+                    Spacer()
+                    if isSubmitting {
+                        ProgressView()
+                            .tint(.white)
+                    }
+                    Text(ctaTitle)
+                        .font(.headline)
+                    Spacer()
+                }
+                .foregroundStyle(.white)
+                .padding(.vertical, 14)
+                .background(canContinue && !isSubmitting ? LMSColors.brandNavy : LMSColors.textTertiary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .disabled(!canContinue || isSubmitting)
+            .buttonStyle(LMSPressableStyle())
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
+        .background(.ultraThinMaterial)
+    }
+
+    private func handleCTA() {
+        HapticsManager.triggerImpact(style: .medium)
+        if step == .review {
+            submitRequest()
+        } else {
+            withAnimation(.smooth(duration: 0.24)) {
+                step = step.next
+            }
+        }
+    }
+
+    private func submitRequest() {
+        isSubmitting = true
+        requestID = "FC-\(Int(Date().timeIntervalSince1970))"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+            isSubmitting = false
+            HapticsManager.triggerNotification(type: .success)
+            showingSuccess = true
+        }
+    }
+
+    private func handleUpload(_ image: UIImage) {
+        guard validateUploadImage(image) else {
+            if case .document(let id) = selectedUploadTarget,
+               let index = documents.firstIndex(where: { $0.id == id }) {
+                documents[index].status = .rejected
+                documents[index].fileName = "Rejected image"
+            }
+            return
+        }
+
+        switch selectedUploadTarget {
+        case .document(let id):
+            if let index = documents.firstIndex(where: { $0.id == id }) {
+                documents[index].status = .pendingVerification
+                documents[index].thumbnail = image
+                documents[index].fileName = "\(documents[index].filePrefix)-\(Int(Date().timeIntervalSince1970)).jpg"
+                documents[index].fileSize = imageFileSize(image)
+            }
+        case .signature:
+            signatureImage = image
+        case .none:
+            break
+        }
+        HapticsManager.triggerNotification(type: .success)
+    }
+
+    private func validateUploadImage(_ image: UIImage) -> Bool {
+        let bytes = image.jpegData(compressionQuality: 0.86)?.count ?? 0
+        return bytes > 20_000 && bytes < 5_000_000 && image.size.width >= 500 && image.size.height >= 250
+    }
+
+    private func imageFileSize(_ image: UIImage) -> String {
+        let bytes = image.jpegData(compressionQuality: 0.86)?.count ?? 0
+        if bytes >= 1_000_000 {
+            return String(format: "%.1f MB", Double(bytes) / 1_000_000)
+        }
+        return "\(max(1, bytes / 1_000)) KB"
+    }
+
+    private func maskedAccount(_ number: String) -> String {
+        "ACC ••\(number.suffix(4))"
+    }
+}
+
+private enum ForeclosureStep: Int, CaseIterable {
+    case selectLoan
+    case details
+    case reason
+    case documents
+    case authorization
+    case review
+
+    var title: String {
+        switch self {
+        case .selectLoan: return "Select Loan Account"
+        case .details: return "Foreclosure Details"
+        case .reason: return "Reason for Closure"
+        case .documents: return "Required Documents"
+        case .authorization: return "Signature & Authorization"
+        case .review: return "Review & Submit"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .selectLoan: return "Choose the active loan account you want to close."
+        case .details: return "Review the estimated payable amount and closure impact."
+        case .reason: return "Tell us why you are closing this loan."
+        case .documents: return "Upload the required foreclosure images."
+        case .authorization: return "Add your signature and legal consent."
+        case .review: return "Confirm all details before submission."
+        }
+    }
+
+    var next: ForeclosureStep {
+        ForeclosureStep(rawValue: min(rawValue + 1, ForeclosureStep.allCases.count - 1)) ?? self
+    }
+
+    var previous: ForeclosureStep {
+        ForeclosureStep(rawValue: max(rawValue - 1, 0)) ?? self
+    }
+}
+
+private struct ForeclosureAmountSummary {
+    let principal: Double
+    let interestDue: Double
+    let charges: Double
+    let gst: Double
+
+    init(loan: DashboardLoanAccount) {
+        principal = loan.principalOutstanding
+        interestDue = max(loan.totalEMI * 0.18, loan.principalOutstanding * 0.002)
+        charges = loan.principalOutstanding * 0.015
+        gst = charges * 0.18
+    }
+
+    var total: Double {
+        principal + interestDue + charges + gst
+    }
+
+    static let notices = [
+        "Loan account will be permanently closed",
+        "Credit history may be updated",
+        "Some foreclosure charges may apply",
+        "Pre-approved offers linked to this loan may end",
+        "Closure process may take 3-7 working days"
+    ]
+}
+
+private enum ForeclosureReason: String, CaseIterable, Identifiable {
+    case financiallyStable = "Financially stable now"
+    case movingBank = "Moving to another bank"
+    case highInterest = "High interest rate"
+    case sellingAsset = "Selling property/asset"
+    case businessClosure = "Business closure"
+    case noLongerNeeded = "Loan no longer needed"
+    case other = "Other"
+
+    var id: String { rawValue }
+}
+
+private enum ForeclosureUploadTarget {
+    case document(UUID)
+    case signature
+}
+
+private enum ForeclosureDocumentStatus {
+    case pending, pendingVerification, uploaded, rejected
+
+    var title: String {
+        switch self {
+        case .pending: return "Pending Upload"
+        case .pendingVerification: return "Pending Verification"
+        case .uploaded: return "Uploaded"
+        case .rejected: return "Rejected"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .pending: return "clock"
+        case .pendingVerification: return "viewfinder"
+        case .uploaded: return "checkmark.seal.fill"
+        case .rejected: return "xmark.octagon.fill"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .pending, .pendingVerification: return LMSColors.amber
+        case .uploaded: return LMSColors.emerald
+        case .rejected: return LMSColors.coral
+        }
+    }
+}
+
+private struct ForeclosureDocument: Identifiable {
+    let id = UUID()
+    let title: String
+    let isRequired: Bool
+    let filePrefix: String
+    var status: ForeclosureDocumentStatus = .pending
+    var fileName = "Not uploaded"
+    var fileSize = "-"
+    var thumbnail: UIImage?
+
+    static let defaultDocuments = [
+        ForeclosureDocument(title: "Identity proof", isRequired: true, filePrefix: "identity-proof"),
+        ForeclosureDocument(title: "Foreclosure request letter", isRequired: true, filePrefix: "foreclosure-request-letter"),
+        ForeclosureDocument(title: "Latest loan statement", isRequired: true, filePrefix: "latest-loan-statement"),
+        ForeclosureDocument(title: "Supporting proof", isRequired: false, filePrefix: "supporting-proof")
+    ]
+}
+
+private struct ForeclosureLoanCard: View {
+    let loan: DashboardLoanAccount
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(loan.loanType)
+                            .font(.headline)
+                            .foregroundStyle(LMSColors.textPrimary)
+                        Text("ACC ••\(loan.accountNumber.suffix(4))")
+                            .font(.caption)
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+                    Spacer()
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(isSelected ? LMSColors.emerald : LMSColors.textTertiary)
+                        .font(.title3)
+                }
+
+                VStack(spacing: 8) {
+                    detailRow("Outstanding", loan.principalOutstanding.formattedAsINR())
+                    detailRow("EMI", loan.totalEMI.formattedAsINR())
+                    detailRow("Remaining", "\(loan.tenureRemainingMonths) months")
+                    detailRow("Status", loan.principalOutstanding > 0 ? "Active" : "Closed")
+                }
+            }
+            .padding(14)
+            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(isSelected ? Color.orange : LMSColors.separatorLight, lineWidth: isSelected ? 1.4 : 0.6)
+            )
+            .shadow(color: isSelected ? Color.orange.opacity(0.18) : .black.opacity(0.03), radius: isSelected ? 14 : 6, x: 0, y: 6)
+        }
+        .buttonStyle(LMSPressableStyle())
+    }
+
+    private func detailRow(_ title: String, _ value: String) -> some View {
+        HStack {
+            Text(title)
+                .foregroundStyle(LMSColors.textSecondary)
+            Spacer()
+            Text(value)
+                .foregroundStyle(LMSColors.textPrimary)
+                .fontWeight(.semibold)
+        }
+        .font(.caption)
+    }
+}
+
+private struct ForeclosureDocumentRow: View {
+    let document: ForeclosureDocument
+    let onUpload: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Group {
+                if let thumbnail = document.thumbnail {
+                    Image(uiImage: thumbnail)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Image(systemName: "doc.text.image.fill")
+                        .font(.title3)
+                        .foregroundStyle(document.status.tint)
+                        .background(document.status.tint.opacity(0.10))
+                }
+            }
+            .frame(width: 48, height: 56)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 4) {
+                    Text(document.title)
+                        .font(.subheadline.weight(.semibold))
+                    if !document.isRequired {
+                        Text("Optional")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+                }
+                Text(document.fileName)
+                    .font(.caption)
+                    .foregroundStyle(LMSColors.textSecondary)
+                    .lineLimit(1)
+                Text(document.fileSize)
+                    .font(.caption2)
+                    .foregroundStyle(LMSColors.textTertiary)
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 8) {
+                Label(document.status.title, systemImage: document.status.icon)
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(document.status.tint)
+                Button(document.status == .pending ? "Upload" : "Replace", action: onUpload)
+                    .font(.caption.weight(.bold))
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct ForeclosureSuccessView: View {
+    let requestID: String
+    let onTrack: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 22) {
+                Spacer()
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.system(size: 72))
+                    .foregroundStyle(LMSColors.emerald)
+
+                VStack(spacing: 8) {
+                    Text("Foreclosure Request Submitted")
+                        .font(.title2.bold())
+                        .multilineTextAlignment(.center)
+                    Text("Your request has been queued for verification and closure processing.")
+                        .font(.subheadline)
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .multilineTextAlignment(.center)
+                }
+
+                VStack(spacing: 12) {
+                    LabeledContent("Request ID", value: requestID)
+                    LabeledContent("Timeline", value: "3-7 working days")
+                    LabeledContent("Support", value: "1800-123-LOAN")
+                    Button {
+                        HapticsManager.triggerImpact(style: .light)
+                    } label: {
+                        Label("Download acknowledgement", systemImage: "square.and.arrow.down")
+                    }
+                    .font(.subheadline.weight(.bold))
+                }
+                .padding(16)
+                .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                Spacer()
+
+                Button("Track Request", action: onTrack)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(LMSColors.brandNavy, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .buttonStyle(LMSPressableStyle())
+            }
+            .padding(24)
+            .background(LMSColors.background)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done", action: onTrack)
+                }
+            }
+        }
+    }
+}
+
+private struct ForeclosureImagePicker: UIViewControllerRepresentable {
+    let onImagePicked: (UIImage) -> Void
+    let onCancel: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onImagePicked: onImagePicked, onCancel: onCancel)
+    }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .photoLibrary
+        picker.mediaTypes = ["public.image"]
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        let onImagePicked: (UIImage) -> Void
+        let onCancel: () -> Void
+
+        init(onImagePicked: @escaping (UIImage) -> Void, onCancel: @escaping () -> Void) {
+            self.onImagePicked = onImagePicked
+            self.onCancel = onCancel
+        }
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let image = info[.originalImage] as? UIImage {
+                onImagePicked(image)
+            } else {
+                onCancel()
+            }
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            onCancel()
         }
     }
 }
