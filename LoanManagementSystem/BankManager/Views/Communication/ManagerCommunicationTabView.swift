@@ -8,44 +8,22 @@ struct ManagerCommunicationTabView: View {
     @State private var showBroadcastSheet = false
 
     var body: some View {
-        VStack(spacing: 0) {
+        let filtered = viewModel.filteredConversations
 
-            VStack(spacing: LMSSpacing.md) {
-
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(LMSColors.textSecondary)
-                        .font(.system(size: 14))
-                    TextField("Search officers…", text: $viewModel.chatSearchQuery)
-                        .font(.system(.body, design: .rounded))
-                    if !viewModel.chatSearchQuery.isEmpty {
-                        Button(action: { viewModel.chatSearchQuery = "" }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(LMSColors.textTertiary)
-                        }
-                    }
-                }
-                .padding(.horizontal, LMSSpacing.lg)
-                .padding(.vertical, 10)
-                .background(LMSColors.surfaceElevated)
-                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
-
-
+        List {
+            Section {
                 Picker("Filter", selection: $viewModel.selectedChatFilter) {
                     ForEach(ManagerDashboardViewModel.ChatFilterMode.allCases, id: \.self) { mode in
                         Text(mode.rawValue).tag(mode)
                     }
                 }
                 .pickerStyle(.segmented)
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+                .padding(.vertical, LMSSpacing.sm)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(LMSColors.background)
+                .listRowSeparator(.hidden)
             }
-            .padding(.horizontal, LMSSpacing.screenHorizontal)
-            .padding(.vertical, LMSSpacing.md)
-            .background(LMSColors.surface)
-
-            Divider()
-
-
-            let filtered = viewModel.filteredConversations
 
             if filtered.isEmpty {
                 ContentUnavailableView(
@@ -53,29 +31,30 @@ struct ManagerCommunicationTabView: View {
                     systemImage: "bubble.left.and.bubble.right",
                     description: Text("Loan officer conversations and branch announcements will appear here.")
                 )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+                .padding(.top, LMSSpacing.xxxl)
             } else {
-                List {
-                    ForEach(filtered) { conversation in
-                        Button(action: {
-                            HapticsManager.triggerImpact(style: .medium)
-                            viewModel.markConversationRead(conversation.id)
-                            activeConversation = conversation
-                        }) {
-                            ConversationRow(conversation: conversation)
-                        }
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(
-                            conversation.unreadCount > 0
-                                ? LMSColors.actionBlue.opacity(0.03)
-                                : Color.clear
-                        )
+                ForEach(filtered) { conversation in
+                    Button(action: {
+                        HapticsManager.triggerImpact(style: .medium)
+                        viewModel.markConversationRead(conversation.id)
+                        activeConversation = conversation
+                    }) {
+                        ConversationRow(conversation: conversation)
                     }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(
+                        conversation.unreadCount > 0
+                            ? LMSColors.actionBlue.opacity(0.03)
+                            : LMSColors.surface
+                    )
                 }
-                .listStyle(.plain)
             }
         }
+        .listStyle(.plain)
         .background(LMSColors.background)
+        .searchable(text: $viewModel.chatSearchQuery, prompt: "Search officers…")
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button(action: {

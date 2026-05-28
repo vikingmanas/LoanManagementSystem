@@ -104,6 +104,18 @@ public class BorrowerProfileStore: ObservableObject {
         self.currentEmail = cleanedEmail
 
         Task {
+            if let currentUser = AuthManager.shared.currentUser,
+               currentUser.email?.lowercased() == cleanedEmail {
+                await fetchProfileFromSupabase(
+                    uid: currentUser.uid,
+                    email: cleanedEmail,
+                    name: name,
+                    phone: phone,
+                    alternatePhone: alternatePhone
+                )
+                return
+            }
+
             if let session = try? await SupabaseManager.shared.client.auth.session {
                 let user = session.user
                 if user.email?.lowercased() == cleanedEmail {

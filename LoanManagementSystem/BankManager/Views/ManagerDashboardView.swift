@@ -18,7 +18,8 @@ struct ManagerDashboardView: View {
                     selectedTab: $selectedTab,
                     onSelectApplicant: { selectedApplicant = $0 }
                 )
-                .navigationTitle("Dashboard")
+                .navigationTitle("\(viewModel.branchOverview.name)")
+                .navigationBarTitleDisplayMode(.large)
                 .toolbar { dashboardToolbar }
             }
             .tabItem { Label("Dashboard", systemImage: "square.grid.2x2") }
@@ -39,7 +40,7 @@ struct ManagerDashboardView: View {
             NavigationStack {
                 ManagerCommunicationTabView(viewModel: viewModel)
                     .navigationTitle("Messages")
-                    .toolbar { dashboardToolbar }
+                    .toolbar { messagesToolbar }
             }
             .tabItem { Label("Messages", systemImage: "message") }
             .badge(viewModel.unreadChatCount > 0 ? viewModel.unreadChatCount : 0)
@@ -89,11 +90,14 @@ struct ManagerDashboardView: View {
     @ToolbarContentBuilder
     private var applicantsToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            HStack(spacing: LMSSpacing.sm) {
-                searchButton
-                notificationButton
-                profileButton
-            }
+            notificationButton
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var messagesToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            notificationButton
         }
     }
 

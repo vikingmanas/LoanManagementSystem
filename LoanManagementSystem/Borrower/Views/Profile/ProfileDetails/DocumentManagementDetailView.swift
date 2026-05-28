@@ -4,6 +4,8 @@ struct DocumentManagementDetailView: View {
     @ObservedObject var viewModel: BorrowerProfileViewModel
     @State private var showingAlert = false
     @State private var alertMessage = ""
+    @State private var documentToView: String?
+    @State private var showingViewer = false
     
     var body: some View {
         Form {
@@ -23,10 +25,15 @@ struct DocumentManagementDetailView: View {
         }
         .navigationTitle("Documents")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Document Viewer", isPresented: $showingAlert) {
+        .alert("Document Download", isPresented: $showingAlert) {
             Button("Dismiss", role: .cancel) { }
         } message: {
             Text(alertMessage)
+        }
+        .sheet(isPresented: $showingViewer) {
+            if let docName = documentToView {
+                DocumentPreviewSheet(fileName: docName)
+            }
         }
     }
     
@@ -57,8 +64,8 @@ struct DocumentManagementDetailView: View {
             if let fileName = fileName {
                 HStack(spacing: 16) {
                     Button {
-                        alertMessage = "Simulating secure decryption & display for \(fileName)."
-                        showingAlert = true
+                        documentToView = fileName
+                        showingViewer = true
                     } label: {
                         Image(systemName: "eye")
                             .foregroundStyle(.blue)
@@ -76,5 +83,39 @@ struct DocumentManagementDetailView: View {
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+struct DocumentPreviewSheet: View {
+    let fileName: String
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                Image(systemName: "doc.text.viewfinder")
+                    .font(.system(size: 64))
+                    .foregroundStyle(.secondary)
+                    
+                VStack(spacing: 8) {
+                    Text("Preview of \(fileName)")
+                        .font(.headline)
+                    Text("This is a simulated document preview. In a real system, the decrypted PDF or image would be displayed here.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(uiColor: .systemGroupedBackground))
+            .navigationTitle("Document Viewer")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Close") { dismiss() }
+                }
+            }
+        }
     }
 }

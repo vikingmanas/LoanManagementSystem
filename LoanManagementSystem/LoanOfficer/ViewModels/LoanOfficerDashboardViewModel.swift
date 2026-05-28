@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import Supabase
 
 enum HistorySortOrder: String, CaseIterable {
     case newest = "Newest"
@@ -17,6 +18,7 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     typealias DocumentType = OfficerDocumentType
     @Published var applications: [LoanApplication] = []
     @Published var activityFeed: [ActivityFeedItem] = []
+    @Published var officerProfile: StaffMember? = nil
     @Published var isLoading: Bool = true
     @Published var hasError: Bool = false
     @Published var selectedTab: Int = 0              // 0=Dashboard, 1=History
@@ -107,13 +109,14 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         var items: [DocumentQueueItem] = []
         for app in applications {
             for doc in app.documents {
-                guard let uploadedDate = doc.uploadedDate else { continue }
+                // Use application's submittedDate as a fallback for pending uploads so they appear in the "Missing" filter
+                let date = doc.uploadedDate ?? app.submittedDate
                 items.append(DocumentQueueItem(
                     id: doc.id,
                     borrowerName: app.borrowerName,
                     docType: doc.docType,
                     status: doc.status,
-                    submittedDate: uploadedDate,
+                    submittedDate: date,
                     applicationId: app.applicationId
                 ))
             }
@@ -212,9 +215,18 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         isLoading = true
         hasError = false
         
-        // Simulate 0.8s network delay
         do {
-            try await Task.sleep(nanoseconds: 800_000_000)
+            if let user = try? await SupabaseManager.shared.client.auth.session.user {
+                if let profile = try? await DatabaseService.shared.fetchLoanOfficerProfile(userId: user.id) {
+                    self.officerProfile = profile
+                }
+            }
+            
+            // Fetch all submitted applications from Supabase for the officer view
+            await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
+            
+            // Simulate brief loading delay for UI
+            try await Task.sleep(nanoseconds: 400_000_000)
             
             // Starts empty to remove mock feed items
             self.activityFeed = []
@@ -262,12 +274,13 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }),
            let doc = applications[idx].documents.first(where: { $0.id == docId }) {
             let docName = doc.docType.rawValue
+            let officerName = officerProfile?.fullName ?? "Officer Arjun"
             logActivity(
                 borrowerName: applications[idx].borrowerName,
                 applicationId: applicationId,
                 loanType: applications[idx].loanType.rawValue,
                 eventType: newStatus == .verified ? .consentGiven : .queryRaised,
-                description: newStatus == .verified ? "\(docName) verified successfully by Officer Arjun." : "\(docName) rejected: \(rejectionReason ?? "Incorrect format.")"
+                description: newStatus == .verified ? "\(docName) verified successfully by \(officerName)." : "\(docName) rejected: \(rejectionReason ?? "Incorrect format.")"
             )
         }
     }
@@ -288,14 +301,15 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
     
     func sendForFinalApproval(applicationId: String) {
-        CentralLoanRepository.shared.sendForFinalApproval(applicationId: applicationId)
+        let officerName = officerProfile?.fullName ?? "Officer Arjun"
+        CentralLoanRepository.shared.sendForFinalApproval(applicationId: applicationId, officerName: officerName)
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }) {
             logActivity(
                 borrowerName: applications[idx].borrowerName,
                 applicationId: applicationId,
                 loanType: applications[idx].loanType.rawValue,
                 eventType: .consentGiven,
-                description: "Application verified & forwarded to Manager for final approval."
+                description: "Application verified & forwarded to Manager for final approval by \(officerName)."
             )
         }
     }
