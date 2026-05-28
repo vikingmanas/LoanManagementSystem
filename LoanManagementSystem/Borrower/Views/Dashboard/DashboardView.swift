@@ -387,6 +387,7 @@ struct QuickPaySheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var successMessage = ""
     @State private var showSuccessAlert = false
+    @State private var reminderMessage: String?
 
     private var payableEMIs: [EMIRecord] {
         let calendar = Calendar.current
@@ -439,6 +440,18 @@ struct QuickPaySheet: View {
                     Text("Payment Source")
                 }
 
+                if !unpaidEMIs.isEmpty {
+                    Section {
+                        Button {
+                            Task { await scheduleAllReminders() }
+                        } label: {
+                            Label("Schedule EMI Reminders", systemImage: "bell.badge")
+                        }
+                    } footer: {
+                        Text("Reminders are scheduled locally on this device one day before EMI due dates.")
+                    }
+                }
+
                 if !payableEMIs.isEmpty {
                     Section {
                         ForEach(payableEMIs) { emi in
@@ -477,6 +490,14 @@ struct QuickPaySheet: View {
                 }
             } message: {
                 Text(successMessage)
+            }
+            .alert("Reminder Status", isPresented: Binding(
+                get: { reminderMessage != nil },
+                set: { if !$0 { reminderMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(reminderMessage ?? "")
             }
         }
     }
@@ -543,6 +564,17 @@ struct QuickPaySheet: View {
             }
         }
         .padding(.vertical, 6)
+    }
+
+    private func scheduleAllReminders() async {
+        for emi in unpaidEMIs {
+            await LocalNotificationService.shared.scheduleEMIReminder(
+                title: emi.loanType,
+                amount: emi.amount,
+                dueDate: emi.dueDate
+            )
+        }
+        reminderMessage = "EMI reminders have been scheduled on this device."
     }
 }
 

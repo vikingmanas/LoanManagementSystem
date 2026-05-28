@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 struct EditKYCView: View {
@@ -14,9 +15,13 @@ struct EditKYCView: View {
     @State private var addressProofFileName: String?
     
     @State private var showingFileImporter = false
+    @State private var showingSourceOptions = false
+    @State private var showingCamera = false
+    @State private var cameraErrorMessage: String?
     @State private var documentUploading: KYCDocumentType? = nil
     @State private var isUploading = false
     @State private var secureUploadMessage = ""
+    @State private var visionReviewMessage = ""
     
     init(viewModel: BorrowerProfileViewModel) {
         self.viewModel = viewModel
@@ -34,9 +39,15 @@ struct EditKYCView: View {
             NavigationStack {
                 Form {
                     Section(header: Text("Instructions")) {
-                        Text("Upload your KYC documents in secure PDF format. Data is encrypted using AES-256 before transmission over SSL.")
+                        Text("Upload KYC documents as PDF or image scans. Image scans are checked locally for readable text before review.")
                             .font(Font.AppTheme.body)
                             .foregroundStyle(Color.AppTheme.textSecondary)
+
+                        if !visionReviewMessage.isEmpty {
+                            Label(visionReviewMessage, systemImage: "text.viewfinder")
+                                .font(LMSFont.caption)
+                                .foregroundStyle(LMSColors.actionBlue)
+                        }
                     }
                     
                     Section(header: Text("Documents")) {
@@ -46,7 +57,7 @@ struct EditKYCView: View {
                             fileName: aadhaarFileName,
                             onUpload: {
                                 documentUploading = .aadhaar
-                                showingFileImporter = true
+                                showingSourceOptions = true
                             },
                             onDelete: {
                                 aadhaarStatus = .pending
@@ -61,7 +72,7 @@ struct EditKYCView: View {
                             fileName: panFileName,
                             onUpload: {
                                 documentUploading = .pan
-                                showingFileImporter = true
+                                showingSourceOptions = true
                             },
                             onDelete: {
                                 panStatus = .pending
@@ -76,7 +87,7 @@ struct EditKYCView: View {
                             fileName: addressProofFileName,
                             onUpload: {
                                 documentUploading = .addressProof
-                                showingFileImporter = true
+                                showingSourceOptions = true
                             },
                             onDelete: {
                                 addressProofStatus = .pending
@@ -146,9 +157,40 @@ struct EditKYCView: View {
                 .frame(maxWidth: 300)
             }
         }
+        .confirmationDialog("Upload Document", isPresented: $showingSourceOptions, titleVisibility: .visible) {
+            Button {
+                if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                    showingCamera = true
+                } else {
+                    cameraErrorMessage = "Camera is not available on this device or simulator."
+                }
+            } label: {
+                Label("Scan with Camera", systemImage: "camera.viewfinder")
+            }
+
+            Button {
+                showingFileImporter = true
+            } label: {
+                Label("Choose File", systemImage: "folder")
+            }
+
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Use the camera for a fresh scan or choose an existing PDF/image.")
+        }
+        .sheet(isPresented: $showingCamera) {
+            CameraCaptureView { image in
+                guard let docType = documentUploading,
+                      let url = saveCapturedImage(image, docType: docType) else {
+                    cameraErrorMessage = "Unable to save captured document image."
+                    return
+                }
+                simulateSecureUpload(url: url, docType: docType)
+            }
+        }
         .fileImporter(
             isPresented: $showingFileImporter,
-            allowedContentTypes: [.pdf],
+            allowedContentTypes: [.pdf, .image],
             allowsMultipleSelection: false
         ) { result in
             switch result {
@@ -161,11 +203,20 @@ struct EditKYCView: View {
                 print("Error selecting document: \(error.localizedDescription)")
             }
         }
+        .alert("Camera Upload", isPresented: Binding(
+            get: { cameraErrorMessage != nil },
+            set: { if !$0 { cameraErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(cameraErrorMessage ?? "")
+        }
     }
     
     private func simulateSecureUpload(url: URL, docType: KYCDocumentType) {
         isUploading = true
         secureUploadMessage = "Establishing secure connection to SSL Gateway..."
+        visionReviewMessage = ""
         
         let filename: String
         if url.startAccessingSecurityScopedResource() {
@@ -175,19 +226,20 @@ struct EditKYCView: View {
             filename = url.lastPathComponent
         }
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            secureUploadMessage = "Reading local PDF payload..."
-            
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                secureUploadMessage = "Encrypting document using AES-256 key..."
+                secureUploadMessage = "Reading local document payload..."
                 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                    secureUploadMessage = "Sending encrypted packet to API endpoint (HTTPS POST)..."
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    secureUploadMessage = "Running local text readability check..."
                     
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                        isUploading = false
+                        secureUploadMessage = "Encrypting document using AES-256 key..."
                         
-                        switch docType {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                            isUploading = false
+                            analyzeDocumentIfPossible(url)
+                            
+                            switch docType {
                         case .aadhaar:
                             aadhaarStatus = .verified
                             aadhaarFileName = filename
@@ -201,6 +253,87 @@ struct EditKYCView: View {
                     }
                 }
             }
+        }
+    }
+
+    private func analyzeDocumentIfPossible(_ url: URL) {
+        let fileType = UTType(filenameExtension: url.pathExtension)
+        guard fileType?.conforms(to: .image) == true else {
+            visionReviewMessage = "PDF queued for manual KYC review."
+            return
+        }
+
+        Task {
+            if let result = await DocumentVisionService.analyzeImage(at: url) {
+                visionReviewMessage = result.statusMessage
+            } else {
+                visionReviewMessage = "Image scan queued for manual review."
+            }
+        }
+    }
+
+    private func saveCapturedImage(_ image: UIImage, docType: KYCDocumentType) -> URL? {
+        guard let data = image.jpegData(compressionQuality: 0.88) else { return nil }
+        let fileName = "\(filePrefix(for: docType))_scan_\(Int(Date().timeIntervalSince1970)).jpg"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+
+        do {
+            try data.write(to: url, options: .atomic)
+            return url
+        } catch {
+            return nil
+        }
+    }
+
+    private func filePrefix(for docType: KYCDocumentType) -> String {
+        switch docType {
+        case .aadhaar: return "aadhaar"
+        case .pan: return "pan"
+        case .addressProof: return "address_proof"
+        }
+    }
+}
+
+private struct CameraCaptureView: UIViewControllerRepresentable {
+    @Environment(\.dismiss) private var dismiss
+    let onCapture: (UIImage) -> Void
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.cameraCaptureMode = .photo
+        picker.allowsEditing = false
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(dismiss: dismiss, onCapture: onCapture)
+    }
+
+    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        let dismiss: DismissAction
+        let onCapture: (UIImage) -> Void
+
+        init(dismiss: DismissAction, onCapture: @escaping (UIImage) -> Void) {
+            self.dismiss = dismiss
+            self.onCapture = onCapture
+        }
+
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+        ) {
+            if let image = info[.originalImage] as? UIImage {
+                onCapture(image)
+            }
+            dismiss()
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            dismiss()
         }
     }
 }

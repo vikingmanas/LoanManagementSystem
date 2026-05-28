@@ -6,6 +6,8 @@ struct LoanOfficerDashboardView: View {
     @State private var selectedTab: OfficerWorkspaceTab = .dashboard
     @State private var showingNotifications = false
     @State private var showingProfile = false
+    @State private var showingConsoleAlert = false
+    @State private var consoleAlertMessage = ""
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -37,6 +39,14 @@ struct LoanOfficerDashboardView: View {
             }
             .tabItem { Label("Registry", systemImage: "tray.full") }
             .tag(OfficerWorkspaceTab.registry)
+            
+            NavigationStack {
+                QuickConsoleTabView(viewModel: viewModel) { action in
+                    handleConsoleAction(action)
+                }
+            }
+            .tabItem { Label("Console", systemImage: "bolt.fill") }
+            .tag(OfficerWorkspaceTab.console)
         }
         .tint(LMSColors.brandNavy)
         .task {
@@ -48,6 +58,34 @@ struct LoanOfficerDashboardView: View {
         .sheet(isPresented: $showingProfile) {
             LoanOfficerProfileView()
         }
+        .alert("Action Received", isPresented: $showingConsoleAlert) {
+            Button("Dismiss", role: .cancel) { }
+        } message: {
+            Text(consoleAlertMessage)
+        }
+    }
+    
+    private func handleConsoleAction(_ action: String) {
+        switch action {
+        case "new_application":
+            consoleAlertMessage = "Opening new application form (Simulated)"
+        case "verify_documents":
+            selectedTab = .review
+            return
+        case "compliance_audit":
+            consoleAlertMessage = "Running RBI Compliance Audit... (Simulated)"
+        case "branch_reports":
+            consoleAlertMessage = "Downloading Branch Performance Reports... (Simulated)"
+        case "client_directory":
+            consoleAlertMessage = "Opening Client Directory... (Simulated)"
+        case "escalate_case":
+            consoleAlertMessage = "Select a case from the dashboard to escalate."
+            selectedTab = .dashboard
+            return
+        default:
+            consoleAlertMessage = "Executing \(action)..."
+        }
+        showingConsoleAlert = true
     }
 }
 
@@ -56,6 +94,7 @@ enum OfficerWorkspaceTab: Hashable {
     case review
     case messages
     case registry
+    case console
 }
 
 // MARK: - Dashboard Main View

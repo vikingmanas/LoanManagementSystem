@@ -12,6 +12,7 @@ struct LoanManagementSystemApp: App {
     
     /// Shared authentication manager injected into the environment.
     @StateObject private var authManager = AuthManager.shared
+    @AppStorage("isDarkMode") private var isDarkMode = false
     
     init() {}
     
@@ -19,6 +20,7 @@ struct LoanManagementSystemApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(authManager)
+                .preferredColorScheme(isDarkMode ? .dark : .light)
         }
     }
 }
