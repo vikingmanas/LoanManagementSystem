@@ -20,7 +20,6 @@ struct StoredLoanApplication: Codable {
     var assignedQueue: String?
     var outstandingBalance: Double
     var upcomingEMI: Double
-    var documents: [BorrowerLoanDocumentItem]?
 }
 
 struct StoredLoanFormData: Codable {
@@ -189,8 +188,7 @@ enum LoanApplicationPersistence {
             updatedAt: app.updatedAt,
             assignedQueue: app.assignedQueue,
             outstandingBalance: app.outstandingBalance,
-            upcomingEMI: app.upcomingEMI,
-            documents: app.documents
+            upcomingEMI: app.upcomingEMI
         )
     }
 
