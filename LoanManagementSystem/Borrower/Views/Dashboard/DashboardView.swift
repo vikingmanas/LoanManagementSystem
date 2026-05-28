@@ -14,6 +14,11 @@ public enum DashboardRoute: Hashable {
     case profileInfo
     case notifications
     case transactionHistory
+    case payEMI
+    case statement
+    case topUp
+    case foreclosure
+    case support
 }
 
 // MARK: - Native Status Banner Section
@@ -172,12 +177,6 @@ public struct DashboardView: View {
     
     @StateObject private var profileViewModel = BorrowerProfileViewModel()
     @State private var navigationPath = [DashboardRoute]()
-    @State private var showingQuickPaySheet = false
-    @State private var showingStatementSheet = false
-    @State private var showingForeclosureSheet = false
-    @State private var showingSupportSheet = false
-    @State private var showingTopUpSheet = false
-    @State private var navigateToLinkedBankAccountsAfterTopUp = false
     @State private var showingCalculatorAlert = false
     
     public var body: some View {
@@ -197,11 +196,12 @@ public struct DashboardView: View {
 
                     DashboardQuickActionsSection(
                         onApplyLoan: { tabRouter.select(.loans) },
-                        onPayEMI: { showingQuickPaySheet = true },
-                        onStatement: { showingStatementSheet = true },
-                        onSupport: { showingSupportSheet = true },
+                        onPayEMI: { navigationPath.append(.payEMI) },
+                        onStatement: { navigationPath.append(.statement) },
+                        onSupport: { navigationPath.append(.support) },
                         onCalculator: { showingCalculatorAlert = true },
-                        onForeclosure: { showingForeclosureSheet = true }
+                        onForeclosure: { navigationPath.append(.foreclosure) },
+                        onTopUp: { navigationPath.append(.topUp) }
                     )
 
                     ActiveLoanAccountsSection(
@@ -224,7 +224,7 @@ public struct DashboardView: View {
 
                     UpcomingPaymentSection(
                         viewModel: viewModel,
-                        onPayNow: { showingQuickPaySheet = true },
+                        onPayNow: { navigationPath.append(.payEMI) },
                         onViewAll: { navigationPath.append(.allPendingEMIs) }
                     )
                 }
@@ -302,29 +302,18 @@ public struct DashboardView: View {
                     NotificationsDetailView()
                 case .transactionHistory:
                     TransactionHistoryFullScreen(viewModel: viewModel)
-                }
-            }
-            .sheet(isPresented: $showingQuickPaySheet) {
-                QuickPaySheet(viewModel: viewModel)
-            }
-            .sheet(isPresented: $showingStatementSheet) {
-                StatementSheet(viewModel: viewModel)
-            }
-            .sheet(isPresented: $showingForeclosureSheet) {
-                ForeclosureSheet(viewModel: viewModel)
-            }
-            .sheet(isPresented: $showingSupportSheet) {
-                SupportSheet()
-            }
-            .sheet(isPresented: $showingTopUpSheet, onDismiss: {
-                if navigateToLinkedBankAccountsAfterTopUp {
-                    navigateToLinkedBankAccountsAfterTopUp = false
-                    navigationPath.append(.linkedBankAccounts)
-                }
-            }) {
-                TopUpSheet(viewModel: viewModel) {
-                    showingTopUpSheet = false
-                    navigateToLinkedBankAccountsAfterTopUp = true
+                case .payEMI:
+                    PayEMIWorkflowView(viewModel: viewModel)
+                case .statement:
+                    StatementWorkflowView(viewModel: viewModel)
+                case .topUp:
+                    TopUpWorkflowView(viewModel: viewModel) {
+                        navigationPath.append(.linkedBankAccounts)
+                    }
+                case .foreclosure:
+                    ForeclosureSheet(viewModel: viewModel)
+                case .support:
+                    SupportSheet()
                 }
             }
         }
@@ -383,6 +372,799 @@ struct GovernmentSchemesSection: View {
 }
 
 // MARK: - Quick Action Action Sheets
+
+private enum EMIPaymentStep: Int, CaseIterable {
+    case selectLoan, details, account, options, confirm
+    var title: String {
+        switch self {
+        case .selectLoan: return "Select Loan"
+        case .details: return "EMI Details"
+        case .account: return "Deduction Account"
+        case .options: return "Payment Options"
+        case .confirm: return "Confirm Payment"
+        }
+    }
+    var next: EMIPaymentStep { EMIPaymentStep(rawValue: min(rawValue + 1, EMIPaymentStep.allCases.count - 1)) ?? self }
+    var previous: EMIPaymentStep { EMIPaymentStep(rawValue: max(rawValue - 1, 0)) ?? self }
+}
+
+private enum EMIPaymentOption: String, CaseIterable, Identifiable {
+    case payNow = "Pay Now"
+    case schedule = "Schedule Payment"
+    case autoDebit = "Auto-debit on due date"
+    var id: String { rawValue }
+}
+
+struct PayEMIWorkflowView: View {
+    @ObservedObject var viewModel: DashboardViewModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var step: EMIPaymentStep = .selectLoan
+    @State private var selectedLoan: DashboardLoanAccount?
+    @State private var selectedAccountID: UUID?
+    @State private var paymentOption: EMIPaymentOption = .payNow
+    @State private var scheduledDate = Date()
+    @State private var isProcessing = false
+    @State private var successTransactionID: String?
+
+    private var selectedAccount: BankAccount? {
+        viewModel.bankAccounts.first { $0.id == selectedAccountID } ?? viewModel.bankAccounts.first
+    }
+
+    private var canContinue: Bool {
+        switch step {
+        case .selectLoan: return selectedLoan != nil
+        case .details: return selectedLoan != nil
+        case .account: return selectedAccount.map { account in selectedLoan.map { account.availableBalance >= $0.totalEMI } ?? false } ?? false
+        case .options: return true
+        case .confirm: return selectedLoan != nil && selectedAccount != nil
+        }
+    }
+
+    var body: some View {
+        Form {
+            workflowHeader
+            stepContent
+        }
+        .scrollContentBackground(.hidden)
+        .background(LMSColors.background)
+        .navigationTitle("Pay EMI")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if step != .selectLoan && successTransactionID == nil {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Back") { withAnimation(.smooth(duration: 0.22)) { step = step.previous } }
+                }
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if successTransactionID == nil {
+                stickyCTA
+            }
+        }
+        .fullScreenCover(item: Binding(
+            get: { successTransactionID.map { EMISuccessItem(id: $0, loan: selectedLoan, amount: selectedLoan?.totalEMI ?? 0) } },
+            set: { if $0 == nil { successTransactionID = nil } }
+        )) { item in
+            EMIPaymentSuccessView(item: item) {
+                successTransactionID = nil
+                dismiss()
+            }
+        }
+        .onAppear {
+            selectedAccountID = selectedAccountID ?? viewModel.bankAccounts.first?.id
+        }
+    }
+
+    @ViewBuilder
+    private var stepContent: some View {
+        switch step {
+        case .selectLoan: loanSelection
+        case .details: emiDetails
+        case .account: accountSelection
+        case .options: paymentOptions
+        case .confirm: confirmation
+        }
+    }
+
+    private var workflowHeader: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(step.title)
+                            .font(.title3.bold())
+                        Text("Complete EMI payment securely from a linked account.")
+                            .font(.caption)
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+                    Spacer()
+                    Image(systemName: "indianrupeesign.circle.fill")
+                        .font(.title)
+                        .foregroundStyle(LMSColors.emerald)
+                }
+                ProgressView(value: Double(step.rawValue + 1), total: Double(EMIPaymentStep.allCases.count))
+                    .tint(LMSColors.emerald)
+            }
+        }
+        .listRowBackground(LMSColors.surface)
+    }
+
+    private var loanSelection: some View {
+        Section {
+            ForEach(viewModel.loanAccounts.filter { $0.principalOutstanding > 0 }) { loan in
+                SelectableLoanPaymentCard(loan: loan, isSelected: selectedLoan?.id == loan.id) {
+                    selectedLoan = loan
+                    HapticsManager.triggerImpact(style: .light)
+                }
+            }
+        } header: {
+            Text("All Active Loan Accounts")
+        }
+    }
+
+    private var emiDetails: some View {
+        Group {
+            if let loan = selectedLoan {
+                let principal = min(loan.principalOutstanding, loan.totalEMI * 0.73)
+                let interest = max(0, loan.totalEMI - principal)
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(loan.totalEMI.formattedAsINR())
+                            .font(.system(size: 34, weight: .bold, design: .rounded))
+                        Text("Due \(loan.nextEMIDate.formattedAsDDMMMYYYY())")
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+                    LabeledContent("Penalty if overdue", value: "₹0")
+                    LabeledContent("Remaining tenure", value: "\(loan.tenureRemainingMonths) months")
+                } header: {
+                    Text("EMI Details")
+                }
+
+                Section {
+                    LabeledContent("Principal", value: principal.formattedAsINR())
+                    LabeledContent("Interest", value: interest.formattedAsINR())
+                } header: {
+                    Text("Upcoming EMI Breakdown")
+                }
+            }
+        }
+    }
+
+    private var accountSelection: some View {
+        Section {
+            ForEach(viewModel.bankAccounts) { account in
+                SelectableBankAccountCard(
+                    account: account,
+                    isSelected: selectedAccountID == account.id,
+                    warning: selectedLoan.map { account.availableBalance < $0.totalEMI } ?? false
+                ) {
+                    selectedAccountID = account.id
+                    HapticsManager.triggerImpact(style: .light)
+                }
+            }
+        } header: {
+            Text("Select Deduction Account")
+        } footer: {
+            if selectedAccount.map({ account in selectedLoan.map { account.availableBalance < $0.totalEMI } ?? false }) == true {
+                Text("Insufficient balance. Select another account or use Top Up before paying.")
+            }
+        }
+    }
+
+    private var paymentOptions: some View {
+        Section {
+            Picker("Payment Option", selection: $paymentOption) {
+                ForEach(EMIPaymentOption.allCases) { option in
+                    Text(option.rawValue).tag(option)
+                }
+            }
+            .pickerStyle(.inline)
+
+            if paymentOption == .schedule {
+                DatePicker("Payment Date", selection: $scheduledDate, in: Date()..., displayedComponents: .date)
+            }
+        } header: {
+            Text("Payment Options")
+        }
+    }
+
+    private var confirmation: some View {
+        Group {
+            if let loan = selectedLoan, let account = selectedAccount {
+                Section {
+                    LabeledContent("Loan account", value: "ACC ••\(loan.accountNumber.suffix(4))")
+                    LabeledContent("EMI amount", value: loan.totalEMI.formattedAsINR())
+                    LabeledContent("Deduction account", value: "••\(account.accountNumber.suffix(4))")
+                    LabeledContent("Payment date", value: (paymentOption == .schedule ? scheduledDate : Date()).formattedAsDDMMMYYYY())
+                    LabeledContent("Charges", value: "₹0")
+                } header: {
+                    Text("Confirm Payment")
+                }
+            }
+        }
+    }
+
+    private var stickyCTA: some View {
+        Button {
+            if step == .confirm {
+                confirmPayment()
+            } else {
+                withAnimation(.smooth(duration: 0.22)) { step = step.next }
+            }
+        } label: {
+            HStack {
+                Spacer()
+                if isProcessing { ProgressView().tint(.white) }
+                Text(step == .confirm ? "Confirm EMI Payment" : "Continue")
+                    .font(.headline)
+                Spacer()
+            }
+            .foregroundStyle(.white)
+            .padding(.vertical, 14)
+            .background(canContinue ? LMSColors.brandNavy : LMSColors.textTertiary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .disabled(!canContinue || isProcessing)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial)
+    }
+
+    private func confirmPayment() {
+        guard let selectedLoan, let selectedAccount else { return }
+        isProcessing = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+            if viewModel.payEMI(for: selectedLoan, from: selectedAccount, scheduledDate: paymentOption == .schedule ? scheduledDate : Date()) {
+                successTransactionID = "TXN\(Int.random(in: 1000000...9999999))"
+            }
+            isProcessing = false
+        }
+    }
+}
+
+private struct EMISuccessItem: Identifiable {
+    let id: String
+    let loan: DashboardLoanAccount?
+    let amount: Double
+}
+
+private struct EMIPaymentSuccessView: View {
+    let item: EMISuccessItem
+    let onDone: () -> Void
+
+    var body: some View {
+        VStack(spacing: 22) {
+            Spacer()
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 74))
+                .foregroundStyle(LMSColors.emerald)
+            Text("EMI Payment Successful")
+                .font(.title2.bold())
+            VStack(spacing: 12) {
+                LabeledContent("Transaction ID", value: item.id)
+                LabeledContent("Paid amount", value: item.amount.formattedAsINR())
+                LabeledContent("Remaining balance", value: max(0, (item.loan?.principalOutstanding ?? 0) - item.amount * 0.73).formattedAsINR())
+                LabeledContent("Next EMI date", value: Calendar.current.date(byAdding: .month, value: 1, to: item.loan?.nextEMIDate ?? Date())?.formattedAsDDMMMYYYY() ?? "-")
+            }
+            .padding()
+            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            Spacer()
+            Button("Download Receipt") { HapticsManager.triggerImpact(style: .light) }
+                .buttonStyle(.bordered)
+            Button("View Loan Details", action: onDone)
+                .font(.headline)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(LMSColors.brandNavy, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .padding(24)
+        .background(LMSColors.background)
+    }
+}
+
+private struct SelectableLoanPaymentCard: View {
+    let loan: DashboardLoanAccount
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(loan.loanType).font(.headline)
+                        Text("ACC ••\(loan.accountNumber.suffix(4))").font(.caption).foregroundStyle(LMSColors.textSecondary)
+                    }
+                    Spacer()
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(isSelected ? LMSColors.emerald : LMSColors.textTertiary)
+                }
+                LabeledContent("Upcoming EMI", value: loan.totalEMI.formattedAsINR())
+                LabeledContent("Due", value: loan.nextEMIDate.formattedAsDDMMMYYYY())
+                LabeledContent("Outstanding", value: loan.principalOutstanding.formattedAsINR())
+                LabeledContent("Status", value: "Upcoming")
+            }
+            .padding(14)
+            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(isSelected ? LMSColors.emerald : LMSColors.separatorLight, lineWidth: isSelected ? 1.4 : 0.6))
+            .shadow(color: isSelected ? LMSColors.emerald.opacity(0.18) : .clear, radius: 12, x: 0, y: 6)
+        }
+        .buttonStyle(LMSPressableStyle())
+        .listRowBackground(Color.clear)
+        .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+    }
+}
+
+private struct SelectableBankAccountCard: View {
+    let account: BankAccount
+    let isSelected: Bool
+    let warning: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(account.bankName.isEmpty ? account.accountType.rawValue : account.bankName)
+                        .font(.headline)
+                    Text("••\(account.accountNumber.suffix(4))")
+                        .foregroundStyle(LMSColors.textSecondary)
+                    Text("Available: \(account.availableBalance.formattedAsINR())")
+                        .font(.caption)
+                        .foregroundStyle(warning ? LMSColors.coral : LMSColors.textSecondary)
+                    Text(account.accountType.rawValue)
+                        .font(.caption2)
+                        .foregroundStyle(LMSColors.textTertiary)
+                }
+                Spacer()
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isSelected ? LMSColors.emerald : LMSColors.textTertiary)
+            }
+            .padding(.vertical, 6)
+        }
+    }
+}
+
+private enum StatementPeriod: String, CaseIterable, Identifiable {
+    case days30 = "Last 30 Days"
+    case months3 = "Last 3 Months"
+    case months6 = "Last 6 Months"
+    case year1 = "Last 1 Year"
+    case custom = "Custom Range"
+    var id: String { rawValue }
+}
+
+private enum StatementFormat: String, CaseIterable, Identifiable {
+    case pdf = "PDF"
+    case excel = "Excel"
+    var id: String { rawValue }
+}
+
+struct StatementWorkflowView: View {
+    @ObservedObject var viewModel: DashboardViewModel
+    @State private var selectedAccountID: UUID?
+    @State private var period: StatementPeriod = .days30
+    @State private var format: StatementFormat = .pdf
+    @State private var startDate = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+    @State private var endDate = Date()
+    @State private var isGenerating = false
+    @State private var generatedURL: URL?
+    @State private var showShare = false
+
+    private var selectedAccount: BankAccount? {
+        viewModel.bankAccounts.first { $0.id == selectedAccountID } ?? viewModel.bankAccounts.first
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                ForEach(viewModel.bankAccounts) { account in
+                    SelectableBankAccountCard(account: account, isSelected: selectedAccount?.id == account.id, warning: false) {
+                        selectedAccountID = account.id
+                    }
+                }
+            } header: {
+                Text("Choose Account for Statement")
+            }
+
+            Section {
+                Picker("Period", selection: $period) {
+                    ForEach(StatementPeriod.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.inline)
+                if period == .custom {
+                    DatePicker("From", selection: $startDate, displayedComponents: .date)
+                    DatePicker("To", selection: $endDate, displayedComponents: .date)
+                }
+            } header: {
+                Text("Select Period")
+            }
+
+            Section {
+                Picker("Format", selection: $format) {
+                    ForEach(StatementFormat.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+            } header: {
+                Text("Format")
+            }
+
+            Section {
+                Button {
+                    generateStatement()
+                } label: {
+                    HStack {
+                        Spacer()
+                        if isGenerating { ProgressView() }
+                        Text(isGenerating ? "Preparing secure statement..." : "Generate Statement")
+                            .fontWeight(.bold)
+                        Spacer()
+                    }
+                }
+                .disabled(isGenerating || selectedAccount == nil)
+
+                if generatedURL != nil {
+                    Button {
+                        showShare = true
+                    } label: {
+                        Label("Download Statement", systemImage: "square.and.arrow.down")
+                    }
+                }
+            }
+        }
+        .navigationTitle("Statements")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { selectedAccountID = selectedAccountID ?? viewModel.bankAccounts.first?.id }
+        .sheet(isPresented: $showShare) {
+            if let generatedURL {
+                DashboardShareSheet(items: [generatedURL])
+            }
+        }
+    }
+
+    private func generateStatement() {
+        guard let selectedAccount else { return }
+        isGenerating = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            let ext = format == .pdf ? "pdf" : "csv"
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("LoanManagementSystem-\(selectedAccount.accountNumber.suffix(4))-statement.\(ext)")
+            let rows = viewModel.transactions
+                .filter { $0.bankAccountId == nil || $0.bankAccountId == selectedAccount.id }
+                .map { "\($0.date.formattedAsDDMMMYYYY()),\($0.title),\($0.amount),\($0.referenceNo)" }
+                .joined(separator: "\n")
+            let body = "LoanManagementSystem Secure Statement\nAccount,\(selectedAccount.accountNumber)\nPeriod,\(period.rawValue)\nFormat,\(format.rawValue)\n\nDate,Description,Amount,Reference\n\(rows)"
+            try? body.data(using: .utf8)?.write(to: url, options: .atomic)
+            generatedURL = url
+            isGenerating = false
+            HapticsManager.triggerNotification(type: .success)
+        }
+    }
+}
+
+private struct DashboardShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+private enum TopUpStep: Int, CaseIterable {
+    case source, destination, amount, review, authorize
+    var title: String {
+        switch self {
+        case .source: return "Source Account"
+        case .destination: return "Destination"
+        case .amount: return "Amount"
+        case .review: return "Review Transfer"
+        case .authorize: return "Confirm"
+        }
+    }
+    var next: TopUpStep { TopUpStep(rawValue: min(rawValue + 1, TopUpStep.allCases.count - 1)) ?? self }
+    var previous: TopUpStep { TopUpStep(rawValue: max(rawValue - 1, 0)) ?? self }
+}
+
+private enum TopUpDestinationType: String, CaseIterable, Identifiable {
+    case loan = "Own Loan Account"
+    case savings = "Own Savings Account"
+    case linked = "Another Linked Account"
+    case qr = "QR Transfer"
+    var id: String { rawValue }
+}
+
+struct TopUpWorkflowView: View {
+    @ObservedObject var viewModel: DashboardViewModel
+    let onAddAccount: () -> Void
+    @State private var step: TopUpStep = .source
+    @State private var sourceAccountID: UUID?
+    @State private var destinationType: TopUpDestinationType = .loan
+    @State private var destinationAccountID: UUID?
+    @State private var destinationLoanID: UUID?
+    @State private var amountText = "5000"
+    @State private var mpin = ""
+    @State private var scannedReceiver: QRReceiver?
+    @State private var showQRScanner = false
+    @State private var showSuccess = false
+
+    private var amount: Double { Double(amountText.filter { $0.isNumber }) ?? 0 }
+    private var sourceAccount: BankAccount? { viewModel.bankAccounts.first { $0.id == sourceAccountID } ?? viewModel.bankAccounts.first }
+    private var destinationAccount: BankAccount? { viewModel.bankAccounts.first { $0.id == destinationAccountID } }
+    private var destinationLoan: DashboardLoanAccount? { viewModel.loanAccounts.first { $0.id == destinationLoanID } ?? viewModel.loanAccounts.first }
+
+    private var canContinue: Bool {
+        switch step {
+        case .source: return sourceAccount != nil
+        case .destination:
+            if destinationType == .qr { return scannedReceiver != nil }
+            if destinationType == .loan { return destinationLoan != nil }
+            return destinationAccount != nil
+        case .amount: return amount > 0 && (sourceAccount?.availableBalance ?? 0) >= amount
+        case .review: return true
+        case .authorize: return mpin.count >= 4
+        }
+    }
+
+    var body: some View {
+        Form {
+            topUpHeader
+            topUpContent
+        }
+        .scrollContentBackground(.hidden)
+        .background(LMSColors.background)
+        .navigationTitle("Top Up")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if step != .source {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Back") { withAnimation(.smooth(duration: 0.22)) { step = step.previous } }
+                }
+            }
+        }
+        .safeAreaInset(edge: .bottom) { topUpCTA }
+        .onAppear {
+            sourceAccountID = sourceAccountID ?? viewModel.bankAccounts.first?.id
+            destinationAccountID = destinationAccountID ?? viewModel.bankAccounts.dropFirst().first?.id ?? viewModel.bankAccounts.first?.id
+            destinationLoanID = destinationLoanID ?? viewModel.loanAccounts.first?.id
+        }
+        .sheet(isPresented: $showQRScanner) {
+            QRScannerMockView {
+                scannedReceiver = QRReceiver(name: "Akash Kumar", handle: "akash@upi", bank: "HDFC Bank")
+                showQRScanner = false
+            }
+        }
+        .fullScreenCover(isPresented: $showSuccess) {
+            TopUpSuccessView(amount: amount) {
+                showSuccess = false
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var topUpContent: some View {
+        switch step {
+        case .source: sourceSection
+        case .destination: destinationSection
+        case .amount: amountSection
+        case .review: reviewSection
+        case .authorize: authSection
+        }
+    }
+
+    private var topUpHeader: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(step.title).font(.title3.bold())
+                        Text("Add money, move funds, or scan QR securely.")
+                            .font(.caption)
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+                    Spacer()
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title)
+                        .foregroundStyle(LMSColors.emerald)
+                }
+                ProgressView(value: Double(step.rawValue + 1), total: Double(TopUpStep.allCases.count))
+                    .tint(LMSColors.emerald)
+            }
+        }
+        .listRowBackground(LMSColors.surface)
+    }
+
+    private var sourceSection: some View {
+        Section {
+            if viewModel.bankAccounts.isEmpty {
+                Button("Add Account", action: onAddAccount)
+            } else {
+                ForEach(viewModel.bankAccounts) { account in
+                    SelectableBankAccountCard(account: account, isSelected: sourceAccountID == account.id, warning: false) {
+                        sourceAccountID = account.id
+                    }
+                }
+            }
+        } header: {
+            Text("Select Source Account")
+        }
+    }
+
+    private var destinationSection: some View {
+        Section {
+            Picker("Destination", selection: $destinationType) {
+                ForEach(TopUpDestinationType.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.inline)
+
+            if destinationType == .loan {
+                ForEach(viewModel.loanAccounts) { loan in
+                    SelectableLoanPaymentCard(loan: loan, isSelected: destinationLoanID == loan.id) {
+                        destinationLoanID = loan.id
+                    }
+                }
+            } else if destinationType == .savings || destinationType == .linked {
+                ForEach(viewModel.bankAccounts.filter { $0.id != sourceAccountID }) { account in
+                    SelectableBankAccountCard(account: account, isSelected: destinationAccountID == account.id, warning: false) {
+                        destinationAccountID = account.id
+                    }
+                }
+            } else {
+                Button {
+                    showQRScanner = true
+                } label: {
+                    Label(scannedReceiver == nil ? "Scan QR Code" : "QR Scanned", systemImage: "qrcode.viewfinder")
+                }
+                if let scannedReceiver {
+                    LabeledContent("Receiver", value: scannedReceiver.name)
+                    LabeledContent("UPI ID", value: scannedReceiver.handle)
+                    LabeledContent("Bank", value: scannedReceiver.bank)
+                }
+            }
+        } header: {
+            Text("Select Destination")
+        }
+    }
+
+    private var amountSection: some View {
+        Section {
+            TextField("₹ Amount", text: $amountText)
+                .keyboardType(.numberPad)
+                .font(.title2.bold())
+            HStack {
+                ForEach([500, 1000, 5000, 10000], id: \.self) { chip in
+                    Button("₹\(chip)") { amountText = "\(chip)" }
+                        .buttonStyle(.bordered)
+                }
+            }
+            if (sourceAccount?.availableBalance ?? 0) < amount {
+                Label("Insufficient source balance", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(LMSColors.coral)
+            }
+        } header: {
+            Text("Enter Amount")
+        }
+    }
+
+    private var reviewSection: some View {
+        Section {
+            LabeledContent("From", value: sourceAccount.map { "\($0.bankName.isEmpty ? $0.accountType.rawValue : $0.bankName) ••\($0.accountNumber.suffix(4))" } ?? "-")
+            LabeledContent("To", value: destinationLabel)
+            LabeledContent("Amount", value: amount.formattedAsINR())
+            LabeledContent("Balance after transfer", value: max(0, (sourceAccount?.availableBalance ?? 0) - amount).formattedAsINR())
+        } header: {
+            Text("Review Transfer")
+        }
+    }
+
+    private var authSection: some View {
+        Section {
+            SecureField("Enter MPIN", text: $mpin)
+                .keyboardType(.numberPad)
+            Label("Biometric authentication can be connected here for production builds.", systemImage: "faceid")
+                .font(.caption)
+                .foregroundStyle(LMSColors.textSecondary)
+        } header: {
+            Text("Biometric / MPIN")
+        }
+    }
+
+    private var topUpCTA: some View {
+        Button {
+            if step == .authorize {
+                confirmTopUp()
+            } else {
+                withAnimation(.smooth(duration: 0.22)) { step = step.next }
+            }
+        } label: {
+            Text(step == .authorize ? "Confirm" : "Continue")
+                .font(.headline)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(canContinue ? LMSColors.brandNavy : LMSColors.textTertiary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .disabled(!canContinue)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial)
+    }
+
+    private var destinationLabel: String {
+        switch destinationType {
+        case .loan:
+            return destinationLoan.map { "\($0.loanType) ••\($0.accountNumber.suffix(4))" } ?? "-"
+        case .savings, .linked:
+            return destinationAccount.map { "\($0.bankName.isEmpty ? $0.accountType.rawValue : $0.bankName) ••\($0.accountNumber.suffix(4))" } ?? "-"
+        case .qr:
+            return scannedReceiver.map { "\($0.name) \($0.handle)" } ?? "-"
+        }
+    }
+
+    private func confirmTopUp() {
+        guard let sourceAccount else { return }
+        switch destinationType {
+        case .loan:
+            if let destinationLoan { viewModel.transferFundsToLoan(amount: amount, from: sourceAccount, to: destinationLoan) }
+        case .savings, .linked:
+            if let destinationAccount { viewModel.transferFunds(amount: amount, from: sourceAccount, to: destinationAccount) }
+        case .qr:
+            viewModel.transferToExternalReceiver(amount: amount, from: sourceAccount, receiverName: scannedReceiver?.name ?? "QR Receiver")
+        }
+        HapticsManager.triggerNotification(type: .success)
+        showSuccess = true
+    }
+}
+
+private struct QRReceiver {
+    let name: String
+    let handle: String
+    let bank: String
+}
+
+private struct QRScannerMockView: View {
+    let onScan: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "qrcode.viewfinder")
+                .font(.system(size: 84))
+            Text("Scan QR")
+                .font(.title2.bold())
+            Text("Camera QR scanning placeholder. Tap below to simulate a secure QR scan.")
+                .multilineTextAlignment(.center)
+                .foregroundStyle(LMSColors.textSecondary)
+            Button("Simulate Scan", action: onScan)
+                .buttonStyle(.borderedProminent)
+            Button("Cancel") { dismiss() }
+        }
+        .padding(24)
+    }
+}
+
+private struct TopUpSuccessView: View {
+    let amount: Double
+    let onDone: () -> Void
+    var body: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 74))
+                .foregroundStyle(LMSColors.emerald)
+            Text("Money Added Successfully")
+                .font(.title2.bold())
+            Text(amount.formattedAsINR())
+                .font(.system(size: 34, weight: .bold, design: .rounded))
+            Spacer()
+            Button("Done", action: onDone)
+                .font(.headline)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(LMSColors.brandNavy, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .padding(24)
+        .background(LMSColors.background)
+    }
+}
 
 struct QuickPaySheet: View {
     @ObservedObject var viewModel: DashboardViewModel
