@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 import SwiftUI
-import SwiftUI
+import OSLog
 
 @MainActor
 final class AdminDashboardViewModel: ObservableObject {
@@ -9,6 +9,7 @@ final class AdminDashboardViewModel: ObservableObject {
     @Published var systemHealth = SystemHealth(serverUptime: 100.0, activeSessions: 0, lastBackupTime: Date())
     @Published var recentAuditLogs: [AuditLogEntry] = []
     @Published var approvalBreakdown: (approved: Int, rejected: Int, pending: Int) = (0, 0, 0)
+    @Published var rawApplications: [DBLoanApplication] = []
     
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -17,36 +18,51 @@ final class AdminDashboardViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         
-        // Simulating network fetch
         do {
-            try await Task.sleep(nanoseconds: 800_000_000)
+            let data = try await AdminDashboardService.shared.fetchDashboardData()
             
-            // Mock Data
+            // Format currency in Indian notation (Lakhs / Crores)
+            let formattedDisbursed = formatCurrency(data.totalDisbursed)
+            
             kpis = [
-                AdminKPI(title: "Total Applications", value: "3,482", icon: "folder.fill", trend: 5.2, themeColor: LMSColors.brandNavy),
-                AdminKPI(title: "Active Loans", value: "1,204", icon: "banknote.fill", trend: 2.1, themeColor: LMSColors.emerald),
-                AdminKPI(title: "Pending Approvals", value: "156", icon: "clock.fill", trend: -1.5, themeColor: LMSColors.amber),
-                AdminKPI(title: "Total Disbursed", value: "₹42.5 Cr", icon: "indianrupesign.circle.fill", trend: 8.4, themeColor: LMSColors.actionBlue)
+                AdminKPI(title: "Total Applications", value: "\(data.totalApplications)", icon: "folder.fill", trend: data.totalApplicationsTrend, themeColor: LMSColors.brandNavy),
+                AdminKPI(title: "Active Loans", value: "\(data.activeLoans)", icon: "banknote.fill", trend: data.activeLoansTrend, themeColor: LMSColors.emerald),
+                AdminKPI(title: "Pending Approvals", value: "\(data.pendingApprovals)", icon: "clock.fill", trend: data.pendingApprovalsTrend, themeColor: LMSColors.amber),
+                AdminKPI(title: "Total Disbursed", value: formattedDisbursed, icon: "indianrupesign.circle.fill", trend: data.totalDisbursedTrend, themeColor: LMSColors.actionBlue)
             ]
-            
-            approvalBreakdown = (approved: 2450, rejected: 876, pending: 156)
             
             systemHealth = SystemHealth(
-                serverUptime: 99.98,
-                activeSessions: 24,
-                lastBackupTime: Calendar.current.date(byAdding: .hour, value: -2, to: Date()) ?? Date()
+                serverUptime: data.serverUptime,
+                activeSessions: data.activeSessions,
+                lastBackupTime: data.lastBackupTime
             )
             
-            recentAuditLogs = [
-                AuditLogEntry(id: UUID(), userId: UUID(), userName: "Raj Kumar (LO)", action: "Approved Application", entityType: "Loan", entityId: "APP-2024-0891", timestamp: Date().addingTimeInterval(-1200), details: "Verified all documents and approved personal loan.", type: .loanAction),
-                AuditLogEntry(id: UUID(), userId: UUID(), userName: "System", action: "Daily Backup Completed", entityType: "Database", entityId: "DB-MAIN", timestamp: Date().addingTimeInterval(-7200), details: "Automated snapshot saved securely.", type: .systemAction),
-                AuditLogEntry(id: UUID(), userId: UUID(), userName: "Priya Singh (BM)", action: "Suspended User", entityType: "User", entityId: "USR-0042", timestamp: Date().addingTimeInterval(-86400), details: "Suspended due to policy violation.", type: .userAction)
-            ]
+            recentAuditLogs = Array(data.recentAuditLogs.prefix(3))
+            rawApplications = data.rawApplications
             
         } catch {
+            logger.error("AdminDashboardViewModel: Failed to load dashboard data: \(error.localizedDescription)")
             errorMessage = "Failed to load dashboard data."
         }
         
         isLoading = false
+    }
+    
+    private let logger = Logger(subsystem: "galgotias.in.akash", category: "AdminDashboardViewModel")
+    
+    private func formatCurrency(_ value: Double) -> String {
+        if value >= 10_000_000 { // 1 Crore
+            let crVal = value / 10_000_000
+            return String(format: "₹%.2f Cr", crVal)
+        } else if value >= 100_000 { // 1 Lakh
+            let lakhVal = value / 100_000
+            return String(format: "₹%.2f Lakh", lakhVal)
+        } else {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .currency
+            formatter.locale = Locale(identifier: "en_IN")
+            formatter.maximumFractionDigits = 0
+            return formatter.string(from: NSNumber(value: value)) ?? "₹\(Int(value))"
+        }
     }
 }

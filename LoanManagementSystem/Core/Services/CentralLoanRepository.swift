@@ -46,9 +46,32 @@ final class CentralLoanRepository: ObservableObject {
     @Published var applications: [BorrowerLoanApplication] = []
     @Published var disbursementEvents: [LoanDisbursementEvent] = []
     @Published var borrowerNotifications: [LMSNotification] = []
+    @Published var globalRules = GlobalLoanRules(minCibilScore: 700, maxDTI: 50.0, maxLTV: 80.0)
     
     private init() {
         loadPersistedState()
+        
+        // Load fallback rules from cache
+        if let data = UserDefaults.standard.data(forKey: "GlobalLoanRules"),
+           let savedRules = try? JSONDecoder().decode(GlobalLoanRules.self, from: data) {
+            self.globalRules = savedRules
+        }
+        
+        Task {
+            await fetchGlobalRules()
+        }
+    }
+    
+    func fetchGlobalRules() async {
+        do {
+            let rules = try await AdminDashboardService.shared.fetchGlobalRules()
+            self.globalRules = rules
+            if let encoded = try? JSONEncoder().encode(rules) {
+                UserDefaults.standard.set(encoded, forKey: "GlobalLoanRules")
+            }
+        } catch {
+            print("[CentralLoanRepository] Failed to fetch global rules from Supabase: \(error.localizedDescription)")
+        }
     }
     
     // MARK: - Core Operations
@@ -540,7 +563,7 @@ final class CentralLoanRepository: ObservableObject {
             requestedAmount: app.formData.requestedAmountValue,
             cibilScore: app.formData.creditScoreValue > 0 ? app.formData.creditScoreValue : 750,
             status: status,
-            riskLevel: app.formData.creditScoreValue >= 750 ? .low : (app.formData.creditScoreValue >= 650 ? .medium : .high),
+            riskLevel: app.formData.creditScoreValue >= 750 ? .low : (app.formData.creditScoreValue >= self.globalRules.minCibilScore ? .medium : .high),
             assignedOfficer: assignedOfficerName,
             assignedOfficerId: assignedOfficerId,
             submissionDate: app.submittedAt ?? Date(),
