@@ -76,10 +76,11 @@ struct AdminLoanRulesTabView: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("System Rules")
+            .refreshable {
+                await viewModel.loadRules()
+            }
             .task {
-                if viewModel.loanProducts.isEmpty {
-                    await viewModel.loadRules()
-                }
+                await viewModel.loadRules()
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

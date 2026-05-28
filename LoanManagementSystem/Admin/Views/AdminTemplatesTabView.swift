@@ -81,10 +81,11 @@ struct AdminTemplatesTabView: View {
             )) {
                 AdminTemplateEditSheet(viewModel: viewModel, template: selectedTemplate)
             }
+            .refreshable {
+                await viewModel.loadTemplates()
+            }
             .task {
-                if viewModel.templates.isEmpty {
-                    await viewModel.loadTemplates()
-                }
+                await viewModel.loadTemplates()
             }
         }
     }

@@ -23,15 +23,6 @@ final class AdminDashboardService {
         let entityType: String
         let entityId: UUID
         let ts: Date
-        
-        enum CodingKeys: String, CodingKey {
-            case logId = "log_id"
-            case userId = "user_id"
-            case action
-            case entityType = "entity_type"
-            case entityId = "entity_id"
-            case ts
-        }
     }
     
     struct DBUserMin: Codable {
@@ -41,12 +32,6 @@ final class AdminDashboardService {
         let role: String
         let status: String
         let lastLogin: Date?
-        
-        enum CodingKeys: String, CodingKey {
-            case id, email, role, status
-            case fullName = "full_name"
-            case lastLogin = "last_login"
-        }
     }
     
     struct DBRichDetails: Codable {
@@ -79,21 +64,6 @@ final class AdminDashboardService {
         var isActive: Bool
         var createdBy: UUID?
         var richDetails: DBRichDetails?
-        
-        enum CodingKeys: String, CodingKey {
-            case productId = "product_id"
-            case name
-            case loanType = "loan_type"
-            case minAmount = "min_amount"
-            case maxAmount = "max_amount"
-            case minTenureMonths = "min_tenure_months"
-            case maxTenureMonths = "max_tenure_months"
-            case baseInterestRate = "base_interest_rate"
-            case processingFeePct = "processing_fee_pct"
-            case isActive = "is_active"
-            case createdBy = "created_by"
-            case richDetails = "rich_details"
-        }
     }
     
     // MARK: - Notification Templates DB Model
@@ -104,15 +74,6 @@ final class AdminDashboardService {
         let bodyTemplate: String
         let isActive: Bool
         let createdBy: UUID?
-        
-        enum CodingKeys: String, CodingKey {
-            case templateId = "template_id"
-            case notifType = "notif_type"
-            case titleTemplate = "title_template"
-            case bodyTemplate = "body_template"
-            case isActive = "is_active"
-            case createdBy = "created_by"
-        }
     }
     
     struct DashboardData {

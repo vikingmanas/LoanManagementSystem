@@ -20,6 +20,9 @@ struct AdminDashboardTabView: View {
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
                 .padding(.vertical, LMSSpacing.md)
             }
+            .refreshable {
+                await viewModel.loadDashboardData()
+            }
             .background(LMSColors.background.ignoresSafeArea())
             .navigationTitle("Admin Portal")
             .toolbar {
@@ -36,9 +39,7 @@ struct AdminDashboardTabView: View {
                 }
             }
             .task {
-                if viewModel.kpis.isEmpty {
-                    await viewModel.loadDashboardData()
-                }
+                await viewModel.loadDashboardData()
             }
         }
     }
