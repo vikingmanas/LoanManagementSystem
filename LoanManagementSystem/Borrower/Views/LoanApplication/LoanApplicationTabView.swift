@@ -1,83 +1,59 @@
 import SwiftUI
 
-// MARK: - Navigation Route
-private enum LoanApplicationRoute: Hashable {
-    case overview(BorrowerLoanProduct)
-    case combinedApplication
-    case verificationResult
-    case tracking(BorrowerLoanApplication)
-}
+// MARK: - Loans Tab (Marketplace only — no applications here)
 
-// MARK: - Main Tab View
 struct LoanApplicationTabView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     @EnvironmentObject private var authManager: AuthManager
+    @EnvironmentObject private var tabRouter: BorrowerTabRouter
     @State private var navigationPath = NavigationPath()
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            VStack(spacing: 0) {
-                Picker("Loan Hub", selection: $viewModel.selectedSegment) {
-                    ForEach(LoanHubSegment.allCases) { segment in
-                        Text(segment.rawValue).tag(segment)
-                    }
+            LoansMarketplaceView(
+                viewModel: viewModel,
+                onProductDetail: { product in
+                    navigationPath.append(LoanApplicationRoute.productDetail(product))
+                },
+                onApply: { product in
+                    viewModel.startDraft(for: product)
+                    navigationPath.append(LoanApplicationRoute.applicationWizard(product))
                 }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-
-                Group {
-                    switch viewModel.selectedSegment {
-                    case .discover:
-                        ScrollView {
-                            LoanDiscoveryContent(viewModel: viewModel) { product in
-                                viewModel.startDraft(for: product)
-                                navigationPath.append(LoanApplicationRoute.overview(product))
-                            }
-                            .padding(.bottom, 32)
-                        }
-                    case .applications:
-                        BorrowerApplicationsContent(viewModel: viewModel) { application in
-                            navigationPath.append(LoanApplicationRoute.tracking(application))
-                        }
-                    }
-                }
-            }
+            )
             .background(LMSColors.background)
             .navigationTitle("Loans")
             .navigationBarTitleDisplayMode(.large)
             .task(id: authManager.userEmail) {
                 viewModel.setBorrowerAuthContext(
                     email: authManager.userEmail ?? "",
-                    displayName: authManager.userDisplayName ?? ""
+                    displayName: authManager.userDisplayName
                 )
             }
             .navigationDestination(for: LoanApplicationRoute.self) { route in
                 switch route {
-                case .overview(let product):
+                case .productDetail(let product):
+                    LoanProductDetailView(product: product) {
+                        viewModel.startDraft(for: product)
+                        navigationPath.append(LoanApplicationRoute.applicationWizard(product))
+                    }
+                case .applicationWizard(let product):
                     BorrowerLoanWizardView(viewModel: viewModel, product: product) {
                         navigationPath = NavigationPath()
-                        viewModel.selectedSegment = .applications
+                        tabRouter.select(.applications)
                     }
                     .environmentObject(authManager)
-                case .combinedApplication:
-                    EmptyView()
-                case .verificationResult:
-                    EmptyView()
                 case .tracking(let application):
                     LoanApplicationTrackingScreen(
                         viewModel: viewModel,
                         application: application,
                         onResume: {
                             viewModel.resumeDraft(application)
-                            navigationPath.append(LoanApplicationRoute.overview(application.product))
+                            navigationPath.append(LoanApplicationRoute.applicationWizard(application.product))
                         },
                         onDelete: {
-                            if viewModel.deleteDraft(applicationID: application.id) {
-                                if !navigationPath.isEmpty {
-                                    navigationPath.removeLast()
-                                }
+                            if viewModel.deleteDraft(applicationID: application.id),
+                               !navigationPath.isEmpty {
+                                navigationPath.removeLast()
                             }
                         }
                     )
@@ -87,7 +63,8 @@ struct LoanApplicationTabView: View {
     }
 }
 
-// MARK: - Discovery Content
+// MARK: - Legacy discovery (kept for reference — superseded by LoansMarketplaceView)
+#if false
 private struct LoanDiscoveryContent: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let onSelectProduct: (BorrowerLoanProduct) -> Void
@@ -831,8 +808,10 @@ private struct ApplicationCard: View {
     }
 }
 
+#endif
+
 // MARK: - Loan Application Tracking Screen
-private struct LoanApplicationTrackingScreen: View {
+struct LoanApplicationTrackingScreen: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let application: BorrowerLoanApplication
     let onResume: () -> Void

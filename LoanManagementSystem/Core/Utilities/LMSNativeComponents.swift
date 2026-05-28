@@ -4,8 +4,16 @@ public enum LMSAppearance {
     public static func configure() {
         let nav = UINavigationBarAppearance()
         nav.configureWithDefaultBackground()
-        nav.backgroundColor = UIColor.secondarySystemGroupedBackground
-        nav.shadowColor = UIColor.separator.withAlphaComponent(0.35)
+        nav.backgroundColor = UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor(red: 18/255, green: 19/255, blue: 23/255, alpha: 0.92)
+                : UIColor.secondarySystemGroupedBackground
+        }
+        nav.shadowColor = UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor.white.withAlphaComponent(0.08)
+                : UIColor.separator.withAlphaComponent(0.35)
+        }
         nav.titleTextAttributes = [
             .foregroundColor: UIColor.label,
             .font: UIFont.systemFont(ofSize: 17, weight: .semibold)
@@ -26,9 +34,17 @@ public enum LMSAppearance {
         }
 
         let tab = UITabBarAppearance()
-        tab.configureWithOpaqueBackground()
-        tab.backgroundColor = UIColor.secondarySystemGroupedBackground
-        tab.shadowColor = UIColor.black.withAlphaComponent(0.06)
+        tab.configureWithDefaultBackground()
+        tab.backgroundColor = UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor(red: 24/255, green: 25/255, blue: 30/255, alpha: 0.92)
+                : UIColor.secondarySystemGroupedBackground
+        }
+        tab.shadowColor = UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor.white.withAlphaComponent(0.10)
+                : UIColor.black.withAlphaComponent(0.06)
+        }
         tab.stackedLayoutAppearance.normal.iconColor = UIColor.tertiaryLabel
         tab.stackedLayoutAppearance.normal.titleTextAttributes = [
             .foregroundColor: UIColor.tertiaryLabel,
@@ -68,10 +84,26 @@ extension View {
     }
 
     public func lmsInsetGroupedCard() -> some View {
-        background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+        modifier(LMSInsetGroupedCardModifier(radius: LMSRadius.lg))
+    }
+}
+
+public struct LMSInsetGroupedCardModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    var radius: CGFloat
+
+    public func body(content: Content) -> some View {
+        content
+            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
-                    .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .stroke(colorScheme == .dark ? LMSColors.elevatedStroke : LMSColors.separatorLight, lineWidth: colorScheme == .dark ? 1 : 0.5)
+            )
+            .shadow(
+                color: colorScheme == .dark ? LMSColors.darkGlow : .black.opacity(0.025),
+                radius: colorScheme == .dark ? 12 : 4,
+                x: 0,
+                y: colorScheme == .dark ? 6 : 2
             )
     }
 }
@@ -426,4 +458,3 @@ public struct LMSNotificationRow: View {
         .contentShape(Rectangle())
     }
 }
-
