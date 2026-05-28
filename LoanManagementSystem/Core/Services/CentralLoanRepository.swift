@@ -366,6 +366,37 @@ final class CentralLoanRepository: ObservableObject {
             disbursementEvents.insert(event, at: 0)
         }
 
+        let resolvedBorrowerId = app.borrowerId ?? {
+            if let profileStringId = BorrowerProfileStore.shared.borrowerProfile(matchingEmail: borrowerEmail)?.id {
+                return UUID(uuidString: profileStringId)
+            }
+            return nil
+        }()
+
+        if let borrowerId = resolvedBorrowerId {
+            let dbTx = DBTransaction(
+                id: UUID(),
+                title: "Loan Amount Credited - \(event.applicationNumber)",
+                date: event.creditedAt,
+                amount: approvedAmount,
+                type: "credit",
+                referenceNo: referenceNumber,
+                bankAccountId: nil,
+                borrowerId: borrowerId
+            )
+            Task {
+                do {
+                    try await SupabaseManager.shared.client
+                        .from("transactions")
+                        .insert(dbTx)
+                        .execute()
+                    print("[CentralLoanRepository] Successfully saved disbursement transaction to Supabase.")
+                } catch {
+                    print("[CentralLoanRepository] Failed to save disbursement transaction to Supabase: \(error.localizedDescription)")
+                }
+            }
+        }
+
         borrowerNotifications.insert(
             LMSNotification(
                 title: "Loan Approved",

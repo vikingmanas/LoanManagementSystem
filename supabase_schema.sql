@@ -291,3 +291,16 @@ CREATE TABLE public.users (
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );
+CREATE TABLE public.transactions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  date timestamp with time zone NOT NULL DEFAULT now(),
+  amount numeric NOT NULL,
+  type text NOT NULL,
+  reference_no text NOT NULL UNIQUE,
+  bank_account_id uuid,
+  borrower_id uuid NOT NULL,
+  CONSTRAINT transactions_pkey PRIMARY KEY (id),
+  CONSTRAINT transactions_borrower_id_fkey FOREIGN KEY (borrower_id) REFERENCES public.users(id)
+);
+ALTER TABLE public.transactions DISABLE ROW LEVEL SECURITY;

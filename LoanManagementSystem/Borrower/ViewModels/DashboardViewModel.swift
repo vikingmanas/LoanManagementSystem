@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Combine
+import Supabase
 
 @MainActor
 public final class DashboardViewModel: ObservableObject {
@@ -228,74 +229,46 @@ public final class DashboardViewModel: ObservableObject {
         
         self.schemes = MockData.sampleSchemes
 
-        let disbursementTransactions = CentralLoanRepository.shared.disbursementEvents.map { event in
-            Transaction(
-                title: "Loan Amount Credited - \(event.applicationNumber)",
-                date: event.creditedAt,
-                amount: event.amount,
-                type: .credit,
-                referenceNo: event.referenceNumber,
-                bankAccountId: bankAccounts.first(where: { $0.accountNumber == event.accountNumber })?.id
-            )
+        // Fetch actual transactions from Supabase if borrower profile is available
+        var dbTransactionsList: [Transaction] = []
+        if let profile = BorrowerProfileStore.shared.profile {
+            do {
+                let dbTxs: [DBTransaction] = try await SupabaseManager.shared.client
+                    .from("transactions")
+                    .select()
+                    .eq("borrower_id", value: profile.id)
+                    .execute()
+                    .value
+                
+                dbTransactionsList = dbTxs.map { db in
+                    let txType: TransactionType
+                    switch db.type.lowercased() {
+                    case "emi_payment", "emipayment": txType = .emiPayment
+                    case "credit": txType = .credit
+                    case "penalty": txType = .penalty
+                    case "refund": txType = .refund
+                    case "failed_debit", "faileddebit": txType = .failedDebit
+                    default: txType = .credit
+                    }
+                    return Transaction(
+                        id: db.id,
+                        title: db.title,
+                        date: db.date,
+                        amount: db.amount,
+                        type: txType,
+                        referenceNo: db.referenceNo,
+                        bankAccountId: db.bankAccountId
+                    )
+                }
+            } catch {
+                print("[DashboardViewModel] Error fetching transactions from Supabase: \(error.localizedDescription)")
+            }
         }
-        let generatedTransactions = generatedTransactionHistory(for: loanAccounts)
-        let preservedManualTransactions = transactions.filter {
-            !$0.referenceNo.hasPrefix("AUTO-")
-        }
-        self.transactions = (preservedManualTransactions + disbursementTransactions + generatedTransactions)
-            .uniquedByReference()
-            .sorted { $0.date > $1.date }
+
+        self.transactions = dbTransactionsList.sorted { $0.date > $1.date }
     }
 
-    private func generatedTransactionHistory(for loans: [DashboardLoanAccount]) -> [Transaction] {
-        let calendar = Calendar.current
-        return loans.flatMap { loan -> [Transaction] in
-            let accountID = loan.linkedBankAccountId
-            let baseDate = calendar.date(byAdding: .day, value: -12, to: Date()) ?? Date()
-            return [
-                Transaction(
-                    title: "\(loan.loanType) loan credited to linked account",
-                    date: baseDate,
-                    amount: loan.sanctionedAmount,
-                    type: .credit,
-                    referenceNo: "AUTO-DISB-\(loan.id.uuidString.prefix(6))",
-                    bankAccountId: accountID
-                ),
-                Transaction(
-                    title: "EMI debited for \(loan.loanType)",
-                    date: calendar.date(byAdding: .day, value: -5, to: Date()) ?? Date(),
-                    amount: loan.totalEMI,
-                    type: .emiPayment,
-                    referenceNo: "AUTO-EMI-\(loan.id.uuidString.prefix(6))",
-                    bankAccountId: accountID
-                ),
-                Transaction(
-                    title: "Partial payment received for \(loan.loanType)",
-                    date: calendar.date(byAdding: .day, value: -3, to: Date()) ?? Date(),
-                    amount: max(1_000, loan.totalEMI * 0.35),
-                    type: .credit,
-                    referenceNo: "AUTO-PART-\(loan.id.uuidString.prefix(6))",
-                    bankAccountId: accountID
-                ),
-                Transaction(
-                    title: "Auto-debit failed due to low balance",
-                    date: calendar.date(byAdding: .day, value: -2, to: Date()) ?? Date(),
-                    amount: loan.totalEMI,
-                    type: .failedDebit,
-                    referenceNo: "AUTO-FAIL-\(loan.id.uuidString.prefix(6))",
-                    bankAccountId: accountID
-                ),
-                Transaction(
-                    title: "Late penalty charged on overdue EMI",
-                    date: calendar.date(byAdding: .day, value: -1, to: Date()) ?? Date(),
-                    amount: 500,
-                    type: .penalty,
-                    referenceNo: "AUTO-PEN-\(loan.id.uuidString.prefix(6))",
-                    bankAccountId: accountID
-                )
-            ]
-        }
-    }
+
 
     private func buildBankAccounts(from profile: BorrowerProfile, disbursedCredits: [String: Double]) -> [BankAccount] {
         var accounts: [BankAccount] = []
@@ -410,15 +383,42 @@ public final class DashboardViewModel: ObservableObject {
 
             pendingEMIs[index].status = .paid
                 
-                // Add a new transaction row for the EMI paid
-                let newTx = Transaction(
-                    title: "EMI - \(emi.loanType)",
-                    date: Date(),
-                    amount: emi.amount,
-                    type: .emiPayment,
-                    referenceNo: "TXN\(Int.random(in: 1000000...9999999))"
+            // Add a new transaction row for the EMI paid
+            let refNo = "TXN\(Int.random(in: 1000000...9999999))"
+            let newTx = Transaction(
+                title: "EMI paid for \(emi.loanType)",
+                date: Date(),
+                amount: emi.amount,
+                type: .emiPayment,
+                referenceNo: refNo,
+                bankAccountId: repaymentAccount.id
+            )
+            transactions.insert(newTx, at: 0)
+
+            if let profile = BorrowerProfileStore.shared.profile,
+               let borrowerUUID = UUID(uuidString: profile.id) {
+                let dbTx = DBTransaction(
+                    id: newTx.id,
+                    title: newTx.title,
+                    date: newTx.date,
+                    amount: newTx.amount,
+                    type: "emi_payment",
+                    referenceNo: refNo,
+                    bankAccountId: repaymentAccount.id,
+                    borrowerId: borrowerUUID
                 )
-                transactions.insert(newTx, at: 0)
+                Task {
+                    do {
+                        try await SupabaseManager.shared.client
+                            .from("transactions")
+                            .insert(dbTx)
+                            .execute()
+                        print("[DashboardViewModel] Successfully saved EMI payment transaction to Supabase.")
+                    } catch {
+                        print("[DashboardViewModel] Error saving EMI payment transaction to Supabase: \(error.localizedDescription)")
+                    }
+                }
+            }
         }
         return true
     }
@@ -438,14 +438,41 @@ public final class DashboardViewModel: ObservableObject {
             }
             
             // Add a credit transaction row
+            let refNo = "TXN\(Int.random(in: 1000000...9999999))"
             let newTx = Transaction(
                 title: "Account Top-Up",
                 date: Date(),
                 amount: amount,
                 type: .credit,
-                referenceNo: "TXN\(Int.random(in: 1000000...9999999))"
+                referenceNo: refNo,
+                bankAccountId: destinationID
             )
             transactions.insert(newTx, at: 0)
+
+            if let profile = BorrowerProfileStore.shared.profile,
+               let borrowerUUID = UUID(uuidString: profile.id) {
+                let dbTx = DBTransaction(
+                    id: newTx.id,
+                    title: newTx.title,
+                    date: newTx.date,
+                    amount: newTx.amount,
+                    type: "credit",
+                    referenceNo: refNo,
+                    bankAccountId: destinationID,
+                    borrowerId: borrowerUUID
+                )
+                Task {
+                    do {
+                        try await SupabaseManager.shared.client
+                            .from("transactions")
+                            .insert(dbTx)
+                            .execute()
+                        print("[DashboardViewModel] Successfully saved Account Top-Up transaction to Supabase.")
+                    } catch {
+                        print("[DashboardViewModel] Error saving Account Top-Up transaction to Supabase: \(error.localizedDescription)")
+                    }
+                }
+            }
         }
     }
 
@@ -463,14 +490,41 @@ public final class DashboardViewModel: ObservableObject {
                 bankAccount = bankAccounts[destinationIndex]
             }
 
+            let refNo = "TXN\(Int.random(in: 1000000...9999999))"
             let newTx = Transaction(
                 title: "Transfer to \(destination.bankName.isEmpty ? "Linked Account" : destination.bankName)",
                 date: Date(),
                 amount: amount,
                 type: .credit,
-                referenceNo: "TXN\(Int.random(in: 1000000...9999999))"
+                referenceNo: refNo,
+                bankAccountId: destination.id
             )
             transactions.insert(newTx, at: 0)
+
+            if let profile = BorrowerProfileStore.shared.profile,
+               let borrowerUUID = UUID(uuidString: profile.id) {
+                let dbTx = DBTransaction(
+                    id: newTx.id,
+                    title: newTx.title,
+                    date: newTx.date,
+                    amount: newTx.amount,
+                    type: "credit",
+                    referenceNo: refNo,
+                    bankAccountId: destination.id,
+                    borrowerId: borrowerUUID
+                )
+                Task {
+                    do {
+                        try await SupabaseManager.shared.client
+                            .from("transactions")
+                            .insert(dbTx)
+                            .execute()
+                        print("[DashboardViewModel] Successfully saved transfer transaction to Supabase.")
+                    } catch {
+                        print("[DashboardViewModel] Error saving transfer transaction to Supabase: \(error.localizedDescription)")
+                    }
+                }
+            }
         }
     }
     

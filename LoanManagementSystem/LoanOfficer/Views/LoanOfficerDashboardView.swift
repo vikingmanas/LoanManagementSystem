@@ -179,7 +179,7 @@ private struct OfficerActionItemsRow: View {
                     tint: viewModel.sentToManagerApps.isEmpty ? LMSColors.emerald : LMSColors.coral,
                     action: {
                         HapticsManager.triggerImpact(style: .light)
-                        viewModel.historyFilter = .newCases
+                        viewModel.historyFilter = .approvalQueue
                         selectedTab = .registry
                     }
                 )
@@ -285,6 +285,12 @@ private struct OfficerReviewSnapshotView: View {
     @Binding var selectedTab: OfficerWorkspaceTab
     @Binding var selectedApplication: OfficerLoanApplication?
 
+    private var appsWithPendingDocs: [OfficerLoanApplication] {
+        viewModel.applications.filter { app in
+            app.documents.contains { $0.status != .verified }
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
             HStack {
@@ -309,7 +315,7 @@ private struct OfficerReviewSnapshotView: View {
             }
             .padding(.horizontal, LMSSpacing.screenHorizontal)
 
-            if viewModel.documentQueueList.isEmpty {
+            if appsWithPendingDocs.isEmpty {
                 ContentUnavailableView(
                     "Queue Clear",
                     systemImage: "checkmark.circle.fill",
@@ -325,26 +331,12 @@ private struct OfficerReviewSnapshotView: View {
                 )
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(viewModel.documentQueueList.prefix(4).enumerated()), id: \.element.id) { index, item in
-                        NavigationLink {
-                            DocumentReviewDetailView(item: item, viewModel: viewModel)
-                        } label: {
-                            OfficerDocumentRow(item: item)
-                                .padding(.horizontal, LMSSpacing.lg)
-                                .padding(.vertical, 4)
-                        }
-                        .buttonStyle(.plain)
-
-                        if index < min(viewModel.documentQueueList.count, 4) - 1 {
-                            Divider()
-                                .padding(.leading, 72)
-                        }
+                VStack(spacing: LMSSpacing.md) {
+                    ForEach(appsWithPendingDocs.prefix(2)) { app in
+                        let pendingDocs = app.documents.filter { $0.status != .verified }
+                        OfficerApplicationReviewCard(application: app, matchingDocuments: pendingDocs, viewModel: viewModel)
                     }
                 }
-                .background(LMSColors.surfaceElevated)
-                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
             }
         }
@@ -544,17 +536,24 @@ private struct LoanOfficerReviewQueueView: View {
     @State private var query = ""
     @State private var selectedStatus: OfficerDocumentStatus?
 
-    private var filteredItems: [DocumentQueueItem] {
-        viewModel.documentQueueList.filter { item in
-            let matchesQuery = query.isEmpty || item.borrowerName.localizedCaseInsensitiveContains(query) || item.applicationId.localizedCaseInsensitiveContains(query) || item.docType.rawValue.localizedCaseInsensitiveContains(query)
-            let matchesStatus = selectedStatus == nil || item.status == selectedStatus
-            return matchesQuery && matchesStatus
+    private var filteredApplications: [(application: OfficerLoanApplication, matchingDocuments: [LoanDocument])] {
+        viewModel.applications.compactMap { application in
+            let docs = application.documents.filter { doc in
+                let matchesQuery = query.isEmpty 
+                    || application.borrowerName.localizedCaseInsensitiveContains(query) 
+                    || application.applicationId.localizedCaseInsensitiveContains(query) 
+                    || doc.docType.rawValue.localizedCaseInsensitiveContains(query)
+                
+                let matchesStatus = selectedStatus == nil || doc.status == selectedStatus
+                return matchesQuery && matchesStatus
+            }
+            return docs.isEmpty ? nil : (application, docs)
         }
     }
 
     var body: some View {
-        List {
-            Section {
+        ScrollView {
+            LazyVStack(spacing: LMSSpacing.md) {
                 Picker("Status", selection: $selectedStatus) {
                     Text("All").tag(Optional<OfficerDocumentStatus>.none)
                     Text("New").tag(Optional(OfficerDocumentStatus.uploaded))
@@ -562,36 +561,26 @@ private struct LoanOfficerReviewQueueView: View {
                     Text("Missing").tag(Optional(OfficerDocumentStatus.pending))
                 }
                 .pickerStyle(.segmented)
-            }
-            .listRowBackground(Color.clear)
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+                .padding(.bottom, 8)
 
-            Section {
-                if filteredItems.isEmpty {
+                if filteredApplications.isEmpty {
                     ContentUnavailableView("No documents", systemImage: "doc.text.magnifyingglass", description: Text("Try a different search or status."))
+                        .padding(.top, 40)
                 } else {
-                    ForEach(filteredItems) { item in
-                        NavigationLink {
-                            DocumentReviewDetailView(item: item, viewModel: viewModel)
-                        } label: {
-                            OfficerDocumentRow(item: item)
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            if item.status == .uploaded || item.status == .reUploaded {
-                                Button {
-                                    viewModel.updateDocumentStatus(applicationId: item.applicationId, docId: item.id, newStatus: .verified)
-                                } label: {
-                                    Label("Verify", systemImage: "checkmark.shield")
-                                }
-                                .tint(.green)
-                            }
-                        }
+                    ForEach(filteredApplications, id: \.application.id) { pair in
+                        OfficerApplicationReviewCard(
+                            application: pair.application,
+                            matchingDocuments: pair.matchingDocuments,
+                            viewModel: viewModel
+                        )
                     }
+                    .padding(.horizontal, LMSSpacing.screenHorizontal)
                 }
-            } header: {
-                Text("Documents")
             }
+            .padding(.vertical, LMSSpacing.md)
         }
-        .listStyle(.insetGrouped)
+        .background(LMSColors.background)
         .navigationTitle("Review")
         .searchable(text: $query, prompt: "Borrower, document, application")
         .refreshable { await viewModel.fetchDashboardData() }
@@ -952,3 +941,133 @@ private struct OfficerApplicationListSheet: View {
         }
     }
 }
+
+// MARK: - Grouped Application Review Card
+
+struct OfficerApplicationReviewCard: View {
+    let application: OfficerLoanApplication
+    let matchingDocuments: [LoanDocument]
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header: Borrower Avatar, Name, Loan details, status
+            HStack(spacing: 12) {
+                OfficerAvatar(name: application.borrowerName, tint: application.loanType.themeColor)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(application.borrowerName)
+                        .font(.system(.body, design: .rounded).weight(.semibold))
+                        .foregroundStyle(LMSColors.textPrimary)
+                    
+                    Text("\(application.loanType.rawValue) · \(CurrencyFormatter.shared.format(application.requestedAmount))")
+                        .font(.system(.caption, design: .rounded).weight(.medium))
+                        .foregroundStyle(LMSColors.textSecondary)
+                    
+                    Text("App ID: \(application.applicationId)")
+                        .font(.system(.caption2, design: .rounded).monospaced())
+                        .foregroundStyle(LMSColors.textTertiary)
+                }
+                
+                Spacer()
+                
+                // Document progress indicator
+                VStack(alignment: .trailing, spacing: 4) {
+                    let total = application.documents.count
+                    let verified = application.documents.filter { $0.status == .verified }.count
+                    Text("\(verified)/\(total) Verified")
+                        .font(.system(.caption2, design: .rounded).bold())
+                        .foregroundStyle(verified == total ? LMSColors.emerald : LMSColors.actionBlue)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background((verified == total ? LMSColors.emerald : LMSColors.actionBlue).opacity(0.1))
+                        .clipShape(Capsule())
+                }
+            }
+            
+            Divider()
+                .padding(.vertical, 4)
+            
+            // Nested documents list
+            VStack(spacing: 8) {
+                ForEach(matchingDocuments) { doc in
+                    let item = DocumentQueueItem(
+                        id: doc.id,
+                        borrowerName: application.borrowerName,
+                        docType: doc.docType,
+                        status: doc.status,
+                        submittedDate: doc.uploadedDate ?? application.submittedDate,
+                        applicationId: application.applicationId
+                    )
+                    
+                    NavigationLink {
+                        DocumentReviewDetailView(item: item, viewModel: viewModel)
+                    } label: {
+                        HStack(spacing: 10) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(doc.docType.iconColor.opacity(0.12))
+                                    .frame(width: 32, height: 32)
+                                Image(systemName: doc.docType.symbol)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(doc.docType.iconColor)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(doc.docType.rawValue)
+                                    .font(.system(.caption, design: .rounded).weight(.semibold))
+                                    .foregroundStyle(LMSColors.textPrimary)
+                                
+                                if let reason = doc.rejectionReason {
+                                    Text(reason)
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(LMSColors.coral)
+                                } else {
+                                    Text(doc.status.rawValue)
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(LMSColors.textSecondary)
+                                }
+                            }
+                            
+                            Spacer()
+                            
+                            // Status tag
+                            Text(statusText(doc.status))
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .foregroundStyle(doc.status == .pending ? LMSColors.amber : .white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(doc.status == .pending ? LMSColors.amber.opacity(0.15) : doc.status.themeColor)
+                                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(LMSColors.textTertiary)
+                        }
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 8)
+                        .background(LMSColors.surfaceElevated.opacity(0.5))
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(14)
+        .background(LMSColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
+    }
+    
+    private func statusText(_ status: OfficerDocumentStatus) -> String {
+        switch status {
+        case .pending: return "Missing"
+        case .uploaded: return "New Upload"
+        case .underReview: return "In Review"
+        case .verified: return "Verified ✓"
+        case .rejectFlag: return "Re-upload Req."
+        case .reUploaded: return "Re-Uploaded"
+        }
+    }
+}
+

@@ -157,3 +157,25 @@ public enum SchemeCategory: String, CaseIterable, Identifiable, Hashable, Sendab
 
     public var id: String { self.rawValue }
 }
+
+public struct DBTransaction: Codable, Sendable {
+    public let id: UUID
+    public var title: String
+    public var date: Date
+    public var amount: Double
+    public var type: String
+    public var referenceNo: String
+    public var bankAccountId: UUID?
+    public var borrowerId: UUID
+
+    public init(id: UUID = UUID(), title: String, date: Date = Date(), amount: Double, type: String, referenceNo: String, bankAccountId: UUID? = nil, borrowerId: UUID) {
+        self.id = id
+        self.title = title
+        self.date = date
+        self.amount = amount
+        self.type = type
+        self.referenceNo = referenceNo
+        self.bankAccountId = bankAccountId
+        self.borrowerId = borrowerId
+    }
+}
