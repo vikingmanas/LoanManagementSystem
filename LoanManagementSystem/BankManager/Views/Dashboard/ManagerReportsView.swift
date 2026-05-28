@@ -148,6 +148,9 @@ private struct ManagerInsightCard: View {
 private struct ManagerReportSheet: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
+    @State private var showShareSheet = false
+    @State private var shareItems: [Any] = []
+    @State private var exportError: String?
 
     var body: some View {
         NavigationStack {
@@ -175,6 +178,26 @@ private struct ManagerReportSheet: View {
                 Section {
                     Button(action: {
                         HapticsManager.triggerImpact(style: .medium)
+                        shareItems = ["Monthly_Branch_Report_\(viewModel.branchOverview.name).pdf\n\n(Simulated PDF Content: Active Loans: \(viewModel.branchOverview.activeLoanCount), Total Disbursed: \(CurrencyFormatter.shared.format(viewModel.branchOverview.totalDisbursed)))"]
+                        showShareSheet = true
+                    }) {
+                        Text("Export as PDF")
+                            .font(.system(.body, design: .rounded).weight(.bold))
+                            .foregroundStyle(LMSColors.actionBlue)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                    }
+
+                    Button(action: exportCSV) {
+                        Text("Export as CSV")
+                            .font(.system(.body, design: .rounded).weight(.bold))
+                            .foregroundStyle(LMSColors.emerald)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                    }
+                    
+                    Button(action: {
+                        HapticsManager.triggerImpact(style: .medium)
                         viewModel.publishMonthlyReport()
                         dismiss()
                     }) {
@@ -194,8 +217,46 @@ private struct ManagerReportSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
+            .sheet(isPresented: $showShareSheet) {
+                ShareSheet(activityItems: shareItems)
+            }
+            .alert("Export Failed", isPresented: Binding(
+                get: { exportError != nil },
+                set: { if !$0 { exportError = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(exportError ?? "")
+            }
         }
     }
+
+    private func exportCSV() {
+        do {
+            let url = try CSVExportService.managerReportURL(
+                branchName: viewModel.branchOverview.name,
+                applicants: viewModel.applicants,
+                officers: viewModel.officers
+            )
+            HapticsManager.triggerImpact(style: .medium)
+            shareItems = [url]
+            showShareSheet = true
+        } catch {
+            exportError = error.localizedDescription
+        }
+    }
+}
+
+private struct ShareSheet: UIViewControllerRepresentable {
+    var activityItems: [Any]
+    var applicationActivities: [UIActivity]? = nil
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(activityItems: activityItems, applicationActivities: applicationActivities)
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 

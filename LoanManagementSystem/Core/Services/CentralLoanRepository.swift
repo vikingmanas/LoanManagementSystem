@@ -46,9 +46,32 @@ final class CentralLoanRepository: ObservableObject {
     @Published var applications: [BorrowerLoanApplication] = []
     @Published var disbursementEvents: [LoanDisbursementEvent] = []
     @Published var borrowerNotifications: [LMSNotification] = []
+    @Published var globalRules = GlobalLoanRules(minCibilScore: 700, maxDTI: 50.0, maxLTV: 80.0)
     
     private init() {
         loadPersistedState()
+        
+        // Load fallback rules from cache
+        if let data = UserDefaults.standard.data(forKey: "GlobalLoanRules"),
+           let savedRules = try? JSONDecoder().decode(GlobalLoanRules.self, from: data) {
+            self.globalRules = savedRules
+        }
+        
+        Task {
+            await fetchGlobalRules()
+        }
+    }
+    
+    func fetchGlobalRules() async {
+        do {
+            let rules = try await AdminDashboardService.shared.fetchGlobalRules()
+            self.globalRules = rules
+            if let encoded = try? JSONEncoder().encode(rules) {
+                UserDefaults.standard.set(encoded, forKey: "GlobalLoanRules")
+            }
+        } catch {
+            print("[CentralLoanRepository] Failed to fetch global rules from Supabase: \(error.localizedDescription)")
+        }
     }
     
     // MARK: - Core Operations
@@ -343,6 +366,37 @@ final class CentralLoanRepository: ObservableObject {
             disbursementEvents.insert(event, at: 0)
         }
 
+        let resolvedBorrowerId = app.borrowerId ?? {
+            if let profileStringId = BorrowerProfileStore.shared.borrowerProfile(matchingEmail: borrowerEmail)?.id {
+                return UUID(uuidString: profileStringId)
+            }
+            return nil
+        }()
+
+        if let borrowerId = resolvedBorrowerId {
+            let dbTx = DBTransaction(
+                id: UUID(),
+                title: "Loan Amount Credited - \(event.applicationNumber)",
+                date: event.creditedAt,
+                amount: approvedAmount,
+                type: "credit",
+                referenceNo: referenceNumber,
+                bankAccountId: nil,
+                borrowerId: borrowerId
+            )
+            Task {
+                do {
+                    try await SupabaseManager.shared.client
+                        .from("transactions")
+                        .insert(dbTx)
+                        .execute()
+                    print("[CentralLoanRepository] Successfully saved disbursement transaction to Supabase.")
+                } catch {
+                    print("[CentralLoanRepository] Failed to save disbursement transaction to Supabase: \(error.localizedDescription)")
+                }
+            }
+        }
+
         borrowerNotifications.insert(
             LMSNotification(
                 title: "Loan Approved",
@@ -540,7 +594,7 @@ final class CentralLoanRepository: ObservableObject {
             requestedAmount: app.formData.requestedAmountValue,
             cibilScore: app.formData.creditScoreValue > 0 ? app.formData.creditScoreValue : 750,
             status: status,
-            riskLevel: app.formData.creditScoreValue >= 750 ? .low : (app.formData.creditScoreValue >= 650 ? .medium : .high),
+            riskLevel: app.formData.creditScoreValue >= 750 ? .low : (app.formData.creditScoreValue >= self.globalRules.minCibilScore ? .medium : .high),
             assignedOfficer: assignedOfficerName,
             assignedOfficerId: assignedOfficerId,
             submissionDate: app.submittedAt ?? Date(),

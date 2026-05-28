@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct SettingsDetailView: View {
-    @State private var isDarkMode = false
-    @State private var selectedLanguage = "English"
+    @AppStorage("isDarkMode") private var isDarkMode = false
+    @AppStorage("selectedLanguage") private var selectedLanguage = "English"
     let languages = ["English", "Hindi", "Marathi", "Gujarati"]
     
     var body: some View {

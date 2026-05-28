@@ -75,6 +75,7 @@ struct ManagerApplicantDetailView: View {
 
                     CIBILScoreCard(score: applicant.cibilScore)
 
+                    LocalRiskInsightCard(insight: LoanRiskInsightService.insight(for: applicant))
 
                     VerificationProgressCard(progress: applicant.verificationProgress)
 
@@ -229,19 +230,67 @@ private struct DetailRow: View {
 }
 
 
+private struct LocalRiskInsightCard: View {
+    let insight: LoanRiskInsight
+
+    private var tint: Color {
+        if insight.score >= 80 { return LMSColors.emerald }
+        if insight.score >= 60 { return LMSColors.amber }
+        return LMSColors.coral
+    }
+
+    var body: some View {
+        HStack(spacing: LMSSpacing.lg) {
+            ZStack {
+                Circle()
+                    .fill(tint.opacity(0.12))
+                    .frame(width: 60, height: 60)
+                Text("\(insight.score)")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(tint)
+                    .monospacedDigit()
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Image(systemName: "cpu.fill")
+                    Text("LOCAL RISK INSIGHT")
+                }
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .foregroundStyle(LMSColors.textSecondary)
+
+                Text(insight.label)
+                    .font(.system(.subheadline, design: .rounded).bold())
+                    .foregroundStyle(tint)
+
+                Text(insight.explanation)
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundStyle(LMSColors.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+        }
+        .padding(LMSSpacing.lg)
+        .background(LMSColors.surfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+    }
+}
+
+
 private struct CIBILScoreCard: View {
     let score: Int
 
     private var color: Color {
         if score >= 750 { return LMSColors.emerald }
-        if score >= 650 { return LMSColors.amber }
+        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return LMSColors.amber }
         return LMSColors.coral
     }
 
     private var rating: String {
         if score >= 750 { return "Excellent" }
         if score >= 700 { return "Good" }
-        if score >= 650 { return "Fair" }
+        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return "Fair" }
         return "Poor"
     }
 
@@ -538,4 +587,3 @@ private struct ReassignOfficerSheet: View {
     }
     .previewManagerEnvironment()
 }
-
