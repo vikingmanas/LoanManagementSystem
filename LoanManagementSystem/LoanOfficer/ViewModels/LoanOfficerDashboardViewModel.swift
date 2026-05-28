@@ -109,13 +109,14 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         var items: [DocumentQueueItem] = []
         for app in applications {
             for doc in app.documents {
-                guard let uploadedDate = doc.uploadedDate else { continue }
+                // Use application's submittedDate as a fallback for pending uploads so they appear in the "Missing" filter
+                let date = doc.uploadedDate ?? app.submittedDate
                 items.append(DocumentQueueItem(
                     id: doc.id,
                     borrowerName: app.borrowerName,
                     docType: doc.docType,
                     status: doc.status,
-                    submittedDate: uploadedDate,
+                    submittedDate: date,
                     applicationId: app.applicationId
                 ))
             }

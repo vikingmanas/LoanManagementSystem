@@ -84,6 +84,15 @@ final class CentralLoanRepository: ObservableObject {
     func deleteApplication(id: UUID) {
         applications.removeAll { $0.id == id }
         persistState()
+        
+        Task {
+            do {
+                try await ApplicationService.shared.deleteApplication(id: id)
+                print("[CentralLoanRepository] Successfully deleted application \(id) from Supabase.")
+            } catch {
+                print("[CentralLoanRepository] Failed to delete application \(id) from Supabase: \(error.localizedDescription)")
+            }
+        }
     }
     
     func fetchApplicationsFromSupabase(borrowerId: UUID) async {
@@ -103,8 +112,11 @@ final class CentralLoanRepository: ObservableObject {
             // Update existing applications if their values changed, or append new ones.
             for remoteApp in mappedApps {
                 if let index = self.applications.firstIndex(where: { $0.id == remoteApp.id }) {
-                    if self.applications[index] != remoteApp {
-                        self.applications[index] = remoteApp
+                    var mergedApp = remoteApp
+                    // Preserve local documents since they are not stored in Supabase loan_applications table
+                    mergedApp.documents = self.applications[index].documents
+                    if self.applications[index] != mergedApp {
+                        self.applications[index] = mergedApp
                         hasChanges = true
                     }
                 } else {
@@ -154,8 +166,11 @@ final class CentralLoanRepository: ObservableObject {
             // Merge with existing local applications, updating any modified data.
             for remoteApp in mappedApps {
                 if let index = self.applications.firstIndex(where: { $0.id == remoteApp.id }) {
-                    if self.applications[index] != remoteApp {
-                        self.applications[index] = remoteApp
+                    var mergedApp = remoteApp
+                    // Preserve local documents since they are not stored in Supabase loan_applications table
+                    mergedApp.documents = self.applications[index].documents
+                    if self.applications[index] != mergedApp {
+                        self.applications[index] = mergedApp
                         hasChanges = true
                     }
                 } else {
