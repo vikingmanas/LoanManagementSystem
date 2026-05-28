@@ -32,7 +32,7 @@ enum DocumentVisionService {
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
         do {
             try handler.perform([request])
-            let observations = request.results as? [VNRecognizedTextObservation] ?? []
+            let observations = request.results ?? []
             let candidates = observations.compactMap { $0.topCandidates(1).first }
             let text = candidates.map(\.string).joined(separator: " ")
             let confidence = candidates.isEmpty ? 0 : candidates.map(\.confidence).reduce(0, +) / Float(candidates.count)
