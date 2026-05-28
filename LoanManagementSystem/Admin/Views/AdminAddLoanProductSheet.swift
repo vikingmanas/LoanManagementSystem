@@ -131,7 +131,9 @@ struct AdminAddLoanProductSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        viewModel.addLoanProduct(product)
+                        Task {
+                            await viewModel.addLoanProduct(product)
+                        }
                         dismiss()
                     }
                     .disabled(product.name.isEmpty || product.loanType.isEmpty)
