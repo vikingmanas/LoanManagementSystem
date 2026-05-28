@@ -30,7 +30,7 @@ struct ProfileCompletionCardSection: View {
     let onContinue: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             DashboardSectionHeader(
                 title: "Profile",
                 subtitle: "Complete verification to unlock all services"
@@ -225,7 +225,7 @@ struct ActiveLoansCarousel: View {
     @State private var selectedIndex = 0
 
     var body: some View {
-        VStack(spacing: LMSSpacing.md) {
+        VStack(spacing: LMSSpacing.sm) {
             TabView(selection: $selectedIndex) {
                 ForEach(Array(loans.enumerated()), id: \.element.id) { index, loan in
                     ActiveLoanAccountCard(loan: loan) {
@@ -236,7 +236,7 @@ struct ActiveLoansCarousel: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
-            .frame(height: 200)
+            .frame(height: 142)
 
             if loans.count > 1 {
                 HStack(spacing: 6) {
@@ -485,37 +485,12 @@ struct TransactionHistorySection: View {
     let accounts: [BankAccount]
     let onViewAll: () -> Void
 
-    @State private var selectedFilter: DashboardTransactionFilter = .all
-    @State private var selectedAccountID: UUID?
-    @State private var showingAccountSelector = false
-
-    private var selectedAccount: BankAccount? {
-        accounts.first(where: { $0.id == selectedAccountID })
-    }
-
-    private var filteredTransactions: [Transaction] {
-        let sorted = transactions.sorted { $0.date > $1.date }
-        switch selectedFilter {
-        case .all:
-            return sorted
-        case .credits:
-            return sorted.filter { !$0.type.isDebit }
-        case .debits:
-            return sorted.filter { $0.type.isDebit }
-        case .penalties:
-            return sorted.filter { $0.type == .penalty }
-        case .failed:
-            return sorted.filter { $0.type == .failedDebit }
-        case .emi:
-            return sorted.filter { $0.type == .emiPayment }
-        case .byAccount:
-            guard let selectedAccountID else { return sorted }
-            return sorted.filter { $0.bankAccountId == selectedAccountID }
-        }
+    private var recentTransactions: [Transaction] {
+        transactions.sorted { $0.date > $1.date }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             DashboardSectionHeader(
                 title: "Transaction History",
                 subtitle: "Recent account activity",
@@ -523,10 +498,8 @@ struct TransactionHistorySection: View {
                 action: transactions.isEmpty ? nil : onViewAll
             )
 
-            filterRow
-
             DashboardSectionCard {
-                if filteredTransactions.isEmpty {
+                if recentTransactions.isEmpty {
                     DashboardEmptyState(
                         icon: "list.bullet.rectangle.portrait",
                         title: "No transactions yet",
@@ -534,13 +507,13 @@ struct TransactionHistorySection: View {
                     )
                 } else {
                     VStack(spacing: 0) {
-                        ForEach(Array(filteredTransactions.prefix(6).enumerated()), id: \.element.id) { index, transaction in
+                        ForEach(Array(recentTransactions.prefix(5).enumerated()), id: \.element.id) { index, transaction in
                             TransactionHistoryRow(
                                 transaction: transaction,
                                 account: account(for: transaction)
                             )
                                 .padding(.vertical, LMSSpacing.sm)
-                            if index < min(5, filteredTransactions.count - 1) {
+                            if index < min(4, recentTransactions.count - 1) {
                                 Divider()
                             }
                         }
@@ -549,52 +522,6 @@ struct TransactionHistorySection: View {
             }
         }
         .padding(.horizontal, LMSSpacing.screenHorizontal)
-        .sheet(isPresented: $showingAccountSelector) {
-            AccountFilterSheet(
-                accounts: accounts,
-                selectedAccountID: $selectedAccountID
-            )
-            .presentationDetents([.medium])
-            .presentationDragIndicator(.visible)
-        }
-    }
-
-    private var filterRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: LMSSpacing.sm) {
-                ForEach(DashboardTransactionFilter.allCases) { filter in
-                    Button {
-                        if filter == .byAccount {
-                            selectedFilter = filter
-                            showingAccountSelector = true
-                        } else {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedFilter = filter
-                            }
-                        }
-                    } label: {
-                        Text(filterTitle(filter))
-                            .font(LMSFont.caption.weight(.semibold))
-                            .foregroundStyle(selectedFilter == filter ? .white : LMSColors.textPrimary)
-                            .padding(.horizontal, LMSSpacing.md)
-                            .padding(.vertical, LMSSpacing.sm)
-                            .background(selectedFilter == filter ? LMSColors.brandNavy : LMSColors.surface, in: Capsule())
-                            .overlay(
-                                Capsule()
-                                    .stroke(selectedFilter == filter ? Color.clear : LMSColors.separatorLight, lineWidth: 0.5)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    private func filterTitle(_ filter: DashboardTransactionFilter) -> String {
-        if filter == .byAccount, let selectedAccount {
-            return "Account \(selectedAccount.accountNumber.suffix(4))"
-        }
-        return filter.rawValue
     }
 
     private func account(for transaction: Transaction) -> BankAccount? {

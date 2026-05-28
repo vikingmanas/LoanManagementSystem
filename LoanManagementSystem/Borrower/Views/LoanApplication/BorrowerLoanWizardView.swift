@@ -124,6 +124,9 @@ struct BorrowerLoanWizardView: View {
             )
             prepareWizardState()
         }
+        .onChange(of: currentStep) { _, newStep in
+            viewModel.updateDraftStep(newStep)
+        }
         .alert("Unable to Submit", isPresented: Binding(
             get: { submissionErrorMessage != nil },
             set: { if !$0 { submissionErrorMessage = nil } }
@@ -392,6 +395,7 @@ struct BorrowerLoanWizardView: View {
         }
 
         viewModel.prefillEmptyFieldsFromProfile()
+        currentStep = min(max(viewModel.currentStepIndex, 1), 10)
 
         ensureRequiredDocumentsLoaded()
 
@@ -707,6 +711,12 @@ private extension BorrowerLoanProductType {
             return LinearGradient(colors: [Color(hex: "30323A"), Color(hex: "101115")], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .vehicle:
             return LinearGradient(colors: [Color(hex: "0F766E"), Color(hex: "0B3D3A")], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .agriculture:
+            return LinearGradient(colors: [Color(hex: "22C55E"), Color(hex: "14532D")], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .consumer:
+            return LinearGradient(colors: [Color(hex: "6366F1"), Color(hex: "312E81")], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .msmeStartup:
+            return LinearGradient(colors: [Color(hex: "111827"), Color(hex: "0F766E")], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .gold:
             return LinearGradient(colors: [Color(hex: "C9961A"), Color(hex: "4A3411")], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .loanAgainstProperty:
@@ -723,6 +733,9 @@ private extension BorrowerLoanProductType {
         case .education: return Color(hex: "6D5DF6").opacity(0.28)
         case .business: return Color.black.opacity(0.28)
         case .vehicle: return Color(hex: "0F766E").opacity(0.25)
+        case .agriculture: return Color(hex: "22C55E").opacity(0.26)
+        case .consumer: return Color(hex: "6366F1").opacity(0.28)
+        case .msmeStartup: return Color(hex: "14B8A6").opacity(0.26)
         case .gold: return Color(hex: "C9961A").opacity(0.25)
         case .loanAgainstProperty: return Color(hex: "155E75").opacity(0.26)
         case .other: return Color(hex: "4B5563").opacity(0.24)
@@ -736,6 +749,9 @@ private extension BorrowerLoanProductType {
         case .education: return "graduationcap.fill"
         case .business: return "chart.line.uptrend.xyaxis"
         case .vehicle: return "car.fill"
+        case .agriculture: return "leaf.fill"
+        case .consumer: return "creditcard.fill"
+        case .msmeStartup: return "chart.line.uptrend.xyaxis.circle.fill"
         case .gold: return "seal.fill"
         case .loanAgainstProperty: return "building.2.fill"
         case .other: return "sparkles"

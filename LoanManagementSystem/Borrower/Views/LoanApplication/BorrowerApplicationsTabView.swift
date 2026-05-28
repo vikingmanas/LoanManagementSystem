@@ -28,8 +28,13 @@ struct BorrowerApplicationsTabView: View {
             }
             .navigationDestination(for: LoanApplicationRoute.self) { route in
                 switch route {
-                case .productDetail, .applicationWizard:
+                case .productDetail:
                     EmptyView()
+                case .applicationWizard(let product):
+                    BorrowerLoanWizardView(viewModel: viewModel, product: product) {
+                        navigationPath = NavigationPath()
+                    }
+                    .environmentObject(authManager)
                 case .tracking(let application):
                     LoanApplicationTrackingScreen(
                         viewModel: viewModel,
@@ -342,7 +347,7 @@ private struct ApplicationsEmptyState: View {
 
     private var emptyTitle: String {
         switch filter {
-        case .draft: return "No Draft Applications"
+        case .draft: return "No saved applications"
         case .underReview: return "Nothing Under Review"
         case .approved: return "No Approved Applications"
         case .rejected: return "No Rejected Applications"
@@ -352,7 +357,7 @@ private struct ApplicationsEmptyState: View {
 
     private var emptyMessage: String {
         switch filter {
-        case .draft: return "Start a loan application from the Loans tab and save it as a draft."
+        case .draft: return "Your unfinished applications will appear here."
         case .underReview: return "Submitted applications will appear here while being processed."
         case .approved: return "Approved applications will show up in this list."
         case .rejected: return "You have no rejected applications."

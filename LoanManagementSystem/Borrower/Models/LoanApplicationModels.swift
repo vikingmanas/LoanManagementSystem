@@ -4,9 +4,10 @@ enum LoanProductCategoryFilter: String, CaseIterable, Identifiable {
     case all = "All"
     case personal = "Personal"
     case home = "Home"
-    case education = "Education"
-    case business = "Business"
-    case vehicle = "Vehicle"
+    case agriculture = "Agriculture"
+    case lap = "LAP"
+    case consumer = "Consumer"
+    case msme = "MSME"
 
     var id: String { rawValue }
 
@@ -15,9 +16,10 @@ enum LoanProductCategoryFilter: String, CaseIterable, Identifiable {
         case .all: return nil
         case .personal: return .personal
         case .home: return .home
-        case .education: return .education
-        case .business: return .business
-        case .vehicle: return .vehicle
+        case .agriculture: return .agriculture
+        case .lap: return .loanAgainstProperty
+        case .consumer: return .consumer
+        case .msme: return .msmeStartup
         }
     }
 }
@@ -28,6 +30,9 @@ enum BorrowerLoanProductType: String, Codable, CaseIterable, Identifiable, Hasha
     case education
     case business
     case vehicle
+    case agriculture
+    case consumer
+    case msmeStartup
     case gold
     case loanAgainstProperty
     case other
@@ -41,9 +46,12 @@ enum BorrowerLoanProductType: String, Codable, CaseIterable, Identifiable, Hasha
         case .education: return "Education Loan"
         case .business: return "Business Loan"
         case .vehicle: return "Vehicle Loan"
+        case .agriculture: return "Agriculture Loan"
+        case .consumer: return "Credit Card / Consumer Loan"
+        case .msmeStartup: return "MSME / Startup Loan"
         case .gold: return "Gold Loan"
         case .loanAgainstProperty: return "Loan Against Property"
-        case .other: return "Other Loan Products"
+        case .other: return "Special Assistance Loan"
         }
     }
 
@@ -54,9 +62,12 @@ enum BorrowerLoanProductType: String, Codable, CaseIterable, Identifiable, Hasha
         case .education: return "graduationcap.fill"
         case .business: return "briefcase.fill"
         case .vehicle: return "car.fill"
+        case .agriculture: return "leaf.fill"
+        case .consumer: return "creditcard.fill"
+        case .msmeStartup: return "chart.line.uptrend.xyaxis"
         case .gold: return "seal.fill"
         case .loanAgainstProperty: return "building.columns.fill"
-        case .other: return "rectangle.stack.badge.plus"
+        case .other: return "sparkles"
         }
     }
 }
@@ -788,6 +799,7 @@ struct BorrowerLoanApplication: Identifiable, Hashable {
     var documents: [BorrowerLoanDocumentItem]
     var currentStage: BorrowerApplicationStage
     var stageHistory: [BorrowerStageEntry]
+    var draftStepIndex: Int = 1
     var submittedAt: Date?
     var updatedAt: Date
     var assignedQueue: String?
@@ -1015,6 +1027,27 @@ extension BorrowerLoanProduct {
             loanSpecificDocuments: ["Vehicle Quotation", "Dealer Invoice"]
         ),
         BorrowerLoanProduct(
+            id: UUID(uuidString: "6b40d7e6-06dd-4ac8-8f93-ef9eb17a9d45") ?? UUID(),
+            type: .agriculture,
+            shortDescription: "Seasonal credit for cultivation, irrigation, equipment, seeds, and fertilizers.",
+            maximumAmount: 5_000_000,
+            interestRateRange: "7.00% - 11.50%",
+            estimatedProcessingTime: "2-5 working days",
+            eligibilitySnapshot: "Farmers, tenant cultivators, and agri-allied workers with land or activity proof.",
+            purpose: "Fund crop cultivation, farm machinery, irrigation systems, and agri inputs.",
+            benefits: ["Special schemes for farmers", "Government subsidies may apply", "Flexible seasonal repayment", "Lower interest support"],
+            eligibilityCriteria: ["Indian resident farmer", "Land/activity proof", "Crop or agri-use declaration"],
+            minimumRequirements: ["KYC", "Land records or tenancy proof", "Agri activity estimate"],
+            interestInformation: "Eligible farmer profiles may receive subsidy-linked or priority-sector pricing support.",
+            repaymentOverview: "Repayment can align with crop cycles, harvest income, or seasonal cash flows.",
+            processingFees: "Concessional processing may apply under eligible agriculture schemes.",
+            faqs: [
+                BorrowerLoanFAQ(question: "Can I use this for farm equipment?", answer: "Yes, equipment, irrigation, seeds, fertilizers, and crop cultivation are supported."),
+                BorrowerLoanFAQ(question: "Are subsidies guaranteed?", answer: "Subsidies depend on scheme eligibility, documentation, and current government guidelines.")
+            ],
+            loanSpecificDocuments: ["Land Record / Khasra", "Crop Declaration", "Equipment Quotation"]
+        ),
+        BorrowerLoanProduct(
             id: UUID(uuidString: "be84595d-7608-4fb9-9fef-53072cb85f06") ?? UUID(),
             type: .gold,
             shortDescription: "Instant secured credit against household gold ornaments.",
@@ -1038,16 +1071,16 @@ extension BorrowerLoanProduct {
         BorrowerLoanProduct(
             id: UUID(uuidString: "7e95a540-c4da-4c52-aa62-bf847cb53a47") ?? UUID(),
             type: .loanAgainstProperty,
-            shortDescription: "Leverage existing property value for high-ticket financing.",
-            maximumAmount: 20_000_000,
-            interestRateRange: "10.00% - 13.75%",
+            shortDescription: "High-ticket secured funding by pledging residential or commercial property.",
+            maximumAmount: 50_000_000,
+            interestRateRange: "9.25% - 13.75%",
             estimatedProcessingTime: "6-12 working days",
             eligibilitySnapshot: "Clear property title and stable documented income profile.",
             purpose: "Business expansion, education, medical, or other large requirements.",
-            benefits: ["Higher loan eligibility", "Longer tenure", "Competitive secured lending rates"],
+            benefits: ["Property pledged as collateral", "Lower rate than personal loans", "Higher loan eligibility", "Long repayment tenure"],
             eligibilityCriteria: ["Self-owned property", "Stable income and repayment ability", "Legal and technical clearance"],
             minimumRequirements: ["Property ownership documents", "Income proof", "Bank statements"],
-            interestInformation: "Final rates depend on LTV, profile quality, and documentation strength.",
+            interestInformation: "Final rates depend on LTV, profile quality, property type, and documentation strength.",
             repaymentOverview: "Tenure up to 180 months with structured repayment schedules.",
             processingFees: "0.75% - 1.5% plus legal/technical valuation charges.",
             faqs: [
@@ -1057,25 +1090,46 @@ extension BorrowerLoanProduct {
             loanSpecificDocuments: ["Property Ownership Records", "Encumbrance Certificate", "Latest Tax Receipts"]
         ),
         BorrowerLoanProduct(
-            id: UUID(uuidString: "2d22a0bc-18ab-4f47-bfd0-7c5bdd8f3b18") ?? UUID(),
-            type: .other,
-            shortDescription: "Explore additional bank-supported products tailored to profile and need.",
-            maximumAmount: 5_000_000,
-            interestRateRange: "Custom",
-            estimatedProcessingTime: "Depends on product",
-            eligibilitySnapshot: "Eligibility differs by selected product variant and purpose.",
-            purpose: "Access specialized lending products not covered in standard categories.",
-            benefits: ["Customized product fit", "Advisory support", "Multi-purpose options"],
-            eligibilityCriteria: ["Profile-specific underwriting", "Document support by variant"],
-            minimumRequirements: ["KYC and income proof", "Product-specific declarations"],
-            interestInformation: "Interest and terms are personalized by product structure.",
-            repaymentOverview: "Repayment options vary by chosen loan product.",
-            processingFees: "Product-specific and disclosed before final submission.",
+            id: UUID(uuidString: "c676d131-e109-4515-a47b-756ef073b436") ?? UUID(),
+            type: .consumer,
+            shortDescription: "Instant small-ticket finance for electronics, appliances, shopping, and card EMIs.",
+            maximumAmount: 1_000_000,
+            interestRateRange: "12.00% - 24.00%",
+            estimatedProcessingTime: "Instant - 24 hours",
+            eligibilitySnapshot: "Existing card/banking relationship or verified salaried/self-employed profile.",
+            purpose: "Convert consumer purchases into manageable EMIs with minimal documentation.",
+            benefits: ["Small-ticket financing", "Instant approvals", "Minimal documentation", "EMI conversion support"],
+            eligibilityCriteria: ["Age 21-60 years", "Valid KYC", "Stable repayment behavior"],
+            minimumRequirements: ["KYC", "Income or card relationship proof", "Purchase invoice where applicable"],
+            interestInformation: "Pricing depends on card relationship, tenure, merchant offer, and profile quality.",
+            repaymentOverview: "Short tenures from 3 to 36 months with auto-debit or card statement repayment.",
+            processingFees: "Merchant/card-linked fees may apply and are shown before confirmation.",
             faqs: [
-                BorrowerLoanFAQ(question: "How do I pick the right loan?", answer: "Use the loan overview and eligibility guidance to compare options."),
-                BorrowerLoanFAQ(question: "Can a relationship manager assist?", answer: "Yes, once submitted, your request is assigned to an officer queue.")
+                BorrowerLoanFAQ(question: "Can I convert purchases to EMI?", answer: "Eligible card and consumer purchases can be converted into EMI plans."),
+                BorrowerLoanFAQ(question: "Is documentation required?", answer: "Most eligible customers need only basic KYC and purchase details.")
             ],
-            loanSpecificDocuments: ["Product-Specific Supporting Documents"]
+            loanSpecificDocuments: ["Purchase Invoice", "Card Statement"]
+        ),
+        BorrowerLoanProduct(
+            id: UUID(uuidString: "f09cf57c-9858-4869-85fd-b9de6c76466f") ?? UUID(),
+            type: .msmeStartup,
+            shortDescription: "Growth capital for small businesses, startups, working capital, and expansion.",
+            maximumAmount: 20_000_000,
+            interestRateRange: "10.75% - 18.00%",
+            estimatedProcessingTime: "3-9 working days",
+            eligibilitySnapshot: "Registered MSME/startup with business verification, cash-flow records, or projected revenue.",
+            purpose: "Support startup funding, working capital, equipment, inventory, and business expansion.",
+            benefits: ["Government schemes possible", "Startup assistance", "Flexible repayment plans", "Working capital options"],
+            eligibilityCriteria: ["Business registration", "Banking/GST activity", "Promoter KYC and credit profile"],
+            minimumRequirements: ["Udyam/GST or registration proof", "Bank statements", "Business plan or financials"],
+            interestInformation: "Rates depend on turnover, vintage, collateral support, scheme eligibility, and cash-flow assessment.",
+            repaymentOverview: "Term loan and overdraft-style structures available based on business need.",
+            processingFees: "Scheme-linked concessions may apply for eligible MSME or startup profiles.",
+            faqs: [
+                BorrowerLoanFAQ(question: "Can new startups apply?", answer: "Yes, with promoter KYC, business plan, and eligibility under startup/MSME programs."),
+                BorrowerLoanFAQ(question: "Are government schemes available?", answer: "Eligible applicants may be mapped to MSME, Mudra-style, or startup assistance programs.")
+            ],
+            loanSpecificDocuments: ["Business Registration", "GST / Udyam Certificate", "Bank Statements", "Business Plan"]
         )
     ]
 }

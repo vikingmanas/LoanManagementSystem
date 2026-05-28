@@ -11,8 +11,10 @@ struct StoredLoanApplication: Codable {
     var applicationId: String?
     var productType: String
     var formData: StoredLoanFormData
+    var documents: [BorrowerLoanDocumentItem]?
     var currentStage: String
     var stageHistory: [StoredStageEntry]
+    var draftStepIndex: Int?
     var submittedAt: Date?
     var updatedAt: Date
     var assignedQueue: String?
@@ -176,10 +178,12 @@ enum LoanApplicationPersistence {
                 guarantorDetails: app.formData.guarantorDetails,
                 gstNumber: app.formData.gstNumber
             ),
+            documents: app.documents,
             currentStage: app.currentStage.rawValue,
             stageHistory: app.stageHistory.map {
                 StoredStageEntry(stage: $0.stage.rawValue, timestamp: $0.timestamp, note: $0.note)
             },
+            draftStepIndex: app.draftStepIndex,
             submittedAt: app.submittedAt,
             updatedAt: app.updatedAt,
             assignedQueue: app.assignedQueue,
@@ -234,9 +238,10 @@ enum LoanApplicationPersistence {
             applicationId: stored.applicationId,
             product: product,
             formData: formData,
-            documents: BorrowerLoanDocumentItem.defaultRequirements(for: product),
+            documents: stored.documents ?? BorrowerLoanDocumentItem.defaultRequirements(for: product),
             currentStage: stage,
             stageHistory: history.isEmpty ? [BorrowerStageEntry(stage: stage, timestamp: stored.updatedAt, note: "Restored application")] : history,
+            draftStepIndex: min(max(stored.draftStepIndex ?? 1, 1), 10),
             submittedAt: stored.submittedAt,
             updatedAt: stored.updatedAt,
             assignedQueue: stored.assignedQueue,

@@ -13,6 +13,7 @@ final class LoanApplicationViewModel: ObservableObject {
 
     @Published var selectedProductID: UUID?
     @Published var currentDraftID: UUID?
+    @Published var currentStepIndex: Int = 1
     @Published var formData: BorrowerLoanFormData = .empty
     @Published var documents: [BorrowerLoanDocumentItem] = []
 
@@ -318,6 +319,7 @@ final class LoanApplicationViewModel: ObservableObject {
         }
 
         formData = BorrowerLoanFormData.prefilled(from: BorrowerProfileStore.shared.profile)
+        currentStepIndex = 1
         if formData.loanAmountRequested.isEmpty {
             let recommended = max(100_000, min(product.maximumAmount * 0.25, product.maximumAmount))
             formData.loanAmountRequested = String(Int(recommended))
@@ -362,8 +364,24 @@ final class LoanApplicationViewModel: ObservableObject {
         guard application.currentStage == .draft else { return }
         selectedProductID = application.product.id
         currentDraftID = application.id
+        currentStepIndex = min(max(application.draftStepIndex, 1), 10)
         formData = application.formData
         documents = application.documents
+        lastDraftSavedAt = Date()
+    }
+
+    func updateDraftStep(_ step: Int) {
+        let clampedStep = min(max(step, 1), 10)
+        currentStepIndex = clampedStep
+
+        guard let currentDraftID,
+              let draftIndex = applications.firstIndex(where: { $0.id == currentDraftID }) else {
+            return
+        }
+
+        applications[draftIndex].draftStepIndex = clampedStep
+        applications[draftIndex].updatedAt = Date()
+        CentralLoanRepository.shared.submitApplication(applications[draftIndex])
         lastDraftSavedAt = Date()
     }
 
@@ -388,6 +406,7 @@ final class LoanApplicationViewModel: ObservableObject {
 
         applications[draftIndex].formData = formData
         applications[draftIndex].documents = documents
+        applications[draftIndex].draftStepIndex = currentStepIndex
         applications[draftIndex].updatedAt = Date()
         CentralLoanRepository.shared.submitApplication(applications[draftIndex])
         lastDraftSavedAt = Date()
