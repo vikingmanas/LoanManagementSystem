@@ -250,6 +250,7 @@ struct ManagerNotificationItem: Identifiable, Hashable {
 
 struct ManagerChatConversation: Identifiable, Hashable {
     let id: UUID
+    var officerUserId: UUID
     var officerName: String
     var officerInitials: String
     var officerRole: String
