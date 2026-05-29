@@ -262,7 +262,7 @@ final class CentralLoanRepository: ObservableObject {
                 return uid
             }
             // Try to get the UID from the Supabase session directly
-            if let uid = try? SupabaseManager.shared.client.auth.currentSession?.user.id.uuidString {
+            if let uid = SupabaseManager.shared.client.auth.currentSession?.user.id.uuidString {
                 return uid
             }
             return nil

@@ -479,7 +479,7 @@ public struct PortfolioCardView: View {
     public var body: some View {
         Group {
             switch type {
-            case .loan(let loan):
+            case .loan(_):
                 TotalLoanOutstandingCard(viewModel: DashboardViewModel())
             case .bank(let bank):
                 BankAccountCardRefined(account: bank, isLowBalance: isLowBalance, onTransfer: { onTransferTap?() })
