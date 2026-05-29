@@ -12,7 +12,7 @@ import Supabase
 @MainActor
 public final class DashboardViewModel: ObservableObject {
     @Published public var loanAccounts: [DashboardLoanAccount] = []
-    @Published public var bankAccount: BankAccount = BankAccount(accountNumber: "XXXX 7890", accountType: .savings, availableBalance: 0)
+    @Published public var bankAccount: BankAccount = BankAccount(accountNumber: "", accountType: .savings, availableBalance: 0)
     @Published public var bankAccounts: [BankAccount] = []
     @Published public var pendingEMIs: [EMIRecord] = []
     @Published public var transactions: [Transaction] = []
@@ -64,6 +64,7 @@ public final class DashboardViewModel: ObservableObject {
     }
     
     public var isLowBalance: Bool {
+        guard !bankAccounts.isEmpty else { return false }
         guard let nextEMI = nextEMI else { return false }
         return bankAccount.availableBalance < nextEMI.amount
     }
@@ -187,12 +188,12 @@ public final class DashboardViewModel: ObservableObject {
             self.bankAccounts = buildBankAccounts(from: profile, disbursedCredits: disbursedCredits)
             self.bankAccount = bankAccounts.first(where: { $0.accountType == .savings })
                 ?? bankAccounts.first
-                ?? BankAccount(accountNumber: "0000000000", bankName: "Default Bank", accountType: .savings, availableBalance: 0)
+                ?? BankAccount(accountNumber: "", bankName: "", accountType: .savings, availableBalance: 0)
         } else {
             self.profileName = ""
             self.profileCompletionPercentage = 0
-            self.bankAccount = BankAccount(accountNumber: "XXXX 0000", bankName: "Default Bank", accountType: .savings, availableBalance: 0.0)
-            self.bankAccounts = [self.bankAccount]
+            self.bankAccount = BankAccount(accountNumber: "", bankName: "", accountType: .savings, availableBalance: 0.0)
+            self.bankAccounts = []
         }
         
         // Load loan accounts from approved/disbursed applications in CentralLoanRepository
@@ -311,12 +312,6 @@ public final class DashboardViewModel: ObservableObject {
                     accountType: .savings,
                     availableBalance: disbursedCredits[bank.accountNumber, default: 0]
                 )
-            )
-        }
-
-        if accounts.isEmpty {
-            accounts.append(
-                BankAccount(accountNumber: "0000000000", bankName: "Default Bank", accountType: .savings, availableBalance: 0)
             )
         }
 

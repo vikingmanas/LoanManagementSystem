@@ -1,6 +1,9 @@
 import SwiftUI
 import UIKit
+<<<<<<< Updated upstream
 import Combine
+=======
+>>>>>>> Stashed changes
 import AVFoundation
 @preconcurrency import Vision
 
@@ -31,6 +34,29 @@ private struct DocumentPreviewImage: Identifiable {
     let id = UUID()
     let title: String
     let image: UIImage
+}
+
+private struct MobileNumberValidator {
+    static func sanitized(_ value: String) -> String {
+        String(value.filter(\.isNumber).prefix(10))
+    }
+
+    static func message(for value: String, required: Bool = true) -> String? {
+        if value.contains(where: { !$0.isNumber }) {
+            return "Only numeric digits are allowed"
+        }
+        if value.count < 10 {
+            return required || !value.isEmpty ? "Mobile number must contain 10 digits" : nil
+        }
+        if value.count > 10 {
+            return "Mobile number cannot exceed 10 digits"
+        }
+        return nil
+    }
+
+    static func isValid(_ value: String, required: Bool = true) -> Bool {
+        message(for: value, required: required) == nil
+    }
 }
 
 // MARK: - Reusable UI Components for Wizard Form
@@ -66,6 +92,7 @@ private struct WizardTextField: View {
     var placeholder: String = ""
     var keyboardType: UIKeyboardType = .default
     var disableAutocapitalization: Bool = false
+    var validationMessage: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -79,9 +106,39 @@ private struct WizardTextField: View {
                 .font(LMSFont.body.weight(.medium))
                 .foregroundStyle(LMSColors.textPrimary)
                 .padding(.vertical, 8)
+
+            if let validationMessage {
+                Text(validationMessage)
+                    .font(LMSFont.caption2.weight(.semibold))
+                    .foregroundStyle(LMSColors.coral)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+    }
+}
+
+private struct WizardMobileField: View {
+    let label: String
+    @Binding var text: String
+    var placeholder: String = "10 digit mobile number"
+    var required: Bool = true
+
+    private var validationMessage: String? {
+        MobileNumberValidator.message(for: text, required: required)
+    }
+
+    var body: some View {
+        WizardTextField(
+            label: label,
+            text: Binding(
+                get: { text },
+                set: { text = MobileNumberValidator.sanitized($0) }
+            ),
+            placeholder: placeholder,
+            keyboardType: .numberPad,
+            validationMessage: validationMessage
+        )
     }
 }
 
@@ -344,6 +401,11 @@ struct BorrowerLoanWizardView: View {
     // Step 8 Verification Alerts Overrides
     @State private var showVerificationResolutionSheet = false
     @State private var hasResolvedMismatches = false
+    @State private var signatureImage: UIImage?
+    @State private var isSignatureEmpty = true
+    @State private var liveVerificationCompleted = false
+    @State private var liveVerificationReference: String?
+    @State private var showLiveVerification = false
 
     @State private var submissionErrorMessage: String?
     @State private var stepValidationMessage: String?
@@ -408,7 +470,10 @@ struct BorrowerLoanWizardView: View {
             } onCancel: {
                 showLiveVerification = false
             }
+<<<<<<< Updated upstream
             .ignoresSafeArea()
+=======
+>>>>>>> Stashed changes
         }
         .sheet(item: $previewImage) { preview in
             NavigationStack {
@@ -649,7 +714,11 @@ struct BorrowerLoanWizardView: View {
             .buttonStyle(LMSPressableStyle())
         }
         .padding(.horizontal, 16)
+<<<<<<< Updated upstream
         .padding(.top, 4)
+=======
+        .padding(.top, 6)
+>>>>>>> Stashed changes
     }
     
     // MARK: - Helper Methods
@@ -736,9 +805,13 @@ struct BorrowerLoanWizardView: View {
                 viewModel.formData.occupation = salariedDesignation
             }
             viewModel.formData.workExperienceYears = 2
+<<<<<<< Updated upstream
             if viewModel.formData.annualIncomeValue <= 0, viewModel.formData.monthlyIncomeValue > 0 {
+=======
+            if viewModel.formData.annualIncomeValue <= 0 {
+>>>>>>> Stashed changes
                 let annual = Int(viewModel.formData.monthlyIncomeValue * 12)
-                viewModel.formData.annualIncome = String(annual)
+                viewModel.formData.annualIncome = annual > 0 ? String(annual) : ""
             }
         } else {
             if !selfEmployedBusinessName.isEmpty {
@@ -752,7 +825,7 @@ struct BorrowerLoanWizardView: View {
             }
             if viewModel.formData.monthlyIncomeValue <= 0, viewModel.formData.annualIncomeValue > 0 {
                 let monthly = max(1, Int(viewModel.formData.annualIncomeValue / 12))
-                viewModel.formData.monthlyIncome = String(monthly)
+                viewModel.formData.monthlyIncome = viewModel.formData.annualIncomeValue > 0 ? String(monthly) : ""
             }
         }
 
@@ -787,8 +860,13 @@ struct BorrowerLoanWizardView: View {
         triggerAutosave()
 
         if currentStep < 10 {
+<<<<<<< Updated upstream
             if let validationMessage = validationMessageForCurrentStep() {
                 stepValidationMessage = validationMessage
+=======
+            if let validation = validationMessageForCurrentStep() {
+                stepValidationMessage = validation
+>>>>>>> Stashed changes
                 HapticsManager.triggerNotification(type: .warning)
                 return
             }
@@ -835,22 +913,39 @@ struct BorrowerLoanWizardView: View {
     private func validationMessageForCurrentStep() -> String? {
         switch currentStep {
         case 3:
+<<<<<<< Updated upstream
             return MobileNumberValidator.validationMessage(for: viewModel.formData.mobileNumber)
         case 5:
             return MobileNumberValidator.validationMessage(for: bankRegisteredMobile)
+=======
+            return MobileNumberValidator.message(for: viewModel.formData.mobileNumber)
+        case 5:
+            return MobileNumberValidator.message(for: coApplicantMobile)
+>>>>>>> Stashed changes
         case 7:
             if !liveVerificationCompleted {
                 return "Please complete live facial verification"
             }
+<<<<<<< Updated upstream
             if isSignatureEmpty {
+=======
+            if isSignatureEmpty || signatureImage == nil {
+>>>>>>> Stashed changes
                 return "Please provide your signature"
             }
             return nil
         case 8:
+<<<<<<< Updated upstream
             if let nomineeValidation = MobileNumberValidator.validationMessage(for: nomineeMobile) {
                 return nomineeValidation
             }
             return MobileNumberValidator.validationMessage(for: ocrPANNumber)
+=======
+            if let message = MobileNumberValidator.message(for: coApplicantMobile) {
+                return message
+            }
+            return MobileNumberValidator.message(for: ocrPANNumber)
+>>>>>>> Stashed changes
         default:
             return nil
         }
@@ -1544,23 +1639,37 @@ private struct Step4EmploymentOverhaulView: View {
             
             if viewModel.formData.employmentType == "Salaried" {
                 WizardFormSection(title: "Salary Details") {
+<<<<<<< Updated upstream
                     WizardTextField(label: "Employer Company Name", text: $salariedCompany, placeholder: "Enter employer name")
                     FormDivider()
                     WizardTextField(label: "Employee ID (Optional)", text: $salariedEmpID, placeholder: "Enter employee ID")
                     FormDivider()
                     WizardTextField(label: "Designation", text: $salariedDesignation, placeholder: "Enter designation")
+=======
+                    WizardTextField(label: "Employer Company Name", text: $salariedCompany, placeholder: "Company name")
+                    FormDivider()
+                    WizardTextField(label: "Employee ID (Optional)", text: $salariedEmpID, placeholder: "Employee ID")
+                    FormDivider()
+                    WizardTextField(label: "Designation", text: $salariedDesignation, placeholder: "Designation")
+>>>>>>> Stashed changes
                     FormDivider()
                     WizardDateRow(label: "Date of Joining", date: $salariedJoiningDate)
                     FormDivider()
-                    WizardTextField(label: "Monthly Net Take-home", text: $viewModel.formData.monthlyIncome, placeholder: "₹ 75,000", keyboardType: .numberPad)
+                    WizardTextField(label: "Monthly Net Take-home", text: $viewModel.formData.monthlyIncome, placeholder: "Monthly income", keyboardType: .numberPad)
                 }
             } else {
                 WizardFormSection(title: "Business Details") {
+<<<<<<< Updated upstream
                     WizardTextField(label: "Business Registered Name", text: $selfEmployedBusinessName, placeholder: "Enter registered business name")
                     FormDivider()
                     WizardPickerRow(label: "Business Entity Type", selection: $selfEmployedBusinessType, options: ["", "Proprietorship", "Partnership", "Pvt Ltd"]) { option in
                         option.isEmpty ? "Select Entity Type" : option
                     }
+=======
+                    WizardTextField(label: "Business Registered Name", text: $selfEmployedBusinessName, placeholder: "Registered business name")
+                    FormDivider()
+                    WizardPickerRow(label: "Business Entity Type", selection: $selfEmployedBusinessType, options: ["", "Proprietorship", "Partnership", "Pvt Ltd"]) { $0.isEmpty ? "Select Entity Type" : $0 }
+>>>>>>> Stashed changes
                     FormDivider()
                     HStack {
                         Text("Years in Business")
@@ -1573,20 +1682,24 @@ private struct Step4EmploymentOverhaulView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     FormDivider()
+<<<<<<< Updated upstream
                     WizardTextField(label: "GST Registration No. (Optional)", text: $selfEmployedGSTNumber, placeholder: "Enter GST registration number", disableAutocapitalization: true)
+=======
+                    WizardTextField(label: "GST Registration No. (Optional)", text: $selfEmployedGSTNumber, placeholder: "GST registration number", disableAutocapitalization: true)
+>>>>>>> Stashed changes
                     FormDivider()
-                    WizardTextField(label: "Net Annual Profit", text: $viewModel.formData.annualIncome, placeholder: "₹ 12,00,000", keyboardType: .numberPad)
+                    WizardTextField(label: "Net Annual Profit", text: $viewModel.formData.annualIncome, placeholder: "Annual profit", keyboardType: .numberPad)
                 }
             }
             
             WizardFormSection(title: "Obligations & Assets") {
-                WizardTextField(label: "Total Active Loans", text: $existingLoansCount, placeholder: "0", keyboardType: .numberPad)
+                WizardTextField(label: "Total Active Loans", text: $existingLoansCount, placeholder: "Number of active loans", keyboardType: .numberPad)
                 FormDivider()
-                WizardTextField(label: "Total Credit Card Limit", text: $creditCardLimit, placeholder: "₹ 1,50,000", keyboardType: .numberPad)
+                WizardTextField(label: "Total Credit Card Limit", text: $creditCardLimit, placeholder: "Credit card limit", keyboardType: .numberPad)
                 FormDivider()
-                WizardTextField(label: "Credit Card Outstanding Balance", text: $creditCardOutstanding, placeholder: "₹ 12,000", keyboardType: .numberPad)
+                WizardTextField(label: "Credit Card Outstanding Balance", text: $creditCardOutstanding, placeholder: "Outstanding balance", keyboardType: .numberPad)
                 FormDivider()
-                WizardTextField(label: "Savings & Investments Worth", text: $savingsInvestments, placeholder: "₹ 3,00,000", keyboardType: .numberPad)
+                WizardTextField(label: "Savings & Investments Worth", text: $savingsInvestments, placeholder: "Savings and investments", keyboardType: .numberPad)
             }
         }
     }
@@ -1608,13 +1721,13 @@ private struct Step5BankDetailsView: View {
                 FormDivider()
                 WizardTextField(label: "Account Number", text: $accountNo, placeholder: "12 to 18 Digit number", keyboardType: .numberPad)
                 FormDivider()
-                WizardTextField(label: "IFSC Code", text: $ifscCode, placeholder: "e.g. HDFC0000001", disableAutocapitalization: true)
+                WizardTextField(label: "IFSC Code", text: $ifscCode, placeholder: "IFSC code", disableAutocapitalization: true)
             }
             
             WizardFormSection(title: "Salary Account details") {
                 WizardMobileField(label: "Registered Mobile Number", text: $registeredMobile)
                 FormDivider()
-                WizardTextField(label: "Average Monthly Balance / Salary Deposited", text: $monthlySalaryDeposited, placeholder: "₹ 75,000", keyboardType: .numberPad)
+                WizardTextField(label: "Average Monthly Balance / Salary Deposited", text: $monthlySalaryDeposited, placeholder: "Monthly amount", keyboardType: .numberPad)
             }
             
             WizardFormSection(title: "e-Mandate / Auto-debit") {
@@ -2011,7 +2124,11 @@ private struct Step7SignaturePhotoView: View {
                     }
 
                     Spacer()
+<<<<<<< Updated upstream
 
+=======
+                    
+>>>>>>> Stashed changes
                     if liveVerificationCompleted {
                         Text("Verified")
                             .font(LMSFont.caption.weight(.bold))
@@ -2047,7 +2164,11 @@ private struct Step7SignaturePhotoView: View {
                             .font(.title3)
                             .foregroundStyle(LMSColors.brandNavy)
                     }
+<<<<<<< Updated upstream
 
+=======
+                    
+>>>>>>> Stashed changes
                     SignatureCanvasView(
                         signatureImage: $signatureImage,
                         isEmpty: $isSignatureEmpty,
@@ -2393,9 +2514,13 @@ private struct Step8NomineeReferencesView: View {
             WizardFormSection(title: "Nominee Information") {
                 WizardTextField(label: "Full Name", text: $nomineeName, placeholder: "Nominee's full legal name")
                 FormDivider()
+<<<<<<< Updated upstream
                 WizardPickerRow(label: "Relationship", selection: $nomineeRelation, options: ["", "Spouse", "Parent", "Sibling", "Child"]) { option in
                     option.isEmpty ? "Select Relationship" : option
                 }
+=======
+                WizardPickerRow(label: "Relationship", selection: $nomineeRelation, options: ["", "Spouse", "Parent", "Sibling", "Child"]) { $0.isEmpty ? "Select Relationship" : $0 }
+>>>>>>> Stashed changes
                 FormDivider()
                 WizardMobileField(label: "Mobile Number", text: $nomineeMobile)
             }

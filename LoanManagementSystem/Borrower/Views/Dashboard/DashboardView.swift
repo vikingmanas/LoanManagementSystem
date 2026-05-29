@@ -532,14 +532,25 @@ struct PayEMIWorkflowView: View {
 
     private var accountSelection: some View {
         Section {
-            ForEach(viewModel.bankAccounts) { account in
-                SelectableBankAccountCard(
-                    account: account,
-                    isSelected: selectedAccountID == account.id,
-                    warning: selectedLoan.map { account.availableBalance < $0.totalEMI } ?? false
-                ) {
-                    selectedAccountID = account.id
-                    HapticsManager.triggerImpact(style: .light)
+            if viewModel.bankAccounts.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("No linked bank account", systemImage: "building.columns")
+                        .font(.headline)
+                    Text("Add a bank account to pay EMI from this app.")
+                        .font(.subheadline)
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+                .padding(.vertical, 8)
+            } else {
+                ForEach(viewModel.bankAccounts) { account in
+                    SelectableBankAccountCard(
+                        account: account,
+                        isSelected: selectedAccountID == account.id,
+                        warning: selectedLoan.map { account.availableBalance < $0.totalEMI } ?? false
+                    ) {
+                        selectedAccountID = account.id
+                        HapticsManager.triggerImpact(style: .light)
+                    }
                 }
             }
         } header: {
@@ -742,7 +753,7 @@ private enum StatementFormat: String, CaseIterable, Identifiable {
 
 struct StatementWorkflowView: View {
     @ObservedObject var viewModel: DashboardViewModel
-    @State private var selectedAccountID: UUID?
+    @State private var selectedAccountID: String?
     @State private var period: StatementPeriod = .days30
     @State private var format: StatementFormat = .pdf
     @State private var startDate = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
@@ -751,20 +762,80 @@ struct StatementWorkflowView: View {
     @State private var generatedURL: URL?
     @State private var showShare = false
 
-    private var selectedAccount: BankAccount? {
-        viewModel.bankAccounts.first { $0.id == selectedAccountID } ?? viewModel.bankAccounts.first
+    private var loanStatementAccounts: [StatementAccountOption] {
+        viewModel.loanAccounts.map {
+            StatementAccountOption(
+                id: "loan-\($0.id.uuidString)",
+                title: $0.loanType,
+                subtitle: "****\($0.accountNumber.suffix(4))",
+                detail: "Outstanding: \($0.principalOutstanding.formattedAsINR())",
+                icon: "doc.text.fill",
+                loan: $0,
+                bank: nil
+            )
+        }
+    }
+
+    private var bankStatementAccounts: [StatementAccountOption] {
+        viewModel.bankAccounts.map {
+            StatementAccountOption(
+                id: "bank-\($0.id.uuidString)",
+                title: $0.bankName.isEmpty ? $0.accountType.rawValue : $0.bankName,
+                subtitle: "****\($0.accountNumber.suffix(4))",
+                detail: "Available: \($0.availableBalance.formattedAsINR())",
+                icon: "building.columns.fill",
+                loan: nil,
+                bank: $0
+            )
+        }
+    }
+
+    private var allStatementAccounts: [StatementAccountOption] {
+        loanStatementAccounts + bankStatementAccounts
+    }
+
+    private var selectedAccount: StatementAccountOption? {
+        allStatementAccounts.first { $0.id == selectedAccountID } ?? allStatementAccounts.first
     }
 
     var body: some View {
         Form {
-            Section {
-                ForEach(viewModel.bankAccounts) { account in
-                    SelectableBankAccountCard(account: account, isSelected: selectedAccount?.id == account.id, warning: false) {
-                        selectedAccountID = account.id
+            if !loanStatementAccounts.isEmpty {
+                Section {
+                    ForEach(loanStatementAccounts) { account in
+                        StatementAccountOptionRow(account: account, isSelected: selectedAccount?.id == account.id) {
+                            selectedAccountID = account.id
+                        }
                     }
+                } header: {
+                    Text("Loan Accounts")
                 }
-            } header: {
-                Text("Choose Account for Statement")
+            } else {
+                Section {
+                    Text("No loan account")
+                        .foregroundStyle(LMSColors.textSecondary)
+                } header: {
+                    Text("Loan Accounts")
+                }
+            }
+
+            if !bankStatementAccounts.isEmpty {
+                Section {
+                    ForEach(bankStatementAccounts) { account in
+                        StatementAccountOptionRow(account: account, isSelected: selectedAccount?.id == account.id) {
+                            selectedAccountID = account.id
+                        }
+                    }
+                } header: {
+                    Text("Linked Bank Accounts")
+                }
+            } else {
+                Section {
+                    Text("No linked bank account")
+                        .foregroundStyle(LMSColors.textSecondary)
+                } header: {
+                    Text("Linked Bank Accounts")
+                }
             }
 
             Section {
@@ -814,7 +885,7 @@ struct StatementWorkflowView: View {
         }
         .navigationTitle("Statements")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { selectedAccountID = selectedAccountID ?? viewModel.bankAccounts.first?.id }
+        .onAppear { selectedAccountID = selectedAccountID ?? selectedAccount?.id }
         .sheet(isPresented: $showShare) {
             if let generatedURL {
                 DashboardShareSheet(items: [generatedURL])
@@ -827,16 +898,66 @@ struct StatementWorkflowView: View {
         isGenerating = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             let ext = format == .pdf ? "pdf" : "csv"
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("LoanManagementSystem-\(selectedAccount.accountNumber.suffix(4))-statement.\(ext)")
-            let rows = viewModel.transactions
-                .filter { $0.bankAccountId == nil || $0.bankAccountId == selectedAccount.id }
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("LoanManagementSystem-\(selectedAccount.subtitle.suffix(4))-statement.\(ext)")
+            let rows = filteredTransactions(for: selectedAccount)
                 .map { "\($0.date.formattedAsDDMMMYYYY()),\($0.title),\($0.amount),\($0.referenceNo)" }
                 .joined(separator: "\n")
-            let body = "LoanManagementSystem Secure Statement\nAccount,\(selectedAccount.accountNumber)\nPeriod,\(period.rawValue)\nFormat,\(format.rawValue)\n\nDate,Description,Amount,Reference\n\(rows)"
+            let body = "LoanManagementSystem Secure Statement\nAccount,\(selectedAccount.title) \(selectedAccount.subtitle)\nPeriod,\(period.rawValue)\nFormat,\(format.rawValue)\n\nDate,Description,Amount,Reference\n\(rows)"
             try? body.data(using: .utf8)?.write(to: url, options: .atomic)
             generatedURL = url
             isGenerating = false
             HapticsManager.triggerNotification(type: .success)
+        }
+    }
+
+    private func filteredTransactions(for account: StatementAccountOption) -> [Transaction] {
+        if let bank = account.bank {
+            return viewModel.transactions.filter { $0.bankAccountId == nil || $0.bankAccountId == bank.id }
+        }
+        if let loan = account.loan {
+            return viewModel.transactions.filter { $0.title.localizedCaseInsensitiveContains(loan.loanType) }
+        }
+        return viewModel.transactions
+    }
+}
+
+private struct StatementAccountOption: Identifiable {
+    let id: String
+    let title: String
+    let subtitle: String
+    let detail: String
+    let icon: String
+    let loan: DashboardLoanAccount?
+    let bank: BankAccount?
+}
+
+private struct StatementAccountOptionRow: View {
+    let account: StatementAccountOption
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: account.icon)
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .frame(width: 34, height: 34)
+                    .background(LMSColors.brandNavy.opacity(0.10), in: Circle())
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(account.title)
+                        .font(.headline)
+                        .foregroundStyle(LMSColors.textPrimary)
+                    Text(account.subtitle)
+                        .foregroundStyle(LMSColors.textSecondary)
+                    Text(account.detail)
+                        .font(.caption)
+                        .foregroundStyle(LMSColors.textTertiary)
+                }
+                Spacer()
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isSelected ? LMSColors.emerald : LMSColors.textTertiary)
+            }
+            .padding(.vertical, 6)
         }
     }
 }
@@ -975,7 +1096,22 @@ struct TopUpWorkflowView: View {
     private var sourceSection: some View {
         Section {
             if viewModel.bankAccounts.isEmpty {
-                Button("Add Account", action: onAddAccount)
+                VStack(alignment: .leading, spacing: 10) {
+                    Label("No linked bank account", systemImage: "building.columns")
+                        .font(.headline)
+                        .foregroundStyle(LMSColors.textPrimary)
+                    Text("Add a bank account to transfer funds.")
+                        .font(.subheadline)
+                        .foregroundStyle(LMSColors.textSecondary)
+                    Button {
+                        onAddAccount()
+                    } label: {
+                        Label("Add Bank Account", systemImage: "plus.circle.fill")
+                    }
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(LMSColors.brandNavy)
+                }
+                .padding(.vertical, 8)
             } else {
                 ForEach(viewModel.bankAccounts) { account in
                     SelectableBankAccountCard(account: account, isSelected: sourceAccountID == account.id, warning: false) {
