@@ -28,6 +28,7 @@ struct ProfileCompletionCardSection: View {
     let percentage: Int
     let missingItems: [String]
     let onContinue: () -> Void
+    let onDismiss: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
@@ -61,6 +62,20 @@ struct ProfileCompletionCardSection: View {
                                 .foregroundStyle(LMSColors.textSecondary)
                         }
                         Spacer(minLength: 0)
+
+                        Button(action: onDismiss) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(LMSColors.textSecondary)
+                                .frame(width: 28, height: 28)
+                                .background(LMSColors.surfaceElevated, in: Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(LMSColors.separatorLight.opacity(0.7), lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Dismiss profile completion card")
                     }
 
                     if !missingItems.isEmpty {
