@@ -4,10 +4,8 @@ import UIKit
 struct LoanOfficerDashboardView: View {
     @StateObject private var viewModel = LoanOfficerDashboardViewModel()
     @State private var selectedTab: OfficerWorkspaceTab = .dashboard
-    @State private var showingNotifications = false
     @State private var showingProfile = false
-    @State private var showingConsoleAlert = false
-    @State private var consoleAlertMessage = ""
+    @State private var showingCalculator = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -15,7 +13,7 @@ struct LoanOfficerDashboardView: View {
                 LoanOfficerTodayView(
                     viewModel: viewModel,
                     selectedTab: $selectedTab,
-                    onNotifications: { showingNotifications = true },
+                    onCalculator: { showingCalculator = true },
                     onProfile: { showingProfile = true }
                 )
             }
@@ -39,53 +37,17 @@ struct LoanOfficerDashboardView: View {
             }
             .tabItem { Label("Registry", systemImage: "tray.full") }
             .tag(OfficerWorkspaceTab.registry)
-            
-            NavigationStack {
-                QuickConsoleTabView(viewModel: viewModel) { action in
-                    handleConsoleAction(action)
-                }
-            }
-            .tabItem { Label("Console", systemImage: "bolt.fill") }
-            .tag(OfficerWorkspaceTab.console)
         }
         .tint(LMSColors.brandNavy)
         .task {
             await viewModel.fetchDashboardData()
         }
-        .sheet(isPresented: $showingNotifications) {
-            NotificationsFeedSheet(viewModel: viewModel)
-        }
         .sheet(isPresented: $showingProfile) {
             LoanOfficerProfileView()
         }
-        .alert("Action Received", isPresented: $showingConsoleAlert) {
-            Button("Dismiss", role: .cancel) { }
-        } message: {
-            Text(consoleAlertMessage)
+        .sheet(isPresented: $showingCalculator) {
+            OfficerCalculatorSheet()
         }
-    }
-    
-    private func handleConsoleAction(_ action: String) {
-        switch action {
-        case "new_application":
-            consoleAlertMessage = "Opening new application form (Simulated)"
-        case "verify_documents":
-            selectedTab = .review
-            return
-        case "compliance_audit":
-            consoleAlertMessage = "Running RBI Compliance Audit... (Simulated)"
-        case "branch_reports":
-            consoleAlertMessage = "Downloading Branch Performance Reports... (Simulated)"
-        case "client_directory":
-            consoleAlertMessage = "Opening Client Directory... (Simulated)"
-        case "escalate_case":
-            consoleAlertMessage = "Select a case from the dashboard to escalate."
-            selectedTab = .dashboard
-            return
-        default:
-            consoleAlertMessage = "Executing \(action)..."
-        }
-        showingConsoleAlert = true
     }
 }
 
@@ -94,7 +56,6 @@ enum OfficerWorkspaceTab: Hashable {
     case review
     case messages
     case registry
-    case console
 }
 
 // MARK: - Dashboard Main View
@@ -103,7 +64,7 @@ private struct LoanOfficerTodayView: View {
     @EnvironmentObject var authManager: AuthManager
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Binding var selectedTab: OfficerWorkspaceTab
-    var onNotifications: () -> Void
+    var onCalculator: () -> Void
     var onProfile: () -> Void
 
     @State private var selectedMetricStatus: OfficerApplicationStatus?
@@ -153,10 +114,10 @@ private struct LoanOfficerTodayView: View {
         .navigationTitle("Dashboard")
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Button(action: onNotifications) {
-                    Image(systemName: viewModel.unreadActivityCount > 0 ? "bell.badge" : "bell")
+                Button(action: onCalculator) {
+                    Image(systemName: "plus.slash.minus")
                 }
-                .accessibilityLabel("Notifications")
+                .accessibilityLabel("Calculator")
 
                 Button(action: onProfile) {
                     Text(authManager.currentStaffProfile?.initials ?? "AK")
@@ -761,65 +722,111 @@ struct OfficerAvatar: View {
     }
 }
 
-// MARK: - Notifications Sheet
 
-struct NotificationsFeedSheet: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+// MARK: - Calculator Sheet
+
+struct OfficerCalculatorSheet: View {
     @Environment(\.dismiss) private var dismiss
+
+    @State private var principalAmount: Double = 2500000.0
+    @State private var interestRate: Double = 8.65
+    @State private var tenureYears: Double = 15.0
+
+    private var calculatedEMI: Double {
+        let monthlyRate = (interestRate / 100.0) / 12.0
+        let totalMonths = tenureYears * 12.0
+        guard monthlyRate > 0 else { return principalAmount / totalMonths }
+        let emi = principalAmount * (monthlyRate * pow(1.0 + monthlyRate, totalMonths)) / (pow(1.0 + monthlyRate, totalMonths) - 1.0)
+        return emi.isNaN ? 0.0 : emi
+    }
+
+    private var totalInterest: Double {
+        (calculatedEMI * tenureYears * 12.0) - principalAmount
+    }
 
     var body: some View {
         NavigationStack {
-            List {
-                if viewModel.activityFeed.isEmpty {
-                    ContentUnavailableView("No Notifications", systemImage: "bell.slash", description: Text("All priority work is clear."))
-                } else {
-                    ForEach(viewModel.activityFeed) { item in
-                        HStack(alignment: .top, spacing: 14) {
-                            if !item.isRead {
-                                Circle()
-                                    .fill(Color.blue)
-                                    .frame(width: 10, height: 10)
-                                    .padding(.top, 12)
-                            } else {
-                                Circle()
-                                    .fill(Color.clear)
-                                    .frame(width: 10, height: 10)
-                                    .padding(.top, 12)
-                            }
-                            
-                            Image(systemName: item.eventType.symbol)
-                                .font(.title3)
-                                .foregroundStyle(item.eventType.themeColor)
-                                .frame(width: 36, height: 36)
-                                .background(item.eventType.themeColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                                
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(item.borrowerName)
-                                        .font(.subheadline.weight(.semibold))
-                                    Spacer()
-                                    Text(RelativeDateFormatter.shared.relativeString(from: item.timestamp))
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Text(item.eventDescription)
-                                    .font(.subheadline)
-                                    .foregroundStyle(!item.isRead ? .primary : .secondary)
-                                    .lineLimit(3)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: LMSSpacing.xl) {
+                    // Output metrics
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Monthly EMI")
+                                .font(.system(.caption, design: .rounded).bold())
+                                .foregroundStyle(LMSColors.textSecondary)
+                            Text(CurrencyFormatter.shared.format(calculatedEMI))
+                                .font(.system(.title, design: .rounded).bold())
+                                .foregroundStyle(LMSColors.actionBlue)
                         }
-                        .padding(.vertical, 6)
-                        .listRowInsets(EdgeInsets(top: 8, leading: 4, bottom: 8, trailing: 16))
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("Total Interest Payable")
+                                .font(.system(.caption, design: .rounded).bold())
+                                .foregroundStyle(LMSColors.textSecondary)
+                            Text(CurrencyFormatter.shared.format(totalInterest))
+                                .font(.system(.body, design: .rounded).bold())
+                                .foregroundStyle(LMSColors.textPrimary)
+                        }
                     }
+                    .padding(LMSSpacing.lg)
+                    .background(LMSColors.actionBlue.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+
+                    // Sliders
+                    VStack(spacing: LMSSpacing.lg) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Principal Loan Amount")
+                                    .font(.system(.caption, design: .rounded).weight(.bold))
+                                Spacer()
+                                Text(CurrencyFormatter.shared.format(principalAmount))
+                                    .font(.system(.caption, design: .rounded).bold())
+                                    .foregroundStyle(LMSColors.actionBlue)
+                            }
+                            Slider(value: $principalAmount, in: 500000...10000000, step: 100000)
+                                .tint(LMSColors.actionBlue)
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Interest Rate (p.a.)")
+                                    .font(.system(.caption, design: .rounded).weight(.bold))
+                                Spacer()
+                                Text(String(format: "%.2f %%", interestRate))
+                                    .font(.system(.caption, design: .rounded).bold())
+                                    .foregroundStyle(LMSColors.actionBlue)
+                            }
+                            Slider(value: $interestRate, in: 5.0...15.0, step: 0.05)
+                                .tint(LMSColors.actionBlue)
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Tenure Duration")
+                                    .font(.system(.caption, design: .rounded).weight(.bold))
+                                Spacer()
+                                Text("\(Int(tenureYears)) Years")
+                                    .font(.system(.caption, design: .rounded).bold())
+                                    .foregroundStyle(LMSColors.actionBlue)
+                            }
+                            Slider(value: $tenureYears, in: 1...30, step: 1)
+                                .tint(LMSColors.actionBlue)
+                        }
+                    }
+                    .padding(LMSSpacing.lg)
+                    .background(LMSColors.surfaceElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
                 }
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+                .padding(.top, LMSSpacing.md)
             }
-            .listStyle(.plain)
-            .navigationTitle("Notifications")
+            .background(LMSColors.background)
+            .navigationTitle("Quick Financial Calculator")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
+                        .font(.system(.body, design: .rounded).bold())
                 }
             }
         }
