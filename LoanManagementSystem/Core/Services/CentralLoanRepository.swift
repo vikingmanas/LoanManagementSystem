@@ -290,6 +290,19 @@ final class CentralLoanRepository: ObservableObject {
         }
     }
     
+    private func resolveDocTypeString(category: BorrowerDocumentCategory, name: String) -> String {
+        switch category {
+        case .identityVerification: return "identity_proof"
+        case .addressVerification: return "address_proof"
+        case .incomeVerification: return "income_proof"
+        case .loanSpecific:
+            let n = name.lowercased()
+            if n.contains("statement") { return "bank_statement" }
+            if n.contains("property") || n.contains("land") || n.contains("tax") || n.contains("invoice") || n.contains("quotation") { return "property_document" }
+            return "identity_proof"
+        }
+    }
+
     private func syncApplicationToSupabase(_ app: BorrowerLoanApplication) {
         // Prefer the application's existing borrower ID (so Officers/Managers don't overwrite it with their own ID)
         // Fallback to the current user's ID for new applications created by the borrower
@@ -311,6 +324,41 @@ final class CentralLoanRepository: ObservableObject {
             do {
                 try await ApplicationService.shared.upsertApplication(dbApp)
                 print("[CentralLoanRepository] Successfully synced application \(app.displayIdentifier) to Supabase.")
+                
+                // Sync all application documents to Supabase DB to track verification updates
+                for doc in app.documents {
+                    if doc.status == .uploaded || doc.status == .verified || doc.status == .underVerification || doc.status == .rejected || doc.status == .requiresResubmission {
+                        let docType = resolveDocTypeString(category: doc.category, name: doc.name)
+                        
+                        let statusString: String
+                        switch doc.status {
+                        case .verified: statusString = "verified"
+                        case .rejected, .requiresResubmission: statusString = "rejected"
+                        default: statusString = "uploaded"
+                        }
+                        
+                        // Check if document already exists to keep its file URL
+                        let existingDocs = try? await DatabaseService.shared.fetchDocuments(applicationId: app.id)
+                        let existingDoc = existingDocs?.first(where: { $0.documentId == doc.id })
+                        
+                        let fileUrl = doc.fileUrl ?? existingDoc?.fileUrl ?? ""
+                        
+                        let dbDoc = DBDocument(
+                            documentId: doc.id,
+                            borrowerId: resolvedUUID,
+                            applicationId: app.id,
+                            docType: docType,
+                            fileUrl: fileUrl,
+                            fileName: doc.fileName ?? "\(doc.name.replacingOccurrences(of: " ", with: "_")).jpg",
+                            status: statusString,
+                            uploadedAt: doc.uploadDate ?? Date(),
+                            verifiedBy: doc.status == .verified ? (existingDoc?.verifiedBy ?? UUID(uuidString: "00000000-0000-0000-0000-000000000002")) : nil
+                        )
+                        
+                        try await DatabaseService.shared.upsertDocument(dbDoc)
+                        print("[CentralLoanRepository] Successfully synced document \(doc.name) to Supabase DB.")
+                    }
+                }
             } catch {
                 print("[CentralLoanRepository] Failed to sync application \(app.displayIdentifier) to Supabase: \(error.localizedDescription)")
             }

@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import Supabase
+import UIKit
 
 @MainActor
 final class LoanApplicationViewModel: ObservableObject {
@@ -530,7 +531,7 @@ final class LoanApplicationViewModel: ObservableObject {
         }
     }
 
-    func uploadDocument(_ documentID: UUID, fileName: String, source: BorrowerDocumentUploadSource) {
+    func uploadDocument(_ documentID: UUID, fileName: String, source: BorrowerDocumentUploadSource, image: UIImage? = nil) {
         guard let index = documents.firstIndex(where: { $0.id == documentID }) else { return }
         guard !documents[index].isLocked else { return }
 
@@ -539,6 +540,44 @@ final class LoanApplicationViewModel: ObservableObject {
         documents[index].uploadDate = now
         documents[index].lastUpdated = now
         documents[index].fileName = fileName
+
+        if let currentDraftID = currentDraftID {
+            let data = image?.jpegData(compressionQuality: 0.8) ?? Data("dummy file content for \(fileName)".utf8)
+            let bucket = "documents"
+            let path = "\(currentDraftID)/\(documentID).jpg"
+            
+            Task {
+                do {
+                    let publicUrl = try await StorageService.shared.uploadDocument(data: data, bucket: bucket, path: path)
+                    
+                    await MainActor.run {
+                        if let idx = self.documents.firstIndex(where: { $0.id == documentID }) {
+                            self.documents[idx].fileUrl = publicUrl.absoluteString;
+                        }
+                    }
+                    
+                    let borrowerUUID = UUID(uuidString: BorrowerProfileStore.shared.profile?.id ?? "") ?? UUID()
+                    let docType = resolveDocType(category: documents[index].category, name: documents[index].name)
+                    
+                    let dbDoc = DBDocument(
+                        documentId: documentID,
+                        borrowerId: borrowerUUID,
+                        applicationId: currentDraftID,
+                        docType: docType,
+                        fileUrl: publicUrl.absoluteString,
+                        fileName: fileName,
+                        status: "uploaded",
+                        uploadedAt: now,
+                        verifiedBy: nil
+                    )
+                    
+                    try await DatabaseService.shared.upsertDocument(dbDoc)
+                    print("[LoanApplicationViewModel] Successfully uploaded wizard document to Supabase Storage and DB.")
+                } catch {
+                    print("[LoanApplicationViewModel] Error uploading wizard document: \(error.localizedDescription)")
+                }
+            }
+        }
 
         autosaveDraft()
     }
