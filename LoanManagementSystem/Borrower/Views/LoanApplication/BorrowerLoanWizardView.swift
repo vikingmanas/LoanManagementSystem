@@ -1,5 +1,7 @@
 import SwiftUI
 import UIKit
+import Combine
+import AVFoundation
 @preconcurrency import Vision
 
 private enum WizardNavigationDirection {
@@ -195,6 +197,64 @@ private struct FormDivider: View {
     }
 }
 
+private enum MobileNumberValidator {
+    static func validationMessage(for value: String) -> String? {
+        if value.contains(where: { !$0.isNumber }) {
+            return "Only numeric digits are allowed"
+        }
+        if value.count < 10 {
+            return "Mobile number must contain 10 digits"
+        }
+        if value.count > 10 {
+            return "Mobile number cannot exceed 10 digits"
+        }
+        return nil
+    }
+
+    static func sanitize(_ value: String) -> String {
+        String(value.prefix(10))
+    }
+}
+
+private struct WizardMobileField: View {
+    let label: String
+    @Binding var text: String
+    var placeholder: String = "10 digit mobile number"
+
+    private var validationMessage: String? {
+        text.isEmpty ? nil : MobileNumberValidator.validationMessage(for: text)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(LMSFont.caption.weight(.semibold))
+                .foregroundStyle(LMSColors.textSecondary)
+
+            TextField(placeholder, text: $text)
+                .keyboardType(.numberPad)
+                .textContentType(.telephoneNumber)
+                .font(LMSFont.body.weight(.medium))
+                .foregroundStyle(LMSColors.textPrimary)
+                .padding(.vertical, 8)
+                .onReceive(Just(text)) { value in
+                    let sanitized = MobileNumberValidator.sanitize(value)
+                    if sanitized != value {
+                        text = sanitized
+                    }
+                }
+
+            if let validationMessage {
+                Text(validationMessage)
+                    .font(LMSFont.caption2.weight(.medium))
+                    .foregroundStyle(LMSColors.coral)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+}
+
 // MARK: - Main Wizard View Overhaul
 struct BorrowerLoanWizardView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
@@ -218,25 +278,33 @@ struct BorrowerLoanWizardView: View {
     @State private var salariedDesignation: String = ""
     @State private var salariedJoiningDate: Date = Date()
     @State private var selfEmployedBusinessName: String = ""
-    @State private var selfEmployedBusinessType: String = "Proprietorship"
-    @State private var selfEmployedYearsInBusiness: Int = 3
+    @State private var selfEmployedBusinessType: String = ""
+    @State private var selfEmployedYearsInBusiness: Int = 1
     @State private var selfEmployedGSTNumber: String = ""
     @State private var selfEmployedAnnualRevenue: String = ""
     @State private var selfEmployedAnnualProfit: String = ""
     
-    @State private var existingLoansCount: String = "0"
-    @State private var creditCardLimit: String = "150000"
-    @State private var creditCardOutstanding: String = "12000"
-    @State private var savingsInvestments: String = "300000"
+    @State private var existingLoansCount: String = ""
+    @State private var creditCardLimit: String = ""
+    @State private var creditCardOutstanding: String = ""
+    @State private var savingsInvestments: String = ""
     
-    // Step 5 Co-Applicant State -> Repurposed for Bank Details & References
+    // Step 5 Bank Details, Step 8 Nominee & References
     @State private var hasCoApplicantToggle: Bool = false
     @State private var coApplicantName: String = ""
-    @State private var coApplicantRelation: String = "Spouse"
+    @State private var coApplicantRelation: String = ""
     @State private var coApplicantMobile: String = ""
     @State private var coApplicantPAN: String = ""
     @State private var coApplicantAadhaar: String = ""
     @State private var coApplicantIncome: String = ""
+    @State private var bankName: String = ""
+    @State private var bankAccountNumber: String = ""
+    @State private var bankIFSCCode: String = ""
+    @State private var monthlySalaryDeposited: String = ""
+    @State private var autoDebitConsent: Bool = false
+    @State private var nomineeName: String = ""
+    @State private var bankRegisteredMobile: String = ""
+    @State private var nomineeMobile: String = ""
     
     // Step 6 & 7 Document & OCR Local States
     @State private var uploadProgress: [String: Double] = [:] // Document name -> Progress (0 to 1)
@@ -255,18 +323,23 @@ struct BorrowerLoanWizardView: View {
     @State private var previewImage: DocumentPreviewImage?
     
     // Step 7 OCR Extracted Editable Data -> Repurposed for Nominee / Photo
-    @State private var ocrPANNumber: String = "ABCDE1234F"
-    @State private var ocrPANName: String = "AKASH KASHYAP"
-    @State private var ocrPANFather: String = "RAMKUMAR KASHYAP"
+    @State private var ocrPANNumber: String = ""
+    @State private var ocrPANName: String = ""
+    @State private var ocrPANFather: String = ""
     @State private var ocrPANDOB: Date = Calendar.current.date(byAdding: .year, value: -26, to: Date()) ?? Date()
     
-    @State private var ocrAadhaarName: String = "AKASH KASHYAP"
+    @State private var ocrAadhaarName: String = ""
     @State private var ocrAadhaarDOB: Date = Calendar.current.date(byAdding: .year, value: -26, to: Date()) ?? Date()
-    @State private var ocrAadhaarGender: String = "Male"
-    @State private var ocrAadhaarAddress: String = "Flat 402, Highrise Apts, Link Road, Mumbai - 400053"
+    @State private var ocrAadhaarGender: String = ""
+    @State private var ocrAadhaarAddress: String = ""
     
     // OCR Confidence Ratings
-    @State private var ocrConfidence: [String: String] = ["PAN": "High", "Aadhaar": "High"]
+    @State private var ocrConfidence: [String: String] = [:]
+    @State private var signatureImage: UIImage?
+    @State private var isSignatureEmpty = true
+    @State private var liveVerificationCompleted = false
+    @State private var liveVerificationReference: String?
+    @State private var showLiveVerification = false
     
     // Step 8 Verification Alerts Overrides
     @State private var showVerificationResolutionSheet = false
@@ -286,18 +359,16 @@ struct BorrowerLoanWizardView: View {
                 LoanContextChip(product: product, amount: desiredAmount, interestRate: product.interestRateRange)
                 
                 stepContent
+                inlineContinueCTA
             }
             .padding(.top, 12)
-            .padding(.bottom, 112)
+            .padding(.bottom, 28)
         }
         .lmsScreenBackground()
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .tabBar)
         .safeAreaInset(edge: .top, spacing: 0) {
             wizardNavigationBar
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            bottomCTA
         }
         .gesture(
             DragGesture(minimumDistance: 24)
@@ -325,6 +396,17 @@ struct BorrowerLoanWizardView: View {
                 }
             } onCancel: {
                 showDocumentImagePicker = false
+            }
+            .ignoresSafeArea()
+        }
+        .fullScreenCover(isPresented: $showLiveVerification) {
+            LiveFaceVerificationView { reference in
+                liveVerificationReference = reference
+                liveVerificationCompleted = true
+                showLiveVerification = false
+                HapticsManager.triggerNotification(type: .success)
+            } onCancel: {
+                showLiveVerification = false
             }
             .ignoresSafeArea()
         }
@@ -459,12 +541,12 @@ struct BorrowerLoanWizardView: View {
                 )
             case 5:
                 Step5BankDetailsView(
-                    bankName: $coApplicantName,
-                    accountNo: $coApplicantAadhaar,
-                    ifscCode: $coApplicantPAN,
-                    registeredMobile: $coApplicantMobile,
-                    monthlySalaryDeposited: $coApplicantIncome,
-                    autoDebitConsent: $hasCoApplicantToggle
+                    bankName: $bankName,
+                    accountNo: $bankAccountNumber,
+                    ifscCode: $bankIFSCCode,
+                    registeredMobile: $bankRegisteredMobile,
+                    monthlySalaryDeposited: $monthlySalaryDeposited,
+                    autoDebitConsent: $autoDebitConsent
                 )
             case 6:
                 Step6DocumentCenterOverhaulView(
@@ -494,21 +576,18 @@ struct BorrowerLoanWizardView: View {
                 )
             case 7:
                 Step7SignaturePhotoView(
-                    ocrPANNumber: $ocrPANNumber,
-                    ocrPANName: $ocrPANName,
-                    ocrPANFather: $ocrPANFather,
-                    ocrPANDOB: $ocrPANDOB,
-                    ocrAadhaarName: $ocrAadhaarName,
-                    ocrAadhaarDOB: $ocrAadhaarDOB,
-                    ocrAadhaarGender: $ocrAadhaarGender,
-                    ocrAadhaarAddress: $ocrAadhaarAddress,
-                    ocrConfidence: $ocrConfidence
+                    signatureImage: $signatureImage,
+                    isSignatureEmpty: $isSignatureEmpty,
+                    liveVerificationCompleted: $liveVerificationCompleted,
+                    onStartLiveVerification: {
+                        showLiveVerification = true
+                    }
                 )
             case 8:
                 Step8NomineeReferencesView(
-                    nomineeName: $coApplicantName,
+                    nomineeName: $nomineeName,
                     nomineeRelation: $coApplicantRelation,
-                    nomineeMobile: $coApplicantMobile,
+                    nomineeMobile: $nomineeMobile,
                     refName: $ocrPANFather,
                     refPhone: $ocrPANNumber
                 )
@@ -551,9 +630,9 @@ struct BorrowerLoanWizardView: View {
         }
     }
 
-    private var bottomCTA: some View {
+    private var inlineContinueCTA: some View {
         VStack(spacing: 8) {
-            if let stepValidationMessage, currentStep == 6 || currentStep == 10 || currentStep == 9 {
+            if let stepValidationMessage {
                 Text(stepValidationMessage)
                     .font(LMSFont.caption)
                     .foregroundStyle(LMSColors.coral)
@@ -570,11 +649,7 @@ struct BorrowerLoanWizardView: View {
             .buttonStyle(LMSPressableStyle())
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(.regularMaterial)
-        .overlay(alignment: .top) {
-            Divider()
-        }
+        .padding(.top, 4)
     }
     
     // MARK: - Helper Methods
@@ -661,10 +736,7 @@ struct BorrowerLoanWizardView: View {
                 viewModel.formData.occupation = salariedDesignation
             }
             viewModel.formData.workExperienceYears = 2
-            if viewModel.formData.monthlyIncomeValue <= 0 {
-                viewModel.formData.monthlyIncome = "75000"
-            }
-            if viewModel.formData.annualIncomeValue <= 0 {
+            if viewModel.formData.annualIncomeValue <= 0, viewModel.formData.monthlyIncomeValue > 0 {
                 let annual = Int(viewModel.formData.monthlyIncomeValue * 12)
                 viewModel.formData.annualIncome = String(annual)
             }
@@ -677,10 +749,8 @@ struct BorrowerLoanWizardView: View {
             viewModel.formData.gstNumber = selfEmployedGSTNumber
             if viewModel.formData.annualIncomeValue <= 0, !selfEmployedAnnualProfit.isEmpty {
                 viewModel.formData.annualIncome = selfEmployedAnnualProfit
-            } else if viewModel.formData.annualIncomeValue <= 0 {
-                viewModel.formData.annualIncome = "1200000"
             }
-            if viewModel.formData.monthlyIncomeValue <= 0 {
+            if viewModel.formData.monthlyIncomeValue <= 0, viewModel.formData.annualIncomeValue > 0 {
                 let monthly = max(1, Int(viewModel.formData.annualIncomeValue / 12))
                 viewModel.formData.monthlyIncome = String(monthly)
             }
@@ -698,13 +768,6 @@ struct BorrowerLoanWizardView: View {
             viewModel.formData.coApplicantDetails = "\(coApplicantName) (\(coApplicantRelation))"
         }
 
-        if viewModel.formData.loanPurpose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            viewModel.formData.loanPurpose = "General financing requirement"
-        }
-
-        if viewModel.formData.creditScore.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            viewModel.formData.creditScore = "750"
-        }
     }
 
     private func triggerAutosave() {
@@ -724,6 +787,12 @@ struct BorrowerLoanWizardView: View {
         triggerAutosave()
 
         if currentStep < 10 {
+            if let validationMessage = validationMessageForCurrentStep() {
+                stepValidationMessage = validationMessage
+                HapticsManager.triggerNotification(type: .warning)
+                return
+            }
+
             if currentStep == 6 {
                 let unverifiedDocuments = viewModel.documents.filter { $0.status != .verified }
                 if !unverifiedDocuments.isEmpty {
@@ -760,6 +829,30 @@ struct BorrowerLoanWizardView: View {
                 stepValidationMessage = submissionErrorMessage
                 HapticsManager.triggerNotification(type: .error)
             }
+        }
+    }
+
+    private func validationMessageForCurrentStep() -> String? {
+        switch currentStep {
+        case 3:
+            return MobileNumberValidator.validationMessage(for: viewModel.formData.mobileNumber)
+        case 5:
+            return MobileNumberValidator.validationMessage(for: bankRegisteredMobile)
+        case 7:
+            if !liveVerificationCompleted {
+                return "Please complete live facial verification"
+            }
+            if isSignatureEmpty {
+                return "Please provide your signature"
+            }
+            return nil
+        case 8:
+            if let nomineeValidation = MobileNumberValidator.validationMessage(for: nomineeMobile) {
+                return nomineeValidation
+            }
+            return MobileNumberValidator.validationMessage(for: ocrPANNumber)
+        default:
+            return nil
         }
     }
     
@@ -1403,7 +1496,7 @@ private struct Step3PersonalInfoOverhaulView: View {
             }
             
             WizardFormSection(title: "Contact Credentials") {
-                WizardTextField(label: "Mobile Number", text: $viewModel.formData.mobileNumber, placeholder: "+91 98765 43210", keyboardType: .phonePad)
+                WizardMobileField(label: "Mobile Number", text: $viewModel.formData.mobileNumber)
                 FormDivider()
                 WizardTextField(label: "Email Address", text: $viewModel.formData.emailAddress, placeholder: "yourname@domain.com", keyboardType: .emailAddress, disableAutocapitalization: true)
             }
@@ -1451,11 +1544,11 @@ private struct Step4EmploymentOverhaulView: View {
             
             if viewModel.formData.employmentType == "Salaried" {
                 WizardFormSection(title: "Salary Details") {
-                    WizardTextField(label: "Employer Company Name", text: $salariedCompany, placeholder: "e.g. Google India")
+                    WizardTextField(label: "Employer Company Name", text: $salariedCompany, placeholder: "Enter employer name")
                     FormDivider()
-                    WizardTextField(label: "Employee ID (Optional)", text: $salariedEmpID, placeholder: "e.g. 102941")
+                    WizardTextField(label: "Employee ID (Optional)", text: $salariedEmpID, placeholder: "Enter employee ID")
                     FormDivider()
-                    WizardTextField(label: "Designation", text: $salariedDesignation, placeholder: "e.g. Software Engineer")
+                    WizardTextField(label: "Designation", text: $salariedDesignation, placeholder: "Enter designation")
                     FormDivider()
                     WizardDateRow(label: "Date of Joining", date: $salariedJoiningDate)
                     FormDivider()
@@ -1463,9 +1556,11 @@ private struct Step4EmploymentOverhaulView: View {
                 }
             } else {
                 WizardFormSection(title: "Business Details") {
-                    WizardTextField(label: "Business Registered Name", text: $selfEmployedBusinessName, placeholder: "e.g. Acme Retailers")
+                    WizardTextField(label: "Business Registered Name", text: $selfEmployedBusinessName, placeholder: "Enter registered business name")
                     FormDivider()
-                    WizardPickerRow(label: "Business Entity Type", selection: $selfEmployedBusinessType, options: ["Proprietorship", "Partnership", "Pvt Ltd"]) { $0 }
+                    WizardPickerRow(label: "Business Entity Type", selection: $selfEmployedBusinessType, options: ["", "Proprietorship", "Partnership", "Pvt Ltd"]) { option in
+                        option.isEmpty ? "Select Entity Type" : option
+                    }
                     FormDivider()
                     HStack {
                         Text("Years in Business")
@@ -1478,7 +1573,7 @@ private struct Step4EmploymentOverhaulView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     FormDivider()
-                    WizardTextField(label: "GST Registration No. (Optional)", text: $selfEmployedGSTNumber, placeholder: "e.g. 27AAAAA0000A1Z5", disableAutocapitalization: true)
+                    WizardTextField(label: "GST Registration No. (Optional)", text: $selfEmployedGSTNumber, placeholder: "Enter GST registration number", disableAutocapitalization: true)
                     FormDivider()
                     WizardTextField(label: "Net Annual Profit", text: $viewModel.formData.annualIncome, placeholder: "₹ 12,00,000", keyboardType: .numberPad)
                 }
@@ -1517,7 +1612,7 @@ private struct Step5BankDetailsView: View {
             }
             
             WizardFormSection(title: "Salary Account details") {
-                WizardTextField(label: "Registered Mobile Number", text: $registeredMobile, placeholder: "+91 98765 43210", keyboardType: .phonePad)
+                WizardMobileField(label: "Registered Mobile Number", text: $registeredMobile)
                 FormDivider()
                 WizardTextField(label: "Average Monthly Balance / Salary Deposited", text: $monthlySalaryDeposited, placeholder: "₹ 75,000", keyboardType: .numberPad)
             }
@@ -1873,17 +1968,11 @@ private struct UploadRow: View {
 
 // MARK: - STEP 7: Signature & Selfie View
 private struct Step7SignaturePhotoView: View {
-    @Binding var ocrPANNumber: String
-    @Binding var ocrPANName: String
-    @Binding var ocrPANFather: String
-    @Binding var ocrPANDOB: Date
-    
-    @Binding var ocrAadhaarName: String
-    @Binding var ocrAadhaarDOB: Date
-    @Binding var ocrAadhaarGender: String
-    @Binding var ocrAadhaarAddress: String
-    
-    @Binding var ocrConfidence: [String: String]
+    @Binding var signatureImage: UIImage?
+    @Binding var isSignatureEmpty: Bool
+    @Binding var liveVerificationCompleted: Bool
+    let onStartLiveVerification: () -> Void
+    @State private var signatureCanvasID = UUID()
 
     var body: some View {
         VStack(spacing: LMSSpacing.lg) {
@@ -1891,18 +1980,16 @@ private struct Step7SignaturePhotoView: View {
                 Image(systemName: "face.id")
                     .font(.system(size: 40))
                     .foregroundStyle(LMSColors.brandNavy)
-                
                 Text("Verification Proofs")
                     .font(LMSFont.title3.weight(.bold))
                     .foregroundStyle(LMSColors.textPrimary)
-                
-                Text("Please upload a live selfie and draw or upload your signature to complete identity checks.")
+                Text("Complete a live face check and draw your signature to finish identity verification.")
                     .font(LMSFont.caption)
                     .foregroundStyle(LMSColors.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
             }
-            
+
             WizardFormSection(title: "Live Selfie Status") {
                 HStack(spacing: 16) {
                     ZStack {
@@ -1911,33 +1998,44 @@ private struct Step7SignaturePhotoView: View {
                             .frame(width: 54, height: 54)
                         Image(systemName: "person.crop.circle.badge.checkmark")
                             .font(.title2)
-                            .foregroundStyle(LMSColors.emerald)
+                            .foregroundStyle(liveVerificationCompleted ? LMSColors.emerald : LMSColors.textTertiary)
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Live Facial Verification")
                             .font(LMSFont.body.weight(.semibold))
                             .foregroundStyle(LMSColors.textPrimary)
-                        Text("Selfie captured successfully")
+                        Text(liveVerificationCompleted ? "Live verification completed" : "Record a 10 second live face check")
                             .font(LMSFont.caption)
                             .foregroundStyle(LMSColors.textSecondary)
                     }
-                    
+
                     Spacer()
-                    
-                    Text("Verified")
+
+                    if liveVerificationCompleted {
+                        Text("Verified")
+                            .font(LMSFont.caption.weight(.bold))
+                            .foregroundStyle(LMSColors.emerald)
+                    } else {
+                        Button("Start") {
+                            onStartLiveVerification()
+                        }
                         .font(LMSFont.caption.weight(.bold))
-                        .foregroundStyle(LMSColors.emerald)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(LMSColors.brandNavy, in: Capsule())
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
             }
-            
+
             WizardFormSection(title: "Digital Signature") {
                 VStack(spacing: 12) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Draw/Upload Signature")
+                            Text("Draw Signature")
                                 .font(LMSFont.body.weight(.semibold))
                                 .foregroundStyle(LMSColors.textPrimary)
                             Text("Will be embedded in loan contract")
@@ -1945,26 +2043,339 @@ private struct Step7SignaturePhotoView: View {
                                 .foregroundStyle(LMSColors.textSecondary)
                         }
                         Spacer()
-                        
                         Image(systemName: "signature")
                             .font(.title3)
                             .foregroundStyle(LMSColors.brandNavy)
                     }
-                    
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(LMSColors.separatorLight, lineWidth: 1)
-                        .fill(LMSColors.surfaceTertiary)
-                        .frame(height: 100)
-                        .overlay(
-                            Text("Draw your signature here")
-                                .font(LMSFont.caption)
-                                .foregroundStyle(LMSColors.textTertiary)
-                        )
+
+                    SignatureCanvasView(
+                        signatureImage: $signatureImage,
+                        isEmpty: $isSignatureEmpty,
+                        canvasID: signatureCanvasID
+                    )
+                    .frame(height: 150)
+                    .background(LMSColors.surfaceTertiary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(isSignatureEmpty ? LMSColors.coral.opacity(0.35) : LMSColors.separatorLight, lineWidth: 1)
+                    )
+
+                    if isSignatureEmpty {
+                        Text("Please provide your signature")
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.coral)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    HStack {
+                        Button("Clear Signature") {
+                            signatureCanvasID = UUID()
+                            signatureImage = nil
+                            isSignatureEmpty = true
+                        }
+                        .font(LMSFont.caption.weight(.bold))
+                        .foregroundStyle(LMSColors.coral)
+
+                        Spacer()
+
+                        Button("Redraw Signature") {
+                            signatureCanvasID = UUID()
+                            signatureImage = nil
+                            isSignatureEmpty = true
+                        }
+                        .font(LMSFont.caption.weight(.bold))
+                        .foregroundStyle(LMSColors.brandNavy)
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
             }
         }
+    }
+}
+
+private struct SignatureCanvasView: UIViewRepresentable {
+    @Binding var signatureImage: UIImage?
+    @Binding var isEmpty: Bool
+    let canvasID: UUID
+
+    func makeUIView(context: Context) -> SignatureCanvasUIView {
+        let view = SignatureCanvasUIView()
+        view.onChange = { image, empty in
+            signatureImage = image
+            isEmpty = empty
+        }
+        return view
+    }
+
+    func updateUIView(_ uiView: SignatureCanvasUIView, context: Context) {
+        if context.coordinator.canvasID != canvasID {
+            context.coordinator.canvasID = canvasID
+            uiView.clear()
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(canvasID: canvasID)
+    }
+
+    final class Coordinator {
+        var canvasID: UUID
+        init(canvasID: UUID) {
+            self.canvasID = canvasID
+        }
+    }
+}
+
+private final class SignatureCanvasUIView: UIView {
+    var onChange: ((UIImage?, Bool) -> Void)?
+    private var lines: [[CGPoint]] = []
+    private var currentLine: [CGPoint] = []
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .clear
+        isMultipleTouchEnabled = false
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        currentLine = touches.compactMap { $0.location(in: self) }
+        setNeedsDisplay()
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        currentLine.append(contentsOf: touches.map { $0.location(in: self) })
+        setNeedsDisplay()
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        currentLine.append(contentsOf: touches.map { $0.location(in: self) })
+        if currentLine.count > 1 {
+            lines.append(currentLine)
+        }
+        currentLine = []
+        setNeedsDisplay()
+        onChange?(renderImage(), lines.isEmpty)
+    }
+
+    override func draw(_ rect: CGRect) {
+        guard let context = UIGraphicsGetCurrentContext() else { return }
+        context.setStrokeColor(UIColor.label.cgColor)
+        context.setLineWidth(3)
+        context.setLineCap(.round)
+        context.setLineJoin(.round)
+        for line in lines + [currentLine] where line.count > 1 {
+            context.beginPath()
+            context.move(to: line[0])
+            for point in line.dropFirst() {
+                context.addLine(to: point)
+            }
+            context.strokePath()
+        }
+    }
+
+    func clear() {
+        lines = []
+        currentLine = []
+        setNeedsDisplay()
+        onChange?(nil, true)
+    }
+
+    private func renderImage() -> UIImage? {
+        guard !lines.isEmpty else { return nil }
+        let renderer = UIGraphicsImageRenderer(bounds: bounds)
+        return renderer.image { _ in
+            drawHierarchy(in: bounds, afterScreenUpdates: true)
+        }
+    }
+}
+
+private struct LiveFaceVerificationView: View {
+    let onComplete: (String) -> Void
+    let onCancel: () -> Void
+    @StateObject private var camera = LiveFaceCameraController()
+
+    var body: some View {
+        ZStack {
+            LiveFaceCameraPreview(session: camera.session)
+                .ignoresSafeArea()
+
+            VStack {
+                HStack {
+                    Button("Cancel", action: onCancel)
+                        .font(LMSFont.body.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(12)
+                        .background(.black.opacity(0.45), in: Capsule())
+                    Spacer()
+                    Label("Recording...", systemImage: "record.circle.fill")
+                        .font(LMSFont.caption.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(10)
+                        .background(.red.opacity(0.75), in: Capsule())
+                }
+                .padding()
+
+                Spacer()
+
+                RoundedRectangle(cornerRadius: 120, style: .continuous)
+                    .stroke(camera.faceDetected ? LMSColors.emerald : LMSColors.coral, lineWidth: 3)
+                    .frame(width: 230, height: 300)
+                    .overlay(alignment: .top) {
+                        Text(camera.faceDetected ? "Keep face inside frame" : "Face not detected")
+                            .font(LMSFont.caption.weight(.bold))
+                            .foregroundStyle(.white)
+                            .padding(8)
+                            .background(.black.opacity(0.50), in: Capsule())
+                            .padding(.top, -38)
+                    }
+
+                Spacer()
+
+                VStack(spacing: 8) {
+                    Text(camera.statusText)
+                        .font(LMSFont.title3.weight(.bold))
+                        .foregroundStyle(.white)
+                    Text(String(format: "%02d", camera.remainingSeconds))
+                        .font(.system(size: 52, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+                .padding(.bottom, 44)
+            }
+        }
+        .background(Color.black)
+        .onAppear {
+            camera.start { success in
+                if success {
+                    onComplete("LIVE-\(Int(Date().timeIntervalSince1970))")
+                }
+            }
+        }
+        .onDisappear {
+            camera.stop()
+        }
+        .alert("Face not detected. Please try again.", isPresented: $camera.showFailureAlert) {
+            Button("Try Again") {
+                camera.restart()
+            }
+            Button("Cancel", role: .cancel, action: onCancel)
+        }
+    }
+}
+
+private struct LiveFaceCameraPreview: UIViewRepresentable {
+    let session: AVCaptureSession
+
+    func makeUIView(context: Context) -> PreviewView {
+        let view = PreviewView()
+        view.videoPreviewLayer.session = session
+        view.videoPreviewLayer.videoGravity = .resizeAspectFill
+        return view
+    }
+
+    func updateUIView(_ uiView: PreviewView, context: Context) {}
+
+    final class PreviewView: UIView {
+        override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+        var videoPreviewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+    }
+}
+
+private final class LiveFaceCameraController: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
+    let session = AVCaptureSession()
+    @Published var remainingSeconds = 10
+    @Published var faceDetected = false
+    @Published var statusText = "Recording..."
+    @Published var showFailureAlert = false
+    private var timer: Timer?
+    private var detectedFrames = 0
+    private var totalFrames = 0
+    private var completion: ((Bool) -> Void)?
+
+    func start(completion: @escaping (Bool) -> Void) {
+        self.completion = completion
+        configureSessionIfNeeded()
+        detectedFrames = 0
+        totalFrames = 0
+        remainingSeconds = 10
+        showFailureAlert = false
+        DispatchQueue.global(qos: .userInitiated).async {
+            if !self.session.isRunning {
+                self.session.startRunning()
+            }
+        }
+        startTimer()
+    }
+
+    func restart() {
+        start(completion: completion ?? { _ in })
+    }
+
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+        if session.isRunning {
+            DispatchQueue.global(qos: .userInitiated).async {
+                self.session.stopRunning()
+            }
+        }
+    }
+
+    private func configureSessionIfNeeded() {
+        guard session.inputs.isEmpty else { return }
+        session.beginConfiguration()
+        session.sessionPreset = .medium
+        if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
+           let input = try? AVCaptureDeviceInput(device: device),
+           session.canAddInput(input) {
+            session.addInput(input)
+        }
+        let output = AVCaptureVideoDataOutput()
+        output.setSampleBufferDelegate(self, queue: DispatchQueue(label: "live-face-verification"))
+        if session.canAddOutput(output) {
+            session.addOutput(output)
+        }
+        session.commitConfiguration()
+    }
+
+    private func startTimer() {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
+            guard let self else { return }
+            self.remainingSeconds -= 1
+            if self.remainingSeconds <= 0 {
+                timer.invalidate()
+                let success = self.totalFrames > 0 && Double(self.detectedFrames) / Double(self.totalFrames) > 0.35
+                self.stop()
+                if success {
+                    self.statusText = "Verified"
+                    self.completion?(true)
+                } else {
+                    self.statusText = "Face not detected"
+                    self.showFailureAlert = true
+                }
+            }
+        }
+    }
+
+    nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        let request = VNDetectFaceRectanglesRequest { [weak self] request, _ in
+            let hasFace = !(request.results as? [VNFaceObservation] ?? []).isEmpty
+            Task { @MainActor in
+                guard let self else { return }
+                self.totalFrames += 1
+                if hasFace {
+                    self.detectedFrames += 1
+                }
+                self.faceDetected = hasFace
+            }
+        }
+        try? VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .leftMirrored, options: [:]).perform([request])
     }
 }
 
@@ -1982,15 +2393,17 @@ private struct Step8NomineeReferencesView: View {
             WizardFormSection(title: "Nominee Information") {
                 WizardTextField(label: "Full Name", text: $nomineeName, placeholder: "Nominee's full legal name")
                 FormDivider()
-                WizardPickerRow(label: "Relationship", selection: $nomineeRelation, options: ["Spouse", "Parent", "Sibling", "Child"]) { $0 }
+                WizardPickerRow(label: "Relationship", selection: $nomineeRelation, options: ["", "Spouse", "Parent", "Sibling", "Child"]) { option in
+                    option.isEmpty ? "Select Relationship" : option
+                }
                 FormDivider()
-                WizardTextField(label: "Mobile Number", text: $nomineeMobile, placeholder: "+91 98765 43210", keyboardType: .phonePad)
+                WizardMobileField(label: "Mobile Number", text: $nomineeMobile)
             }
             
             WizardFormSection(title: "Emergency Reference Contact") {
                 WizardTextField(label: "Reference Full Name", text: $refName, placeholder: "Friend or colleague name")
                 FormDivider()
-                WizardTextField(label: "Reference Mobile Number", text: $refPhone, placeholder: "+91 98765 43210", keyboardType: .phonePad)
+                WizardMobileField(label: "Reference Mobile Number", text: $refPhone)
             }
         }
     }

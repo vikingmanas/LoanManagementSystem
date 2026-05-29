@@ -201,7 +201,7 @@ final class LoanApplicationViewModel: ObservableObject {
     var formCompletionRatio: Double {
         let checks = [
             !formData.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-            formData.mobileNumber.filter(\.isNumber).count >= 10,
+            formData.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).count == 10,
             formData.emailAddress.contains("@") && formData.emailAddress.contains("."),
             !formData.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
             !formData.occupation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
@@ -324,7 +324,6 @@ final class LoanApplicationViewModel: ObservableObject {
             let recommended = max(100_000, min(product.maximumAmount * 0.25, product.maximumAmount))
             formData.loanAmountRequested = String(Int(recommended))
         }
-        formData.loanPurpose = formData.loanPurpose.isEmpty ? "General financing requirement" : formData.loanPurpose
         documents = BorrowerLoanDocumentItem.defaultRequirements(
             for: product,
             identityDoc: formData.selectedIdentityDoc,
@@ -417,7 +416,17 @@ final class LoanApplicationViewModel: ObservableObject {
         case .fullName:
             return formData.fullName.trimmingCharacters(in: .whitespacesAndNewlines).count >= 3 ? nil : "Full name must contain at least 3 characters."
         case .mobileNumber:
-            return formData.mobileNumber.filter(\.isNumber).count >= 10 ? nil : "Mobile number must contain at least 10 digits."
+            let mobile = formData.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+            if mobile.contains(where: { !$0.isNumber }) {
+                return "Only numeric digits are allowed"
+            }
+            if mobile.count < 10 {
+                return "Mobile number must contain 10 digits"
+            }
+            if mobile.count > 10 {
+                return "Mobile number cannot exceed 10 digits"
+            }
+            return nil
         case .emailAddress:
             let email = formData.emailAddress.trimmingCharacters(in: .whitespacesAndNewlines)
             return (email.contains("@") && email.contains(".")) ? nil : "Enter a valid email address."
@@ -635,41 +644,9 @@ final class LoanApplicationViewModel: ObservableObject {
         // Cancel any pending autosave task to prevent post-submit race conditions
         autosaveTask?.cancel()
 
-        // Autofill missing or invalid inputs right before submission to ensure we never get blocked by simulated fields
-        if formData.fullName.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 {
-            formData.fullName = "Akash Kashyap"
-        }
-        if formData.mobileNumber.filter(\.isNumber).count < 10 {
-            formData.mobileNumber = "9876543210"
-        }
-        if !formData.emailAddress.contains("@") {
-            formData.emailAddress = "akash.kashyap@example.com"
-        }
-        if formData.address.trimmingCharacters(in: .whitespacesAndNewlines).count < 8 {
-            formData.address = "Flat 402, Highrise Apts, Link Road, Mumbai"
-        }
-        if formData.occupation.isEmpty {
-            formData.occupation = "Software Engineer"
-        }
-        if formData.employerName.isEmpty {
-            formData.employerName = "Tech Corp Ltd"
-        }
-        if formData.monthlyIncomeValue == 0 {
-            formData.monthlyIncome = "85000"
-        }
-        if formData.annualIncomeValue == 0 || formData.annualIncomeValue < formData.monthlyIncomeValue * 2 {
+        if formData.monthlyIncomeValue > 0,
+           formData.annualIncomeValue == 0 || formData.annualIncomeValue < formData.monthlyIncomeValue * 2 {
             formData.annualIncome = String(Int(formData.monthlyIncomeValue * 12))
-        }
-        if formData.loanPurpose.isEmpty {
-            formData.loanPurpose = "General financing requirement"
-        }
-        if formData.loanAmountRequested.isEmpty || formData.requestedAmountValue == 0 {
-            formData.loanAmountRequested = "500000"
-        }
-        
-        // Also mark all documents as verified so it doesn't block validation
-        for index in documents.indices {
-            documents[index].status = .verified
         }
 
         guard canSubmitApplication,
