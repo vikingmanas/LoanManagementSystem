@@ -741,7 +741,9 @@ final class CentralLoanRepository: ObservableObject {
         switch app.currentStage {
         case .bankManagerReview: managerStatus = .underReview
         case .approved, .disbursed: managerStatus = .approved
-        case .rejected: managerStatus = .needsClarification
+        case .rejected: managerStatus = .rejected
+        case .underReview where app.stageHistory.contains(where: { $0.stage == .bankManagerReview }):
+            managerStatus = .sentBack
         default: managerStatus = nil
         }
         
