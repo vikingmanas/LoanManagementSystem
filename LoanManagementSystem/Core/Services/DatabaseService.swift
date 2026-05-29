@@ -253,6 +253,74 @@ final class DatabaseService {
         SupabaseManager.shared.client
     }
 
+    func fetchLoanOfficerProfile(userId: UUID) async throws -> StaffMember? {
+        struct DBUser: Codable {
+            let id: UUID
+            let email: String
+            let role: String
+            let fullName: String
+            let mobileNumber: String
+            let status: String
+            let createdBy: UUID?
+            let createdAt: Date
+        }
+
+        struct DBLoanOfficer: Codable {
+            let officerId: UUID
+            let userId: UUID
+            let employeeCode: String
+            let branchId: UUID
+            let designation: String
+            let createdAt: Date
+        }
+
+        let dbUsers: [DBUser] = try await client
+            .from("users")
+            .select()
+            .eq("id", value: userId)
+            .execute()
+            .value
+
+        guard let dbUser = dbUsers.first else {
+            return nil
+        }
+
+        let dbOfficers: [DBLoanOfficer] = try await client
+            .from("loan_officers")
+            .select()
+            .eq("user_id", value: userId)
+            .execute()
+            .value
+
+        guard let dbOfficer = dbOfficers.first else {
+            return nil
+        }
+
+        let dbBranches: [BranchInfo] = try await client
+            .from("branches")
+            .select()
+            .eq("branch_id", value: dbOfficer.branchId)
+            .execute()
+            .value
+
+        let branchName = dbBranches.first?.name
+
+        return StaffMember(
+            id: dbUser.id,
+            email: dbUser.email,
+            role: .loanOfficer,
+            fullName: dbUser.fullName,
+            phoneNumber: dbUser.mobileNumber,
+            status: StaffStatus(rawValue: dbUser.status) ?? .active,
+            createdBy: dbUser.createdBy,
+            createdAt: dbUser.createdAt,
+            employeeCode: dbOfficer.employeeCode,
+            branchId: dbOfficer.branchId,
+            branchName: branchName,
+            designation: dbOfficer.designation,
+            region: nil
+        )
+    }
 
     func fetchProfile(userId: String) async throws -> BorrowerProfile? {
 

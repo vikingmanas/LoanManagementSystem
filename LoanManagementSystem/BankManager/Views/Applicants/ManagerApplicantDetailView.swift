@@ -10,6 +10,7 @@ struct ManagerApplicantDetailView: View {
     @State private var actionType: ActionType? = nil
     @State private var showReassignSheet = false
     @State private var managerRemarks = ""
+    @State private var showCIBILSheet = false
 
     enum ActionType: Identifiable {
         case approve, reject, sendBack, escalate
@@ -73,10 +74,7 @@ struct ManagerApplicantDetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
 
 
-                    CIBILScoreCard(score: applicant.cibilScore)
-
-
-                    VerificationProgressCard(progress: applicant.verificationProgress)
+                    CIBILScoreCard(score: applicant.cibilScore, showSheet: $showCIBILSheet)
 
 
                     DocumentsSection(documents: applicant.documents)
@@ -106,28 +104,14 @@ struct ManagerApplicantDetailView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
                             }
 
-                            HStack(spacing: LMSSpacing.md) {
-
-                                Button(action: { actionType = .reject }) {
-                                    Text("Reject")
-                                        .font(.system(.body, design: .rounded).weight(.semibold))
-                                        .foregroundStyle(LMSColors.coral)
-                                        .frame(maxWidth: .infinity)
-                                        .frame(height: 52)
-                                        .background(LMSColors.coral.opacity(0.12))
-                                        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
-                                }
-
-
-                                Button(action: { actionType = .escalate }) {
-                                    Text("Escalate")
-                                        .font(.system(.body, design: .rounded).weight(.semibold))
-                                        .foregroundStyle(Color.purple)
-                                        .frame(maxWidth: .infinity)
-                                        .frame(height: 52)
-                                        .background(Color.purple.opacity(0.12))
-                                        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
-                                }
+                            Button(action: { actionType = .reject }) {
+                                Text("Reject")
+                                    .font(.system(.body, design: .rounded).weight(.semibold))
+                                    .foregroundStyle(LMSColors.coral)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 52)
+                                    .background(LMSColors.coral.opacity(0.12))
+                                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
                             }
 
 
@@ -187,6 +171,12 @@ struct ManagerApplicantDetailView: View {
                     }
                 )
             }
+            .sheet(isPresented: $showCIBILSheet) {
+                CIBILDetailSheet(
+                    score: applicant.cibilScore,
+                    insight: LoanRiskInsightService.insight(for: applicant)
+                )
+            }
         }
     }
 
@@ -229,118 +219,195 @@ private struct DetailRow: View {
 }
 
 
+
+
+
 private struct CIBILScoreCard: View {
     let score: Int
+    @Binding var showSheet: Bool
 
     private var color: Color {
-        if score >= 750 { return LMSColors.emerald }
-        if score >= 650 { return LMSColors.amber }
+        if score >= 700 { return LMSColors.emerald }
+        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return LMSColors.amber }
         return LMSColors.coral
     }
 
     private var rating: String {
         if score >= 750 { return "Excellent" }
         if score >= 700 { return "Good" }
-        if score >= 650 { return "Fair" }
+        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return "Fair" }
         return "Poor"
     }
 
     var body: some View {
-        HStack(spacing: LMSSpacing.lg) {
-            ZStack {
-                Circle()
-                    .stroke(color.opacity(0.15), lineWidth: 6)
-                    .frame(width: 60, height: 60)
-                Circle()
-                    .trim(from: 0, to: Double(score) / 900.0)
-                    .stroke(color, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                    .frame(width: 60, height: 60)
-                    .rotationEffect(.degrees(-90))
+        Button(action: { showSheet = true }) {
+            HStack(spacing: LMSSpacing.lg) {
+                ZStack {
+                    Circle()
+                        .stroke(color.opacity(0.15), lineWidth: 6)
+                        .frame(width: 60, height: 60)
+                    Circle()
+                        .trim(from: 0, to: Double(score) / 900.0)
+                        .stroke(color, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                        .frame(width: 60, height: 60)
+                        .rotationEffect(.degrees(-90))
 
-                Text("\(score)")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(LMSColors.textPrimary)
-                    .monospacedDigit()
-            }
+                    Text("\(score)")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(LMSColors.textPrimary)
+                        .monospacedDigit()
+                }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("CIBIL SCORE")
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                    .foregroundStyle(LMSColors.textSecondary)
-                Text(rating)
-                    .font(.system(.subheadline, design: .rounded).bold())
-                    .foregroundStyle(color)
-                Text("Based on credit bureau report")
-                    .font(.system(.caption2, design: .rounded))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("CIBIL SCORE")
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .foregroundStyle(LMSColors.textSecondary)
+                    Text(rating)
+                        .font(.system(.subheadline, design: .rounded).bold())
+                        .foregroundStyle(color)
+                    Text("Tap for risk insight")
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(LMSColors.textTertiary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(LMSColors.textTertiary)
             }
-
-            Spacer()
+            .padding(LMSSpacing.lg)
+            .background(LMSColors.surfaceElevated)
+            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
         }
-        .padding(LMSSpacing.lg)
-        .background(LMSColors.surfaceElevated)
-        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+        .buttonStyle(.plain)
     }
 }
 
 
-private struct VerificationProgressCard: View {
-    let progress: Double
+private struct CIBILDetailSheet: View {
+    let score: Int
+    let insight: LoanRiskInsight
+    @Environment(\.dismiss) var dismiss
+
+    private var cibilColor: Color {
+        if score >= 700 { return LMSColors.emerald }
+        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return LMSColors.amber }
+        return LMSColors.coral
+    }
+
+    private var cibilRating: String {
+        if score >= 750 { return "Excellent" }
+        if score >= 700 { return "Good" }
+        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return "Fair" }
+        return "Poor"
+    }
+
+    private var riskTint: Color {
+        if insight.score >= 80 { return LMSColors.emerald }
+        if insight.score >= 60 { return LMSColors.amber }
+        return LMSColors.coral
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
-            HStack {
-                Text("VERIFICATION PROGRESS")
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                    .foregroundStyle(LMSColors.textSecondary)
-                Spacer()
-                Text("\(Int(progress * 100))%")
-                    .font(.system(.caption, design: .rounded).bold())
-                    .foregroundStyle(progress >= 1.0 ? LMSColors.emerald : LMSColors.actionBlue)
-                    .monospacedDigit()
-            }
+        NavigationStack {
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: LMSSpacing.xl) {
 
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(LMSColors.actionBlue.opacity(0.15))
-                        .frame(height: 6)
-                    Capsule()
-                        .fill(progress >= 1.0 ? LMSColors.emerald : LMSColors.actionBlue)
-                        .frame(width: geo.size.width * progress, height: 6)
+                    // CIBIL Score detail
+                    VStack(spacing: LMSSpacing.lg) {
+                        ZStack {
+                            Circle()
+                                .stroke(cibilColor.opacity(0.15), lineWidth: 8)
+                                .frame(width: 100, height: 100)
+                            Circle()
+                                .trim(from: 0, to: Double(score) / 900.0)
+                                .stroke(cibilColor, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                                .frame(width: 100, height: 100)
+                                .rotationEffect(.degrees(-90))
+
+                            VStack(spacing: 2) {
+                                Text("\(score)")
+                                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                                    .foregroundStyle(LMSColors.textPrimary)
+                                    .monospacedDigit()
+                                Text("/ 900")
+                                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                                    .foregroundStyle(LMSColors.textTertiary)
+                            }
+                        }
+
+                        Text(cibilRating)
+                            .font(.system(.title3, design: .rounded).bold())
+                            .foregroundStyle(cibilColor)
+
+                        Text("Based on credit bureau report")
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundStyle(LMSColors.textTertiary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, LMSSpacing.xl)
+                    .background(LMSColors.surfaceElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.xl, style: .continuous))
+
+                    // Local Risk Insight
+                    VStack(alignment: .leading, spacing: LMSSpacing.md) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "cpu.fill")
+                            Text("LOCAL RISK INSIGHT")
+                        }
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .foregroundStyle(LMSColors.textSecondary)
+
+                        HStack(spacing: LMSSpacing.lg) {
+                            ZStack {
+                                Circle()
+                                    .fill(riskTint.opacity(0.12))
+                                    .frame(width: 60, height: 60)
+                                Text("\(insight.score)")
+                                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                                    .foregroundStyle(riskTint)
+                                    .monospacedDigit()
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(insight.label)
+                                    .font(.system(.subheadline, design: .rounded).bold())
+                                    .foregroundStyle(riskTint)
+
+                                Text(insight.explanation)
+                                    .font(.system(.caption2, design: .rounded))
+                                    .foregroundStyle(LMSColors.textTertiary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
+                            Spacer()
+                        }
+                    }
+                    .padding(LMSSpacing.lg)
+                    .background(LMSColors.surfaceElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+
+                    Spacer().frame(height: LMSSpacing.xl)
+                }
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+                .padding(.top, LMSSpacing.md)
+            }
+            .background(LMSColors.background)
+            .navigationTitle("Credit & Risk")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 14, weight: .semibold))
+                    }
                 }
             }
-            .frame(height: 6)
-
-            HStack {
-                ProgressStep(label: "Docs", completed: progress >= 0.25)
-                ProgressStep(label: "KYC", completed: progress >= 0.50)
-                ProgressStep(label: "Credit", completed: progress >= 0.75)
-                ProgressStep(label: "Final", completed: progress >= 1.0)
-            }
         }
-        .padding(LMSSpacing.lg)
-        .background(LMSColors.surfaceElevated)
-        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
     }
 }
 
-private struct ProgressStep: View {
-    let label: String
-    let completed: Bool
-
-    var body: some View {
-        VStack(spacing: 4) {
-            Image(systemName: completed ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 14))
-                .foregroundStyle(completed ? LMSColors.emerald : LMSColors.textTertiary)
-            Text(label)
-                .font(.system(size: 9, weight: .semibold, design: .rounded))
-                .foregroundStyle(completed ? LMSColors.textPrimary : LMSColors.textTertiary)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
 
 
 private struct DocumentsSection: View {
@@ -538,4 +605,3 @@ private struct ReassignOfficerSheet: View {
     }
     .previewManagerEnvironment()
 }
-

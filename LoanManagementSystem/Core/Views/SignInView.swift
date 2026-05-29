@@ -130,7 +130,6 @@ struct SignInView: View {
                     HapticsManager.triggerImpact(style: .heavy)
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
                         appState.selectedRole = role
-                        appState.login()
                     }
                 }
             }

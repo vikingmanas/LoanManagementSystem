@@ -31,6 +31,27 @@ struct OfficerLoanApplication: Identifiable, Hashable {
     var managerStatus: ManagerStatus?
 }
 
+public enum RegistryFilter: String, CaseIterable, Identifiable {
+    case all
+    case newCases
+    case underCheck
+    case approvalQueue
+    case completed
+    
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .all: return "All"
+        case .newCases: return "New Cases"
+        case .underCheck: return "Under Check"
+        case .approvalQueue: return "Approval Queue"
+        case .completed: return "Completed"
+        }
+    }
+}
+
 enum OfficerLoanType: String, CaseIterable, Codable, Hashable {
     case home = "Home Loan"
     case personal = "Personal Loan"

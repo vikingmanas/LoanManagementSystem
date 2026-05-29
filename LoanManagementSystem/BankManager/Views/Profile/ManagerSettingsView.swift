@@ -4,16 +4,16 @@ import SwiftUI
 struct ManagerSettingsView: View {
     @Environment(\.dismiss) var dismiss
 
-    @State private var homeLoanLimit = "5.0"
-    @State private var personalLoanLimit = "1.0"
-    @State private var businessLoanLimit = "3.0"
-    @State private var minCIBILScore = "650"
-    @State private var maxDebtToIncome = "50"
-    @State private var twoFactorEnabled = true
-    @State private var sessionTimeout = "30"
-    @State private var notifApprovals = true
-    @State private var notifEscalations = true
-    @State private var notifReports = true
+    @AppStorage("managerHomeLoanLimit") private var homeLoanLimit = "5.0"
+    @AppStorage("managerPersonalLoanLimit") private var personalLoanLimit = "1.0"
+    @AppStorage("managerBusinessLoanLimit") private var businessLoanLimit = "3.0"
+    @AppStorage("managerMinCIBILScore") private var minCIBILScore = "650"
+    @AppStorage("managerMaxDebtToIncome") private var maxDebtToIncome = "50"
+    @AppStorage("managerTwoFactorEnabled") private var twoFactorEnabled = true
+    @AppStorage("managerSessionTimeout") private var sessionTimeout = "30"
+    @AppStorage("managerNotifApprovals") private var notifApprovals = true
+    @AppStorage("managerNotifEscalations") private var notifEscalations = true
+    @AppStorage("managerNotifReports") private var notifReports = true
 
     var body: some View {
         NavigationStack {

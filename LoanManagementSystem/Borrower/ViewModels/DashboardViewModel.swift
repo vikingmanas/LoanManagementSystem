@@ -7,11 +7,12 @@
 
 import SwiftUI
 import Combine
+import Supabase
 
 @MainActor
 public final class DashboardViewModel: ObservableObject {
     @Published public var loanAccounts: [DashboardLoanAccount] = []
-    @Published public var bankAccount: BankAccount = BankAccount(accountNumber: "XXXX 7890", accountType: .savings, availableBalance: 0)
+    @Published public var bankAccount: BankAccount = BankAccount(accountNumber: "", accountType: .savings, availableBalance: 0)
     @Published public var bankAccounts: [BankAccount] = []
     @Published public var pendingEMIs: [EMIRecord] = []
     @Published public var transactions: [Transaction] = []
@@ -63,6 +64,7 @@ public final class DashboardViewModel: ObservableObject {
     }
     
     public var isLowBalance: Bool {
+        guard !bankAccounts.isEmpty else { return false }
         guard let nextEMI = nextEMI else { return false }
         return bankAccount.availableBalance < nextEMI.amount
     }
@@ -84,6 +86,61 @@ public final class DashboardViewModel: ObservableObject {
             return "Low balance. Top up to ensure next EMI payment."
         }
         return "All your loan accounts are in good standing."
+    }
+
+    public var timeBasedGreeting: String {
+        let firstName = profileName
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: " ")
+            .first ?? "there"
+        return Self.greetingPrefix + ", \(firstName)"
+    }
+
+    private static var greetingPrefix: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 5..<12: return "Good Morning"
+        case 12..<17: return "Good Afternoon"
+        default: return "Good Evening"
+        }
+    }
+
+    public var recentTransactions: [Transaction] {
+        transactions.sorted { $0.date > $1.date }
+    }
+
+    public var dashboardNotifications: [LMSNotification] {
+        let live = CentralLoanRepository.shared.borrowerNotifications
+        let merged = live + LMSMockNotifications.sample
+        var seen = Set<UUID>()
+        return merged.filter { seen.insert($0.id).inserted }
+            .sorted { $0.timestamp > $1.timestamp }
+    }
+
+    public var profileMissingRequirements: [String] {
+        guard let profile = BorrowerProfileStore.shared.profile else {
+            return ["Complete personal details", "Verify contact information", "Link your bank account"]
+        }
+        var missing: [String] = []
+        if profile.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            missing.append("Add your full name")
+        }
+        if !profile.isEmailVerified {
+            missing.append("Verify email address")
+        }
+        if !profile.isPhoneVerified {
+            missing.append("Verify mobile number")
+        }
+        if profile.bankDetails.accountNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            missing.append("Link bank account")
+        }
+        if profile.kycVerification.aadhaarStatus != .verified {
+            missing.append("Complete KYC verification")
+        }
+        if profile.profileImageData == nil {
+            missing.append("Add profile photo")
+        }
+        return missing
     }
     
     public func isLowBalance(_ account: BankAccount) -> Bool {
@@ -131,12 +188,12 @@ public final class DashboardViewModel: ObservableObject {
             self.bankAccounts = buildBankAccounts(from: profile, disbursedCredits: disbursedCredits)
             self.bankAccount = bankAccounts.first(where: { $0.accountType == .savings })
                 ?? bankAccounts.first
-                ?? BankAccount(accountNumber: "0000000000", bankName: "Default Bank", accountType: .savings, availableBalance: 0)
+                ?? BankAccount(accountNumber: "", bankName: "", accountType: .savings, availableBalance: 0)
         } else {
             self.profileName = ""
             self.profileCompletionPercentage = 0
-            self.bankAccount = BankAccount(accountNumber: "XXXX 0000", bankName: "Default Bank", accountType: .savings, availableBalance: 0.0)
-            self.bankAccounts = [self.bankAccount]
+            self.bankAccount = BankAccount(accountNumber: "", bankName: "", accountType: .savings, availableBalance: 0.0)
+            self.bankAccounts = []
         }
         
         // Load loan accounts from approved/disbursed applications in CentralLoanRepository
@@ -156,7 +213,8 @@ public final class DashboardViewModel: ObservableObject {
                 nextEMIDate: Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date(),
                 tenureRemainingMonths: app.formData.preferredTenureMonths,
                 totalTenureMonths: app.formData.preferredTenureMonths,
-                repaidPercentage: 0.0
+                repaidPercentage: 0.0,
+                linkedBankAccountId: bankAccount.id
             )
         }
         
@@ -172,19 +230,46 @@ public final class DashboardViewModel: ObservableObject {
         
         self.schemes = MockData.sampleSchemes
 
-        let disbursementTransactions = CentralLoanRepository.shared.disbursementEvents.map { event in
-            Transaction(
-                title: "Loan Amount Credited - \(event.applicationNumber)",
-                date: event.creditedAt,
-                amount: event.amount,
-                type: .credit,
-                referenceNo: event.referenceNumber,
-                bankAccountId: bankAccounts.first(where: { $0.accountNumber == event.accountNumber })?.id
-            )
+        // Fetch actual transactions from Supabase if borrower profile is available
+        var dbTransactionsList: [Transaction] = []
+        if let profile = BorrowerProfileStore.shared.profile {
+            do {
+                let dbTxs: [DBTransaction] = try await SupabaseManager.shared.client
+                    .from("transactions")
+                    .select()
+                    .eq("borrower_id", value: profile.id)
+                    .execute()
+                    .value
+                
+                dbTransactionsList = dbTxs.map { db in
+                    let txType: TransactionType
+                    switch db.type.lowercased() {
+                    case "emi_payment", "emipayment": txType = .emiPayment
+                    case "credit": txType = .credit
+                    case "penalty": txType = .penalty
+                    case "refund": txType = .refund
+                    case "failed_debit", "faileddebit": txType = .failedDebit
+                    default: txType = .credit
+                    }
+                    return Transaction(
+                        id: db.id,
+                        title: db.title,
+                        date: db.date,
+                        amount: db.amount,
+                        type: txType,
+                        referenceNo: db.referenceNo,
+                        bankAccountId: db.bankAccountId
+                    )
+                }
+            } catch {
+                print("[DashboardViewModel] Error fetching transactions from Supabase: \(error.localizedDescription)")
+            }
         }
-        let existingReferences = Set(transactions.map(\.referenceNo))
-        transactions.insert(contentsOf: disbursementTransactions.filter { !existingReferences.contains($0.referenceNo) }, at: 0)
+
+        self.transactions = dbTransactionsList.sorted { $0.date > $1.date }
     }
+
+
 
     private func buildBankAccounts(from profile: BorrowerProfile, disbursedCredits: [String: Double]) -> [BankAccount] {
         var accounts: [BankAccount] = []
@@ -227,12 +312,6 @@ public final class DashboardViewModel: ObservableObject {
                     accountType: .savings,
                     availableBalance: disbursedCredits[bank.accountNumber, default: 0]
                 )
-            )
-        }
-
-        if accounts.isEmpty {
-            accounts.append(
-                BankAccount(accountNumber: "0000000000", bankName: "Default Bank", accountType: .savings, availableBalance: 0)
             )
         }
 
@@ -299,15 +378,99 @@ public final class DashboardViewModel: ObservableObject {
 
             pendingEMIs[index].status = .paid
                 
-                // Add a new transaction row for the EMI paid
-                let newTx = Transaction(
-                    title: "EMI - \(emi.loanType)",
-                    date: Date(),
-                    amount: emi.amount,
-                    type: .emiPayment,
-                    referenceNo: "TXN\(Int.random(in: 1000000...9999999))"
+            // Add a new transaction row for the EMI paid
+            let refNo = "TXN\(Int.random(in: 1000000...9999999))"
+            let newTx = Transaction(
+                title: "EMI paid for \(emi.loanType)",
+                date: Date(),
+                amount: emi.amount,
+                type: .emiPayment,
+                referenceNo: refNo,
+                bankAccountId: repaymentAccount.id
+            )
+            transactions.insert(newTx, at: 0)
+
+            if let profile = BorrowerProfileStore.shared.profile,
+               let borrowerUUID = UUID(uuidString: profile.id) {
+                let dbTx = DBTransaction(
+                    id: newTx.id,
+                    title: newTx.title,
+                    date: newTx.date,
+                    amount: newTx.amount,
+                    type: "emi_payment",
+                    referenceNo: refNo,
+                    bankAccountId: repaymentAccount.id,
+                    borrowerId: borrowerUUID
                 )
-                transactions.insert(newTx, at: 0)
+                Task {
+                    do {
+                        try await SupabaseManager.shared.client
+                            .from("transactions")
+                            .insert(dbTx)
+                            .execute()
+                        print("[DashboardViewModel] Successfully saved EMI payment transaction to Supabase.")
+                    } catch {
+                        print("[DashboardViewModel] Error saving EMI payment transaction to Supabase: \(error.localizedDescription)")
+                    }
+                }
+            }
+        }
+        return true
+    }
+
+    @discardableResult
+    public func payEMI(for loan: DashboardLoanAccount, from account: BankAccount, scheduledDate: Date = Date()) -> Bool {
+        guard account.availableBalance >= loan.totalEMI,
+              loan.principalOutstanding > 0 else {
+            return false
+        }
+
+        let feedback = UIImpactFeedbackGenerator(style: .medium)
+        feedback.prepare()
+        feedback.impactOccurred()
+
+        let principalComponent = min(loan.principalOutstanding, loan.totalEMI * 0.73)
+        let updatedAccountBalance = account.availableBalance - loan.totalEMI
+
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+            if let accountIndex = bankAccounts.firstIndex(where: { $0.id == account.id }) {
+                bankAccounts[accountIndex].availableBalance = updatedAccountBalance
+            }
+            if bankAccount.id == account.id {
+                bankAccount.availableBalance = updatedAccountBalance
+            }
+
+            BorrowerProfileStore.shared.updateLinkedAccountBalance(
+                accountId: account.id,
+                balance: updatedAccountBalance
+            )
+
+            if let loanIndex = loanAccounts.firstIndex(where: { $0.id == loan.id }) {
+                loanAccounts[loanIndex].principalOutstanding = max(0, loanAccounts[loanIndex].principalOutstanding - principalComponent)
+                loanAccounts[loanIndex].tenureRemainingMonths = max(0, loanAccounts[loanIndex].tenureRemainingMonths - 1)
+                if loanAccounts[loanIndex].sanctionedAmount > 0 {
+                    let paid = loanAccounts[loanIndex].sanctionedAmount - loanAccounts[loanIndex].principalOutstanding
+                    loanAccounts[loanIndex].repaidPercentage = min(1, max(0, paid / loanAccounts[loanIndex].sanctionedAmount))
+                }
+                loanAccounts[loanIndex].nextEMIDate = Calendar.current.date(byAdding: .month, value: 1, to: loan.nextEMIDate) ?? loan.nextEMIDate
+            }
+
+            if let emiIndex = pendingEMIs.firstIndex(where: { $0.loanType == loan.loanType && $0.status != .paid }) {
+                pendingEMIs[emiIndex].status = .paid
+            }
+
+            let refNo = "TXN\(Int.random(in: 1000000...9999999))"
+            let newTx = Transaction(
+                title: scheduledDate > Date() ? "Scheduled EMI for \(loan.loanType)" : "EMI paid for \(loan.loanType)",
+                date: Date(),
+                amount: loan.totalEMI,
+                type: .emiPayment,
+                referenceNo: refNo,
+                bankAccountId: account.id
+            )
+            transactions.insert(newTx, at: 0)
+
+            saveTransactionToRemote(newTx, type: "emi_payment", borrowerType: "emi_payment")
         }
         return true
     }
@@ -327,14 +490,41 @@ public final class DashboardViewModel: ObservableObject {
             }
             
             // Add a credit transaction row
+            let refNo = "TXN\(Int.random(in: 1000000...9999999))"
             let newTx = Transaction(
                 title: "Account Top-Up",
                 date: Date(),
                 amount: amount,
                 type: .credit,
-                referenceNo: "TXN\(Int.random(in: 1000000...9999999))"
+                referenceNo: refNo,
+                bankAccountId: destinationID
             )
             transactions.insert(newTx, at: 0)
+
+            if let profile = BorrowerProfileStore.shared.profile,
+               let borrowerUUID = UUID(uuidString: profile.id) {
+                let dbTx = DBTransaction(
+                    id: newTx.id,
+                    title: newTx.title,
+                    date: newTx.date,
+                    amount: newTx.amount,
+                    type: "credit",
+                    referenceNo: refNo,
+                    bankAccountId: destinationID,
+                    borrowerId: borrowerUUID
+                )
+                Task {
+                    do {
+                        try await SupabaseManager.shared.client
+                            .from("transactions")
+                            .insert(dbTx)
+                            .execute()
+                        print("[DashboardViewModel] Successfully saved Account Top-Up transaction to Supabase.")
+                    } catch {
+                        print("[DashboardViewModel] Error saving Account Top-Up transaction to Supabase: \(error.localizedDescription)")
+                    }
+                }
+            }
         }
     }
 
@@ -352,14 +542,134 @@ public final class DashboardViewModel: ObservableObject {
                 bankAccount = bankAccounts[destinationIndex]
             }
 
+            let refNo = "TXN\(Int.random(in: 1000000...9999999))"
             let newTx = Transaction(
                 title: "Transfer to \(destination.bankName.isEmpty ? "Linked Account" : destination.bankName)",
                 date: Date(),
                 amount: amount,
                 type: .credit,
-                referenceNo: "TXN\(Int.random(in: 1000000...9999999))"
+                referenceNo: refNo,
+                bankAccountId: destination.id
             )
             transactions.insert(newTx, at: 0)
+
+            if let profile = BorrowerProfileStore.shared.profile,
+               let borrowerUUID = UUID(uuidString: profile.id) {
+                let dbTx = DBTransaction(
+                    id: newTx.id,
+                    title: newTx.title,
+                    date: newTx.date,
+                    amount: newTx.amount,
+                    type: "credit",
+                    referenceNo: refNo,
+                    bankAccountId: destination.id,
+                    borrowerId: borrowerUUID
+                )
+                Task {
+                    do {
+                        try await SupabaseManager.shared.client
+                            .from("transactions")
+                            .insert(dbTx)
+                            .execute()
+                        print("[DashboardViewModel] Successfully saved transfer transaction to Supabase.")
+                    } catch {
+                        print("[DashboardViewModel] Error saving transfer transaction to Supabase: \(error.localizedDescription)")
+                    }
+                }
+            }
+        }
+    }
+
+    public func transferFundsToLoan(amount: Double, from source: BankAccount, to loan: DashboardLoanAccount) {
+        guard source.availableBalance >= amount else { return }
+
+        let feedback = UIImpactFeedbackGenerator(style: .medium)
+        feedback.impactOccurred()
+
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+            let updatedBalance = source.availableBalance - amount
+            if let sourceIndex = bankAccounts.firstIndex(where: { $0.id == source.id }) {
+                bankAccounts[sourceIndex].availableBalance = updatedBalance
+            }
+            if bankAccount.id == source.id {
+                bankAccount.availableBalance = updatedBalance
+            }
+            BorrowerProfileStore.shared.updateLinkedAccountBalance(accountId: source.id, balance: updatedBalance)
+
+            if let loanIndex = loanAccounts.firstIndex(where: { $0.id == loan.id }) {
+                loanAccounts[loanIndex].principalOutstanding = max(0, loanAccounts[loanIndex].principalOutstanding - amount)
+                if loanAccounts[loanIndex].sanctionedAmount > 0 {
+                    let paid = loanAccounts[loanIndex].sanctionedAmount - loanAccounts[loanIndex].principalOutstanding
+                    loanAccounts[loanIndex].repaidPercentage = min(1, max(0, paid / loanAccounts[loanIndex].sanctionedAmount))
+                }
+            }
+
+            let refNo = "TXN\(Int.random(in: 1000000...9999999))"
+            let newTx = Transaction(
+                title: "Top up to \(loan.loanType)",
+                date: Date(),
+                amount: amount,
+                type: .emiPayment,
+                referenceNo: refNo,
+                bankAccountId: source.id
+            )
+            transactions.insert(newTx, at: 0)
+            saveTransactionToRemote(newTx, type: "emi_payment", borrowerType: "emi_payment")
+        }
+    }
+
+    public func transferToExternalReceiver(amount: Double, from source: BankAccount, receiverName: String) {
+        guard source.availableBalance >= amount else { return }
+
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+            let updatedBalance = source.availableBalance - amount
+            if let sourceIndex = bankAccounts.firstIndex(where: { $0.id == source.id }) {
+                bankAccounts[sourceIndex].availableBalance = updatedBalance
+            }
+            if bankAccount.id == source.id {
+                bankAccount.availableBalance = updatedBalance
+            }
+            BorrowerProfileStore.shared.updateLinkedAccountBalance(accountId: source.id, balance: updatedBalance)
+
+            let refNo = "TXN\(Int.random(in: 1000000...9999999))"
+            let newTx = Transaction(
+                title: "QR transfer to \(receiverName)",
+                date: Date(),
+                amount: amount,
+                type: .failedDebit,
+                referenceNo: refNo,
+                bankAccountId: source.id
+            )
+            transactions.insert(newTx, at: 0)
+            saveTransactionToRemote(newTx, type: "transfer", borrowerType: "transfer")
+        }
+    }
+
+    private func saveTransactionToRemote(_ transaction: Transaction, type: String, borrowerType: String) {
+        guard let profile = BorrowerProfileStore.shared.profile,
+              let borrowerUUID = UUID(uuidString: profile.id) else { return }
+
+        let dbTx = DBTransaction(
+            id: transaction.id,
+            title: transaction.title,
+            date: transaction.date,
+            amount: transaction.amount,
+            type: borrowerType,
+            referenceNo: transaction.referenceNo,
+            bankAccountId: transaction.bankAccountId,
+            borrowerId: borrowerUUID
+        )
+
+        Task {
+            do {
+                try await SupabaseManager.shared.client
+                    .from("transactions")
+                    .insert(dbTx)
+                    .execute()
+                print("[DashboardViewModel] Successfully saved \(type) transaction to Supabase.")
+            } catch {
+                print("[DashboardViewModel] Error saving \(type) transaction to Supabase: \(error.localizedDescription)")
+            }
         }
     }
     
@@ -375,6 +685,15 @@ public final class DashboardViewModel: ObservableObject {
             } else {
                 bankAccount.availableBalance = 42300.0
             }
+        }
+    }
+}
+
+private extension Array where Element == Transaction {
+    func uniquedByReference() -> [Transaction] {
+        var seen = Set<String>()
+        return filter { transaction in
+            seen.insert(transaction.referenceNo).inserted
         }
     }
 }

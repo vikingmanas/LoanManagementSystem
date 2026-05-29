@@ -49,17 +49,47 @@ public enum LMSColors {
             : UIColor(red: 0/255, green: 162/255, blue: 196/255, alpha: 1)
     })
 
-    public static let background = Color(UIColor.systemGroupedBackground)
-    public static let surface = Color(UIColor.secondarySystemGroupedBackground)
-    public static let surfaceElevated = Color(UIColor.systemBackground)
-    public static let surfaceTertiary = Color(UIColor.tertiarySystemGroupedBackground)
+    public static let background = Color(UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 4/255, green: 5/255, blue: 7/255, alpha: 1)
+            : UIColor.systemGroupedBackground
+    })
+    public static let surface = Color(UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 25/255, green: 26/255, blue: 30/255, alpha: 1)
+            : UIColor.secondarySystemGroupedBackground
+    })
+    public static let surfaceElevated = Color(UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 34/255, green: 35/255, blue: 41/255, alpha: 1)
+            : UIColor.systemBackground
+    })
+    public static let surfaceTertiary = Color(UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 43/255, green: 44/255, blue: 51/255, alpha: 1)
+            : UIColor.tertiarySystemGroupedBackground
+    })
 
     public static let textPrimary = Color(UIColor.label)
     public static let textSecondary = Color(UIColor.secondaryLabel)
     public static let textTertiary = Color(UIColor.tertiaryLabel)
 
     public static let separator = Color(UIColor.separator)
-    public static let separatorLight = Color(UIColor.separator).opacity(0.18)
+    public static let separatorLight = Color(UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor.white.withAlphaComponent(0.09)
+            : UIColor.separator.withAlphaComponent(0.18)
+    })
+    public static let elevatedStroke = Color(UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 126/255, green: 158/255, blue: 255/255, alpha: 0.16)
+            : UIColor.separator.withAlphaComponent(0.18)
+    })
+    public static let darkGlow = Color(UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 80/255, green: 120/255, blue: 255/255, alpha: 0.18)
+            : UIColor.black.withAlphaComponent(0.04)
+    })
 }
 
 extension Color {
@@ -123,6 +153,7 @@ public enum LMSShadow {
 }
 
 public struct LMSCardModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     var radius: CGFloat
     var elevated: Bool
 
@@ -130,17 +161,17 @@ public struct LMSCardModifier: ViewModifier {
         content
             .background(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(LMSColors.surface)
+                    .fill(elevated ? LMSColors.surfaceElevated : LMSColors.surface)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+                    .stroke(colorScheme == .dark ? LMSColors.elevatedStroke : LMSColors.separatorLight, lineWidth: colorScheme == .dark ? 1 : 0.5)
             )
             .shadow(
-                color: .black.opacity(elevated ? 0.08 : 0.04),
-                radius: elevated ? 12 : 8,
+                color: colorScheme == .dark ? LMSColors.darkGlow : .black.opacity(elevated ? 0.08 : 0.04),
+                radius: colorScheme == .dark ? (elevated ? 18 : 12) : (elevated ? 12 : 8),
                 x: 0,
-                y: elevated ? 5 : 3
+                y: colorScheme == .dark ? 8 : (elevated ? 5 : 3)
             )
     }
 }
@@ -246,4 +277,3 @@ extension Color {
         )
     }
 }
-

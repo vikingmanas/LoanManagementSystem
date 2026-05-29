@@ -1,62 +1,62 @@
 import Foundation
 
-struct BorrowerProfile: Codable, Equatable {
-    var id: String
-    var fullName: String
-    var email: String
-    var mobileNumber: String
-    var alternateNumber: String?
-    var dateOfBirth: Date
-    var gender: String
-    var maritalStatus: String
-    var nationality: String
-    var aadhaarNumber: String
-    var panNumber: String
+public struct BorrowerProfile: Codable, Equatable {
+    public var id: String
+    public var fullName: String
+    public var email: String
+    public var mobileNumber: String
+    public var alternateNumber: String?
+    public var dateOfBirth: Date
+    public var gender: String
+    public var maritalStatus: String
+    public var nationality: String
+    public var aadhaarNumber: String
+    public var panNumber: String
     
-    var isEmailVerified: Bool
-    var isPhoneVerified: Bool
+    public var isEmailVerified: Bool
+    public var isPhoneVerified: Bool
     
-    var currentAddress: AddressInfo
-    var permanentAddress: AddressInfo
+    public var currentAddress: AddressInfo
+    public var permanentAddress: AddressInfo
     
-    var employment: EmploymentInfo
-    var income: IncomeInfo
+    public var employment: EmploymentInfo
+    public var income: IncomeInfo
     
-    var bankDetails: BankDetails
-    var linkedAccounts: [LinkedBankAccount]?
-    var gstNumber: String?
+    public var bankDetails: BankDetails
+    public var linkedAccounts: [LinkedBankAccount]?
+    public var gstNumber: String?
     
-    var kycVerification: KYCVerification
-    var loanOverview: LoanOverview
+    public var kycVerification: KYCVerification
+    public var loanOverview: LoanOverview
     
-    var profileImageData: Data? = nil
+    public var profileImageData: Data? = nil
     
     // New Onboarding Questionnaire Fields
-    var occupation: String
-    var industry: String
-    var yearsOfExperience: Int
-    var hasExistingBankAccount: Bool
-    var existingCustomerId: String?
-    var preferredBranch: String
-    var existingLoansCount: Int
-    var existingCreditCardsCount: Int
-    var bankingRelationshipDuration: String
-    var averageMonthlyBalance: Double
+    public var occupation: String
+    public var industry: String
+    public var yearsOfExperience: Int
+    public var hasExistingBankAccount: Bool
+    public var existingCustomerId: String?
+    public var preferredBranch: String
+    public var existingLoansCount: Int
+    public var existingCreditCardsCount: Int
+    public var bankingRelationshipDuration: String
+    public var averageMonthlyBalance: Double
     
-    var emergencyContactName: String
-    var emergencyContactNumber: String
-    var emergencyContactAlternateNumber: String
-    var emergencyContactAddress: String
-    var emergencyContactRelationship: String
-    var nomineeName: String
-    var nomineeRelationship: String
-    var isOnboardingCompleted: Bool
+    public var emergencyContactName: String
+    public var emergencyContactNumber: String
+    public var emergencyContactAlternateNumber: String
+    public var emergencyContactAddress: String
+    public var emergencyContactRelationship: String
+    public var nomineeName: String
+    public var nomineeRelationship: String
+    public var isOnboardingCompleted: Bool
     
-    var isKYCVerified: Bool {
+    public var isKYCVerified: Bool {
         return kycVerification.aadhaarStatus == .verified && kycVerification.panStatus == .verified
     }
     
-    var profileCompletionPercentage: Int {
+    public var profileCompletionPercentage: Int {
         var completedScore = 0
         let totalPossible = 130
         
@@ -106,7 +106,7 @@ struct BorrowerProfile: Codable, Equatable {
         return min(100, max(0, Int(percentage)))
     }
     
-    static func empty() -> BorrowerProfile {
+    public static func empty() -> BorrowerProfile {
         BorrowerProfile(
             id: "",
             fullName: "",
@@ -152,15 +152,15 @@ struct BorrowerProfile: Codable, Equatable {
     }
 }
 
-struct AddressInfo: Codable, Equatable {
-    let streetAddress: String
-    let city: String
-    let state: String
-    let zipCode: String
-    let country: String
-    let isSameAsCurrent: Bool
+public struct AddressInfo: Codable, Equatable {
+    public let streetAddress: String
+    public let city: String
+    public let state: String
+    public let zipCode: String
+    public let country: String
+    public let isSameAsCurrent: Bool
 
-    init(streetAddress: String, city: String, state: String, zipCode: String, country: String, isSameAsCurrent: Bool) {
+    public init(streetAddress: String, city: String, state: String, zipCode: String, country: String, isSameAsCurrent: Bool) {
         self.streetAddress = streetAddress
         self.city = city
         self.state = state
@@ -169,7 +169,7 @@ struct AddressInfo: Codable, Equatable {
         self.isSameAsCurrent = isSameAsCurrent
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         streetAddress = try container.decodeIfPresent(String.self, forKey: .streetAddress) ?? ""
         city = try container.decodeIfPresent(String.self, forKey: .city) ?? ""
@@ -180,14 +180,14 @@ struct AddressInfo: Codable, Equatable {
     }
 }
 
-struct EmploymentInfo: Codable, Equatable {
-    let employmentType: String // e.g. Salaried, Self-employed
-    let companyName: String
-    let designation: String
-    let workExperienceYears: Int
-    let employerAddress: String
+public struct EmploymentInfo: Codable, Equatable {
+    public let employmentType: String // e.g. Salaried, Self-employed
+    public let companyName: String
+    public let designation: String
+    public let workExperienceYears: Int
+    public let employerAddress: String
 
-    init(employmentType: String, companyName: String, designation: String, workExperienceYears: Int, employerAddress: String) {
+    public init(employmentType: String, companyName: String, designation: String, workExperienceYears: Int, employerAddress: String) {
         self.employmentType = employmentType
         self.companyName = companyName
         self.designation = designation
@@ -195,7 +195,7 @@ struct EmploymentInfo: Codable, Equatable {
         self.employerAddress = employerAddress
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         employmentType = try container.decodeIfPresent(String.self, forKey: .employmentType) ?? ""
         companyName = try container.decodeIfPresent(String.self, forKey: .companyName) ?? ""
@@ -205,18 +205,18 @@ struct EmploymentInfo: Codable, Equatable {
     }
 }
 
-struct IncomeInfo: Codable, Equatable {
-    let monthlyIncome: Double
-    let annualIncome: Double
-    let existingEMIs: Double
-    let creditScore: Int
-    let incomeSource: String
+public struct IncomeInfo: Codable, Equatable {
+    public let monthlyIncome: Double
+    public let annualIncome: Double
+    public let existingEMIs: Double
+    public let creditScore: Int
+    public let incomeSource: String
     
-    var eligibility: String {
+    public var eligibility: String {
         return creditScore > 750 ? "High" : (creditScore > 650 ? "Medium" : "Low")
     }
 
-    init(monthlyIncome: Double, annualIncome: Double, existingEMIs: Double, creditScore: Int, incomeSource: String) {
+    public init(monthlyIncome: Double, annualIncome: Double, existingEMIs: Double, creditScore: Int, incomeSource: String) {
         self.monthlyIncome = monthlyIncome
         self.annualIncome = annualIncome
         self.existingEMIs = existingEMIs
@@ -224,7 +224,15 @@ struct IncomeInfo: Codable, Equatable {
         self.incomeSource = incomeSource
     }
 
-    init(from decoder: Decoder) throws {
+    enum CodingKeys: String, CodingKey {
+        case monthlyIncome
+        case annualIncome
+        case existingEMIs = "existingEmIs"
+        case creditScore
+        case incomeSource
+    }
+
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         monthlyIncome = try container.decodeIfPresent(Double.self, forKey: .monthlyIncome) ?? 0.0
         annualIncome = try container.decodeIfPresent(Double.self, forKey: .annualIncome) ?? 0.0
@@ -234,15 +242,15 @@ struct IncomeInfo: Codable, Equatable {
     }
 }
 
-struct BankDetails: Codable, Equatable {
-    let bankName: String
-    let accountHolderName: String
-    let accountNumber: String 
-    let ifscCode: String
-    let upiID: String?
-    let isVerified: Bool
+public struct BankDetails: Codable, Equatable {
+    public let bankName: String
+    public let accountHolderName: String
+    public let accountNumber: String 
+    public let ifscCode: String
+    public let upiID: String?
+    public let isVerified: Bool
 
-    init(bankName: String, accountHolderName: String, accountNumber: String, ifscCode: String, upiID: String?, isVerified: Bool) {
+    public init(bankName: String, accountHolderName: String, accountNumber: String, ifscCode: String, upiID: String?, isVerified: Bool) {
         self.bankName = bankName
         self.accountHolderName = accountHolderName
         self.accountNumber = accountNumber
@@ -251,7 +259,7 @@ struct BankDetails: Codable, Equatable {
         self.isVerified = isVerified
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         bankName = try container.decodeIfPresent(String.self, forKey: .bankName) ?? ""
         accountHolderName = try container.decodeIfPresent(String.self, forKey: .accountHolderName) ?? ""
@@ -262,29 +270,29 @@ struct BankDetails: Codable, Equatable {
     }
 }
 
-enum LinkedAccountKind: String, Codable, Equatable {
+public enum LinkedAccountKind: String, Codable, Equatable {
     case savings
     case overdraft
 }
 
-struct LinkedBankAccount: Codable, Equatable, Identifiable {
-    var id: UUID
-    var bankName: String
-    var accountNumber: String
-    var ifscCode: String
-    var balance: Double
-    var branch: String
-    var customerId: String
-    var accountHolderName: String
-    var accountKind: LinkedAccountKind
-    var linkedLoanApplicationId: UUID?
-    var odSanctionLimit: Double?
+public struct LinkedBankAccount: Codable, Equatable, Identifiable {
+    public var id: UUID
+    public var bankName: String
+    public var accountNumber: String
+    public var ifscCode: String
+    public var balance: Double
+    public var branch: String
+    public var customerId: String
+    public var accountHolderName: String
+    public var accountKind: LinkedAccountKind
+    public var linkedLoanApplicationId: UUID?
+    public var odSanctionLimit: Double?
 
-    var isOverdraftAccount: Bool {
+    public var isOverdraftAccount: Bool {
         accountKind == .overdraft
     }
 
-    init(
+    public init(
         id: UUID = UUID(),
         bankName: String,
         accountNumber: String,
@@ -310,7 +318,7 @@ struct LinkedBankAccount: Codable, Equatable, Identifiable {
         self.odSanctionLimit = odSanctionLimit
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         bankName = try container.decode(String.self, forKey: .bankName)
@@ -326,17 +334,17 @@ struct LinkedBankAccount: Codable, Equatable, Identifiable {
     }
 }
 
-struct KYCVerification: Codable, Equatable {
-    var aadhaarStatus: VerificationStatus
-    var panStatus: VerificationStatus
-    var addressProofStatus: VerificationStatus
-    var selfieStatus: VerificationStatus
+public struct KYCVerification: Codable, Equatable {
+    public var aadhaarStatus: VerificationStatus
+    public var panStatus: VerificationStatus
+    public var addressProofStatus: VerificationStatus
+    public var selfieStatus: VerificationStatus
     
-    var aadhaarFileName: String?
-    var panFileName: String?
-    var addressProofFileName: String?
+    public var aadhaarFileName: String?
+    public var panFileName: String?
+    public var addressProofFileName: String?
     
-    var overallStatus: VerificationStatus {
+    public var overallStatus: VerificationStatus {
         if aadhaarStatus == .verified && panStatus == .verified && addressProofStatus == .verified && selfieStatus == .verified {
             return .verified
         } else if aadhaarStatus == .rejected || panStatus == .rejected || addressProofStatus == .rejected || selfieStatus == .rejected {
@@ -346,7 +354,7 @@ struct KYCVerification: Codable, Equatable {
         }
     }
 
-    init(aadhaarStatus: VerificationStatus, panStatus: VerificationStatus, addressProofStatus: VerificationStatus, selfieStatus: VerificationStatus, aadhaarFileName: String? = nil, panFileName: String? = nil, addressProofFileName: String? = nil) {
+    public init(aadhaarStatus: VerificationStatus, panStatus: VerificationStatus, addressProofStatus: VerificationStatus, selfieStatus: VerificationStatus, aadhaarFileName: String? = nil, panFileName: String? = nil, addressProofFileName: String? = nil) {
         self.aadhaarStatus = aadhaarStatus
         self.panStatus = panStatus
         self.addressProofStatus = addressProofStatus
@@ -356,7 +364,7 @@ struct KYCVerification: Codable, Equatable {
         self.addressProofFileName = addressProofFileName
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         aadhaarStatus = try container.decodeIfPresent(VerificationStatus.self, forKey: .aadhaarStatus) ?? .pending
         panStatus = try container.decodeIfPresent(VerificationStatus.self, forKey: .panStatus) ?? .pending
@@ -368,14 +376,14 @@ struct KYCVerification: Codable, Equatable {
     }
 }
 
-struct LoanOverview: Codable, Equatable {
-    let activeLoans: Int
-    let loanHistoryCount: Int
-    let nextEmiDueDate: Date?
-    let remainingBalance: Double
-    let currentLoanStatus: String
+public struct LoanOverview: Codable, Equatable {
+    public let activeLoans: Int
+    public let loanHistoryCount: Int
+    public let nextEmiDueDate: Date?
+    public let remainingBalance: Double
+    public let currentLoanStatus: String
 
-    init(activeLoans: Int, loanHistoryCount: Int, nextEmiDueDate: Date?, remainingBalance: Double, currentLoanStatus: String) {
+    public init(activeLoans: Int, loanHistoryCount: Int, nextEmiDueDate: Date?, remainingBalance: Double, currentLoanStatus: String) {
         self.activeLoans = activeLoans
         self.loanHistoryCount = loanHistoryCount
         self.nextEmiDueDate = nextEmiDueDate
@@ -383,7 +391,7 @@ struct LoanOverview: Codable, Equatable {
         self.currentLoanStatus = currentLoanStatus
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         activeLoans = try container.decodeIfPresent(Int.self, forKey: .activeLoans) ?? 0
         loanHistoryCount = try container.decodeIfPresent(Int.self, forKey: .loanHistoryCount) ?? 0
@@ -393,7 +401,7 @@ struct LoanOverview: Codable, Equatable {
     }
 }
 
-enum VerificationStatus: String, Codable, Equatable {
+public enum VerificationStatus: String, Codable, Equatable {
     case pending = "Pending"
     case underReview = "Under Review"
     case verified = "Verified"

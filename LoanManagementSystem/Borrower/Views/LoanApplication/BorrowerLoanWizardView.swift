@@ -1,6 +1,265 @@
 import SwiftUI
+import UIKit
+import Combine
+import AVFoundation
+@preconcurrency import Vision
 
-// MARK: - Main Wizard View
+private enum WizardNavigationDirection {
+    case forward
+    case backward
+}
+
+private enum DocumentUploadLifecycle: String {
+    case idle
+    case uploading
+    case processing
+    case success
+    case failed
+}
+
+private struct DocumentOCRResult {
+    let isValid: Bool
+    let title: String
+    let message: String
+    let extractedDetails: [String: String]
+    let fullName: String?
+    let dateOfBirth: Date?
+    let address: String?
+}
+
+private struct DocumentPreviewImage: Identifiable {
+    let id = UUID()
+    let title: String
+    let image: UIImage
+}
+
+private struct MobileNumberValidator {
+    static func sanitized(_ value: String) -> String {
+        String(value.filter(\.isNumber).prefix(10))
+    }
+
+    static func message(for value: String, required: Bool = true) -> String? {
+        if value.contains(where: { !$0.isNumber }) {
+            return "Only numeric digits are allowed"
+        }
+        if value.count < 10 {
+            return required || !value.isEmpty ? "Mobile number must contain 10 digits" : nil
+        }
+        if value.count > 10 {
+            return "Mobile number cannot exceed 10 digits"
+        }
+        return nil
+    }
+
+    static func isValid(_ value: String, required: Bool = true) -> Bool {
+        message(for: value, required: required) == nil
+    }
+
+    static func validationMessage(for value: String) -> String? {
+        message(for: value)
+    }
+
+    static func sanitize(_ value: String) -> String {
+        sanitized(value)
+    }
+}
+
+// MARK: - Reusable UI Components for Wizard Form
+
+private struct WizardFormSection<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title.uppercased())
+                .font(LMSFont.caption2.weight(.bold))
+                .foregroundStyle(LMSColors.textSecondary)
+                .padding(.horizontal, 4)
+            
+            VStack(spacing: 0) {
+                content()
+            }
+            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(LMSColors.separatorLight.opacity(0.4), lineWidth: 0.8)
+            )
+            .shadow(color: Color.black.opacity(0.015), radius: 6, x: 0, y: 3)
+        }
+        .padding(.horizontal, 16)
+    }
+}
+
+private struct WizardTextField: View {
+    let label: String
+    @Binding var text: String
+    var placeholder: String = ""
+    var keyboardType: UIKeyboardType = .default
+    var disableAutocapitalization: Bool = false
+    var validationMessage: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(LMSFont.caption.weight(.semibold))
+                .foregroundStyle(LMSColors.textSecondary)
+            
+            TextField(placeholder, text: $text)
+                .keyboardType(keyboardType)
+                .textInputAutocapitalization(disableAutocapitalization ? .never : .words)
+                .font(LMSFont.body.weight(.medium))
+                .foregroundStyle(LMSColors.textPrimary)
+                .padding(.vertical, 8)
+
+            if let validationMessage {
+                Text(validationMessage)
+                    .font(LMSFont.caption2.weight(.semibold))
+                    .foregroundStyle(LMSColors.coral)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+}
+
+private struct WizardMobileField: View {
+    let label: String
+    @Binding var text: String
+    var placeholder: String = "10 digit mobile number"
+    var required: Bool = true
+
+    private var validationMessage: String? {
+        MobileNumberValidator.message(for: text, required: required)
+    }
+
+    var body: some View {
+        WizardTextField(
+            label: label,
+            text: Binding(
+                get: { text },
+                set: { text = MobileNumberValidator.sanitized($0) }
+            ),
+            placeholder: placeholder,
+            keyboardType: .numberPad,
+            validationMessage: validationMessage
+        )
+    }
+}
+
+private struct WizardDateRow: View {
+    let label: String
+    @Binding var date: Date
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(LMSFont.body.weight(.semibold))
+                .foregroundStyle(LMSColors.textPrimary)
+            
+            Spacer()
+            
+            DatePicker("", selection: $date, displayedComponents: .date)
+                .labelsHidden()
+                .tint(LMSColors.brandNavy)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+}
+
+private struct WizardPickerRow<Option: Hashable>: View {
+    let label: String
+    @Binding var selection: Option
+    let options: [Option]
+    let titleTransform: (Option) -> String
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(LMSFont.body.weight(.semibold))
+                .foregroundStyle(LMSColors.textPrimary)
+            
+            Spacer()
+            
+            Picker(label, selection: $selection) {
+                ForEach(options, id: \.self) { option in
+                    Text(titleTransform(option)).tag(option)
+                }
+            }
+            .pickerStyle(.menu)
+            .tint(LMSColors.brandNavy)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+}
+
+private struct WizardToggleRow: View {
+    let label: String
+    let subtitle: String?
+    @Binding var isOn: Bool
+
+    init(label: String, subtitle: String? = nil, isOn: Binding<Bool>) {
+        self.label = label
+        self.subtitle = subtitle
+        self._isOn = isOn
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(LMSFont.body.weight(.semibold))
+                    .foregroundStyle(LMSColors.textPrimary)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(LMSFont.caption)
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+            }
+            
+            Spacer()
+            
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+                .tint(LMSColors.brandNavy)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+}
+
+private struct WizardInlineValueRow: View {
+    let label: String
+    let value: String
+    var valueColor: Color = LMSColors.textPrimary
+
+    var body: some View {
+        HStack(alignment: .top) {
+            Text(label)
+                .font(LMSFont.body)
+                .foregroundStyle(LMSColors.textSecondary)
+            Spacer()
+            Text(value)
+                .font(LMSFont.body.bold())
+                .foregroundStyle(valueColor)
+                .multilineTextAlignment(.trailing)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+}
+
+private struct FormDivider: View {
+    var body: some View {
+        Divider()
+            .padding(.leading, 16)
+            .background(LMSColors.surface)
+    }
+}
+
+// MARK: - Main Wizard View Overhaul
 struct BorrowerLoanWizardView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
@@ -9,6 +268,7 @@ struct BorrowerLoanWizardView: View {
     @EnvironmentObject private var authManager: AuthManager
 
     @State private var currentStep: Int = 1
+    @State private var navigationDirection: WizardNavigationDirection = .forward
     @State private var lastAutosavedTime: Date = Date()
     @State private var isAutosaving: Bool = false
     
@@ -22,51 +282,77 @@ struct BorrowerLoanWizardView: View {
     @State private var salariedDesignation: String = ""
     @State private var salariedJoiningDate: Date = Date()
     @State private var selfEmployedBusinessName: String = ""
-    @State private var selfEmployedBusinessType: String = "Proprietorship"
-    @State private var selfEmployedYearsInBusiness: Int = 3
+    @State private var selfEmployedBusinessType: String = ""
+    @State private var selfEmployedYearsInBusiness: Int = 1
     @State private var selfEmployedGSTNumber: String = ""
     @State private var selfEmployedAnnualRevenue: String = ""
     @State private var selfEmployedAnnualProfit: String = ""
     
-    @State private var existingLoansCount: String = "0"
-    @State private var creditCardLimit: String = "150000"
-    @State private var creditCardOutstanding: String = "12000"
-    @State private var savingsInvestments: String = "300000"
+    @State private var existingLoansCount: String = ""
+    @State private var creditCardLimit: String = ""
+    @State private var creditCardOutstanding: String = ""
+    @State private var savingsInvestments: String = ""
     
-    // Step 5 Co-Applicant State
+    // Step 5 Bank Details, Step 8 Nominee & References
     @State private var hasCoApplicantToggle: Bool = false
     @State private var coApplicantName: String = ""
-    @State private var coApplicantRelation: String = "Spouse"
+    @State private var coApplicantRelation: String = ""
     @State private var coApplicantMobile: String = ""
     @State private var coApplicantPAN: String = ""
     @State private var coApplicantAadhaar: String = ""
     @State private var coApplicantIncome: String = ""
+    @State private var bankName: String = ""
+    @State private var bankAccountNumber: String = ""
+    @State private var bankIFSCCode: String = ""
+    @State private var monthlySalaryDeposited: String = ""
+    @State private var autoDebitConsent: Bool = false
+    @State private var nomineeName: String = ""
+    @State private var bankRegisteredMobile: String = ""
+    @State private var nomineeMobile: String = ""
     
     // Step 6 & 7 Document & OCR Local States
     @State private var uploadProgress: [String: Double] = [:] // Document name -> Progress (0 to 1)
     @State private var isUploading: [String: Bool] = [:]
     @State private var ocrStatus: [String: String] = [:] // Document name -> OCR Status ("None", "Scanning", "Success")
+    @State private var uploadLifecycle: [UUID: DocumentUploadLifecycle] = [:]
+    @State private var documentThumbnails: [UUID: UIImage] = [:]
+    @State private var documentUploadDates: [UUID: Date] = [:]
+    @State private var documentFailureReasons: [UUID: String] = [:]
+    @State private var documentExtractedDetails: [UUID: [String: String]] = [:]
     @State private var uploadSource: BorrowerDocumentUploadSource = .camera
     @State private var selectedUploadDocId: UUID? = nil
     @State private var showUploadSourceSheet = false
+    @State private var showDocumentImagePicker = false
+    @State private var imagePickerSourceType: UIImagePickerController.SourceType = .photoLibrary
+    @State private var previewImage: DocumentPreviewImage?
     
-    // Step 7 OCR Extracted Editable Data
-    @State private var ocrPANNumber: String = "ABCDE1234F"
-    @State private var ocrPANName: String = "AKASH KASHYAP"
-    @State private var ocrPANFather: String = "RAMKUMAR KASHYAP"
+    // Step 7 OCR Extracted Editable Data -> Repurposed for Nominee / Photo
+    @State private var ocrPANNumber: String = ""
+    @State private var ocrPANName: String = ""
+    @State private var ocrPANFather: String = ""
     @State private var ocrPANDOB: Date = Calendar.current.date(byAdding: .year, value: -26, to: Date()) ?? Date()
     
-    @State private var ocrAadhaarName: String = "AKASH KASHYAP"
+    @State private var ocrAadhaarName: String = ""
     @State private var ocrAadhaarDOB: Date = Calendar.current.date(byAdding: .year, value: -26, to: Date()) ?? Date()
-    @State private var ocrAadhaarGender: String = "Male"
-    @State private var ocrAadhaarAddress: String = "Flat 402, Highrise Apts, Link Road, Mumbai - 400053"
+    @State private var ocrAadhaarGender: String = ""
+    @State private var ocrAadhaarAddress: String = ""
     
     // OCR Confidence Ratings
-    @State private var ocrConfidence: [String: String] = ["PAN": "High", "Aadhaar": "High"]
+    @State private var ocrConfidence: [String: String] = [:]
+    @State private var signatureImage: UIImage?
+    @State private var isSignatureEmpty = true
+    @State private var liveVerificationCompleted = false
+    @State private var liveVerificationReference: String?
+    @State private var showLiveVerification = false
     
     // Step 8 Verification Alerts Overrides
     @State private var showVerificationResolutionSheet = false
     @State private var hasResolvedMismatches = false
+
+    // Step 10 Consent & Submission
+    @State private var acceptTerms = false
+    @State private var acceptBureau = false
+    @State private var acceptDebit = false
 
     @State private var submissionErrorMessage: String?
     @State private var stepValidationMessage: String?
@@ -77,13 +363,15 @@ struct BorrowerLoanWizardView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 22) {
-                stepTitleBlock
+            VStack(spacing: LMSSpacing.lg) {
+                // New compact Loan Context Chip below navigation bar
+                LoanContextChip(product: product, amount: desiredAmount, interestRate: product.interestRateRange)
+                
                 stepContent
-                bottomCTA
+                inlineContinueCTA
             }
-            .padding(.top, 18)
-            .padding(.bottom, 24)
+            .padding(.top, 12)
+            .padding(.bottom, 28)
         }
         .lmsScreenBackground()
         .navigationBarBackButtonHidden(true)
@@ -91,16 +379,61 @@ struct BorrowerLoanWizardView: View {
         .safeAreaInset(edge: .top, spacing: 0) {
             wizardNavigationBar
         }
+        .gesture(
+            DragGesture(minimumDistance: 24)
+                .onEnded { value in
+                    guard value.translation.width > 80, abs(value.translation.height) < 60 else { return }
+                    handleBackAction()
+                }
+        )
         .sheet(isPresented: $showUploadSourceSheet) {
             UploadSourceSelectionSheet(
                 isPresented: $showUploadSourceSheet,
                 selectedSource: $uploadSource,
                 onSelect: { source in
                     if let docId = selectedUploadDocId {
-                        simulateUpload(for: docId, source: source)
+                        beginDocumentSelection(for: docId, source: source)
                     }
                 }
             )
+        }
+        .fullScreenCover(isPresented: $showDocumentImagePicker) {
+            DocumentImagePicker(sourceType: imagePickerSourceType) { image in
+                showDocumentImagePicker = false
+                if let docId = selectedUploadDocId {
+                    processSelectedDocumentImage(image, for: docId, source: uploadSource)
+                }
+            } onCancel: {
+                showDocumentImagePicker = false
+            }
+            .ignoresSafeArea()
+        }
+        .fullScreenCover(isPresented: $showLiveVerification) {
+            LiveFaceVerificationView { reference in
+                liveVerificationReference = reference
+                liveVerificationCompleted = true
+                showLiveVerification = false
+                HapticsManager.triggerNotification(type: .success)
+            } onCancel: {
+                showLiveVerification = false
+            }
+            .ignoresSafeArea()
+        }
+        .sheet(item: $previewImage) { preview in
+            NavigationStack {
+                Image(uiImage: preview.image)
+                    .resizable()
+                    .scaledToFit()
+                    .padding()
+                    .background(Color.black.opacity(0.92))
+                    .navigationTitle(preview.title)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { previewImage = nil }
+                        }
+                    }
+            }
         }
         .onAppear {
             viewModel.setBorrowerAuthContext(
@@ -108,6 +441,9 @@ struct BorrowerLoanWizardView: View {
                 displayName: authManager.userDisplayName
             )
             prepareWizardState()
+        }
+        .onChange(of: currentStep) { _, newStep in
+            viewModel.updateDraftStep(newStep)
         }
         .alert("Unable to Submit", isPresented: Binding(
             get: { submissionErrorMessage != nil },
@@ -120,76 +456,63 @@ struct BorrowerLoanWizardView: View {
     }
 
     private var wizardNavigationBar: some View {
-        VStack(spacing: 10) {
-            ZStack {
-                Text("Step \(currentStep) of 10")
-                    .font(LMSFont.subheadline.weight(.semibold))
-                    .foregroundStyle(LMSColors.textSecondary)
-
-                HStack {
-                    Button(action: handleBackAction) {
-                        Image(systemName: "chevron.backward")
+        VStack(spacing: 8) {
+            HStack {
+                Button(action: handleBackAction) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
                             .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(LMSColors.brandNavy)
-                            .frame(width: 38, height: 38)
-                            .background(LMSColors.surfaceTertiary, in: Circle())
-                            .overlay(
-                                Circle()
-                                    .stroke(LMSColors.separatorLight, lineWidth: 0.5)
-                            )
+                        Text("Back")
+                            .font(LMSFont.body)
                     }
-                    .buttonStyle(LMSPressableStyle())
-                    .accessibilityLabel(currentStep > 1 ? "Previous step" : "Back")
-
-                    Spacer()
-
-                    autosavePill
+                    .foregroundStyle(LMSColors.brandNavy)
                 }
+                .accessibilityLabel(currentStep > 1 ? "Previous step" : "Back")
+                
+                Spacer()
+                
+                VStack(spacing: 1) {
+                    Text(navigationTitle(for: currentStep))
+                        .font(LMSFont.subheadline.weight(.semibold))
+                        .foregroundStyle(LMSColors.textPrimary)
+                        .lineLimit(1)
+                    Text("Step \(currentStep) of 10")
+                        .font(LMSFont.caption2.weight(.medium))
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+                
+                Spacer()
+                
+                autosavePill
             }
-
+            .padding(.horizontal, 16)
+            .padding(.top, 14)
+            .padding(.bottom, 6)
+            
             ProgressView(value: progressValue)
                 .tint(LMSColors.brandNavy)
-                .scaleEffect(x: 1, y: 0.72, anchor: .center)
+                .scaleEffect(x: 1, y: 0.5, anchor: .center)
+                .animation(.easeInOut(duration: 0.28), value: progressValue)
+                .padding(.horizontal, 16)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 10)
-        .background(.regularMaterial)
+        .background(.background)
         .overlay(alignment: .bottom) {
             Divider()
         }
     }
 
     private var autosavePill: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
             Circle()
                 .fill(isAutosaving ? LMSColors.actionBlue : LMSColors.emerald)
-                .frame(width: 6, height: 6)
+                .frame(width: 5, height: 5)
             Text(isAutosaving ? "Saving" : "Saved")
-                .font(LMSFont.caption2.weight(.semibold))
+                .font(LMSFont.caption2.weight(.medium))
                 .foregroundStyle(LMSColors.textSecondary)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(LMSColors.surfaceElevated, in: Capsule())
-        .overlay(
-            Capsule()
-                .stroke(LMSColors.separatorLight, lineWidth: 0.5)
-        )
-    }
-
-    private var stepTitleBlock: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(stepTitle(for: currentStep))
-                .font(LMSFont.title3)
-                .foregroundStyle(LMSColors.textPrimary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text(stepSubtitle(for: currentStep))
-                .font(LMSFont.footnote)
-                .foregroundStyle(LMSColors.textSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(LMSColors.surfaceTertiary, in: Capsule())
     }
 
     @ViewBuilder
@@ -197,18 +520,18 @@ struct BorrowerLoanWizardView: View {
         Group {
             switch currentStep {
             case 1:
-                Step1SelectionView(product: product)
+                Step1OverviewView(product: product)
             case 2:
-                Step2EligibilityView(
+                Step2EligibilityCheckView(
                     viewModel: viewModel,
                     product: product,
                     desiredAmount: $desiredAmount,
                     tenureMonths: $loanTenureMonths
                 )
             case 3:
-                Step3PersonalInfoView(viewModel: viewModel)
+                Step3PersonalInfoOverhaulView(viewModel: viewModel)
             case 4:
-                Step4EmploymentView(
+                Step4EmploymentOverhaulView(
                     viewModel: viewModel,
                     salariedCompany: $salariedCompany,
                     salariedEmpID: $salariedEmpID,
@@ -226,57 +549,59 @@ struct BorrowerLoanWizardView: View {
                     savingsInvestments: $savingsInvestments
                 )
             case 5:
-                Step5CoApplicantView(
-                    hasCoApplicant: $hasCoApplicantToggle,
-                    coApplicantName: $coApplicantName,
-                    coApplicantRelation: $coApplicantRelation,
-                    coApplicantMobile: $coApplicantMobile,
-                    coApplicantPAN: $coApplicantPAN,
-                    coApplicantAadhaar: $coApplicantAadhaar,
-                    coApplicantIncome: $coApplicantIncome
+                Step5BankDetailsView(
+                    bankName: $bankName,
+                    accountNo: $bankAccountNumber,
+                    ifscCode: $bankIFSCCode,
+                    registeredMobile: $bankRegisteredMobile,
+                    monthlySalaryDeposited: $monthlySalaryDeposited,
+                    autoDebitConsent: $autoDebitConsent
                 )
             case 6:
-                Step6DocumentCenterView(
+                Step6DocumentCenterOverhaulView(
                     viewModel: viewModel,
                     product: product,
                     stepValidationMessage: $stepValidationMessage,
                     uploadProgress: $uploadProgress,
                     isUploading: $isUploading,
                     ocrStatus: $ocrStatus,
+                    uploadLifecycle: uploadLifecycle,
+                    thumbnails: documentThumbnails,
+                    uploadDates: documentUploadDates,
+                    failureReasons: documentFailureReasons,
+                    extractedDetails: documentExtractedDetails,
                     onTriggerUpload: { docId in
                         selectedUploadDocId = docId
                         showUploadSourceSheet = true
+                    },
+                    onViewDocument: { doc in
+                        if let image = documentThumbnails[doc.id] {
+                            previewImage = DocumentPreviewImage(title: doc.name, image: image)
+                        }
                     },
                     onEnsureDocuments: {
                         ensureRequiredDocumentsLoaded()
                     }
                 )
             case 7:
-                Step7OCRExtractionView(
-                    ocrPANNumber: $ocrPANNumber,
-                    ocrPANName: $ocrPANName,
-                    ocrPANFather: $ocrPANFather,
-                    ocrPANDOB: $ocrPANDOB,
-                    ocrAadhaarName: $ocrAadhaarName,
-                    ocrAadhaarDOB: $ocrAadhaarDOB,
-                    ocrAadhaarGender: $ocrAadhaarGender,
-                    ocrAadhaarAddress: $ocrAadhaarAddress,
-                    ocrConfidence: $ocrConfidence
-                )
-            case 8:
-                Step8VerificationDashboardView(
-                    viewModel: viewModel,
-                    hasResolvedMismatches: $hasResolvedMismatches,
-                    onFixRequired: {
-                        withAnimation {
-                            currentStep = 6
-                        }
+                Step7SignaturePhotoView(
+                    signatureImage: $signatureImage,
+                    isSignatureEmpty: $isSignatureEmpty,
+                    liveVerificationCompleted: $liveVerificationCompleted,
+                    onStartLiveVerification: {
+                        showLiveVerification = true
                     }
                 )
+            case 8:
+                Step8NomineeReferencesView(
+                    nomineeName: $nomineeName,
+                    nomineeRelation: $coApplicantRelation,
+                    nomineeMobile: $nomineeMobile,
+                    refName: $ocrPANFather,
+                    refPhone: $ocrPANNumber
+                )
             case 9:
-                Step9RiskAssessmentView(viewModel: viewModel)
-            case 10:
-                Step10ApplicationReviewView(
+                Step9ReviewOverhaulView(
                     viewModel: viewModel,
                     product: product,
                     onEditStep: { step in
@@ -285,16 +610,41 @@ struct BorrowerLoanWizardView: View {
                         }
                     }
                 )
+            case 10:
+                Step10TermsConsentView(
+                    viewModel: viewModel,
+                    product: product,
+                    acceptTerms: $acceptTerms,
+                    acceptBureau: $acceptBureau,
+                    acceptDebit: $acceptDebit
+                )
             default:
                 Text("Unknown Step")
             }
         }
-        .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
+        .id(currentStep)
+        .transition(stepTransition)
+        .animation(.smooth(duration: 0.32), value: currentStep)
     }
 
-    private var bottomCTA: some View {
+    private var stepTransition: AnyTransition {
+        switch navigationDirection {
+        case .forward:
+            return .asymmetric(
+                insertion: .move(edge: .trailing).combined(with: .opacity),
+                removal: .move(edge: .leading).combined(with: .opacity)
+            )
+        case .backward:
+            return .asymmetric(
+                insertion: .move(edge: .leading).combined(with: .opacity),
+                removal: .move(edge: .trailing).combined(with: .opacity)
+            )
+        }
+    }
+
+    private var inlineContinueCTA: some View {
         VStack(spacing: 8) {
-            if let stepValidationMessage, currentStep == 6 || currentStep == 10 {
+            if let stepValidationMessage {
                 Text(stepValidationMessage)
                     .font(LMSFont.caption)
                     .foregroundStyle(LMSColors.coral)
@@ -302,55 +652,58 @@ struct BorrowerLoanWizardView: View {
             }
 
             Button(action: handleNextAction) {
-                Text(currentStep == 10 ? "Submit Loan Application" : "Continue")
+                Text(currentStep == 10 ? "Submit Application" : "Continue")
                     .font(LMSFont.button)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 52)
-                    .background(LMSColors.brandNavy, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                    .background(
+                        isCurrentStepActionDisabled ? LMSColors.brandNavy.opacity(0.35) : LMSColors.brandNavy,
+                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    )
             }
+            .disabled(isCurrentStepActionDisabled)
             .buttonStyle(LMSPressableStyle())
         }
         .padding(.horizontal, 16)
-        .padding(.top, 2)
+        .padding(.top, 4)
+    }
+
+    private var isCurrentStepActionDisabled: Bool {
+        guard currentStep == 10 else { return false }
+        return !isStep10ReadyForSubmission
+    }
+
+    private var isStep10ReadyForSubmission: Bool {
+        isLoanPurposeValid && acceptTerms && acceptBureau && acceptDebit
+    }
+
+    private var isLoanPurposeValid: Bool {
+        let count = viewModel.formData.loanPurpose.trimmingCharacters(in: .whitespacesAndNewlines).count
+        return count >= 10 && count <= 500
     }
     
     // MARK: - Helper Methods
     
-    private func stepTitle(for step: Int) -> String {
+    private func navigationTitle(for step: Int) -> String {
         switch step {
-        case 1: return "Loan Selection Overview"
-        case 2: return "Eligibility Pre-Check"
-        case 3: return "Personal Information"
-        case 4: return "Employment & Income"
-        case 5: return "Co-Applicant Details"
-        case 6: return "Document Upload Center"
-        case 7: return "Simulated OCR Review"
-        case 8: return "Document Verification Hub"
-        case 9: return "Credit & Risk Assessment"
-        case 10: return "Final Review & Submit"
-        default: return "Loan Application"
-        }
-    }
-
-    private func stepSubtitle(for step: Int) -> String {
-        switch step {
-        case 1: return "Review the product details before starting your application."
-        case 2: return "Tune the amount and tenure to estimate affordability."
-        case 3: return "Confirm your personal and contact information."
-        case 4: return "Add income details for a stronger eligibility check."
-        case 5: return "Add a co-applicant only if it helps your profile."
-        case 6: return "Upload the documents needed for verification."
-        case 7: return "Review extracted details before verification."
-        case 8: return "Resolve any document mismatches before submission."
-        case 9: return "Check the risk summary generated from your profile."
-        case 10: return "Review everything once before final submission."
-        default: return "Complete each step to submit your loan application."
+        case 1: return "Overview"
+        case 2: return "Eligibility Plan"
+        case 3: return "Personal Details"
+        case 4: return "Employment Info"
+        case 5: return "Bank Details"
+        case 6: return "Documents Setup"
+        case 7: return "Signature & Selfie"
+        case 8: return "Nominee & Contact"
+        case 9: return "Review Details"
+        case 10: return "Consent & Submit"
+        default: return "Loan Wizard"
         }
     }
 
     private func handleBackAction() {
         if currentStep > 1 {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            navigationDirection = .backward
+            withAnimation(.smooth(duration: 0.32)) {
                 currentStep -= 1
             }
         } else {
@@ -364,6 +717,7 @@ struct BorrowerLoanWizardView: View {
         }
 
         viewModel.prefillEmptyFieldsFromProfile()
+        currentStep = min(max(viewModel.currentStepIndex, 1), 10)
 
         ensureRequiredDocumentsLoaded()
 
@@ -412,12 +766,9 @@ struct BorrowerLoanWizardView: View {
                 viewModel.formData.occupation = salariedDesignation
             }
             viewModel.formData.workExperienceYears = 2
-            if viewModel.formData.monthlyIncomeValue <= 0 {
-                viewModel.formData.monthlyIncome = "75000"
-            }
-            if viewModel.formData.annualIncomeValue <= 0 {
+            if viewModel.formData.annualIncomeValue <= 0, viewModel.formData.monthlyIncomeValue > 0 {
                 let annual = Int(viewModel.formData.monthlyIncomeValue * 12)
-                viewModel.formData.annualIncome = String(annual)
+                viewModel.formData.annualIncome = annual > 0 ? String(annual) : ""
             }
         } else {
             if !selfEmployedBusinessName.isEmpty {
@@ -428,12 +779,10 @@ struct BorrowerLoanWizardView: View {
             viewModel.formData.gstNumber = selfEmployedGSTNumber
             if viewModel.formData.annualIncomeValue <= 0, !selfEmployedAnnualProfit.isEmpty {
                 viewModel.formData.annualIncome = selfEmployedAnnualProfit
-            } else if viewModel.formData.annualIncomeValue <= 0 {
-                viewModel.formData.annualIncome = "1200000"
             }
-            if viewModel.formData.monthlyIncomeValue <= 0 {
+            if viewModel.formData.monthlyIncomeValue <= 0, viewModel.formData.annualIncomeValue > 0 {
                 let monthly = max(1, Int(viewModel.formData.annualIncomeValue / 12))
-                viewModel.formData.monthlyIncome = String(monthly)
+                viewModel.formData.monthlyIncome = viewModel.formData.annualIncomeValue > 0 ? String(monthly) : ""
             }
         }
 
@@ -449,13 +798,6 @@ struct BorrowerLoanWizardView: View {
             viewModel.formData.coApplicantDetails = "\(coApplicantName) (\(coApplicantRelation))"
         }
 
-        if viewModel.formData.loanPurpose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            viewModel.formData.loanPurpose = "General financing requirement"
-        }
-
-        if viewModel.formData.creditScore.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            viewModel.formData.creditScore = "750"
-        }
     }
 
     private func triggerAutosave() {
@@ -475,19 +817,32 @@ struct BorrowerLoanWizardView: View {
         triggerAutosave()
 
         if currentStep < 10 {
+            if let validationMessage = validationMessageForCurrentStep() {
+                stepValidationMessage = validationMessage
+                HapticsManager.triggerNotification(type: .warning)
+                return
+            }
+
             if currentStep == 6 {
-                let pendingUploads = viewModel.documents.filter { $0.status == .pendingUpload }
-                if !pendingUploads.isEmpty {
-                    stepValidationMessage = "Upload all required documents: \(pendingUploads.map(\.name).joined(separator: ", "))."
+                let unverifiedDocuments = viewModel.documents.filter { $0.status != .verified }
+                if !unverifiedDocuments.isEmpty {
+                    stepValidationMessage = "Upload and verify all required documents: \(unverifiedDocuments.map(\.name).joined(separator: ", "))."
                     HapticsManager.triggerNotification(type: .warning)
                     return
                 }
             }
 
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            navigationDirection = .forward
+            withAnimation(.smooth(duration: 0.32)) {
                 currentStep += 1
             }
         } else {
+            if let validationMessage = validationMessageForCurrentStep() {
+                stepValidationMessage = validationMessage
+                HapticsManager.triggerNotification(type: .warning)
+                return
+            }
+
             if viewModel.currentDraftID == nil {
                 viewModel.startDraft(for: product)
                 ensureRequiredDocumentsLoaded()
@@ -512,111 +867,463 @@ struct BorrowerLoanWizardView: View {
             }
         }
     }
-    
-    private func ensureFullyVerified() {
-        for doc in viewModel.documents where doc.status == .pendingUpload {
-            viewModel.uploadDocument(
-                doc.id,
-                fileName: "uploaded_\(doc.name.lowercased().replacingOccurrences(of: " ", with: "_")).pdf",
-                source: .pdf
-            )
-        }
-        viewModel.runBulkVerification()
-        for doc in viewModel.documents where doc.status != .verified {
-            viewModel.markDocument(doc.id, status: .verified)
+
+    private func validationMessageForCurrentStep() -> String? {
+        switch currentStep {
+        case 3:
+            return MobileNumberValidator.validationMessage(for: viewModel.formData.mobileNumber)
+        case 5:
+            return MobileNumberValidator.validationMessage(for: bankRegisteredMobile)
+        case 7:
+            if !liveVerificationCompleted {
+                return "Please complete live facial verification"
+            }
+            if isSignatureEmpty || signatureImage == nil {
+                return "Please provide your signature"
+            }
+            return nil
+        case 8:
+            if let nomineeValidation = MobileNumberValidator.validationMessage(for: nomineeMobile) {
+                return nomineeValidation
+            }
+            return MobileNumberValidator.validationMessage(for: ocrPANNumber)
+        case 10:
+            if !isLoanPurposeValid {
+                return "Please provide the purpose of the loan."
+            }
+            if !acceptTerms || !acceptBureau || !acceptDebit {
+                return "Please accept all consent checklist items."
+            }
+            return nil
+        default:
+            return nil
         }
     }
     
-    private func simulateUpload(for docId: UUID, source: BorrowerDocumentUploadSource) {
+    private func ensureFullyVerified() {
+        viewModel.runBulkVerification()
+    }
+    
+    private func beginDocumentSelection(for docId: UUID, source: BorrowerDocumentUploadSource) {
+        selectedUploadDocId = docId
+        uploadSource = source
+        imagePickerSourceType = source == .camera && UIImagePickerController.isSourceTypeAvailable(.camera)
+            ? .camera
+            : .photoLibrary
+        showDocumentImagePicker = true
+    }
+
+    private func processSelectedDocumentImage(_ image: UIImage, for docId: UUID, source: BorrowerDocumentUploadSource) {
         guard let doc = viewModel.documents.first(where: { $0.id == docId }) else { return }
-        
+
+        HapticsManager.triggerImpact(style: .medium)
+        documentThumbnails[docId] = image
+        documentFailureReasons[docId] = nil
+        documentExtractedDetails[docId] = [:]
+        uploadLifecycle[docId] = .uploading
         isUploading[doc.name] = true
         uploadProgress[doc.name] = 0.0
         ocrStatus[doc.name] = "None"
-        
-        // Timer simulation for high-fidelity feel
+
         let steps = 10
-        let timeInterval = 0.15
-        
+        let timeInterval = 0.06
         for i in 1...steps {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * timeInterval) {
                 uploadProgress[doc.name] = Double(i) / Double(steps)
-                
                 if i == steps {
                     isUploading[doc.name] = false
-                    viewModel.uploadDocument(docId, fileName: "scanned_\(doc.name.lowercased().replacingOccurrences(of: " ", with: "_")).jpg", source: source)
-                    
-                    // Trigger OCR Simulation
+                    uploadLifecycle[docId] = .processing
                     ocrStatus[doc.name] = "Scanning"
-                    
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        ocrStatus[doc.name] = "Success"
-                        viewModel.markDocument(docId, status: .underVerification)
+                    viewModel.uploadDocument(docId, fileName: imageFileName(for: doc), source: source)
+                    viewModel.markDocument(docId, status: .underVerification)
+
+                    Task {
+                        let ocr = await recognizeText(in: image)
+                        let result = validateDocument(doc, recognizedText: ocr.text, confidence: ocr.confidence)
+                        await MainActor.run {
+                            applyOCRResult(result, to: doc, image: image)
+                        }
                     }
                 }
             }
         }
     }
+
+    private func imageFileName(for doc: BorrowerLoanDocumentItem) -> String {
+        let normalized = doc.name
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "_")
+            .replacingOccurrences(of: "/", with: "_")
+        return "\(normalized)_\(Int(Date().timeIntervalSince1970)).jpg"
+    }
+
+    private func recognizeText(in image: UIImage) async -> (text: String, confidence: Float) {
+        guard let cgImage = image.cgImage else { return ("", 0) }
+
+        return await withCheckedContinuation { continuation in
+            let request = VNRecognizeTextRequest { request, _ in
+                let observations = request.results as? [VNRecognizedTextObservation] ?? []
+                let candidates = observations.compactMap { $0.topCandidates(1).first }
+                let text = candidates.map(\.string).joined(separator: "\n")
+                let confidence = candidates.isEmpty
+                    ? 0
+                    : candidates.map(\.confidence).reduce(0, +) / Float(candidates.count)
+                continuation.resume(returning: (text, confidence))
+            }
+            request.recognitionLevel = .accurate
+            request.usesLanguageCorrection = true
+            request.recognitionLanguages = ["en-IN", "en-US"]
+
+            DispatchQueue.global(qos: .userInitiated).async {
+                let handler = VNImageRequestHandler(cgImage: cgImage, orientation: CGImagePropertyOrientation(image.imageOrientation), options: [:])
+                do {
+                    try handler.perform([request])
+                } catch {
+                    continuation.resume(returning: ("", 0))
+                }
+            }
+        }
+    }
+
+    private func validateDocument(_ doc: BorrowerLoanDocumentItem, recognizedText text: String, confidence: Float) -> DocumentOCRResult {
+        let normalized = text.lowercased()
+        let name = doc.name.lowercased()
+
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || confidence < 0.18 {
+            return DocumentOCRResult(
+                isValid: false,
+                title: "Document Not Readable",
+                message: "The image is blurry or text could not be detected. Please upload a clear document image.",
+                extractedDetails: ["OCR Confidence": confidenceLabel(confidence)],
+                fullName: nil,
+                dateOfBirth: nil,
+                address: nil
+            )
+        }
+
+        if name.contains("aadhaar") || name.contains("aadhar") {
+            return validateAadhaar(text: text, normalized: normalized, confidence: confidence)
+        } else if name.contains("pan") {
+            return validatePAN(text: text, normalized: normalized, confidence: confidence)
+        } else if name.contains("salary") || name.contains("payslip") {
+            return validateKeywordDocument(
+                title: "Salary Slip",
+                invalidTitle: "Invalid Salary Slip",
+                invalidMessage: "The uploaded file does not appear to be a salary slip. Please upload a clear payslip image.",
+                text: text,
+                normalized: normalized,
+                confidence: confidence,
+                keywords: ["salary", "payslip", "pay slip", "net pay", "gross", "earnings", "deductions", "employee"]
+            )
+        } else if name.contains("bank statement") || name.contains("bank statements") {
+            return validateKeywordDocument(
+                title: "Bank Statement",
+                invalidTitle: "Invalid Bank Statement",
+                invalidMessage: "The uploaded file does not appear to be a bank statement. Please upload a clear statement image.",
+                text: text,
+                normalized: normalized,
+                confidence: confidence,
+                keywords: ["statement", "account number", "transaction", "debit", "credit", "balance", "ifsc"]
+            )
+        } else if name.contains("utility") {
+            return validateKeywordDocument(
+                title: "Utility Bill",
+                invalidTitle: "Invalid Address Document",
+                invalidMessage: "The uploaded file does not appear to be a valid utility bill. Please upload a clear bill with address details.",
+                text: text,
+                normalized: normalized,
+                confidence: confidence,
+                keywords: ["bill", "electricity", "water", "gas", "consumer", "address", "amount due"]
+            )
+        }
+
+        return validateKeywordDocument(
+            title: doc.name,
+            invalidTitle: "Invalid Document",
+            invalidMessage: "The uploaded file does not match the selected document type. Please upload the required document.",
+            text: text,
+            normalized: normalized,
+            confidence: confidence,
+            keywords: [doc.name.lowercased()]
+        )
+    }
+
+    private func validateAadhaar(text: String, normalized: String, confidence: Float) -> DocumentOCRResult {
+        let aadhaarNumber = firstMatch(in: text, pattern: #"(?<!\d)(\d{4}\s?\d{4}\s?\d{4})(?!\d)"#)
+        let hasKeyword = normalized.contains("government of india") || normalized.contains("aadhaar") || normalized.contains("aadhar") || normalized.contains("uidai")
+        let isValid = confidence >= 0.24 && (hasKeyword || aadhaarNumber != nil)
+
+        guard isValid else {
+            return DocumentOCRResult(
+                isValid: false,
+                title: "Invalid Aadhaar Document",
+                message: "The uploaded file does not appear to be a valid Aadhaar card. Please upload a clear Aadhaar image.",
+                extractedDetails: ["OCR Confidence": confidenceLabel(confidence)],
+                fullName: nil,
+                dateOfBirth: nil,
+                address: nil
+            )
+        }
+
+        let dob = extractDate(from: text)
+        let fullName = extractLikelyName(from: text, excluding: ["government", "india", "aadhaar", "uidai", "male", "female"])
+        let masked = aadhaarNumber.map(maskAadhaar) ?? "Detected"
+        var details = [
+            "Document": "Aadhaar Card",
+            "Aadhaar Number": masked,
+            "OCR Confidence": confidenceLabel(confidence)
+        ]
+        if let fullName { details["Full Name"] = fullName }
+        if let dob { details["DOB"] = dob.formattedAsDDMMMYYYY() }
+
+        return DocumentOCRResult(
+            isValid: true,
+            title: "Document Verified",
+            message: "We extracted the following details. Please verify.",
+            extractedDetails: details,
+            fullName: fullName,
+            dateOfBirth: dob,
+            address: extractAddress(from: text)
+        )
+    }
+
+    private func validatePAN(text: String, normalized: String, confidence: Float) -> DocumentOCRResult {
+        let pan = firstMatch(in: text.uppercased(), pattern: #"[A-Z]{5}[0-9]{4}[A-Z]"#)
+        let hasKeyword = normalized.contains("income tax") || normalized.contains("permanent account") || normalized.contains("भारत सरकार")
+        let isValid = confidence >= 0.22 && (hasKeyword || pan != nil)
+
+        guard isValid else {
+            return DocumentOCRResult(
+                isValid: false,
+                title: "Invalid PAN Document",
+                message: "The uploaded file does not appear to be a valid PAN card. Please upload a clear PAN image.",
+                extractedDetails: ["OCR Confidence": confidenceLabel(confidence)],
+                fullName: nil,
+                dateOfBirth: nil,
+                address: nil
+            )
+        }
+
+        let dob = extractDate(from: text)
+        let fullName = extractLikelyName(from: text, excluding: ["income", "tax", "department", "government", "india", "permanent", "account", "number"])
+        var details = [
+            "Document": "PAN Card",
+            "PAN": pan ?? "Detected",
+            "OCR Confidence": confidenceLabel(confidence)
+        ]
+        if let fullName { details["Full Name"] = fullName }
+        if let dob { details["DOB"] = dob.formattedAsDDMMMYYYY() }
+
+        return DocumentOCRResult(
+            isValid: true,
+            title: "Document Verified",
+            message: "We extracted the following details. Please verify.",
+            extractedDetails: details,
+            fullName: fullName,
+            dateOfBirth: dob,
+            address: nil
+        )
+    }
+
+    private func validateKeywordDocument(
+        title: String,
+        invalidTitle: String,
+        invalidMessage: String,
+        text: String,
+        normalized: String,
+        confidence: Float,
+        keywords: [String]
+    ) -> DocumentOCRResult {
+        let hits = keywords.filter { normalized.contains($0) }
+        let isValid = confidence >= 0.20 && !hits.isEmpty
+
+        return DocumentOCRResult(
+            isValid: isValid,
+            title: isValid ? "Document Verified" : invalidTitle,
+            message: isValid ? "We extracted the following details. Please verify." : invalidMessage,
+            extractedDetails: [
+                "Document": title,
+                "Matched Signals": hits.isEmpty ? "None" : hits.joined(separator: ", "),
+                "OCR Confidence": confidenceLabel(confidence)
+            ],
+            fullName: nil,
+            dateOfBirth: nil,
+            address: extractAddress(from: text)
+        )
+    }
+
+    private func applyOCRResult(_ result: DocumentOCRResult, to doc: BorrowerLoanDocumentItem, image: UIImage) {
+        ocrStatus[doc.name] = result.isValid ? "Success" : "Failed"
+        uploadLifecycle[doc.id] = result.isValid ? .success : .failed
+        documentExtractedDetails[doc.id] = result.extractedDetails
+
+        if result.isValid {
+            documentUploadDates[doc.id] = Date()
+            documentFailureReasons[doc.id] = nil
+            viewModel.markDocument(doc.id, status: .verified)
+
+            if let fullName = result.fullName, !fullName.isEmpty {
+                viewModel.formData.fullName = fullName
+                ocrAadhaarName = fullName
+                ocrPANName = fullName
+            }
+            if let dateOfBirth = result.dateOfBirth {
+                viewModel.formData.dateOfBirth = dateOfBirth
+                ocrAadhaarDOB = dateOfBirth
+                ocrPANDOB = dateOfBirth
+            }
+            if let address = result.address, !address.isEmpty, viewModel.formData.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                viewModel.formData.address = address
+                ocrAadhaarAddress = address
+            }
+            triggerAutosave()
+            HapticsManager.triggerNotification(type: .success)
+        } else {
+            documentFailureReasons[doc.id] = result.message
+            viewModel.markDocument(doc.id, status: .rejected)
+            HapticsManager.triggerNotification(type: .error)
+        }
+    }
+
+    private func firstMatch(in text: String, pattern: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let match = regex.firstMatch(in: text, range: range),
+              let matchRange = Range(match.range, in: text) else { return nil }
+        return String(text[matchRange])
+    }
+
+    private func maskAadhaar(_ raw: String) -> String {
+        let digits = raw.filter(\.isNumber)
+        guard digits.count >= 4 else { return "XXXX XXXX XXXX" }
+        return "XXXX XXXX \(digits.suffix(4))"
+    }
+
+    private func confidenceLabel(_ confidence: Float) -> String {
+        switch confidence {
+        case 0.72...: return "High"
+        case 0.40..<0.72: return "Medium"
+        default: return "Low"
+        }
+    }
+
+    private func extractDate(from text: String) -> Date? {
+        guard let raw = firstMatch(in: text, pattern: #"(?<!\d)(\d{2}[/-]\d{2}[/-]\d{4})(?!\d)"#) else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_IN")
+        for format in ["dd/MM/yyyy", "dd-MM-yyyy"] {
+            formatter.dateFormat = format
+            if let date = formatter.date(from: raw) {
+                return date
+            }
+        }
+        return nil
+    }
+
+    private func extractLikelyName(from text: String, excluding blockedWords: [String]) -> String? {
+        let blocked = Set(blockedWords)
+        let lines = text
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { line in
+                let lower = line.lowercased()
+                let words = lower.components(separatedBy: .whitespaces)
+                return line.count >= 5 &&
+                    line.count <= 36 &&
+                    !line.contains(where: \.isNumber) &&
+                    !words.contains(where: blocked.contains)
+            }
+        return lines.first
+    }
+
+    private func extractAddress(from text: String) -> String? {
+        let lines = text.components(separatedBy: .newlines)
+        guard let addressIndex = lines.firstIndex(where: { $0.localizedCaseInsensitiveContains("address") }) else { return nil }
+        let addressLines = lines.dropFirst(addressIndex + 1).prefix(3)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return addressLines.isEmpty ? nil : addressLines.joined(separator: ", ")
+    }
 }
 
-// MARK: - STEP 1: Loan Overview / Selection
-private struct Step1SelectionView: View {
+// MARK: - Premium UI Components
+
+private struct LoanContextChip: View {
+    let product: BorrowerLoanProduct
+    let amount: Double
+    let interestRate: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: product.type.iconName)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(LMSColors.brandNavy)
+            
+            Text(product.type.title)
+                .font(LMSFont.caption.weight(.bold))
+                .foregroundStyle(LMSColors.textPrimary)
+            
+            Text("•")
+                .foregroundStyle(LMSColors.textTertiary)
+            
+            Text(amount.formattedAsINR())
+                .font(LMSFont.caption.weight(.semibold))
+                .foregroundStyle(LMSColors.brandNavy)
+            
+            Text("•")
+                .foregroundStyle(LMSColors.textTertiary)
+            
+            Text(interestRate)
+                .font(LMSFont.caption.weight(.semibold))
+                .foregroundStyle(LMSColors.emerald)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(LMSColors.surface, in: Capsule())
+        .overlay(
+            Capsule()
+                .stroke(LMSColors.separatorLight.opacity(0.4), lineWidth: 0.8)
+        )
+        .shadow(color: Color.black.opacity(0.02), radius: 4, x: 0, y: 2)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+    }
+}
+
+// MARK: - STEP 1: Overview
+private struct Step1OverviewView: View {
     let product: BorrowerLoanProduct
 
     var body: some View {
-        VStack(spacing: 22) {
-            // Main Card
-            VStack(spacing: 24) {
-                ZStack {
-                    Circle()
-                        .fill(LMSColors.brandNavy.opacity(0.10))
-                        .frame(width: 80, height: 80)
-                    Image(systemName: product.type.iconName)
-                        .font(.system(size: 38, weight: .bold))
-                        .foregroundStyle(LMSColors.brandNavy)
-                }
+        VStack(spacing: LMSSpacing.lg) {
+            VStack(alignment: .center, spacing: 8) {
+                Text(product.type.title)
+                    .font(LMSFont.title.weight(.bold))
+                    .foregroundStyle(LMSColors.brandNavy)
                 
-                VStack(spacing: 6) {
-                    Text(product.type.title)
-                        .font(LMSFont.title)
-                        .foregroundStyle(LMSColors.textPrimary)
-                    Text(product.shortDescription)
-                        .font(LMSFont.subheadline)
-                        .foregroundStyle(LMSColors.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 16)
-                }
-                .padding(.bottom, 8)
-                
-                // Key metrics row
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
-                    LoanMetricChip(title: "Max Amount", value: product.maximumAmount.formattedAsINR(), tint: LMSColors.brandNavy)
-                    LoanMetricChip(title: "Rate", value: product.interestRateRange, tint: LMSColors.brandNavy)
-                    LoanMetricChip(title: "Approval", value: product.estimatedProcessingTime, tint: LMSColors.emerald)
-                }
+                Text(product.shortDescription)
+                    .font(LMSFont.body)
+                    .foregroundStyle(LMSColors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
             }
-            .padding(.vertical, 26)
-            .padding(.horizontal, 18)
-            .background(LMSColors.surfaceElevated, in: RoundedRectangle(cornerRadius: LMSRadius.xl, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: LMSRadius.xl, style: .continuous)
-                    .stroke(LMSColors.separatorLight, lineWidth: 0.5)
-            )
-            .padding(.horizontal, 16)
+            .padding(.top, 16)
             
-            // Benefits list
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Product Key Benefits")
-                    .font(LMSFont.title3)
-                    .foregroundStyle(LMSColors.textPrimary)
-                    .padding(.horizontal, 16)
-                
-                VStack(spacing: 12) {
+            WizardFormSection(title: "Loan Information") {
+                WizardInlineValueRow(label: "Maximum Available Limit", value: product.maximumAmount.formattedAsINR(), valueColor: LMSColors.brandNavy)
+                FormDivider()
+                WizardInlineValueRow(label: "Estimated Processing Time", value: product.estimatedProcessingTime)
+                FormDivider()
+                WizardInlineValueRow(label: "Interest Rates", value: product.interestRateRange, valueColor: LMSColors.emerald)
+            }
+            
+            WizardFormSection(title: "Product Benefits") {
+                VStack(alignment: .leading, spacing: 14) {
                     ForEach(product.benefits, id: \.self) { benefit in
-                        HStack(alignment: .top, spacing: 12) {
+                        HStack(alignment: .top, spacing: 10) {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundStyle(LMSColors.emerald)
-                                .font(.system(size: 18))
+                                .font(.system(size: 16))
                             Text(benefit)
                                 .font(LMSFont.body)
                                 .foregroundStyle(LMSColors.textPrimary)
@@ -624,42 +1331,15 @@ private struct Step1SelectionView: View {
                         }
                     }
                 }
-                .padding(20)
-                .lmsInsetGroupedCard()
                 .padding(.horizontal, 16)
+                .padding(.vertical, 16)
             }
         }
     }
 }
 
-private struct LoanMetricChip: View {
-    let title: String
-    let value: String
-    let tint: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(title)
-                .font(LMSFont.caption2.weight(.bold))
-                .foregroundStyle(LMSColors.textSecondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-            Text(value)
-                .font(LMSFont.callout.weight(.semibold))
-                .foregroundStyle(tint)
-                .lineLimit(2)
-                .minimumScaleFactor(0.75)
-                .frame(minHeight: 38, alignment: .topLeading)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 12)
-        .background(LMSColors.surfaceTertiary, in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
-    }
-}
-
-// MARK: - STEP 2: Eligibility Pre-Check
-private struct Step2EligibilityView: View {
+// MARK: - STEP 2: Eligibility Check
+private struct Step2EligibilityCheckView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     @Binding var desiredAmount: Double
@@ -696,69 +1376,86 @@ private struct Step2EligibilityView: View {
         }
     }
 
+    private var recommendationText: String {
+        if foirPercentage > 60 {
+            return "Your EMI is relatively high compared to income. Consider increasing tenure or reducing the loan amount."
+        } else if foirPercentage > 45 {
+            return "This looks workable, but a slightly longer tenure may improve comfort and approval strength."
+        } else {
+            return "Your estimated EMI appears comfortable against your income profile."
+        }
+    }
+
     var body: some View {
-        VStack(spacing: 24) {
-            // Calculator Card
-            VStack(spacing: 20) {
-                // Desired Amount Slider
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Desired Loan Amount")
-                            .font(LMSFont.callout.weight(.medium))
-                            .foregroundStyle(LMSColors.textSecondary)
-                        Spacer()
-                        Text(desiredAmount.formattedAsINR())
-                            .font(LMSFont.headline)
-                            .foregroundStyle(LMSColors.brandNavy)
+        VStack(spacing: LMSSpacing.lg) {
+            WizardFormSection(title: "Configure Plan") {
+                VStack(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Desired Loan Amount")
+                                .font(LMSFont.callout.weight(.medium))
+                                .foregroundStyle(LMSColors.textSecondary)
+                            Spacer()
+                            Text(desiredAmount.formattedAsINR())
+                                .font(LMSFont.headline)
+                                .foregroundStyle(LMSColors.brandNavy)
+                        }
+                        Slider(value: $desiredAmount, in: 50000...product.maximumAmount, step: 25000)
+                            .tint(LMSColors.brandNavy)
                     }
-                    Slider(value: $desiredAmount, in: 50000...product.maximumAmount, step: 25000)
-                        .tint(LMSColors.brandNavy)
-                }
-                
-                // Tenure Slider
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Loan Tenure")
-                            .font(LMSFont.callout.weight(.medium))
-                            .foregroundStyle(LMSColors.textSecondary)
-                        Spacer()
-                        Text("\(Int(tenureMonths)) months")
-                            .font(LMSFont.headline)
-                            .foregroundStyle(LMSColors.brandNavy)
-                    }
-                    Slider(value: $tenureMonths, in: 12...120, step: 12)
-                        .tint(LMSColors.brandNavy)
-                }
-                
-                // Quick Financials Inputs
-                VStack(spacing: 12) {
-                    HStack {
-                        Text("Monthly Income")
-                            .font(LMSFont.callout.weight(.medium))
-                        Spacer()
-                        TextField("₹ 80,000", text: $viewModel.formData.monthlyIncome)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                            .font(LMSFont.body.weight(.bold))
-                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    
                     Divider()
-                    HStack {
-                        Text("Existing EMI Obligations")
-                            .font(LMSFont.callout.weight(.medium))
-                        Spacer()
-                        TextField("₹ 0", text: $viewModel.formData.existingEMIs)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                            .font(LMSFont.body.weight(.bold))
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Loan Tenure")
+                                .font(LMSFont.callout.weight(.medium))
+                                .foregroundStyle(LMSColors.textSecondary)
+                            Spacer()
+                            Text("\(Int(tenureMonths)) months")
+                                .font(LMSFont.headline)
+                                .foregroundStyle(LMSColors.brandNavy)
+                        }
+                        Slider(value: $tenureMonths, in: 12...120, step: 12)
+                            .tint(LMSColors.brandNavy)
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
                 }
-                .padding(.top, 10)
             }
-            .padding(20)
-            .lmsInsetGroupedCard()
-            .padding(.horizontal, 16)
             
-            // Estimates Banner
+            WizardFormSection(title: "Monthly Income & Obligations") {
+                HStack {
+                    Text("Monthly Income")
+                        .font(LMSFont.body.weight(.semibold))
+                        .foregroundStyle(LMSColors.textPrimary)
+                    Spacer()
+                    TextField("₹ 80,000", text: $viewModel.formData.monthlyIncome)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .font(LMSFont.body.weight(.bold))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                
+                FormDivider()
+                
+                HStack {
+                    Text("Existing EMIs")
+                        .font(LMSFont.body.weight(.semibold))
+                        .foregroundStyle(LMSColors.textPrimary)
+                    Spacer()
+                    TextField("₹ 0", text: $viewModel.formData.existingEMIs)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .font(LMSFont.body.weight(.bold))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+            }
+            
             VStack(spacing: 16) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -766,7 +1463,7 @@ private struct Step2EligibilityView: View {
                             .font(.system(size: 9, weight: .black, design: .rounded))
                             .foregroundStyle(LMSColors.textSecondary)
                         Text("\(suggestedEMI.formattedAsINR())/mo")
-                            .font(LMSFont.title3)
+                            .font(LMSFont.title3.weight(.bold))
                             .foregroundStyle(LMSColors.brandNavy)
                     }
                     Spacer()
@@ -775,42 +1472,42 @@ private struct Step2EligibilityView: View {
                             .font(.system(size: 9, weight: .black, design: .rounded))
                             .foregroundStyle(LMSColors.textSecondary)
                         Text("\(foirPercentage)%")
-                            .font(LMSFont.title3)
+                            .font(LMSFont.title3.weight(.bold))
                             .foregroundStyle(foirPercentage > 50 ? LMSColors.coral : LMSColors.textPrimary)
                     }
                 }
                 
                 Divider()
                 
-                // Dynamic probability gauge
-                HStack(spacing: 10) {
-                    ZStack {
-                        Circle()
-                            .stroke(LMSColors.separatorLight, lineWidth: 6)
-                            .frame(width: 48, height: 48)
-                        Circle()
-                            .trim(from: 0.0, to: CGFloat(max(0.1, 1.0 - (Double(foirPercentage)/100.0))))
-                            .stroke(probabilityColor, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                            .frame(width: 48, height: 48)
-                            .rotationEffect(.degrees(-90))
-                    }
+                HStack(spacing: 12) {
+                    Circle()
+                        .trim(from: 0.0, to: CGFloat(max(0.1, 1.0 - (Double(foirPercentage)/100.0))))
+                        .stroke(probabilityColor, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .frame(width: 44, height: 44)
+                        .rotationEffect(.degrees(-90))
+                        .animation(.easeInOut(duration: 0.25), value: foirPercentage)
+                        .overlay(
+                            Text("\(100 - foirPercentage)%")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(probabilityColor)
+                        )
                     
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Approval Probability")
+                        Text("Approval: \(approvalProbability)")
                             .font(LMSFont.caption.weight(.bold))
-                            .foregroundStyle(LMSColors.textSecondary)
-                        Text(approvalProbability)
-                            .font(LMSFont.callout.bold())
                             .foregroundStyle(probabilityColor)
+                        Text(recommendationText)
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.textSecondary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    Spacer()
                 }
             }
-            .padding(20)
-            .background(probabilityColor.opacity(0.06))
-            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+            .padding(16)
+            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(probabilityColor.opacity(0.18), lineWidth: 1)
             )
             .padding(.horizontal, 16)
@@ -826,92 +1523,39 @@ private struct Step2EligibilityView: View {
     }
 }
 
-// MARK: - STEP 3: Personal Information
-private struct Step3PersonalInfoView: View {
+// MARK: - STEP 3: Personal Details
+private struct Step3PersonalInfoOverhaulView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     
     var body: some View {
-        VStack(spacing: 20) {
-            // Basic Details
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Basic Details")
-                    .font(LMSFont.title3)
-                    .foregroundStyle(LMSColors.textPrimary)
-                
-                TextField("First Name", text: $viewModel.formData.fullName)
-                    .padding()
-                    .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 10))
-                
-                DatePicker("Date of Birth", selection: $viewModel.formData.dateOfBirth, displayedComponents: .date)
-                    .padding(.vertical, 8)
-                
-                HStack(spacing: 12) {
-                    Text("Gender")
-                    Spacer()
-                    Picker("Gender", selection: $viewModel.formData.gender) {
-                        Text("Select").tag("")
-                        Text("Male").tag("Male")
-                        Text("Female").tag("Female")
-                        Text("Other").tag("Other")
-                    }
-                    .pickerStyle(.menu)
+        VStack(spacing: LMSSpacing.lg) {
+            WizardFormSection(title: "Primary Profile") {
+                WizardTextField(label: "Full Name", text: $viewModel.formData.fullName, placeholder: "Enter legal name")
+                FormDivider()
+                WizardDateRow(label: "Date of Birth", date: $viewModel.formData.dateOfBirth)
+                FormDivider()
+                WizardPickerRow(label: "Gender", selection: $viewModel.formData.gender, options: ["", "Male", "Female", "Other"]) { option in
+                    option.isEmpty ? "Select Gender" : option
                 }
             }
-            .padding(20)
-            .lmsInsetGroupedCard()
-            .padding(.horizontal, 16)
             
-            // Contacts
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Contact Details")
-                    .font(LMSFont.title3)
-                    .foregroundStyle(LMSColors.textPrimary)
-                
-                TextField("Mobile Number", text: $viewModel.formData.mobileNumber)
-                    .keyboardType(.phonePad)
-                    .padding()
-                    .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 10))
-                
-                TextField("Email Address", text: $viewModel.formData.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .disableAutocapitalization()
-                    .padding()
-                    .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 10))
+            WizardFormSection(title: "Contact Credentials") {
+                WizardMobileField(label: "Mobile Number", text: $viewModel.formData.mobileNumber)
+                FormDivider()
+                WizardTextField(label: "Email Address", text: $viewModel.formData.emailAddress, placeholder: "yourname@domain.com", keyboardType: .emailAddress, disableAutocapitalization: true)
             }
-            .padding(20)
-            .lmsInsetGroupedCard()
-            .padding(.horizontal, 16)
             
-            // Residential
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Residential Information")
-                    .font(LMSFont.title3)
-                    .foregroundStyle(LMSColors.textPrimary)
-                
-                TextField("Current Residential Address", text: $viewModel.formData.address, axis: .vertical)
-                    .lineLimit(3...5)
-                    .padding()
-                    .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 10))
-                
-                HStack {
-                    Text("Residence Type")
-                    Spacer()
-                    Picker("Residence Type", selection: $viewModel.formData.repaymentPreference) {
-                        Text("Owned").tag("Owned")
-                        Text("Rented").tag("Rented")
-                        Text("Family Owned").tag("Family Owned")
-                    }
-                }
+            WizardFormSection(title: "Residence Information") {
+                WizardTextField(label: "Current Address", text: $viewModel.formData.address, placeholder: "Door No, Building, Street Address")
+                FormDivider()
+                WizardPickerRow(label: "Residence Ownership", selection: $viewModel.formData.repaymentPreference, options: ["Owned", "Rented", "Family Owned"]) { $0 }
             }
-            .padding(20)
-            .lmsInsetGroupedCard()
-            .padding(.horizontal, 16)
         }
     }
 }
 
 // MARK: - STEP 4: Employment & Income
-private struct Step4EmploymentView: View {
+private struct Step4EmploymentOverhaulView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     
     @Binding var salariedCompany: String
@@ -932,240 +1576,117 @@ private struct Step4EmploymentView: View {
     @Binding var savingsInvestments: String
 
     var body: some View {
-        VStack(spacing: 20) {
-            // Selection of Employment Type
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Select Employment Type")
-                    .font(LMSFont.title3)
-                    .foregroundStyle(LMSColors.textPrimary)
-                
-                Picker("Employment Type", selection: $viewModel.formData.employmentType) {
-                    ForEach(viewModel.employmentTypes, id: \.self) { type in
-                        Text(type).tag(type)
-                    }
+        VStack(spacing: LMSSpacing.lg) {
+            // Segmented selection
+            Picker("Employment Type", selection: $viewModel.formData.employmentType) {
+                ForEach(viewModel.employmentTypes, id: \.self) { type in
+                    Text(type).tag(type)
                 }
-                .pickerStyle(.segmented)
             }
-            .padding(16)
-            .lmsInsetGroupedCard()
+            .pickerStyle(.segmented)
             .padding(.horizontal, 16)
             
-            // Dynamic Form Area
             if viewModel.formData.employmentType == "Salaried" {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Salaried Applicant Info")
-                        .font(LMSFont.title3)
-                        .foregroundStyle(LMSColors.textPrimary)
-                    
-                    TextField("Company Name", text: $salariedCompany)
-                        .padding()
-                        .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 10))
-                    
-                    TextField("Employee ID", text: $salariedEmpID)
-                        .padding()
-                        .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 10))
-                    
-                    TextField("Designation", text: $salariedDesignation)
-                        .padding()
-                        .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 10))
-                    
-                    DatePicker("Date of Joining", selection: $salariedJoiningDate, displayedComponents: .date)
-                    
-                    HStack {
-                        Text("Monthly Take-Home Salary")
-                        Spacer()
-                        TextField("₹ 75,000", text: $viewModel.formData.monthlyIncome)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                            .font(.headline)
-                    }
+                WizardFormSection(title: "Salary Details") {
+                    WizardTextField(label: "Employer Company Name", text: $salariedCompany, placeholder: "Enter employer name")
+                    FormDivider()
+                    WizardTextField(label: "Employee ID (Optional)", text: $salariedEmpID, placeholder: "Enter employee ID")
+                    FormDivider()
+                    WizardTextField(label: "Designation", text: $salariedDesignation, placeholder: "Enter designation")
+                    FormDivider()
+                    WizardDateRow(label: "Date of Joining", date: $salariedJoiningDate)
+                    FormDivider()
+                    WizardTextField(label: "Monthly Net Take-home", text: $viewModel.formData.monthlyIncome, placeholder: "Monthly income", keyboardType: .numberPad)
                 }
-                .padding(20)
-                .lmsInsetGroupedCard()
-                .padding(.horizontal, 16)
             } else {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Business Owner / Self-Employed Info")
-                        .font(LMSFont.title3)
-                        .foregroundStyle(LMSColors.textPrimary)
-                    
-                    TextField("Business Registered Name", text: $selfEmployedBusinessName)
-                        .padding()
-                        .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 10))
-                    
-                    Picker("Business Constitution Type", selection: $selfEmployedBusinessType) {
-                        Text("Proprietorship").tag("Proprietorship")
-                        Text("Partnership").tag("Partnership")
-                        Text("Pvt Ltd").tag("Pvt Ltd")
+                WizardFormSection(title: "Business Details") {
+                    WizardTextField(label: "Business Registered Name", text: $selfEmployedBusinessName, placeholder: "Enter registered business name")
+                    FormDivider()
+                    WizardPickerRow(label: "Business Entity Type", selection: $selfEmployedBusinessType, options: ["", "Proprietorship", "Partnership", "Pvt Ltd"]) { option in
+                        option.isEmpty ? "Select Entity Type" : option
                     }
-                    
-                    Stepper("Vintage in Business: \(selfEmployedYearsInBusiness) Years", value: $selfEmployedYearsInBusiness, in: 1...40)
-                    
-                    TextField("GST Registration Number", text: $selfEmployedGSTNumber)
-                        .disableAutocapitalization()
-                        .padding()
-                        .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 10))
-                    
+                    FormDivider()
                     HStack {
-                        Text("Annual Net Profit")
+                        Text("Years in Business")
+                            .font(LMSFont.body.weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
                         Spacer()
-                        TextField("₹ 12,00,000", text: $viewModel.formData.annualIncome)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                            .font(.headline)
+                        Stepper("\(selfEmployedYearsInBusiness) Years", value: $selfEmployedYearsInBusiness, in: 1...40)
+                            .tint(LMSColors.brandNavy)
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    FormDivider()
+                    WizardTextField(label: "GST Registration No. (Optional)", text: $selfEmployedGSTNumber, placeholder: "Enter GST registration number", disableAutocapitalization: true)
+                    FormDivider()
+                    WizardTextField(label: "Net Annual Profit", text: $viewModel.formData.annualIncome, placeholder: "Annual profit", keyboardType: .numberPad)
                 }
-                .padding(20)
-                .lmsInsetGroupedCard()
-                .padding(.horizontal, 16)
             }
             
-            // Liabilities & Financial Assets
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Additional Financial Background")
-                    .font(LMSFont.title3)
-                    .foregroundStyle(LMSColors.textPrimary)
-                
-                HStack {
-                    Text("Total Active Loans count")
-                    Spacer()
-                    TextField("0", text: $existingLoansCount)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
-                }
-                
-                HStack {
-                    Text("Total Credit Card Limit")
-                    Spacer()
-                    TextField("₹", text: $creditCardLimit)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
-                }
-                
-                HStack {
-                    Text("Credit Card Outstanding")
-                    Spacer()
-                    TextField("₹", text: $creditCardOutstanding)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
-                }
-                
-                HStack {
-                    Text("Savings & Financial Assets")
-                    Spacer()
-                    TextField("₹", text: $savingsInvestments)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
-                }
+            WizardFormSection(title: "Obligations & Assets") {
+                WizardTextField(label: "Total Active Loans", text: $existingLoansCount, placeholder: "Number of active loans", keyboardType: .numberPad)
+                FormDivider()
+                WizardTextField(label: "Total Credit Card Limit", text: $creditCardLimit, placeholder: "Credit card limit", keyboardType: .numberPad)
+                FormDivider()
+                WizardTextField(label: "Credit Card Outstanding Balance", text: $creditCardOutstanding, placeholder: "Outstanding balance", keyboardType: .numberPad)
+                FormDivider()
+                WizardTextField(label: "Savings & Investments Worth", text: $savingsInvestments, placeholder: "Savings and investments", keyboardType: .numberPad)
             }
-            .padding(20)
-            .lmsInsetGroupedCard()
-            .padding(.horizontal, 16)
         }
     }
 }
 
-// MARK: - STEP 5: Co-Applicant Optional
-private struct Step5CoApplicantView: View {
-    @Binding var hasCoApplicant: Bool
-    @Binding var coApplicantName: String
-    @Binding var coApplicantRelation: String
-    @Binding var coApplicantMobile: String
-    @Binding var coApplicantPAN: String
-    @Binding var coApplicantAadhaar: String
-    @Binding var coApplicantIncome: String
+// MARK: - STEP 5: Bank Details View
+private struct Step5BankDetailsView: View {
+    @Binding var bankName: String
+    @Binding var accountNo: String
+    @Binding var ifscCode: String
+    @Binding var registeredMobile: String
+    @Binding var monthlySalaryDeposited: String
+    @Binding var autoDebitConsent: Bool
 
     var body: some View {
-        VStack(spacing: 20) {
-            // Explanatory Banner
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Image(systemName: "sparkles")
-                        .font(.title2)
-                        .foregroundStyle(LMSColors.brandNavy)
-                    Text("Improve Your Approval Odds!")
-                        .font(LMSFont.headline)
-                        .foregroundStyle(LMSColors.brandNavy)
-                }
-                
-                Text("Adding a co-applicant (spouse or family member) with an active income source significantly strengthens your financial capability and increases your eligible loan limit.")
-                    .font(LMSFont.footnote)
-                    .foregroundStyle(LMSColors.textSecondary)
-                    .lineSpacing(4)
-                
-                Toggle("Add Co-applicant or Guarantor", isOn: $hasCoApplicant.animation())
-                    .font(LMSFont.callout.bold())
-                    .tint(LMSColors.brandNavy)
-                    .padding(.top, 8)
+        VStack(spacing: LMSSpacing.lg) {
+            WizardFormSection(title: "Primary Bank Account") {
+                WizardTextField(label: "Bank Name", text: $bankName, placeholder: "HDFC Bank, ICICI Bank, etc.")
+                FormDivider()
+                WizardTextField(label: "Account Number", text: $accountNo, placeholder: "12 to 18 Digit number", keyboardType: .numberPad)
+                FormDivider()
+                WizardTextField(label: "IFSC Code", text: $ifscCode, placeholder: "IFSC code", disableAutocapitalization: true)
             }
-            .padding(20)
-            .background(LMSColors.brandNavy.opacity(0.06))
-            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
-                    .stroke(LMSColors.brandNavy.opacity(0.16), lineWidth: 1)
-            )
-            .padding(.horizontal, 16)
             
-            if hasCoApplicant {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Co-Applicant Information")
-                        .font(LMSFont.title3)
-                        .foregroundStyle(LMSColors.textPrimary)
-                    
-                    TextField("Full Legal Name", text: $coApplicantName)
-                        .padding()
-                        .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 10))
-                    
-                    Picker("Relationship", selection: $coApplicantRelation) {
-                        Text("Spouse").tag("Spouse")
-                        Text("Parent").tag("Parent")
-                        Text("Sibling").tag("Sibling")
-                        Text("Child").tag("Child")
-                    }
-                    
-                    TextField("Mobile Number", text: $coApplicantMobile)
-                        .keyboardType(.phonePad)
-                        .padding()
-                        .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 10))
-                    
-                    TextField("PAN Card Number", text: $coApplicantPAN)
-                        .disableAutocapitalization()
-                        .padding()
-                        .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 10))
-                    
-                    TextField("Aadhaar Number", text: $coApplicantAadhaar)
-                        .keyboardType(.numberPad)
-                        .padding()
-                        .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 10))
-                    
-                    HStack {
-                        Text("Monthly Net Income")
-                        Spacer()
-                        TextField("₹ 0", text: $coApplicantIncome)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                            .font(.headline)
-                    }
-                }
-                .padding(20)
-                .lmsInsetGroupedCard()
-                .padding(.horizontal, 16)
-                .transition(.opacity.combined(with: .move(edge: .top)))
+            WizardFormSection(title: "Salary Account details") {
+                WizardMobileField(label: "Registered Mobile Number", text: $registeredMobile)
+                FormDivider()
+                WizardTextField(label: "Average Monthly Balance / Salary Deposited", text: $monthlySalaryDeposited, placeholder: "Monthly amount", keyboardType: .numberPad)
+            }
+            
+            WizardFormSection(title: "e-Mandate / Auto-debit") {
+                WizardToggleRow(
+                    label: "Authorize Auto-Debit (e-Mandate)",
+                    subtitle: "Authorize automatic repayment deduction from this bank account for seamless billing.",
+                    isOn: $autoDebitConsent
+                )
             }
         }
     }
 }
 
-// MARK: - STEP 6: Document Upload Center
-private struct Step6DocumentCenterView: View {
+// MARK: - STEP 6: Document Center
+private struct Step6DocumentCenterOverhaulView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     @Binding var stepValidationMessage: String?
     @Binding var uploadProgress: [String: Double]
     @Binding var isUploading: [String: Bool]
     @Binding var ocrStatus: [String: String]
+    let uploadLifecycle: [UUID: DocumentUploadLifecycle]
+    let thumbnails: [UUID: UIImage]
+    let uploadDates: [UUID: Date]
+    let failureReasons: [UUID: String]
+    let extractedDetails: [UUID: [String: String]]
     let onTriggerUpload: (UUID) -> Void
+    let onViewDocument: (BorrowerLoanDocumentItem) -> Void
     let onEnsureDocuments: () -> Void
 
     var body: some View {
@@ -1183,26 +1704,26 @@ private struct Step6DocumentCenterView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(20)
-                .lmsInsetGroupedCard()
+                .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 14))
                 .padding(.horizontal, 16)
             } else {
                 documentSection(
-                    title: "Identity Verification Documents",
+                    title: "Identity Credentials",
                     category: .identityVerification
                 )
                 documentSection(
-                    title: "Address Verification Documents",
+                    title: "Address Credentials",
                     category: .addressVerification
                 )
                 documentSection(
-                    title: "Income Verification Documents",
+                    title: "Income Credentials",
                     category: .incomeVerification
                 )
 
                 let loanSpecific = viewModel.documents(for: .loanSpecific)
                 if !loanSpecific.isEmpty {
                     documentSection(
-                        title: "Loan-Specific Documents",
+                        title: "Product Specific Files",
                         category: .loanSpecific
                     )
                 }
@@ -1216,32 +1737,47 @@ private struct Step6DocumentCenterView: View {
     @ViewBuilder
     private func documentSection(title: String, category: BorrowerDocumentCategory) -> some View {
         let docs = viewModel.documents(for: category)
-        VStack(alignment: .leading, spacing: 12) {
-            LMSGroupedSectionHeader(
-                title: LocalizedStringKey(title),
-                subtitle: docs.isEmpty ? "No document required for this category." : "Tap Upload on each item."
-            )
-            if docs.isEmpty {
-                Text("No document required.")
-                    .font(LMSFont.footnote)
-                    .foregroundStyle(LMSColors.textSecondary)
-                    .padding(.horizontal, 16)
-            } else {
-                VStack(spacing: 14) {
-                    ForEach(docs, id: \.id) { doc in
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased())
+                .font(LMSFont.caption2.weight(.bold))
+                .foregroundStyle(LMSColors.textSecondary)
+                .padding(.horizontal, 20)
+            
+            VStack(spacing: 0) {
+                if docs.isEmpty {
+                    Text("No document required.")
+                        .font(LMSFont.footnote)
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                } else {
+                    ForEach(Array(docs.enumerated()), id: \.element.id) { index, doc in
                         UploadRow(
                             doc: doc,
                             progress: uploadProgress[doc.name] ?? 0.0,
+                            lifecycle: uploadLifecycle[doc.id] ?? .idle,
+                            thumbnail: thumbnails[doc.id],
+                            uploadDate: uploadDates[doc.id] ?? doc.uploadDate,
+                            failureReason: failureReasons[doc.id],
+                            extractedDetails: extractedDetails[doc.id] ?? [:],
                             uploading: isUploading[doc.name] ?? false,
                             ocr: ocrStatus[doc.name] ?? "None",
-                            onTrigger: { onTriggerUpload(doc.id) }
+                            onTrigger: { onTriggerUpload(doc.id) },
+                            onView: { onViewDocument(doc) }
                         )
+                        
+                        if index < docs.count - 1 {
+                            FormDivider()
+                        }
                     }
                 }
-                .padding(12)
-                .lmsInsetGroupedCard()
-                .padding(.horizontal, 16)
             }
+            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(LMSColors.separatorLight.opacity(0.4), lineWidth: 0.8)
+            )
+            .padding(.horizontal, 16)
         }
     }
 }
@@ -1250,36 +1786,43 @@ private struct Step6DocumentCenterView: View {
 private struct UploadRow: View {
     let doc: BorrowerLoanDocumentItem
     let progress: Double
+    let lifecycle: DocumentUploadLifecycle
+    let thumbnail: UIImage?
+    let uploadDate: Date?
+    let failureReason: String?
+    let extractedDetails: [String: String]
     let uploading: Bool
     let ocr: String
     let onTrigger: () -> Void
+    let onView: () -> Void
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
-                // Doc Icon
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(doc.status == .verified ? LMSColors.emerald.opacity(0.1) : LMSColors.brandNavy.opacity(0.08))
-                        .frame(width: 44, height: 44)
-                    Image(systemName: doc.status == .verified ? "checkmark.seal.fill" : doc.status.iconName)
-                        .font(.title3)
-                        .foregroundStyle(doc.status == .verified ? LMSColors.emerald : LMSColors.brandNavy)
-                }
+                documentIcon
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(doc.name)
                         .font(LMSFont.callout.weight(.semibold))
                         .foregroundStyle(LMSColors.textPrimary)
                     
-                    if uploading {
-                        Text("Uploading \(Int(progress * 100))%...")
+                    if lifecycle == .uploading || uploading {
+                        Text("Uploading document…")
                             .font(LMSFont.caption)
                             .foregroundStyle(LMSColors.actionBlue)
-                    } else if ocr == "Scanning" {
-                        Text("⚡ OCR Extracting Data...")
+                    } else if lifecycle == .processing || ocr == "Scanning" {
+                        Text("Verifying document…")
                             .font(LMSFont.caption)
                             .foregroundStyle(LMSColors.amber)
+                    } else if lifecycle == .success || doc.status == .verified {
+                        Text("Verified Successfully")
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.emerald)
+                    } else if lifecycle == .failed || doc.status == .rejected || doc.status == .requiresResubmission {
+                        Text(failureReason ?? doc.status.rawValue)
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.coral)
+                            .lineLimit(2)
                     } else {
                         Text(doc.status.rawValue)
                             .font(LMSFont.caption)
@@ -1289,552 +1832,802 @@ private struct UploadRow: View {
                 
                 Spacer()
                 
-                if doc.status == .pendingUpload && !uploading {
+                if doc.status == .pendingUpload && !uploading && lifecycle != .processing {
                     Button(action: onTrigger) {
                         Text("Upload")
                             .font(LMSFont.caption.weight(.bold))
                             .foregroundStyle(.white)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
                             .background(LMSColors.brandNavy, in: Capsule())
                     }
                     .buttonStyle(LMSPressableStyle())
-                } else if doc.status != .pendingUpload && !uploading {
-                    // Replace / Preview Buttons
+                } else if lifecycle == .uploading || lifecycle == .processing || uploading {
+                    ProgressView()
+                        .tint(lifecycle == .processing ? LMSColors.amber : LMSColors.actionBlue)
+                } else if doc.status != .pendingUpload {
                     HStack(spacing: 8) {
                         Button(action: onTrigger) {
                             Image(systemName: "arrow.triangle.2.circlepath")
                                 .font(.footnote)
                                 .foregroundStyle(LMSColors.textSecondary)
-                                .frame(width: 32, height: 32)
+                                .frame(width: 28, height: 28)
                                 .background(LMSColors.surfaceTertiary, in: Circle())
                         }
                         
-                        Image(systemName: "eye.fill")
-                            .font(.footnote)
-                            .foregroundStyle(LMSColors.textSecondary)
-                            .frame(width: 32, height: 32)
-                            .background(LMSColors.surfaceTertiary, in: Circle())
+                        Button(action: onView) {
+                            Image(systemName: "eye.fill")
+                                .font(.footnote)
+                                .foregroundStyle(LMSColors.textSecondary)
+                                .frame(width: 28, height: 28)
+                                .background(LMSColors.surfaceTertiary, in: Circle())
+                        }
+                        .disabled(thumbnail == nil)
                     }
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             
-            if uploading {
+            if lifecycle == .uploading || uploading {
                 ProgressView(value: progress)
                     .tint(LMSColors.actionBlue)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+            } else if lifecycle == .processing || ocr == "Scanning" {
+                ProgressView()
+                    .tint(LMSColors.amber)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+            }
+
+            if lifecycle == .success || doc.status == .verified {
+                verifiedPreview
+            } else if lifecycle == .failed || doc.status == .rejected || doc.status == .requiresResubmission {
+                failurePreview
             }
         }
     }
-}
 
-// MARK: - STEP 7: OCR Extraction Review
-private struct Step7OCRExtractionView: View {
-    @Binding var ocrPANNumber: String
-    @Binding var ocrPANName: String
-    @Binding var ocrPANFather: String
-    @Binding var ocrPANDOB: Date
-    
-    @Binding var ocrAadhaarName: String
-    @Binding var ocrAadhaarDOB: Date
-    @Binding var ocrAadhaarGender: String
-    @Binding var ocrAadhaarAddress: String
-    
-    @Binding var ocrConfidence: [String: String]
-
-    var body: some View {
-        VStack(spacing: 24) {
-            // Info Header
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Image(systemName: "sparkles")
-                        .foregroundStyle(LMSColors.brandNavy)
-                    Text("Instant Smart Verification")
-                        .font(LMSFont.headline)
-                        .foregroundStyle(LMSColors.brandNavy)
-                }
-                Text("We have automatically extracted information from your uploaded Aadhaar and PAN Cards. Please review and confirm below.")
-                    .font(LMSFont.footnote)
-                    .foregroundStyle(LMSColors.textSecondary)
-            }
-            .padding(.horizontal, 16)
-            
-            // PAN Card extraction review
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Label("PAN CARD SUMMARY", systemImage: "doc.text.viewfinder")
-                        .font(LMSFont.caption.bold())
-                        .foregroundStyle(LMSColors.textSecondary)
-                    Spacer()
-                    // Confidence indicator
-                    Text("High Confidence")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(LMSColors.emerald)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(LMSColors.emerald.opacity(0.1), in: Capsule())
-                }
-                
-                VStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("PAN NUMBER")
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundStyle(LMSColors.textSecondary)
-                        TextField("PAN Number", text: $ocrPANNumber)
-                            .font(LMSFont.body.bold())
-                    }
-                    Divider()
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("FULL NAME")
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundStyle(LMSColors.textSecondary)
-                        TextField("Name", text: $ocrPANName)
-                            .font(LMSFont.body.bold())
-                    }
-                    Divider()
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("FATHER'S NAME")
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundStyle(LMSColors.textSecondary)
-                        TextField("Father's name", text: $ocrPANFather)
-                            .font(LMSFont.body.bold())
-                    }
-                }
-            }
-            .padding(20)
-            .lmsInsetGroupedCard()
-            .padding(.horizontal, 16)
-            
-            // Aadhaar Card extraction review
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Label("AADHAAR CARD SUMMARY", systemImage: "doc.text.viewfinder")
-                        .font(LMSFont.caption.bold())
-                        .foregroundStyle(LMSColors.textSecondary)
-                    Spacer()
-                    Text("High Confidence")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(LMSColors.emerald)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(LMSColors.emerald.opacity(0.1), in: Capsule())
-                }
-                
-                VStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("FULL NAME ON CARD")
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundStyle(LMSColors.textSecondary)
-                        TextField("Name", text: $ocrAadhaarName)
-                            .font(LMSFont.body.bold())
-                    }
-                    Divider()
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("GENDER")
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundStyle(LMSColors.textSecondary)
-                        TextField("Gender", text: $ocrAadhaarGender)
-                            .font(LMSFont.body.bold())
-                    }
-                    Divider()
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("ADDRESS REGISTERED")
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundStyle(LMSColors.textSecondary)
-                        TextField("Address", text: $ocrAadhaarAddress, axis: .vertical)
-                            .font(LMSFont.body.bold())
-                    }
-                }
-            }
-            .padding(20)
-            .lmsInsetGroupedCard()
-            .padding(.horizontal, 16)
-        }
-    }
-}
-
-// MARK: - STEP 8: Verification Dashboard
-private struct Step8VerificationDashboardView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
-    @Binding var hasResolvedMismatches: Bool
-    let onFixRequired: () -> Void
-
-    var body: some View {
-        VStack(spacing: 24) {
-            // Status Header Info
-            VStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .fill(hasResolvedMismatches ? LMSColors.emerald.opacity(0.1) : LMSColors.amber.opacity(0.1))
-                        .frame(width: 80, height: 80)
-                    Image(systemName: hasResolvedMismatches ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
-                        .font(.system(size: 40))
-                        .foregroundStyle(hasResolvedMismatches ? LMSColors.emerald : LMSColors.amber)
-                }
-                
-                VStack(spacing: 4) {
-                    Text(hasResolvedMismatches ? "Auto-Verification Success" : "Verification Flags Raised")
-                        .font(LMSFont.title3)
-                        .foregroundStyle(LMSColors.textPrimary)
-                    Text(hasResolvedMismatches ? "All document comparisons verified successfully." : "We noticed some mismatches. Please review the flags below.")
-                        .font(LMSFont.footnote)
-                        .foregroundStyle(LMSColors.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 16)
-                }
-            }
-            
-            // Flags Card
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Verification Summary Checklist")
-                    .font(LMSFont.caption.bold())
-                    .foregroundStyle(LMSColors.textSecondary)
-                
-                VStack(spacing: 12) {
-                    VerificationItemRow(
-                        title: "PAN Match with Income Tax Bureau",
-                        description: "Verified name matching database",
-                        status: .verified
-                    )
-                    
-                    Divider()
-                    
-                    VerificationItemRow(
-                        title: "Name Consistency check",
-                        description: hasResolvedMismatches ? "PAN & Aadhaar Name MATCH" : "Name mismatch in Aadhaar ('AKASH KASHYAP') vs Application Form ('AKASH KUMAR KASHYAP')",
-                        status: hasResolvedMismatches ? .verified : .requiresAttention
-                    )
-                    
-                    Divider()
-                    
-                    VerificationItemRow(
-                        title: "Address Verification match",
-                        description: "Current Utility bill matches Address Proof",
-                        status: .verified
-                    )
-                }
-            }
-            .padding(20)
-            .lmsInsetGroupedCard()
-            .padding(.horizontal, 16)
-            
-            // Call to Action Banner
-            if !hasResolvedMismatches {
-                VStack(spacing: 12) {
-                    Text("How would you like to resolve the name inconsistency?")
-                        .font(LMSFont.footnote.bold())
-                        .foregroundStyle(LMSColors.textPrimary)
-                    
-                    Button(action: {
-                        withAnimation {
-                            hasResolvedMismatches = true
-                            viewModel.formData.fullName = "AKASH KASHYAP" // Align with official docs
-                        }
-                    }) {
-                        Text("Use official Name from Aadhaar ('AKASH KASHYAP')")
-                            .font(LMSFont.caption.bold())
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 40)
-                            .background(LMSColors.brandNavy, in: RoundedRectangle(cornerRadius: 10))
-                    }
-                    .buttonStyle(LMSPressableStyle())
-                    
-                    Button(action: onFixRequired) {
-                        Text("Re-upload Documents / Fix Form Values")
-                            .font(LMSFont.caption.bold())
-                            .foregroundStyle(LMSColors.coral)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 40)
-                            .background(LMSColors.coral.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
-                    }
-                    .buttonStyle(LMSPressableStyle())
-                }
-                .padding(16)
-                .background(LMSColors.amber.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+    @ViewBuilder
+    private var documentIcon: some View {
+        if let thumbnail {
+            Image(uiImage: thumbnail)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 48, height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
-                        .stroke(LMSColors.amber.opacity(0.18), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(statusColor.opacity(0.35), lineWidth: 1)
                 )
-                .padding(.horizontal, 16)
+        } else {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(statusColor.opacity(0.1))
+                    .frame(width: 42, height: 42)
+                Image(systemName: statusIcon)
+                    .font(.title3)
+                    .foregroundStyle(statusColor)
             }
         }
     }
-}
 
-// Verification checklist row
-private struct VerificationItemRow: View {
-    let title: String
-    let description: String
-    let status: Style
-    
-    enum Style { case verified, requiresAttention }
-    
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: status == .verified ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                .font(.system(size: 20))
-                .foregroundStyle(status == .verified ? LMSColors.emerald : LMSColors.amber)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(LMSFont.callout.bold())
-                    .foregroundStyle(LMSColors.textPrimary)
-                Text(description)
+    private var verifiedPreview: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Document Verified", systemImage: "checkmark.seal.fill")
+                    .font(LMSFont.caption.weight(.bold))
+                    .foregroundStyle(LMSColors.emerald)
+                Spacer()
+                if let uploadDate {
+                    Text(uploadDate.formattedAsDDMMMYYYY())
+                        .font(LMSFont.caption2)
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+            }
+
+            if !extractedDetails.isEmpty {
+                Text("We extracted the following details. Please verify.")
                     .font(LMSFont.caption)
                     .foregroundStyle(LMSColors.textSecondary)
-                    .lineLimit(3)
+
+                ForEach(extractedDetails.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
+                    HStack {
+                        Text(key)
+                            .font(LMSFont.caption2)
+                            .foregroundStyle(LMSColors.textSecondary)
+                        Spacer()
+                        Text(value)
+                            .font(LMSFont.caption2.weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                }
             }
-            Spacer()
+
+            HStack(spacing: 10) {
+                Button("Replace", action: onTrigger)
+                    .font(LMSFont.caption.weight(.bold))
+                Button("View Document", action: onView)
+                    .font(LMSFont.caption.weight(.bold))
+                    .disabled(thumbnail == nil)
+            }
+            .foregroundStyle(LMSColors.brandNavy)
+        }
+        .padding(12)
+        .background(LMSColors.emerald.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(LMSColors.emerald.opacity(0.18), lineWidth: 0.8)
+        )
+        .padding(.horizontal, 16)
+        .padding(.bottom, 12)
+    }
+
+    private var failurePreview: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Verification Failed", systemImage: "xmark.octagon.fill")
+                .font(LMSFont.caption.weight(.bold))
+                .foregroundStyle(LMSColors.coral)
+            Text(failureReason ?? "The uploaded file does not match the selected document type. Please try again with a clear image.")
+                .font(LMSFont.caption)
+                .foregroundStyle(LMSColors.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Retry Upload", action: onTrigger)
+                .font(LMSFont.caption.weight(.bold))
+                .foregroundStyle(LMSColors.brandNavy)
+        }
+        .padding(12)
+        .background(LMSColors.coral.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(LMSColors.coral.opacity(0.18), lineWidth: 0.8)
+        )
+        .padding(.horizontal, 16)
+        .padding(.bottom, 12)
+    }
+
+    private var statusIcon: String {
+        switch lifecycle {
+        case .uploading: return "arrow.up.doc.fill"
+        case .processing: return "viewfinder"
+        case .success: return "checkmark.seal.fill"
+        case .failed: return "xmark.octagon.fill"
+        case .idle: return doc.status == .verified ? "checkmark.seal.fill" : doc.status.iconName
+        }
+    }
+
+    private var statusColor: Color {
+        switch lifecycle {
+        case .uploading: return LMSColors.actionBlue
+        case .processing: return LMSColors.amber
+        case .success: return LMSColors.emerald
+        case .failed: return LMSColors.coral
+        case .idle: return doc.status == .verified ? LMSColors.emerald : doc.status.tintColor
         }
     }
 }
 
-// MARK: - STEP 9: Credit & Risk Assessment
-private struct Step9RiskAssessmentView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+// MARK: - STEP 7: Signature & Selfie View
+private struct Step7SignaturePhotoView: View {
+    @Binding var signatureImage: UIImage?
+    @Binding var isSignatureEmpty: Bool
+    @Binding var liveVerificationCompleted: Bool
+    let onStartLiveVerification: () -> Void
+    @State private var signatureCanvasID = UUID()
 
     var body: some View {
-        VStack(spacing: 24) {
-            // Analytics Dashboard
-            VStack(spacing: 20) {
-                // Score Gauge
-                VStack(spacing: 8) {
-                    Text("Bureau Credit Score")
-                        .font(LMSFont.caption.bold())
-                        .foregroundStyle(LMSColors.textSecondary)
-                    
+        VStack(spacing: LMSSpacing.lg) {
+            VStack(alignment: .center, spacing: 8) {
+                Image(systemName: "face.id")
+                    .font(.system(size: 40))
+                    .foregroundStyle(LMSColors.brandNavy)
+                Text("Verification Proofs")
+                    .font(LMSFont.title3.weight(.bold))
+                    .foregroundStyle(LMSColors.textPrimary)
+                Text("Complete a live face check and draw your signature to finish identity verification.")
+                    .font(LMSFont.caption)
+                    .foregroundStyle(LMSColors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+
+            WizardFormSection(title: "Live Selfie Status") {
+                HStack(spacing: 16) {
                     ZStack {
                         Circle()
-                            .trim(from: 0, to: 0.75)
-                            .stroke(LMSColors.separatorLight, style: StrokeStyle(lineWidth: 12, lineCap: .round))
-                            .frame(width: 140, height: 140)
-                            .rotationEffect(.degrees(135))
-                        
-                        Circle()
-                            .trim(from: 0, to: 0.75 * (780.0 / 900.0))
-                            .stroke(LMSColors.emerald, style: StrokeStyle(lineWidth: 12, lineCap: .round))
-                            .frame(width: 140, height: 140)
-                            .rotationEffect(.degrees(135))
-                        
-                        VStack(spacing: 2) {
-                            Text("780")
-                                .font(.system(size: 38, weight: .black, design: .rounded))
-                                .foregroundStyle(LMSColors.textPrimary)
-                            Text("Excellent Score")
-                                .font(LMSFont.caption.bold())
-                                .foregroundStyle(LMSColors.emerald)
-                        }
+                            .fill(LMSColors.surfaceTertiary)
+                            .frame(width: 54, height: 54)
+                        Image(systemName: "person.crop.circle.badge.checkmark")
+                            .font(.title2)
+                            .foregroundStyle(liveVerificationCompleted ? LMSColors.emerald : LMSColors.textTertiary)
                     }
-                    .frame(height: 150)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Live Facial Verification")
+                            .font(LMSFont.body.weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                        Text(liveVerificationCompleted ? "Live verification completed" : "Record a 10 second live face check")
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+
+                    Spacer()
+
+                    if liveVerificationCompleted {
+                        Text("Verified")
+                            .font(LMSFont.caption.weight(.bold))
+                            .foregroundStyle(LMSColors.emerald)
+                    } else {
+                        Button("Start") {
+                            onStartLiveVerification()
+                        }
+                        .font(LMSFont.caption.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(LMSColors.brandNavy, in: Capsule())
+                    }
                 }
-                
-                Divider()
-                
-                // Active Obligations Details
-                HStack(spacing: 12) {
-                    MetricBadge(title: "Risk Grade", value: "Grade A", color: LMSColors.emerald)
-                    MetricBadge(title: "Active Loans", value: "0", color: LMSColors.textSecondary)
-                    MetricBadge(title: "Total Liabilities", value: "₹ 12K", color: LMSColors.brandNavy)
-                }
-            }
-            .padding(20)
-            .lmsInsetGroupedCard()
-            .padding(.horizontal, 16)
-            
-            // Health Indicators List
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Underwriting Assessment Details")
-                    .font(LMSFont.caption.bold())
-                    .foregroundStyle(LMSColors.textSecondary)
-                    .padding(.horizontal, 16)
-                
-                VStack(spacing: 14) {
-                    AssessmentRow(title: "Debt-to-Income Ratio (DTI)", value: "15%", indicator: .green)
-                    Divider()
-                    AssessmentRow(title: "Income Stability index", value: "Verified (3+ Yrs)", indicator: .green)
-                    Divider()
-                    AssessmentRow(title: "Banking Behavior Conduct", value: "Excellent", indicator: .green)
-                    Divider()
-                    AssessmentRow(title: "Financial Reserve Health", value: "Strong Liquid Reserves", indicator: .green)
-                }
-                .padding(20)
-                .lmsInsetGroupedCard()
                 .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+            }
+
+            WizardFormSection(title: "Digital Signature") {
+                VStack(spacing: 12) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Draw Signature")
+                                .font(LMSFont.body.weight(.semibold))
+                                .foregroundStyle(LMSColors.textPrimary)
+                            Text("Will be embedded in loan contract")
+                                .font(LMSFont.caption)
+                                .foregroundStyle(LMSColors.textSecondary)
+                        }
+                        Spacer()
+                        Image(systemName: "signature")
+                            .font(.title3)
+                            .foregroundStyle(LMSColors.brandNavy)
+                    }
+
+                    SignatureCanvasView(
+                        signatureImage: $signatureImage,
+                        isEmpty: $isSignatureEmpty,
+                        canvasID: signatureCanvasID
+                    )
+                    .frame(height: 150)
+                    .background(LMSColors.surfaceTertiary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(isSignatureEmpty ? LMSColors.coral.opacity(0.35) : LMSColors.separatorLight, lineWidth: 1)
+                    )
+
+                    if isSignatureEmpty {
+                        Text("Please provide your signature")
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.coral)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    HStack {
+                        Button("Clear Signature") {
+                            signatureCanvasID = UUID()
+                            signatureImage = nil
+                            isSignatureEmpty = true
+                        }
+                        .font(LMSFont.caption.weight(.bold))
+                        .foregroundStyle(LMSColors.coral)
+
+                        Spacer()
+
+                        Button("Redraw Signature") {
+                            signatureCanvasID = UUID()
+                            signatureImage = nil
+                            isSignatureEmpty = true
+                        }
+                        .font(LMSFont.caption.weight(.bold))
+                        .foregroundStyle(LMSColors.brandNavy)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
             }
         }
     }
 }
 
-// Underwriting Assessment Row Component
-private struct AssessmentRow: View {
-    let title: String
-    let value: String
-    let indicator: Style
-    
-    enum Style { case green, yellow, red }
-    
-    var color: Color {
-        switch indicator {
-        case .green: return LMSColors.emerald
-        case .yellow: return LMSColors.amber
-        case .red: return LMSColors.coral
+private struct SignatureCanvasView: UIViewRepresentable {
+    @Binding var signatureImage: UIImage?
+    @Binding var isEmpty: Bool
+    let canvasID: UUID
+
+    func makeUIView(context: Context) -> SignatureCanvasUIView {
+        let view = SignatureCanvasUIView()
+        view.onChange = { image, empty in
+            signatureImage = image
+            isEmpty = empty
+        }
+        return view
+    }
+
+    func updateUIView(_ uiView: SignatureCanvasUIView, context: Context) {
+        if context.coordinator.canvasID != canvasID {
+            context.coordinator.canvasID = canvasID
+            uiView.clear()
         }
     }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(canvasID: canvasID)
+    }
+
+    final class Coordinator {
+        var canvasID: UUID
+        init(canvasID: UUID) {
+            self.canvasID = canvasID
+        }
+    }
+}
+
+private final class SignatureCanvasUIView: UIView {
+    var onChange: ((UIImage?, Bool) -> Void)?
+    private var lines: [[CGPoint]] = []
+    private var currentLine: [CGPoint] = []
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .clear
+        isMultipleTouchEnabled = false
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        currentLine = touches.compactMap { $0.location(in: self) }
+        setNeedsDisplay()
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        currentLine.append(contentsOf: touches.map { $0.location(in: self) })
+        setNeedsDisplay()
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        currentLine.append(contentsOf: touches.map { $0.location(in: self) })
+        if currentLine.count > 1 {
+            lines.append(currentLine)
+        }
+        currentLine = []
+        setNeedsDisplay()
+        onChange?(renderImage(), lines.isEmpty)
+    }
+
+    override func draw(_ rect: CGRect) {
+        guard let context = UIGraphicsGetCurrentContext() else { return }
+        context.setStrokeColor(UIColor.label.cgColor)
+        context.setLineWidth(3)
+        context.setLineCap(.round)
+        context.setLineJoin(.round)
+        for line in lines + [currentLine] where line.count > 1 {
+            context.beginPath()
+            context.move(to: line[0])
+            for point in line.dropFirst() {
+                context.addLine(to: point)
+            }
+            context.strokePath()
+        }
+    }
+
+    func clear() {
+        lines = []
+        currentLine = []
+        setNeedsDisplay()
+        onChange?(nil, true)
+    }
+
+    private func renderImage() -> UIImage? {
+        guard !lines.isEmpty else { return nil }
+        let renderer = UIGraphicsImageRenderer(bounds: bounds)
+        return renderer.image { _ in
+            drawHierarchy(in: bounds, afterScreenUpdates: true)
+        }
+    }
+}
+
+private struct LiveFaceVerificationView: View {
+    let onComplete: (String) -> Void
+    let onCancel: () -> Void
+    @StateObject private var camera = LiveFaceCameraController()
 
     var body: some View {
-        HStack {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(color)
-                    .frame(width: 8, height: 8)
-                Text(title)
-                    .font(LMSFont.callout)
-                    .foregroundStyle(LMSColors.textPrimary)
+        ZStack {
+            LiveFaceCameraPreview(session: camera.session)
+                .ignoresSafeArea()
+
+            VStack {
+                HStack {
+                    Button("Cancel", action: onCancel)
+                        .font(LMSFont.body.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(12)
+                        .background(.black.opacity(0.45), in: Capsule())
+                    Spacer()
+                    Label("Recording...", systemImage: "record.circle.fill")
+                        .font(LMSFont.caption.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(10)
+                        .background(.red.opacity(0.75), in: Capsule())
+                }
+                .padding()
+
+                Spacer()
+
+                RoundedRectangle(cornerRadius: 120, style: .continuous)
+                    .stroke(camera.faceDetected ? LMSColors.emerald : LMSColors.coral, lineWidth: 3)
+                    .frame(width: 230, height: 300)
+                    .overlay(alignment: .top) {
+                        Text(camera.faceDetected ? "Keep face inside frame" : "Face not detected")
+                            .font(LMSFont.caption.weight(.bold))
+                            .foregroundStyle(.white)
+                            .padding(8)
+                            .background(.black.opacity(0.50), in: Capsule())
+                            .padding(.top, -38)
+                    }
+
+                Spacer()
+
+                VStack(spacing: 8) {
+                    Text(camera.statusText)
+                        .font(LMSFont.title3.weight(.bold))
+                        .foregroundStyle(.white)
+                    Text(String(format: "%02d", camera.remainingSeconds))
+                        .font(.system(size: 52, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+                .padding(.bottom, 44)
             }
-            Spacer()
-            Text(value)
-                .font(LMSFont.callout.bold())
-                .foregroundStyle(LMSColors.textSecondary)
+        }
+        .background(Color.black)
+        .onAppear {
+            camera.start { success in
+                if success {
+                    onComplete("LIVE-\(Int(Date().timeIntervalSince1970))")
+                }
+            }
+        }
+        .onDisappear {
+            camera.stop()
+        }
+        .alert("Face not detected. Please try again.", isPresented: $camera.showFailureAlert) {
+            Button("Try Again") {
+                camera.restart()
+            }
+            Button("Cancel", role: .cancel, action: onCancel)
         }
     }
 }
 
-// MARK: - STEP 10: Application Review
-private struct Step10ApplicationReviewView: View {
+private struct LiveFaceCameraPreview: UIViewRepresentable {
+    let session: AVCaptureSession
+
+    func makeUIView(context: Context) -> PreviewView {
+        let view = PreviewView()
+        view.videoPreviewLayer.session = session
+        view.videoPreviewLayer.videoGravity = .resizeAspectFill
+        return view
+    }
+
+    func updateUIView(_ uiView: PreviewView, context: Context) {}
+
+    final class PreviewView: UIView {
+        override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+        var videoPreviewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+    }
+}
+
+private final class LiveFaceCameraController: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
+    let session = AVCaptureSession()
+    @Published var remainingSeconds = 10
+    @Published var faceDetected = false
+    @Published var statusText = "Recording..."
+    @Published var showFailureAlert = false
+    private var timer: Timer?
+    private var detectedFrames = 0
+    private var totalFrames = 0
+    private var completion: ((Bool) -> Void)?
+
+    func start(completion: @escaping (Bool) -> Void) {
+        self.completion = completion
+        configureSessionIfNeeded()
+        detectedFrames = 0
+        totalFrames = 0
+        remainingSeconds = 10
+        showFailureAlert = false
+        DispatchQueue.global(qos: .userInitiated).async {
+            if !self.session.isRunning {
+                self.session.startRunning()
+            }
+        }
+        startTimer()
+    }
+
+    func restart() {
+        start(completion: completion ?? { _ in })
+    }
+
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+        if session.isRunning {
+            DispatchQueue.global(qos: .userInitiated).async {
+                self.session.stopRunning()
+            }
+        }
+    }
+
+    private func configureSessionIfNeeded() {
+        guard session.inputs.isEmpty else { return }
+        session.beginConfiguration()
+        session.sessionPreset = .medium
+        if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
+           let input = try? AVCaptureDeviceInput(device: device),
+           session.canAddInput(input) {
+            session.addInput(input)
+        }
+        let output = AVCaptureVideoDataOutput()
+        output.setSampleBufferDelegate(self, queue: DispatchQueue(label: "live-face-verification"))
+        if session.canAddOutput(output) {
+            session.addOutput(output)
+        }
+        session.commitConfiguration()
+    }
+
+    private func startTimer() {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
+            guard let self else { return }
+            self.remainingSeconds -= 1
+            if self.remainingSeconds <= 0 {
+                timer.invalidate()
+                let success = self.totalFrames > 0 && Double(self.detectedFrames) / Double(self.totalFrames) > 0.35
+                self.stop()
+                if success {
+                    self.statusText = "Verified"
+                    self.completion?(true)
+                } else {
+                    self.statusText = "Face not detected"
+                    self.showFailureAlert = true
+                }
+            }
+        }
+    }
+
+    nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        let request = VNDetectFaceRectanglesRequest { [weak self] request, _ in
+            let hasFace = !(request.results as? [VNFaceObservation] ?? []).isEmpty
+            Task { @MainActor in
+                guard let self else { return }
+                self.totalFrames += 1
+                if hasFace {
+                    self.detectedFrames += 1
+                }
+                self.faceDetected = hasFace
+            }
+        }
+        try? VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .leftMirrored, options: [:]).perform([request])
+    }
+}
+
+// MARK: - STEP 8: Nominee & References View
+private struct Step8NomineeReferencesView: View {
+    @Binding var nomineeName: String
+    @Binding var nomineeRelation: String
+    @Binding var nomineeMobile: String
+    
+    @Binding var refName: String
+    @Binding var refPhone: String
+
+    var body: some View {
+        VStack(spacing: LMSSpacing.lg) {
+            WizardFormSection(title: "Nominee Information") {
+                WizardTextField(label: "Full Name", text: $nomineeName, placeholder: "Nominee's full legal name")
+                FormDivider()
+                WizardPickerRow(label: "Relationship", selection: $nomineeRelation, options: ["", "Spouse", "Parent", "Sibling", "Child"]) { option in
+                    option.isEmpty ? "Select Relationship" : option
+                }
+                FormDivider()
+                WizardMobileField(label: "Mobile Number", text: $nomineeMobile)
+            }
+            
+            WizardFormSection(title: "Emergency Reference Contact") {
+                WizardTextField(label: "Reference Full Name", text: $refName, placeholder: "Friend or colleague name")
+                FormDivider()
+                WizardMobileField(label: "Reference Mobile Number", text: $refPhone)
+            }
+        }
+    }
+}
+
+// MARK: - STEP 9: Review Details View
+private struct Step9ReviewOverhaulView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     let onEditStep: (Int) -> Void
 
     var body: some View {
-        VStack(spacing: 24) {
-            // Completeness gauge banner
-            VStack(spacing: 12) {
-                HStack(spacing: 16) {
-                    ZStack {
-                        Circle()
-                            .stroke(LMSColors.emerald.opacity(0.12), lineWidth: 8)
-                            .frame(width: 60, height: 60)
-                        Circle()
-                            .trim(from: 0, to: 0.98)
-                            .stroke(LMSColors.emerald, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                            .frame(width: 60, height: 60)
-                            .rotationEffect(.degrees(-90))
-                        
-                        Text("98%")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(LMSColors.emerald)
-                    }
+        VStack(spacing: LMSSpacing.lg) {
+            VStack(alignment: .center, spacing: 8) {
+                ZStack {
+                    Circle()
+                        .stroke(LMSColors.emerald.opacity(0.15), lineWidth: 6)
+                        .frame(width: 56, height: 56)
+                    Circle()
+                        .trim(from: 0, to: 0.98)
+                        .stroke(LMSColors.emerald, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                        .frame(width: 56, height: 56)
+                        .rotationEffect(.degrees(-90))
                     
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Application is ready!")
-                            .font(LMSFont.headline)
-                            .foregroundStyle(LMSColors.textPrimary)
-                        Text("Please double check information before submitting.")
-                            .font(LMSFont.footnote)
-                            .foregroundStyle(LMSColors.textSecondary)
-                    }
-                    Spacer()
+                    Text("98%")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(LMSColors.emerald)
                 }
+                
+                Text("Verification Ready!")
+                    .font(LMSFont.title3.weight(.bold))
+                    .foregroundStyle(LMSColors.brandNavy)
+                Text("Please confirm the details below match your expectations.")
+                    .font(LMSFont.caption)
+                    .foregroundStyle(LMSColors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+            
+            WizardFormSection(title: "Loan Preferences") {
+                WizardInlineValueRow(label: "Selected Product", value: product.type.title)
+                FormDivider()
+                WizardInlineValueRow(label: "Requested Limit", value: viewModel.formData.requestedAmountValue.formattedAsINR(), valueColor: LMSColors.brandNavy)
+                FormDivider()
+                WizardInlineValueRow(label: "Tenure Period", value: "\(viewModel.formData.preferredTenureMonths) Months")
+            }
+            
+            WizardFormSection(title: "Personal Profile") {
+                WizardInlineValueRow(label: "Full Name", value: viewModel.formData.fullName)
+                FormDivider()
+                WizardInlineValueRow(label: "Date of Birth", value: viewModel.formData.dateOfBirth.formattedAsDDMMMYYYY())
+                FormDivider()
+                WizardInlineValueRow(label: "Contact Email", value: viewModel.formData.emailAddress)
+            }
+            
+            WizardFormSection(title: "Employment Credentials") {
+                WizardInlineValueRow(label: "Employment Type", value: viewModel.formData.employmentType)
+                FormDivider()
+                WizardInlineValueRow(label: "Company / Employer", value: viewModel.formData.employerName)
+                FormDivider()
+                WizardInlineValueRow(label: "Net Income", value: viewModel.formData.monthlyIncomeValue.formattedAsINR())
+            }
+        }
+    }
+}
+
+// MARK: - STEP 10: Consent & Terms
+private struct Step10TermsConsentView: View {
+    @ObservedObject var viewModel: LoanApplicationViewModel
+    let product: BorrowerLoanProduct
+    @Binding var acceptTerms: Bool
+    @Binding var acceptBureau: Bool
+    @Binding var acceptDebit: Bool
+
+    private let maxPurposeLength = 500
+
+    var body: some View {
+        VStack(spacing: LMSSpacing.lg) {
+            VStack(alignment: .center, spacing: 8) {
+                Image(systemName: "text.badge.checkmark")
+                    .font(.system(size: 40))
+                    .foregroundStyle(LMSColors.brandNavy)
+                
+                Text("Agreement & Submission")
+                    .font(LMSFont.title3.weight(.bold))
+                    .foregroundStyle(LMSColors.textPrimary)
+                
+                Text("Verify the final conditions. Submitting starts instant processing.")
+                    .font(LMSFont.caption)
+                    .foregroundStyle(LMSColors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+
+            loanPurposeSection
+            
+            WizardFormSection(title: "Consent Checklist") {
+                WizardToggleRow(label: "Accept Terms & Conditions", subtitle: "I agree to terms, processing regulations, and verification policies.", isOn: $acceptTerms)
+                FormDivider()
+                WizardToggleRow(label: "Bureau Verification Consent", subtitle: "I permit inquiry of my credit bureau logs (CIBIL/Equifax) for verification.", isOn: $acceptBureau)
+                FormDivider()
+                WizardToggleRow(label: "Auto-Debit Agreement", subtitle: "I consent to repayments auto-deducting monthly per configuration.", isOn: $acceptDebit)
+            }
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Premium Fintech Security Assured", systemImage: "shield.safebox.fill")
+                    .font(LMSFont.caption.weight(.bold))
+                    .foregroundStyle(LMSColors.emerald)
+                Text("All connections are encrypted with Bank-grade AES-256 standard and strict compliance norms.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(LMSColors.textSecondary)
+            }
+            .padding(14)
+            .background(LMSColors.emerald.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(LMSColors.emerald.opacity(0.14), lineWidth: 0.8)
+            )
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private var loanPurposeSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("LOAN PURPOSE")
+                .font(LMSFont.caption2.weight(.bold))
+                .foregroundStyle(LMSColors.textSecondary)
+                .padding(.horizontal, 4)
+
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Loan Purpose")
+                        .font(LMSFont.body.weight(.semibold))
+                        .foregroundStyle(LMSColors.textPrimary)
+                    Text("Tell us why you are applying for this loan.")
+                        .font(LMSFont.caption)
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+
+                TextEditor(text: Binding(
+                    get: { viewModel.formData.loanPurpose },
+                    set: { newValue in
+                        viewModel.formData.loanPurpose = String(newValue.prefix(maxPurposeLength))
+                        viewModel.autosaveDraft()
+                    }
+                ))
+                .font(LMSFont.body)
+                .foregroundStyle(LMSColors.textPrimary)
+                .scrollContentBackground(.hidden)
+                .frame(minHeight: 120)
+                .padding(10)
+                .background(LMSColors.surfaceTertiary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(alignment: .topLeading) {
+                    if viewModel.formData.loanPurpose.isEmpty {
+                        Text("Home renovation\nMedical expenses\nEducation fees\nBusiness expansion\nDebt consolidation\nVehicle purchase")
+                            .font(LMSFont.body)
+                            .foregroundStyle(LMSColors.textTertiary)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 18)
+                            .allowsHitTesting(false)
+                    }
+                }
+
+                Text("\(viewModel.formData.loanPurpose.count) / \(maxPurposeLength)")
+                    .font(LMSFont.caption2.weight(.medium))
+                    .foregroundStyle(viewModel.formData.loanPurpose.count > maxPurposeLength ? LMSColors.coral : LMSColors.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .padding(16)
-            .background(LMSColors.emerald.opacity(0.06))
-            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-            .padding(.horizontal, 16)
-            
-            // Section 1: Loan & Financial context
-            VStack(alignment: .leading, spacing: 14) {
-                SectionHeaderRow(title: "Requested Loan Details", step: 2, onEdit: onEditStep)
-                ReviewLabeledRow(label: "Selected Product", value: product.type.title)
-                ReviewLabeledRow(label: "Requested Amount", value: viewModel.formData.requestedAmountValue.formattedAsINR())
-                ReviewLabeledRow(label: "Preferred Tenure", value: "\(viewModel.formData.preferredTenureMonths) months")
-            }
-            .padding(20)
-            .lmsInsetGroupedCard()
-            .padding(.horizontal, 16)
-            
-            // Section 2: Personal Details
-            VStack(alignment: .leading, spacing: 14) {
-                SectionHeaderRow(title: "Personal Information", step: 3, onEdit: onEditStep)
-                ReviewLabeledRow(label: "Full Legal Name", value: viewModel.formData.fullName)
-                ReviewLabeledRow(label: "Date of Birth", value: viewModel.formData.dateOfBirth.formattedAsDDMMMYYYY())
-                ReviewLabeledRow(label: "Mobile Contact", value: viewModel.formData.mobileNumber)
-                ReviewLabeledRow(label: "Email Address", value: viewModel.formData.emailAddress)
-                ReviewLabeledRow(label: "Residential Address", value: viewModel.formData.address)
-            }
-            .padding(20)
-            .lmsInsetGroupedCard()
-            .padding(.horizontal, 16)
-            
-            // Section 3: Employment Details
-            VStack(alignment: .leading, spacing: 14) {
-                SectionHeaderRow(title: "Employment Details", step: 4, onEdit: onEditStep)
-                ReviewLabeledRow(label: "Employment Type", value: viewModel.formData.employmentType)
-                ReviewLabeledRow(label: "Employer / Business Name", value: viewModel.formData.employerName)
-                ReviewLabeledRow(label: "Monthly Take Home / Income", value: viewModel.formData.monthlyIncomeValue.formattedAsINR())
-            }
-            .padding(20)
-            .lmsInsetGroupedCard()
-            .padding(.horizontal, 16)
-
-            // Section 4: Uploaded Documents
-            VStack(alignment: .leading, spacing: 14) {
-                SectionHeaderRow(title: "Uploaded Documents", step: 6, onEdit: onEditStep)
-                if viewModel.documents.isEmpty {
-                    ReviewLabeledRow(label: "Status", value: "No documents attached")
-                } else {
-                    ForEach(viewModel.documents, id: \.id) { doc in
-                        ReviewLabeledRow(label: doc.name, value: doc.status.rawValue)
-                    }
-                }
-            }
-            .padding(20)
-            .lmsInsetGroupedCard()
-            .padding(.horizontal, 16)
+            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(LMSColors.separatorLight.opacity(0.4), lineWidth: 0.8)
+            )
+            .shadow(color: Color.black.opacity(0.015), radius: 6, x: 0, y: 3)
         }
+        .padding(.horizontal, 16)
     }
 }
 
-// Inline Section Header Row
-private struct SectionHeaderRow: View {
-    let title: String
-    let step: Int
-    let onEdit: (Int) -> Void
-
-    var body: some View {
-        HStack {
-            Text(title)
-                .font(LMSFont.title3)
-                .foregroundStyle(LMSColors.textPrimary)
-            Spacer()
-            Button(action: { onEdit(step) }) {
-                Text("Edit")
-                    .font(LMSFont.caption.bold())
-                    .foregroundStyle(LMSColors.actionBlue)
-            }
-        }
-        .padding(.bottom, 4)
-    }
-}
-
-// Inline Labeled Row for Summaries
-private struct ReviewLabeledRow: View {
-    let label: String
-    let value: String
-
-    var body: some View {
-        HStack(alignment: .top) {
-            Text(label)
-                .font(LMSFont.body)
-                .foregroundStyle(LMSColors.textSecondary)
-            Spacer()
-            Text(value)
-                .font(LMSFont.body.bold())
-                .foregroundStyle(LMSColors.textPrimary)
-                .multilineTextAlignment(.trailing)
-        }
-    }
-}
 
 // MARK: - Upload Source Selection Sheet
 private struct UploadSourceSelectionSheet: View {
@@ -1843,14 +2636,14 @@ private struct UploadSourceSelectionSheet: View {
     let onSelect: (BorrowerDocumentUploadSource) -> Void
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: LMSSpacing.lg) {
             Text("Select Document Source")
                 .font(LMSFont.title3)
                 .foregroundStyle(LMSColors.textPrimary)
-                .padding(.top, 24)
+                .padding(.top, 18)
             
-            VStack(spacing: 12) {
-                ForEach(BorrowerDocumentUploadSource.allCases, id: \.self) { source in
+            VStack(spacing: LMSSpacing.sm) {
+                ForEach(BorrowerDocumentUploadSource.mobileSources, id: \.self) { source in
                     Button(action: {
                         selectedSource = source
                         isPresented = false
@@ -1865,16 +2658,21 @@ private struct UploadSourceSelectionSheet: View {
                                     .font(.headline)
                                     .foregroundStyle(LMSColors.brandNavy)
                             }
-                            Text(source.rawValue)
-                                .font(LMSFont.headline)
-                                .foregroundStyle(LMSColors.textPrimary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(source.rawValue)
+                                    .font(LMSFont.callout.weight(.semibold))
+                                    .foregroundStyle(LMSColors.textPrimary)
+                                Text(source.sourceDescription)
+                                    .font(LMSFont.caption)
+                                    .foregroundStyle(LMSColors.textSecondary)
+                            }
                             Spacer()
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 14, weight: .bold))
                                 .foregroundStyle(LMSColors.textTertiary)
                         }
-                        .padding()
-                        .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 12))
+                        .padding(LMSSpacing.md)
+                        .background(LMSColors.surfaceElevated, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
                     }
                     .buttonStyle(LMSPressableStyle())
                 }
@@ -1883,11 +2681,81 @@ private struct UploadSourceSelectionSheet: View {
             
             Spacer()
         }
-        .presentationDetents([.height(380)])
-        .lmsScreenBackground()
+        .presentationDetents([.height(250)])
+        .presentationDragIndicator(.visible)
+        .background(.regularMaterial)
     }
 }
 
+private struct DocumentImagePicker: UIViewControllerRepresentable {
+    let sourceType: UIImagePickerController.SourceType
+    let onImagePicked: (UIImage) -> Void
+    let onCancel: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onImagePicked: onImagePicked, onCancel: onCancel)
+    }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = UIImagePickerController.isSourceTypeAvailable(sourceType) ? sourceType : .photoLibrary
+        picker.mediaTypes = ["public.image"]
+        picker.allowsEditing = false
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        let onImagePicked: (UIImage) -> Void
+        let onCancel: () -> Void
+
+        init(onImagePicked: @escaping (UIImage) -> Void, onCancel: @escaping () -> Void) {
+            self.onImagePicked = onImagePicked
+            self.onCancel = onCancel
+        }
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let image = info[.originalImage] as? UIImage {
+                onImagePicked(image)
+            } else {
+                onCancel()
+            }
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            onCancel()
+        }
+    }
+}
+
+private extension CGImagePropertyOrientation {
+    init(_ orientation: UIImage.Orientation) {
+        switch orientation {
+        case .up:
+            self = .up
+        case .upMirrored:
+            self = .upMirrored
+        case .down:
+            self = .down
+        case .downMirrored:
+            self = .downMirrored
+        case .left:
+            self = .left
+        case .leftMirrored:
+            self = .leftMirrored
+        case .right:
+            self = .right
+        case .rightMirrored:
+            self = .rightMirrored
+        @unknown default:
+            self = .up
+        }
+    }
+}
+
+// MARK: - Preview Support
 #Preview("Loan Wizard") {
     let viewModel = PreviewSupport.loanApplicationViewModel
     let product = BorrowerLoanProduct.sampleProducts.first(where: { $0.type == .personal }) ?? BorrowerLoanProduct.sampleProducts[0]

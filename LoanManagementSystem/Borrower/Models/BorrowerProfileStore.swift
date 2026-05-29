@@ -2,22 +2,22 @@ import Foundation
 import Combine
 import Supabase
 
-struct UserAccount: Codable {
-    var email: String
-    var passwordHash: String
-    var customerId: String
-    var fullName: String
-    var mobile: String
-    var isOnboardingCompleted: Bool
-    var profile: BorrowerProfile?
+public struct UserAccount: Codable {
+    public var email: String
+    public var passwordHash: String
+    public var customerId: String
+    public var fullName: String
+    public var mobile: String
+    public var isOnboardingCompleted: Bool
+    public var profile: BorrowerProfile?
 }
 
 @MainActor
-class BorrowerProfileStore: ObservableObject {
-    static let shared = BorrowerProfileStore()
+public class BorrowerProfileStore: ObservableObject {
+    public static let shared = BorrowerProfileStore()
 
-    @Published var profile: BorrowerProfile?
-    @Published var accounts: [UserAccount] = []
+    @Published public var profile: BorrowerProfile?
+    @Published public var accounts: [UserAccount] = []
     @Published var currentEmail: String?
 
     private init() {
@@ -104,6 +104,18 @@ class BorrowerProfileStore: ObservableObject {
         self.currentEmail = cleanedEmail
 
         Task {
+            if let currentUser = AuthManager.shared.currentUser,
+               currentUser.email?.lowercased() == cleanedEmail {
+                await fetchProfileFromSupabase(
+                    uid: currentUser.uid,
+                    email: cleanedEmail,
+                    name: name,
+                    phone: phone,
+                    alternatePhone: alternatePhone
+                )
+                return
+            }
+
             if let session = try? await SupabaseManager.shared.client.auth.session {
                 let user = session.user
                 if user.email?.lowercased() == cleanedEmail {

@@ -2,6 +2,8 @@ import SwiftUI
 import PhotosUI
 
 struct ProfileHeaderView: View {
+    private let avatarSize: CGFloat = 120
+
     var name: String
     var id: String
     var completionPercentage: Int
@@ -16,21 +18,7 @@ struct ProfileHeaderView: View {
             // Native circular avatar
             PhotosPicker(selection: $selectedItem, matching: .images) {
                 ZStack(alignment: .bottomTrailing) {
-                    Group {
-                        if let imageData = imageData, let uiImage = UIImage(data: imageData) {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFill()
-                        } else {
-                            Image(systemName: "person.crop.circle.fill")
-                                .resizable()
-                                .scaledToFit()
-                                .foregroundStyle(.secondary.opacity(0.3))
-                        }
-                    }
-                    .frame(width: 120, height: 120)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(Color(.separator), lineWidth: 0.5))
+                    avatarImage
                     
                     // Edit button badge
                     Image(systemName: "camera.fill")
@@ -89,7 +77,27 @@ struct ProfileHeaderView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.bottom, 18)
-        .padding(.top, -10)
+    }
+
+    @ViewBuilder
+    private var avatarImage: some View {
+        if let imageData = imageData, let uiImage = UIImage(data: imageData) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: avatarSize, height: avatarSize)
+                .clipped()
+                .clipShape(Circle())
+                .overlay(Circle().stroke(Color(.separator), lineWidth: 0.5))
+        } else {
+            Image(systemName: "person.crop.circle.fill")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .foregroundStyle(.secondary.opacity(0.3))
+                .frame(width: avatarSize, height: avatarSize)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(Color(.separator), lineWidth: 0.5))
+        }
     }
 }
 

@@ -14,6 +14,14 @@ struct AdminAddUserSheet: View {
     @State private var employeeCode = ""
     @State private var designation = ""
     @State private var region = ""
+    
+    // Additional Native Fields
+    @State private var dateOfBirth = Date()
+    @State private var dateOfJoining = Date()
+    @State private var address = ""
+    @State private var baseSalary = ""
+    @State private var employmentType = "Full-Time"
+    let employmentTypes = ["Full-Time", "Part-Time", "Contract", "Intern"]
 
 
     @State private var validationErrors: [String: String] = [:]
@@ -33,105 +41,64 @@ struct AdminAddUserSheet: View {
                     .listRowInsets(EdgeInsets())
                     .padding(.bottom, LMSSpacing.sm)
 
-                    CustomTextField(
-                        icon: "person.fill",
-                        placeholder: "Full Name",
-                        text: $fullName,
-                        isError: validationErrors["fullName"] != nil,
-                        errorMessage: validationErrors["fullName"] ?? ""
-                    )
-
-                    CustomTextField(
-                        icon: "envelope.fill",
-                        placeholder: "Email Address",
-                        text: $email,
-                        isError: validationErrors["email"] != nil,
-                        errorMessage: validationErrors["email"] ?? "",
-                        keyboardType: .emailAddress
-                    )
-
-                    SecureInputField(
-                        placeholder: "Login Password",
-                        text: $password,
-                        isError: validationErrors["password"] != nil,
-                        errorMessage: validationErrors["password"] ?? ""
-                    )
-
-                    CustomTextField(
-                        icon: "phone.fill",
-                        placeholder: "Phone Number",
-                        text: $phoneNumber,
-                        isError: validationErrors["phoneNumber"] != nil,
-                        errorMessage: validationErrors["phoneNumber"] ?? "",
-                        keyboardType: .phonePad
-                    )
+                    TextField("Full Name", text: $fullName)
+                    
+                    TextField("Email Address", text: $email)
+                        .keyboardType(.emailAddress)
+                        .autocapitalization(.none)
+                        
+                    SecureField("Login Password", text: $password)
+                    
+                    TextField("Phone Number", text: $phoneNumber)
+                        .keyboardType(.phonePad)
                 } header: {
                     Text("Basic Credentials")
                         .font(LMSFont.caption.weight(.bold))
                 }
+                
+                Section {
+                    DatePicker("Date of Birth", selection: $dateOfBirth, displayedComponents: .date)
+                    TextField("Full Address", text: $address)
+                } header: {
+                    Text("Personal Details")
+                        .font(LMSFont.caption.weight(.bold))
+                }
 
                 Section {
-                    CustomTextField(
-                        icon: "card.fill",
-                        placeholder: "Employee Code",
-                        text: $employeeCode,
-                        isError: validationErrors["employeeCode"] != nil,
-                        errorMessage: validationErrors["employeeCode"] ?? ""
-                    )
+                    TextField("Employee Code", text: $employeeCode)
 
                     if !viewModel.branches.isEmpty {
-                        Picker("Assigned Branch", selection: $selectedBranchId) {
+                        Picker("Branch", selection: $selectedBranchId) {
                             Text("Select Branch").tag(nil as UUID?)
                             ForEach(viewModel.branches) { branch in
                                 Text(branch.name).tag(branch.id as UUID?)
                             }
                         }
-                        .font(LMSFont.body)
-                        .foregroundStyle(LMSColors.textPrimary)
                     } else if viewModel.isLoading {
                         Text("Loading branches...")
-                            .font(LMSFont.footnote)
-                            .foregroundStyle(LMSColors.textSecondary)
-                    } else {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("No branches loaded")
-                                .font(LMSFont.footnote.weight(.semibold))
-                                .foregroundStyle(LMSColors.coral)
-                            if let errorMsg = viewModel.errorMessage {
-                                Text(errorMsg)
-                                    .font(LMSFont.caption)
-                                    .foregroundStyle(LMSColors.textSecondary)
-                            }
-                        }
-                    }
-
-                    if let branchError = validationErrors["branchId"] {
-                        HStack(spacing: LMSSpacing.xs) {
-                            Image(systemName: "exclamationmark.circle.fill")
-                                .font(.system(size: 11))
-                            Text(branchError)
-                                .font(LMSFont.caption)
-                        }
-                        .foregroundStyle(LMSColors.coral)
-                        .padding(.leading, LMSSpacing.xs)
+                            .foregroundStyle(.secondary)
                     }
 
                     if role == .loanOfficer {
-                        CustomTextField(
-                            icon: "briefcase.fill",
-                            placeholder: "Designation (e.g. Senior Underwriter)",
-                            text: $designation,
-                            isError: validationErrors["designation"] != nil,
-                            errorMessage: validationErrors["designation"] ?? ""
-                        )
+                        TextField("Designation (e.g. Senior Underwriter)", text: $designation)
                     } else if role == .bankManager {
-                        CustomTextField(
-                            icon: "map.fill",
-                            placeholder: "Assigned Region (e.g. North India)",
-                            text: $region,
-                            isError: validationErrors["region"] != nil,
-                            errorMessage: validationErrors["region"] ?? ""
-                        )
+                        TextField("Assigned Region (e.g. North India)", text: $region)
+                    }
+                    
+                    Picker("Employment Type", selection: $employmentType) {
+                        ForEach(employmentTypes, id: \.self) { type in
+                            Text(type).tag(type)
+                        }
+                    }
+                    
+                    DatePicker("Date of Joining", selection: $dateOfJoining, displayedComponents: .date)
+                    
+                    HStack {
+                        Text("Base Salary (₹)")
+                        Spacer()
+                        TextField("Amount", text: $baseSalary)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
                     }
                 } header: {
                     Text("Employment Details")
@@ -190,14 +157,17 @@ struct AdminAddUserSheet: View {
         }
 
         let cleanedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let emailRegex = "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}$"
+        let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
+        
         if cleanedEmail.isEmpty {
             validationErrors["email"] = "Email address is required"
-        } else if !cleanedEmail.contains("@") || !cleanedEmail.contains(".") {
+        } else if !emailPredicate.evaluate(with: cleanedEmail) {
             validationErrors["email"] = "Enter a valid email address"
         }
-
-        if password.count < 6 {
-            validationErrors["password"] = "Password must be at least 6 characters"
+        
+        if password.count < 8 {
+            validationErrors["password"] = "Password must be at least 8 characters"
         }
 
         if phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

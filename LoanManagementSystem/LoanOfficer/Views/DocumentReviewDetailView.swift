@@ -195,7 +195,7 @@ struct DocumentReviewDetailView: View {
     
     private func cibilColor(for score: Int) -> Color {
         if score >= 750 { return LMSColors.emerald }
-        if score >= 650 { return LMSColors.amber }
+        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return LMSColors.amber }
         return LMSColors.coral
     }
 }

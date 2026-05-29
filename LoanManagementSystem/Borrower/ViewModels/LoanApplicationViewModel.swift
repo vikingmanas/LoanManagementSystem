@@ -1,16 +1,19 @@
 import SwiftUI
 import Combine
+import Supabase
 
 @MainActor
 final class LoanApplicationViewModel: ObservableObject {
-    @Published var selectedSegment: LoanHubSegment = .discover
     @Published var selectedApplicationFilter: BorrowerApplicationFilter = .all
+    @Published var selectedProductCategory: LoanProductCategoryFilter = .all
+    @Published var searchQuery: String = ""
 
     @Published var products: [BorrowerLoanProduct] = BorrowerLoanProduct.sampleProducts
     @Published var applications: [BorrowerLoanApplication] = []
 
     @Published var selectedProductID: UUID?
     @Published var currentDraftID: UUID?
+    @Published var currentStepIndex: Int = 1
     @Published var formData: BorrowerLoanFormData = .empty
     @Published var documents: [BorrowerLoanDocumentItem] = []
 
@@ -97,6 +100,24 @@ final class LoanApplicationViewModel: ObservableObject {
         }
     }
 
+    var filteredProducts: [BorrowerLoanProduct] {
+        var result = products
+
+        if let type = selectedProductCategory.productType {
+            result = result.filter { $0.type == type }
+        }
+
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !query.isEmpty {
+            result = result.filter { product in
+                product.type.title.localizedCaseInsensitiveContains(query) ||
+                product.shortDescription.localizedCaseInsensitiveContains(query)
+            }
+        }
+
+        return result
+    }
+
     var selectedProduct: BorrowerLoanProduct? {
         guard let selectedProductID else { return nil }
         return products.first(where: { $0.id == selectedProductID })
@@ -117,10 +138,14 @@ final class LoanApplicationViewModel: ObservableObject {
     var filteredSubmittedApplications: [BorrowerLoanApplication] {
         switch selectedApplicationFilter {
         case .all:
-            return submittedApplications
-        case .active:
+            return applications.sorted { ($0.submittedAt ?? $0.updatedAt) > ($1.submittedAt ?? $1.updatedAt) }
+        case .draft:
+            return draftApplications
+        case .underReview:
             return submittedApplications.filter {
-                !$0.currentStage.isTerminal && $0.currentStage != .draft
+                !$0.currentStage.isTerminal &&
+                $0.currentStage != .approved &&
+                $0.currentStage != .disbursed
             }
         case .approved:
             return submittedApplications.filter {
@@ -176,7 +201,7 @@ final class LoanApplicationViewModel: ObservableObject {
     var formCompletionRatio: Double {
         let checks = [
             !formData.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-            formData.mobileNumber.filter(\.isNumber).count >= 10,
+            formData.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).count == 10,
             formData.emailAddress.contains("@") && formData.emailAddress.contains("."),
             !formData.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
             !formData.occupation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
@@ -184,7 +209,7 @@ final class LoanApplicationViewModel: ObservableObject {
             formData.monthlyIncomeValue > 0,
             formData.annualIncomeValue > 0,
             formData.requestedAmountValue > 0,
-            !formData.loanPurpose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            formData.loanPurpose.trimmingCharacters(in: .whitespacesAndNewlines).count >= 10
         ]
         let completed = checks.filter { $0 }.count
         return Double(completed) / Double(checks.count)
@@ -215,7 +240,7 @@ final class LoanApplicationViewModel: ObservableObject {
     var preSubmissionWarnings: [String] {
         var warnings = blockingSubmissionIssues
 
-        if formData.creditScoreValue > 0 && formData.creditScoreValue < 650 {
+        if formData.creditScoreValue > 0 && formData.creditScoreValue < CentralLoanRepository.shared.globalRules.minCibilScore {
             warnings.append("Credit score appears low. Approval chance may reduce unless liabilities are improved.")
         }
 
@@ -226,7 +251,7 @@ final class LoanApplicationViewModel: ObservableObject {
 
         if formData.monthlyIncomeValue > 0 {
             let liabilityRatio = (formData.existingEMIsValue + formData.creditCardObligationsValue) / formData.monthlyIncomeValue
-            if liabilityRatio > 0.45 {
+            if liabilityRatio > (CentralLoanRepository.shared.globalRules.maxDTI / 100.0) {
                 warnings.append("Existing liability ratio is high; consider reducing obligations before submission.")
             }
         }
@@ -242,7 +267,7 @@ final class LoanApplicationViewModel: ObservableObject {
         var summary: [String] = []
 
         if formData.creditScoreValue > 0 {
-            let scoreBand = formData.creditScoreValue >= 750 ? "Strong" : (formData.creditScoreValue >= 650 ? "Moderate" : "Low")
+            let scoreBand = formData.creditScoreValue >= 750 ? "Strong" : (formData.creditScoreValue >= CentralLoanRepository.shared.globalRules.minCibilScore ? "Moderate" : "Low")
             summary.append("Credit strength: \(scoreBand) (\(formData.creditScoreValue)).")
         }
 
@@ -294,11 +319,11 @@ final class LoanApplicationViewModel: ObservableObject {
         }
 
         formData = BorrowerLoanFormData.prefilled(from: BorrowerProfileStore.shared.profile)
+        currentStepIndex = 1
         if formData.loanAmountRequested.isEmpty {
             let recommended = max(100_000, min(product.maximumAmount * 0.25, product.maximumAmount))
             formData.loanAmountRequested = String(Int(recommended))
         }
-        formData.loanPurpose = formData.loanPurpose.isEmpty ? "General financing requirement" : formData.loanPurpose
         documents = BorrowerLoanDocumentItem.defaultRequirements(
             for: product,
             identityDoc: formData.selectedIdentityDoc,
@@ -338,8 +363,24 @@ final class LoanApplicationViewModel: ObservableObject {
         guard application.currentStage == .draft else { return }
         selectedProductID = application.product.id
         currentDraftID = application.id
+        currentStepIndex = min(max(application.draftStepIndex, 1), 10)
         formData = application.formData
         documents = application.documents
+        lastDraftSavedAt = Date()
+    }
+
+    func updateDraftStep(_ step: Int) {
+        let clampedStep = min(max(step, 1), 10)
+        currentStepIndex = clampedStep
+
+        guard let currentDraftID,
+              let draftIndex = applications.firstIndex(where: { $0.id == currentDraftID }) else {
+            return
+        }
+
+        applications[draftIndex].draftStepIndex = clampedStep
+        applications[draftIndex].updatedAt = Date()
+        CentralLoanRepository.shared.submitApplication(applications[draftIndex])
         lastDraftSavedAt = Date()
     }
 
@@ -364,6 +405,7 @@ final class LoanApplicationViewModel: ObservableObject {
 
         applications[draftIndex].formData = formData
         applications[draftIndex].documents = documents
+        applications[draftIndex].draftStepIndex = currentStepIndex
         applications[draftIndex].updatedAt = Date()
         CentralLoanRepository.shared.submitApplication(applications[draftIndex])
         lastDraftSavedAt = Date()
@@ -374,7 +416,17 @@ final class LoanApplicationViewModel: ObservableObject {
         case .fullName:
             return formData.fullName.trimmingCharacters(in: .whitespacesAndNewlines).count >= 3 ? nil : "Full name must contain at least 3 characters."
         case .mobileNumber:
-            return formData.mobileNumber.filter(\.isNumber).count >= 10 ? nil : "Mobile number must contain at least 10 digits."
+            let mobile = formData.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+            if mobile.contains(where: { !$0.isNumber }) {
+                return "Only numeric digits are allowed"
+            }
+            if mobile.count < 10 {
+                return "Mobile number must contain 10 digits"
+            }
+            if mobile.count > 10 {
+                return "Mobile number cannot exceed 10 digits"
+            }
+            return nil
         case .emailAddress:
             let email = formData.emailAddress.trimmingCharacters(in: .whitespacesAndNewlines)
             return (email.contains("@") && email.contains(".")) ? nil : "Enter a valid email address."
@@ -398,7 +450,11 @@ final class LoanApplicationViewModel: ObservableObject {
             }
             return nil
         case .loanPurpose:
-            return formData.loanPurpose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Loan purpose is required." : nil
+            let purposeLength = formData.loanPurpose.trimmingCharacters(in: .whitespacesAndNewlines).count
+            guard purposeLength >= 10, purposeLength <= 500 else {
+                return "Please provide the purpose of the loan."
+            }
+            return nil
         case .coApplicantDetails:
             if formData.hasCoApplicant {
                 return formData.coApplicantDetails.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -492,6 +548,48 @@ final class LoanApplicationViewModel: ObservableObject {
         uploadDocument(documentID, fileName: defaultName, source: .pdf)
     }
 
+    func uploadDocumentForApplication(applicationID: UUID, documentID: UUID, fileName: String, source: BorrowerDocumentUploadSource) {
+        guard let appIndex = applications.firstIndex(where: { $0.id == applicationID }) else { return }
+        guard let docIndex = applications[appIndex].documents.firstIndex(where: { $0.id == documentID }) else { return }
+        
+        let now = Date()
+        applications[appIndex].documents[docIndex].status = .uploaded
+        applications[appIndex].documents[docIndex].uploadDate = now
+        applications[appIndex].documents[docIndex].lastUpdated = now
+        applications[appIndex].documents[docIndex].fileName = fileName
+        applications[appIndex].updatedAt = now
+        
+        CentralLoanRepository.shared.submitApplication(applications[appIndex])
+        
+        // Auto-verify simulation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+            guard let self = self else { return }
+            guard let aIndex = self.applications.firstIndex(where: { $0.id == applicationID }) else { return }
+            guard let dIndex = self.applications[aIndex].documents.firstIndex(where: { $0.id == documentID }) else { return }
+            
+            self.applications[aIndex].documents[dIndex].status = .verified
+            self.applications[aIndex].documents[dIndex].lastUpdated = Date()
+            
+            // Log a stage entry to show this document was verified
+            self.applications[aIndex].stageHistory.append(
+                BorrowerStageEntry(
+                    stage: self.applications[aIndex].currentStage,
+                    timestamp: Date(),
+                    note: "Document '\(self.applications[aIndex].documents[dIndex].name)' automatically verified."
+                )
+            )
+            
+            // If all docs are verified, advance stage from Document Verification to Loan Officer Review
+            let allVerified = self.applications[aIndex].documents.allSatisfy { $0.status == .verified }
+            if allVerified && self.applications[aIndex].currentStage == .documentVerification {
+                self.advanceStage(for: applicationID)
+            } else {
+                CentralLoanRepository.shared.submitApplication(self.applications[aIndex])
+            }
+            self.objectWillChange.send()
+        }
+    }
+
     func moveDocumentToVerification(_ documentID: UUID) {
         guard let index = documents.firstIndex(where: { $0.id == documentID }) else { return }
         guard !documents[index].isLocked else { return }
@@ -547,43 +645,13 @@ final class LoanApplicationViewModel: ObservableObject {
 
     @discardableResult
     func submitCurrentApplication() -> BorrowerLoanApplication? {
-        // Autofill missing or invalid inputs right before submission to ensure we never get blocked by simulated fields
-        if formData.fullName.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 {
-            formData.fullName = "Akash Kashyap"
-        }
-        if formData.mobileNumber.filter(\.isNumber).count < 10 {
-            formData.mobileNumber = "9876543210"
-        }
-        if !formData.emailAddress.contains("@") {
-            formData.emailAddress = "akash.kashyap@example.com"
-        }
-        if formData.address.trimmingCharacters(in: .whitespacesAndNewlines).count < 8 {
-            formData.address = "Flat 402, Highrise Apts, Link Road, Mumbai"
-        }
-        if formData.occupation.isEmpty {
-            formData.occupation = "Software Engineer"
-        }
-        if formData.employerName.isEmpty {
-            formData.employerName = "Tech Corp Ltd"
-        }
-        if formData.monthlyIncomeValue == 0 {
-            formData.monthlyIncome = "85000"
-        }
-        if formData.annualIncomeValue == 0 || formData.annualIncomeValue < formData.monthlyIncomeValue * 2 {
+        // Cancel any pending autosave task to prevent post-submit race conditions
+        autosaveTask?.cancel()
+
+        if formData.monthlyIncomeValue > 0,
+           formData.annualIncomeValue == 0 || formData.annualIncomeValue < formData.monthlyIncomeValue * 2 {
             formData.annualIncome = String(Int(formData.monthlyIncomeValue * 12))
         }
-        if formData.loanPurpose.isEmpty {
-            formData.loanPurpose = "General financing requirement"
-        }
-        if formData.loanAmountRequested.isEmpty || formData.requestedAmountValue == 0 {
-            formData.loanAmountRequested = "500000"
-        }
-        
-        // Also mark all documents as verified so it doesn't block validation
-        for index in documents.indices {
-            documents[index].status = .verified
-        }
-        performAutosave()
 
         guard canSubmitApplication,
               let currentDraftID,
@@ -593,6 +661,10 @@ final class LoanApplicationViewModel: ObservableObject {
 
         let now = Date()
         var draft = applications[index]
+        
+        // Copy latest user input to the draft before status transition
+        draft.formData = formData
+        draft.documents = documents
         let generatedApplicationID = draft.applicationId ?? generateApplicationID()
 
         draft.applicationId = generatedApplicationID
@@ -622,7 +694,6 @@ final class LoanApplicationViewModel: ObservableObject {
 
         applications[index] = draft
         CentralLoanRepository.shared.submitApplication(draft)
-        selectedSegment = .applications
         self.currentDraftID = nil
         self.showSubmissionAlert = true
         self.submissionAlertMessage = "Application \(generatedApplicationID) submitted successfully on \(now.formattedAsDDMMMYYYY())."
@@ -646,7 +717,7 @@ final class LoanApplicationViewModel: ObservableObject {
         case .loanOfficerReview:
             nextStage = .bankManagerReview
         case .bankManagerReview:
-            nextStage = application.formData.creditScoreValue < 650 ? .rejected : .approved
+            nextStage = application.formData.creditScoreValue < CentralLoanRepository.shared.globalRules.minCibilScore ? .rejected : .approved
         case .approved:
             nextStage = .disbursed
         case .draft, .rejected, .disbursed:

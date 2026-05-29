@@ -85,7 +85,6 @@ enum PreviewSupport {
         let vm = ManagerDashboardViewModel()
         vm.applicants = ManagerMockData.applicants
         vm.officers = ManagerMockData.officers
-        vm.kpis = ManagerMockData.kpis
         vm.notifications = ManagerMockData.notifications
         vm.conversations = ManagerMockData.conversations
         vm.branchOverview = ManagerMockData.branchOverview

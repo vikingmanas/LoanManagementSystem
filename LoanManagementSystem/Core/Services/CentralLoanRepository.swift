@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import SwiftUI
+import Supabase
 
 struct LoanDisbursementEvent: Identifiable, Hashable {
     let id: UUID
@@ -45,32 +46,76 @@ final class CentralLoanRepository: ObservableObject {
     @Published var applications: [BorrowerLoanApplication] = []
     @Published var disbursementEvents: [LoanDisbursementEvent] = []
     @Published var borrowerNotifications: [LMSNotification] = []
+    @Published var globalRules = GlobalLoanRules(minCibilScore: 700, maxDTI: 50.0, maxLTV: 80.0)
     
     private init() {
         loadPersistedState()
+        
+        // Load fallback rules from cache
+        if let data = UserDefaults.standard.data(forKey: "GlobalLoanRules"),
+           let savedRules = try? JSONDecoder().decode(GlobalLoanRules.self, from: data) {
+            self.globalRules = savedRules
+        }
+        
+        Task {
+            await fetchGlobalRules()
+        }
+    }
+    
+    func fetchGlobalRules() async {
+        do {
+            let rules = try await AdminDashboardService.shared.fetchGlobalRules()
+            self.globalRules = rules
+            if let encoded = try? JSONEncoder().encode(rules) {
+                UserDefaults.standard.set(encoded, forKey: "GlobalLoanRules")
+            }
+        } catch {
+            print("[CentralLoanRepository] Failed to fetch global rules from Supabase: \(error.localizedDescription)")
+        }
     }
     
     // MARK: - Core Operations
     
     func submitApplication(_ app: BorrowerLoanApplication) {
-        if let index = applications.firstIndex(where: { $0.id == app.id }) {
-            applications[index] = app
+        var updatedApp = app
+        if updatedApp.borrowerId == nil, let uidString = resolveCurrentBorrowerUID(), let uid = UUID(uuidString: uidString) {
+            updatedApp.borrowerId = uid
+        }
+        
+        if let index = applications.firstIndex(where: { $0.id == updatedApp.id }) {
+            applications[index] = updatedApp
         } else {
-            applications.insert(app, at: 0)
+            applications.insert(updatedApp, at: 0)
         }
         persistState()
+        syncApplicationToSupabase(updatedApp)
     }
     
     func updateApplication(_ app: BorrowerLoanApplication) {
-        if let index = applications.firstIndex(where: { $0.id == app.id }) {
-            applications[index] = app
+        var updatedApp = app
+        if updatedApp.borrowerId == nil, let uidString = resolveCurrentBorrowerUID(), let uid = UUID(uuidString: uidString) {
+            updatedApp.borrowerId = uid
+        }
+        
+        if let index = applications.firstIndex(where: { $0.id == updatedApp.id }) {
+            applications[index] = updatedApp
             persistState()
+            syncApplicationToSupabase(updatedApp)
         }
     }
 
     func deleteApplication(id: UUID) {
         applications.removeAll { $0.id == id }
         persistState()
+        
+        Task {
+            do {
+                try await ApplicationService.shared.deleteApplication(id: id)
+                print("[CentralLoanRepository] Successfully deleted application \(id) from Supabase.")
+            } catch {
+                print("[CentralLoanRepository] Failed to delete application \(id) from Supabase: \(error.localizedDescription)")
+            }
+        }
     }
     
     func fetchApplicationsFromSupabase(borrowerId: UUID) async {
@@ -85,11 +130,142 @@ final class CentralLoanRepository: ObservableObject {
                 return dbApp.toBorrowerApplication(product: product)
             }
             
-            self.applications = mappedApps
-            self.persistState()
+            var hasChanges = false
+            
+            // Update existing applications if their values changed, or append new ones.
+            for remoteApp in mappedApps {
+                if let index = self.applications.firstIndex(where: { $0.id == remoteApp.id }) {
+                    var mergedApp = remoteApp
+                    // Preserve local documents since they are not stored in Supabase loan_applications table
+                    mergedApp.documents = self.applications[index].documents
+                    if self.applications[index] != mergedApp {
+                        self.applications[index] = mergedApp
+                        hasChanges = true
+                    }
+                } else {
+                    self.applications.append(remoteApp)
+                    hasChanges = true
+                }
+            }
+            
+            // Remove local applications belonging to this borrower that are no longer present on Supabase.
+            let remoteIds = Set(mappedApps.map { $0.id })
+            let initialCount = self.applications.count
+            self.applications.removeAll { localApp in
+                if let localBorrowerId = localApp.borrowerId, localBorrowerId == borrowerId {
+                    return !remoteIds.contains(localApp.id)
+                }
+                return false
+            }
+            if self.applications.count != initialCount {
+                hasChanges = true
+            }
+            
+            if hasChanges {
+                self.persistState()
+            }
+            
             print("[CentralLoanRepository] Successfully fetched and synchronized \(mappedApps.count) applications from Supabase.")
         } catch {
             print("[CentralLoanRepository] Failed to fetch applications from Supabase: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Fetches ALL submitted (non-draft) applications from Supabase for the Loan Officer dashboard.
+    func fetchAllSubmittedApplicationsFromSupabase() async {
+        do {
+            let products = await ProductService.shared.fetchLoanProducts()
+            let dbApps = try await ApplicationService.shared.fetchAllSubmittedApplications()
+            
+            let mappedApps = dbApps.map { dbApp -> BorrowerLoanApplication in
+                let product = products.first(where: { $0.id == dbApp.productId })
+                    ?? BorrowerLoanProduct.sampleProducts.first(where: { $0.id == dbApp.productId })
+                    ?? BorrowerLoanProduct.sampleProducts[0]
+                return dbApp.toBorrowerApplication(product: product)
+            }
+            
+            var hasChanges = false
+            
+            // Merge with existing local applications, updating any modified data.
+            for remoteApp in mappedApps {
+                if let index = self.applications.firstIndex(where: { $0.id == remoteApp.id }) {
+                    var mergedApp = remoteApp
+                    // Preserve local documents since they are not stored in Supabase loan_applications table
+                    mergedApp.documents = self.applications[index].documents
+                    if self.applications[index] != mergedApp {
+                        self.applications[index] = mergedApp
+                        hasChanges = true
+                    }
+                } else {
+                    self.applications.append(remoteApp)
+                    hasChanges = true
+                }
+            }
+            
+            // Clean up any non-draft applications locally that are no longer returned in the submitted fetch.
+            let remoteIds = Set(mappedApps.map { $0.id })
+            let initialCount = self.applications.count
+            self.applications.removeAll { localApp in
+                // Only clean up if it's not a draft, meaning it was submitted/in process but is no longer present.
+                if localApp.currentStage != .draft {
+                    return !remoteIds.contains(localApp.id)
+                }
+                return false
+            }
+            if self.applications.count != initialCount {
+                hasChanges = true
+            }
+            
+            if hasChanges {
+                self.persistState()
+            }
+            
+            print("[CentralLoanRepository] Successfully fetched and synchronized \(mappedApps.count) submitted applications from Supabase for officer view.")
+        } catch {
+            print("[CentralLoanRepository] Failed to fetch all submitted applications: \(error.localizedDescription)")
+        }
+    }
+    
+    private func syncApplicationToSupabase(_ app: BorrowerLoanApplication) {
+        // Prefer the application's existing borrower ID (so Officers/Managers don't overwrite it with their own ID)
+        // Fallback to the current user's ID for new applications created by the borrower
+        let resolvedUUID: UUID
+        if let existingId = app.borrowerId {
+            resolvedUUID = existingId
+        } else if let uidString = resolveCurrentBorrowerUID(), let uid = UUID(uuidString: uidString) {
+            resolvedUUID = uid
+        } else {
+            print("[CentralLoanRepository] Cannot sync to Supabase: no borrower ID could be resolved.")
+            return
+        }
+        
+        var syncedApp = app
+        syncedApp.borrowerId = resolvedUUID
+        
+        let dbApp = DBLoanApplication.from(borrowerApplication: syncedApp, borrowerId: resolvedUUID)
+        Task {
+            do {
+                try await ApplicationService.shared.upsertApplication(dbApp)
+                print("[CentralLoanRepository] Successfully synced application \(app.displayIdentifier) to Supabase.")
+            } catch {
+                print("[CentralLoanRepository] Failed to sync application \(app.displayIdentifier) to Supabase: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    /// Resolves the current authenticated user's UID for use as a fallback borrower_id.
+    private nonisolated func resolveCurrentBorrowerUID() -> String? {
+        // Access AuthManager on MainActor since it's @MainActor
+        return MainActor.assumeIsolated {
+            // Try to get the UID from AuthManager first
+            if let uid = AuthManager.shared.currentUser?.uid {
+                return uid
+            }
+            // Try to get the UID from the Supabase session directly
+            if let uid = SupabaseManager.shared.client.auth.currentSession?.user.id.uuidString {
+                return uid
+            }
+            return nil
         }
     }
     
@@ -117,10 +293,11 @@ final class CentralLoanRepository: ObservableObject {
             recomputeVerificationStage(app: &app)
             applications[index] = app
             persistState()
+            syncApplicationToSupabase(app)
         }
     }
     
-    func sendForFinalApproval(applicationId: String) {
+    func sendForFinalApproval(applicationId: String, officerName: String = "Officer") {
         guard let index = applications.firstIndex(where: { $0.applicationId == applicationId }) else { return }
         var app = applications[index]
         app.currentStage = .bankManagerReview
@@ -129,11 +306,12 @@ final class CentralLoanRepository: ObservableObject {
             BorrowerStageEntry(
                 stage: .bankManagerReview,
                 timestamp: Date(),
-                note: "Documents verified by Officer Arjun. Forwarded to Manager for final approval."
+                note: "Documents verified by \(officerName). Forwarded to Manager for final approval."
             )
         )
         applications[index] = app
         persistState()
+        syncApplicationToSupabase(app)
     }
     
     @discardableResult
@@ -188,6 +366,37 @@ final class CentralLoanRepository: ObservableObject {
             disbursementEvents.insert(event, at: 0)
         }
 
+        let resolvedBorrowerId = app.borrowerId ?? {
+            if let profileStringId = BorrowerProfileStore.shared.borrowerProfile(matchingEmail: borrowerEmail)?.id {
+                return UUID(uuidString: profileStringId)
+            }
+            return nil
+        }()
+
+        if let borrowerId = resolvedBorrowerId {
+            let dbTx = DBTransaction(
+                id: UUID(),
+                title: "Loan Amount Credited - \(event.applicationNumber)",
+                date: event.creditedAt,
+                amount: approvedAmount,
+                type: "credit",
+                referenceNo: referenceNumber,
+                bankAccountId: nil,
+                borrowerId: borrowerId
+            )
+            Task {
+                do {
+                    try await SupabaseManager.shared.client
+                        .from("transactions")
+                        .insert(dbTx)
+                        .execute()
+                    print("[CentralLoanRepository] Successfully saved disbursement transaction to Supabase.")
+                } catch {
+                    print("[CentralLoanRepository] Failed to save disbursement transaction to Supabase: \(error.localizedDescription)")
+                }
+            }
+        }
+
         borrowerNotifications.insert(
             LMSNotification(
                 title: "Loan Approved",
@@ -200,6 +409,7 @@ final class CentralLoanRepository: ObservableObject {
         )
 
         persistState()
+        syncApplicationToSupabase(app)
         return true
     }
     
@@ -217,6 +427,7 @@ final class CentralLoanRepository: ObservableObject {
         )
         applications[index] = app
         persistState()
+        syncApplicationToSupabase(app)
     }
     
     func sendBackApplication(id: UUID, remarks: String) {
@@ -233,6 +444,7 @@ final class CentralLoanRepository: ObservableObject {
         )
         applications[index] = app
         persistState()
+        syncApplicationToSupabase(app)
     }
     
     // MARK: - Private Helpers
@@ -382,7 +594,7 @@ final class CentralLoanRepository: ObservableObject {
             requestedAmount: app.formData.requestedAmountValue,
             cibilScore: app.formData.creditScoreValue > 0 ? app.formData.creditScoreValue : 750,
             status: status,
-            riskLevel: app.formData.creditScoreValue >= 750 ? .low : (app.formData.creditScoreValue >= 650 ? .medium : .high),
+            riskLevel: app.formData.creditScoreValue >= 750 ? .low : (app.formData.creditScoreValue >= self.globalRules.minCibilScore ? .medium : .high),
             assignedOfficer: assignedOfficerName,
             assignedOfficerId: assignedOfficerId,
             submissionDate: app.submittedAt ?? Date(),
@@ -458,5 +670,13 @@ final class CentralLoanRepository: ObservableObject {
     private func persistState() {
         LoanApplicationPersistence.saveApplications(applications)
         LoanApplicationPersistence.saveDisbursements(disbursementEvents)
+    }
+
+    func clearState() {
+        self.applications = []
+        self.disbursementEvents = []
+        self.borrowerNotifications = []
+        UserDefaults.standard.removeObject(forKey: "lms.centralLoanRepository.applications")
+        UserDefaults.standard.removeObject(forKey: "lms.centralLoanRepository.disbursements")
     }
 }
