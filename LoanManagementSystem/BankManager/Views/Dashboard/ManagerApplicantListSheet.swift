@@ -49,7 +49,7 @@ struct ManagerApplicantListSheet: View {
                 }
             }
             .sheet(item: $selectedApplicant) { applicant in
-                ManagerApplicantDetailView(applicantId: applicant.id, viewModel: viewModel)
+                ManagerApplicantDetailView(applicant: applicant, viewModel: viewModel)
             }
         }
     }
