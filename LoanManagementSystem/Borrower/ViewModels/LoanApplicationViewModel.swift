@@ -209,7 +209,7 @@ final class LoanApplicationViewModel: ObservableObject {
             formData.monthlyIncomeValue > 0,
             formData.annualIncomeValue > 0,
             formData.requestedAmountValue > 0,
-            !formData.loanPurpose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            formData.loanPurpose.trimmingCharacters(in: .whitespacesAndNewlines).count >= 10
         ]
         let completed = checks.filter { $0 }.count
         return Double(completed) / Double(checks.count)
@@ -450,7 +450,11 @@ final class LoanApplicationViewModel: ObservableObject {
             }
             return nil
         case .loanPurpose:
-            return formData.loanPurpose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Loan purpose is required." : nil
+            let purposeLength = formData.loanPurpose.trimmingCharacters(in: .whitespacesAndNewlines).count
+            guard purposeLength >= 10, purposeLength <= 500 else {
+                return "Please provide the purpose of the loan."
+            }
+            return nil
         case .coApplicantDetails:
             if formData.hasCoApplicant {
                 return formData.coApplicantDetails.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

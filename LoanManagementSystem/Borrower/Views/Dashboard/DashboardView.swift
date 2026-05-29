@@ -181,89 +181,65 @@ public struct DashboardView: View {
     
     public var body: some View {
         NavigationStack(path: $navigationPath) {
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: LMSSpacing.xxl) {
-                    if viewModel.profileCompletionPercentage < 100 {
-                        ProfileCompletionCardSection(
-                            percentage: viewModel.profileCompletionPercentage,
-                            missingItems: viewModel.profileMissingRequirements
-                        ) {
-                            navigationPath.append(.profile)
+            VStack(spacing: 0) {
+                dashboardHeader
+
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: LMSSpacing.xxl) {
+                        if viewModel.profileCompletionPercentage < 100 {
+                            ProfileCompletionCardSection(
+                                percentage: viewModel.profileCompletionPercentage,
+                                missingItems: viewModel.profileMissingRequirements
+                            ) {
+                                navigationPath.append(.profile)
+                            }
                         }
-                    }
 
-                    LoanPortfolioSummarySection(viewModel: viewModel)
+                        LoanPortfolioSummarySection(viewModel: viewModel)
 
-                    DashboardQuickActionsSection(
-                        onApplyLoan: { tabRouter.select(.loans) },
-                        onPayEMI: { navigationPath.append(.payEMI) },
-                        onStatement: { navigationPath.append(.statement) },
-                        onSupport: { navigationPath.append(.support) },
-                        onCalculator: { showingCalculatorAlert = true },
-                        onForeclosure: { navigationPath.append(.foreclosure) },
-                        onTopUp: { navigationPath.append(.topUp) }
-                    )
+                        DashboardQuickActionsSection(
+                            onApplyLoan: { tabRouter.select(.loans) },
+                            onPayEMI: { navigationPath.append(.payEMI) },
+                            onStatement: { navigationPath.append(.statement) },
+                            onSupport: { navigationPath.append(.support) },
+                            onCalculator: { showingCalculatorAlert = true },
+                            onForeclosure: { navigationPath.append(.foreclosure) },
+                            onTopUp: { navigationPath.append(.topUp) }
+                        )
 
-                    ActiveLoanAccountsSection(
-                        viewModel: viewModel,
-                        onLoanTap: { loan in
-                            navigationPath.append(.loanDetails(loan))
-                        },
-                        onApplyLoan: {
-                            tabRouter.select(.loans)
-                        }
-                    )
+                        ActiveLoanAccountsSection(
+                            viewModel: viewModel,
+                            onLoanTap: { loan in
+                                navigationPath.append(.loanDetails(loan))
+                            },
+                            onApplyLoan: {
+                                tabRouter.select(.loans)
+                            }
+                        )
 
-                    TransactionHistorySection(
-                        transactions: viewModel.recentTransactions,
-                        accounts: viewModel.bankAccounts,
-                        onViewAll: {
-                            navigationPath.append(.transactionHistory)
-                        }
-                    )
+                        TransactionHistorySection(
+                            transactions: viewModel.recentTransactions,
+                            accounts: viewModel.bankAccounts,
+                            onViewAll: {
+                                navigationPath.append(.transactionHistory)
+                            }
+                        )
 
-                    UpcomingPaymentSection(
-                        viewModel: viewModel,
-                        onPayNow: { navigationPath.append(.payEMI) },
-                        onViewAll: { navigationPath.append(.allPendingEMIs) }
-                    )
-                }
-                .padding(.top, LMSSpacing.sm)
-                .padding(.bottom, LMSSpacing.xxxl)
-            }
-            .refreshable {
-                await viewModel.fetchDashboardData()
-            }
-            .background(LMSColors.background)
-            .navigationTitle("Dashboard")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button {
-                        navigationPath.append(.notifications)
-                    } label: {
-                        Image(systemName: viewModel.dashboardNotifications.contains(where: \.isUnread)
-                              ? "bell.badge.fill" : "bell")
-                            .symbolRenderingMode(.hierarchical)
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(LMSColors.brandNavy)
-                            .frame(width: 44, height: 44)
-                    }
-                    .accessibilityLabel("Notifications")
-
-                    Button {
-                        navigationPath.append(.profile)
-                    } label: {
-                        DashboardAvatar(
-                            initials: dashboardInitials(
-                                viewModel: viewModel,
-                                authManager: authManager
-                            )
+                        UpcomingPaymentSection(
+                            viewModel: viewModel,
+                            onPayNow: { navigationPath.append(.payEMI) },
+                            onViewAll: { navigationPath.append(.allPendingEMIs) }
                         )
                     }
-                    .accessibilityLabel("Profile")
+                    .padding(.top, LMSSpacing.sm)
+                    .padding(.bottom, LMSSpacing.xxxl)
+                }
+                .refreshable {
+                    await viewModel.fetchDashboardData()
                 }
             }
+            .background(LMSColors.background)
+            .toolbar(.hidden, for: .navigationBar)
             .alert("Loan Calculator", isPresented: $showingCalculatorAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
@@ -317,6 +293,53 @@ public struct DashboardView: View {
                 }
             }
         }
+    }
+
+    private var dashboardHeader: some View {
+        HStack(alignment: .center, spacing: 16) {
+            Text("Dashboard")
+                .font(.system(size: 34, weight: .bold, design: .default))
+                .foregroundStyle(LMSColors.textPrimary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+
+            Spacer(minLength: 12)
+
+            HStack(spacing: 4) {
+                Button {
+                    navigationPath.append(.notifications)
+                } label: {
+                    Image(systemName: viewModel.dashboardNotifications.contains(where: \.isUnread)
+                          ? "bell.badge.fill" : "bell")
+                        .symbolRenderingMode(.hierarchical)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(LMSColors.brandNavy)
+                        .frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Notifications")
+
+                Button {
+                    navigationPath.append(.profile)
+                } label: {
+                    DashboardAvatar(
+                        initials: dashboardInitials(
+                            viewModel: viewModel,
+                            authManager: authManager
+                        )
+                    )
+                    .frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Profile")
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(.regularMaterial, in: Capsule())
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 24)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
+        .background(LMSColors.background)
     }
 }
 
