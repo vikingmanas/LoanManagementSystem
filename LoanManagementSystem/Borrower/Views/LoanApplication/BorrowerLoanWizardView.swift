@@ -1,8 +1,34 @@
 import SwiftUI
+import UIKit
+@preconcurrency import Vision
 
 private enum WizardNavigationDirection {
     case forward
     case backward
+}
+
+private enum DocumentUploadLifecycle: String {
+    case idle
+    case uploading
+    case processing
+    case success
+    case failed
+}
+
+private struct DocumentOCRResult {
+    let isValid: Bool
+    let title: String
+    let message: String
+    let extractedDetails: [String: String]
+    let fullName: String?
+    let dateOfBirth: Date?
+    let address: String?
+}
+
+private struct DocumentPreviewImage: Identifiable {
+    let id = UUID()
+    let title: String
+    let image: UIImage
 }
 
 // MARK: - Reusable UI Components for Wizard Form
@@ -216,9 +242,17 @@ struct BorrowerLoanWizardView: View {
     @State private var uploadProgress: [String: Double] = [:] // Document name -> Progress (0 to 1)
     @State private var isUploading: [String: Bool] = [:]
     @State private var ocrStatus: [String: String] = [:] // Document name -> OCR Status ("None", "Scanning", "Success")
+    @State private var uploadLifecycle: [UUID: DocumentUploadLifecycle] = [:]
+    @State private var documentThumbnails: [UUID: UIImage] = [:]
+    @State private var documentUploadDates: [UUID: Date] = [:]
+    @State private var documentFailureReasons: [UUID: String] = [:]
+    @State private var documentExtractedDetails: [UUID: [String: String]] = [:]
     @State private var uploadSource: BorrowerDocumentUploadSource = .camera
     @State private var selectedUploadDocId: UUID? = nil
     @State private var showUploadSourceSheet = false
+    @State private var showDocumentImagePicker = false
+    @State private var imagePickerSourceType: UIImagePickerController.SourceType = .photoLibrary
+    @State private var previewImage: DocumentPreviewImage?
     
     // Step 7 OCR Extracted Editable Data -> Repurposed for Nominee / Photo
     @State private var ocrPANNumber: String = "ABCDE1234F"
@@ -278,10 +312,37 @@ struct BorrowerLoanWizardView: View {
                 selectedSource: $uploadSource,
                 onSelect: { source in
                     if let docId = selectedUploadDocId {
-                        simulateUpload(for: docId, source: source)
+                        beginDocumentSelection(for: docId, source: source)
                     }
                 }
             )
+        }
+        .fullScreenCover(isPresented: $showDocumentImagePicker) {
+            DocumentImagePicker(sourceType: imagePickerSourceType) { image in
+                showDocumentImagePicker = false
+                if let docId = selectedUploadDocId {
+                    processSelectedDocumentImage(image, for: docId, source: uploadSource)
+                }
+            } onCancel: {
+                showDocumentImagePicker = false
+            }
+            .ignoresSafeArea()
+        }
+        .sheet(item: $previewImage) { preview in
+            NavigationStack {
+                Image(uiImage: preview.image)
+                    .resizable()
+                    .scaledToFit()
+                    .padding()
+                    .background(Color.black.opacity(0.92))
+                    .navigationTitle(preview.title)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { previewImage = nil }
+                        }
+                    }
+            }
         }
         .onAppear {
             viewModel.setBorrowerAuthContext(
@@ -413,9 +474,19 @@ struct BorrowerLoanWizardView: View {
                     uploadProgress: $uploadProgress,
                     isUploading: $isUploading,
                     ocrStatus: $ocrStatus,
+                    uploadLifecycle: uploadLifecycle,
+                    thumbnails: documentThumbnails,
+                    uploadDates: documentUploadDates,
+                    failureReasons: documentFailureReasons,
+                    extractedDetails: documentExtractedDetails,
                     onTriggerUpload: { docId in
                         selectedUploadDocId = docId
                         showUploadSourceSheet = true
+                    },
+                    onViewDocument: { doc in
+                        if let image = documentThumbnails[doc.id] {
+                            previewImage = DocumentPreviewImage(title: doc.name, image: image)
+                        }
                     },
                     onEnsureDocuments: {
                         ensureRequiredDocumentsLoaded()
@@ -654,9 +725,9 @@ struct BorrowerLoanWizardView: View {
 
         if currentStep < 10 {
             if currentStep == 6 {
-                let pendingUploads = viewModel.documents.filter { $0.status == .pendingUpload }
-                if !pendingUploads.isEmpty {
-                    stepValidationMessage = "Upload all required documents: \(pendingUploads.map(\.name).joined(separator: ", "))."
+                let unverifiedDocuments = viewModel.documents.filter { $0.status != .verified }
+                if !unverifiedDocuments.isEmpty {
+                    stepValidationMessage = "Upload and verify all required documents: \(unverifiedDocuments.map(\.name).joined(separator: ", "))."
                     HapticsManager.triggerNotification(type: .warning)
                     return
                 }
@@ -693,48 +764,348 @@ struct BorrowerLoanWizardView: View {
     }
     
     private func ensureFullyVerified() {
-        for doc in viewModel.documents where doc.status == .pendingUpload {
-            viewModel.uploadDocument(
-                doc.id,
-                fileName: "uploaded_\(doc.name.lowercased().replacingOccurrences(of: " ", with: "_")).pdf",
-                source: .pdf
-            )
-        }
         viewModel.runBulkVerification()
-        for doc in viewModel.documents where doc.status != .verified {
-            viewModel.markDocument(doc.id, status: .verified)
-        }
     }
     
-    private func simulateUpload(for docId: UUID, source: BorrowerDocumentUploadSource) {
+    private func beginDocumentSelection(for docId: UUID, source: BorrowerDocumentUploadSource) {
+        selectedUploadDocId = docId
+        uploadSource = source
+        imagePickerSourceType = source == .camera && UIImagePickerController.isSourceTypeAvailable(.camera)
+            ? .camera
+            : .photoLibrary
+        showDocumentImagePicker = true
+    }
+
+    private func processSelectedDocumentImage(_ image: UIImage, for docId: UUID, source: BorrowerDocumentUploadSource) {
         guard let doc = viewModel.documents.first(where: { $0.id == docId }) else { return }
-        
+
+        HapticsManager.triggerImpact(style: .medium)
+        documentThumbnails[docId] = image
+        documentFailureReasons[docId] = nil
+        documentExtractedDetails[docId] = [:]
+        uploadLifecycle[docId] = .uploading
         isUploading[doc.name] = true
         uploadProgress[doc.name] = 0.0
         ocrStatus[doc.name] = "None"
-        
-        // Timer simulation for high-fidelity feel
+
         let steps = 10
-        let timeInterval = 0.15
-        
+        let timeInterval = 0.06
         for i in 1...steps {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * timeInterval) {
                 uploadProgress[doc.name] = Double(i) / Double(steps)
-                
                 if i == steps {
                     isUploading[doc.name] = false
-                    viewModel.uploadDocument(docId, fileName: "scanned_\(doc.name.lowercased().replacingOccurrences(of: " ", with: "_")).jpg", source: source)
-                    
-                    // Trigger OCR Simulation
+                    uploadLifecycle[docId] = .processing
                     ocrStatus[doc.name] = "Scanning"
-                    
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        ocrStatus[doc.name] = "Success"
-                        viewModel.markDocument(docId, status: .underVerification)
+                    viewModel.uploadDocument(docId, fileName: imageFileName(for: doc), source: source)
+                    viewModel.markDocument(docId, status: .underVerification)
+
+                    Task {
+                        let ocr = await recognizeText(in: image)
+                        let result = validateDocument(doc, recognizedText: ocr.text, confidence: ocr.confidence)
+                        await MainActor.run {
+                            applyOCRResult(result, to: doc, image: image)
+                        }
                     }
                 }
             }
         }
+    }
+
+    private func imageFileName(for doc: BorrowerLoanDocumentItem) -> String {
+        let normalized = doc.name
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "_")
+            .replacingOccurrences(of: "/", with: "_")
+        return "\(normalized)_\(Int(Date().timeIntervalSince1970)).jpg"
+    }
+
+    private func recognizeText(in image: UIImage) async -> (text: String, confidence: Float) {
+        guard let cgImage = image.cgImage else { return ("", 0) }
+
+        return await withCheckedContinuation { continuation in
+            let request = VNRecognizeTextRequest { request, _ in
+                let observations = request.results as? [VNRecognizedTextObservation] ?? []
+                let candidates = observations.compactMap { $0.topCandidates(1).first }
+                let text = candidates.map(\.string).joined(separator: "\n")
+                let confidence = candidates.isEmpty
+                    ? 0
+                    : candidates.map(\.confidence).reduce(0, +) / Float(candidates.count)
+                continuation.resume(returning: (text, confidence))
+            }
+            request.recognitionLevel = .accurate
+            request.usesLanguageCorrection = true
+            request.recognitionLanguages = ["en-IN", "en-US"]
+
+            DispatchQueue.global(qos: .userInitiated).async {
+                let handler = VNImageRequestHandler(cgImage: cgImage, orientation: CGImagePropertyOrientation(image.imageOrientation), options: [:])
+                do {
+                    try handler.perform([request])
+                } catch {
+                    continuation.resume(returning: ("", 0))
+                }
+            }
+        }
+    }
+
+    private func validateDocument(_ doc: BorrowerLoanDocumentItem, recognizedText text: String, confidence: Float) -> DocumentOCRResult {
+        let normalized = text.lowercased()
+        let name = doc.name.lowercased()
+
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || confidence < 0.18 {
+            return DocumentOCRResult(
+                isValid: false,
+                title: "Document Not Readable",
+                message: "The image is blurry or text could not be detected. Please upload a clear document image.",
+                extractedDetails: ["OCR Confidence": confidenceLabel(confidence)],
+                fullName: nil,
+                dateOfBirth: nil,
+                address: nil
+            )
+        }
+
+        if name.contains("aadhaar") || name.contains("aadhar") {
+            return validateAadhaar(text: text, normalized: normalized, confidence: confidence)
+        } else if name.contains("pan") {
+            return validatePAN(text: text, normalized: normalized, confidence: confidence)
+        } else if name.contains("salary") || name.contains("payslip") {
+            return validateKeywordDocument(
+                title: "Salary Slip",
+                invalidTitle: "Invalid Salary Slip",
+                invalidMessage: "The uploaded file does not appear to be a salary slip. Please upload a clear payslip image.",
+                text: text,
+                normalized: normalized,
+                confidence: confidence,
+                keywords: ["salary", "payslip", "pay slip", "net pay", "gross", "earnings", "deductions", "employee"]
+            )
+        } else if name.contains("bank statement") || name.contains("bank statements") {
+            return validateKeywordDocument(
+                title: "Bank Statement",
+                invalidTitle: "Invalid Bank Statement",
+                invalidMessage: "The uploaded file does not appear to be a bank statement. Please upload a clear statement image.",
+                text: text,
+                normalized: normalized,
+                confidence: confidence,
+                keywords: ["statement", "account number", "transaction", "debit", "credit", "balance", "ifsc"]
+            )
+        } else if name.contains("utility") {
+            return validateKeywordDocument(
+                title: "Utility Bill",
+                invalidTitle: "Invalid Address Document",
+                invalidMessage: "The uploaded file does not appear to be a valid utility bill. Please upload a clear bill with address details.",
+                text: text,
+                normalized: normalized,
+                confidence: confidence,
+                keywords: ["bill", "electricity", "water", "gas", "consumer", "address", "amount due"]
+            )
+        }
+
+        return validateKeywordDocument(
+            title: doc.name,
+            invalidTitle: "Invalid Document",
+            invalidMessage: "The uploaded file does not match the selected document type. Please upload the required document.",
+            text: text,
+            normalized: normalized,
+            confidence: confidence,
+            keywords: [doc.name.lowercased()]
+        )
+    }
+
+    private func validateAadhaar(text: String, normalized: String, confidence: Float) -> DocumentOCRResult {
+        let aadhaarNumber = firstMatch(in: text, pattern: #"(?<!\d)(\d{4}\s?\d{4}\s?\d{4})(?!\d)"#)
+        let hasKeyword = normalized.contains("government of india") || normalized.contains("aadhaar") || normalized.contains("aadhar") || normalized.contains("uidai")
+        let isValid = confidence >= 0.24 && (hasKeyword || aadhaarNumber != nil)
+
+        guard isValid else {
+            return DocumentOCRResult(
+                isValid: false,
+                title: "Invalid Aadhaar Document",
+                message: "The uploaded file does not appear to be a valid Aadhaar card. Please upload a clear Aadhaar image.",
+                extractedDetails: ["OCR Confidence": confidenceLabel(confidence)],
+                fullName: nil,
+                dateOfBirth: nil,
+                address: nil
+            )
+        }
+
+        let dob = extractDate(from: text)
+        let fullName = extractLikelyName(from: text, excluding: ["government", "india", "aadhaar", "uidai", "male", "female"])
+        let masked = aadhaarNumber.map(maskAadhaar) ?? "Detected"
+        var details = [
+            "Document": "Aadhaar Card",
+            "Aadhaar Number": masked,
+            "OCR Confidence": confidenceLabel(confidence)
+        ]
+        if let fullName { details["Full Name"] = fullName }
+        if let dob { details["DOB"] = dob.formattedAsDDMMMYYYY() }
+
+        return DocumentOCRResult(
+            isValid: true,
+            title: "Document Verified",
+            message: "We extracted the following details. Please verify.",
+            extractedDetails: details,
+            fullName: fullName,
+            dateOfBirth: dob,
+            address: extractAddress(from: text)
+        )
+    }
+
+    private func validatePAN(text: String, normalized: String, confidence: Float) -> DocumentOCRResult {
+        let pan = firstMatch(in: text.uppercased(), pattern: #"[A-Z]{5}[0-9]{4}[A-Z]"#)
+        let hasKeyword = normalized.contains("income tax") || normalized.contains("permanent account") || normalized.contains("भारत सरकार")
+        let isValid = confidence >= 0.22 && (hasKeyword || pan != nil)
+
+        guard isValid else {
+            return DocumentOCRResult(
+                isValid: false,
+                title: "Invalid PAN Document",
+                message: "The uploaded file does not appear to be a valid PAN card. Please upload a clear PAN image.",
+                extractedDetails: ["OCR Confidence": confidenceLabel(confidence)],
+                fullName: nil,
+                dateOfBirth: nil,
+                address: nil
+            )
+        }
+
+        let dob = extractDate(from: text)
+        let fullName = extractLikelyName(from: text, excluding: ["income", "tax", "department", "government", "india", "permanent", "account", "number"])
+        var details = [
+            "Document": "PAN Card",
+            "PAN": pan ?? "Detected",
+            "OCR Confidence": confidenceLabel(confidence)
+        ]
+        if let fullName { details["Full Name"] = fullName }
+        if let dob { details["DOB"] = dob.formattedAsDDMMMYYYY() }
+
+        return DocumentOCRResult(
+            isValid: true,
+            title: "Document Verified",
+            message: "We extracted the following details. Please verify.",
+            extractedDetails: details,
+            fullName: fullName,
+            dateOfBirth: dob,
+            address: nil
+        )
+    }
+
+    private func validateKeywordDocument(
+        title: String,
+        invalidTitle: String,
+        invalidMessage: String,
+        text: String,
+        normalized: String,
+        confidence: Float,
+        keywords: [String]
+    ) -> DocumentOCRResult {
+        let hits = keywords.filter { normalized.contains($0) }
+        let isValid = confidence >= 0.20 && !hits.isEmpty
+
+        return DocumentOCRResult(
+            isValid: isValid,
+            title: isValid ? "Document Verified" : invalidTitle,
+            message: isValid ? "We extracted the following details. Please verify." : invalidMessage,
+            extractedDetails: [
+                "Document": title,
+                "Matched Signals": hits.isEmpty ? "None" : hits.joined(separator: ", "),
+                "OCR Confidence": confidenceLabel(confidence)
+            ],
+            fullName: nil,
+            dateOfBirth: nil,
+            address: extractAddress(from: text)
+        )
+    }
+
+    private func applyOCRResult(_ result: DocumentOCRResult, to doc: BorrowerLoanDocumentItem, image: UIImage) {
+        ocrStatus[doc.name] = result.isValid ? "Success" : "Failed"
+        uploadLifecycle[doc.id] = result.isValid ? .success : .failed
+        documentExtractedDetails[doc.id] = result.extractedDetails
+
+        if result.isValid {
+            documentUploadDates[doc.id] = Date()
+            documentFailureReasons[doc.id] = nil
+            viewModel.markDocument(doc.id, status: .verified)
+
+            if let fullName = result.fullName, !fullName.isEmpty {
+                viewModel.formData.fullName = fullName
+                ocrAadhaarName = fullName
+                ocrPANName = fullName
+            }
+            if let dateOfBirth = result.dateOfBirth {
+                viewModel.formData.dateOfBirth = dateOfBirth
+                ocrAadhaarDOB = dateOfBirth
+                ocrPANDOB = dateOfBirth
+            }
+            if let address = result.address, !address.isEmpty, viewModel.formData.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                viewModel.formData.address = address
+                ocrAadhaarAddress = address
+            }
+            triggerAutosave()
+            HapticsManager.triggerNotification(type: .success)
+        } else {
+            documentFailureReasons[doc.id] = result.message
+            viewModel.markDocument(doc.id, status: .rejected)
+            HapticsManager.triggerNotification(type: .error)
+        }
+    }
+
+    private func firstMatch(in text: String, pattern: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let match = regex.firstMatch(in: text, range: range),
+              let matchRange = Range(match.range, in: text) else { return nil }
+        return String(text[matchRange])
+    }
+
+    private func maskAadhaar(_ raw: String) -> String {
+        let digits = raw.filter(\.isNumber)
+        guard digits.count >= 4 else { return "XXXX XXXX XXXX" }
+        return "XXXX XXXX \(digits.suffix(4))"
+    }
+
+    private func confidenceLabel(_ confidence: Float) -> String {
+        switch confidence {
+        case 0.72...: return "High"
+        case 0.40..<0.72: return "Medium"
+        default: return "Low"
+        }
+    }
+
+    private func extractDate(from text: String) -> Date? {
+        guard let raw = firstMatch(in: text, pattern: #"(?<!\d)(\d{2}[/-]\d{2}[/-]\d{4})(?!\d)"#) else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_IN")
+        for format in ["dd/MM/yyyy", "dd-MM-yyyy"] {
+            formatter.dateFormat = format
+            if let date = formatter.date(from: raw) {
+                return date
+            }
+        }
+        return nil
+    }
+
+    private func extractLikelyName(from text: String, excluding blockedWords: [String]) -> String? {
+        let blocked = Set(blockedWords)
+        let lines = text
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { line in
+                let lower = line.lowercased()
+                let words = lower.components(separatedBy: .whitespaces)
+                return line.count >= 5 &&
+                    line.count <= 36 &&
+                    !line.contains(where: \.isNumber) &&
+                    !words.contains(where: blocked.contains)
+            }
+        return lines.first
+    }
+
+    private func extractAddress(from text: String) -> String? {
+        let lines = text.components(separatedBy: .newlines)
+        guard let addressIndex = lines.firstIndex(where: { $0.localizedCaseInsensitiveContains("address") }) else { return nil }
+        let addressLines = lines.dropFirst(addressIndex + 1).prefix(3)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return addressLines.isEmpty ? nil : addressLines.joined(separator: ", ")
     }
 }
 
@@ -1170,7 +1541,13 @@ private struct Step6DocumentCenterOverhaulView: View {
     @Binding var uploadProgress: [String: Double]
     @Binding var isUploading: [String: Bool]
     @Binding var ocrStatus: [String: String]
+    let uploadLifecycle: [UUID: DocumentUploadLifecycle]
+    let thumbnails: [UUID: UIImage]
+    let uploadDates: [UUID: Date]
+    let failureReasons: [UUID: String]
+    let extractedDetails: [UUID: [String: String]]
     let onTriggerUpload: (UUID) -> Void
+    let onViewDocument: (BorrowerLoanDocumentItem) -> Void
     let onEnsureDocuments: () -> Void
 
     var body: some View {
@@ -1239,9 +1616,15 @@ private struct Step6DocumentCenterOverhaulView: View {
                         UploadRow(
                             doc: doc,
                             progress: uploadProgress[doc.name] ?? 0.0,
+                            lifecycle: uploadLifecycle[doc.id] ?? .idle,
+                            thumbnail: thumbnails[doc.id],
+                            uploadDate: uploadDates[doc.id] ?? doc.uploadDate,
+                            failureReason: failureReasons[doc.id],
+                            extractedDetails: extractedDetails[doc.id] ?? [:],
                             uploading: isUploading[doc.name] ?? false,
                             ocr: ocrStatus[doc.name] ?? "None",
-                            onTrigger: { onTriggerUpload(doc.id) }
+                            onTrigger: { onTriggerUpload(doc.id) },
+                            onView: { onViewDocument(doc) }
                         )
                         
                         if index < docs.count - 1 {
@@ -1264,36 +1647,43 @@ private struct Step6DocumentCenterOverhaulView: View {
 private struct UploadRow: View {
     let doc: BorrowerLoanDocumentItem
     let progress: Double
+    let lifecycle: DocumentUploadLifecycle
+    let thumbnail: UIImage?
+    let uploadDate: Date?
+    let failureReason: String?
+    let extractedDetails: [String: String]
     let uploading: Bool
     let ocr: String
     let onTrigger: () -> Void
+    let onView: () -> Void
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
-                // Doc Icon
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(doc.status == .verified ? LMSColors.emerald.opacity(0.1) : LMSColors.brandNavy.opacity(0.08))
-                        .frame(width: 42, height: 42)
-                    Image(systemName: doc.status == .verified ? "checkmark.seal.fill" : doc.status.iconName)
-                        .font(.title3)
-                        .foregroundStyle(doc.status == .verified ? LMSColors.emerald : LMSColors.brandNavy)
-                }
+                documentIcon
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(doc.name)
                         .font(LMSFont.callout.weight(.semibold))
                         .foregroundStyle(LMSColors.textPrimary)
                     
-                    if uploading {
-                        Text("Uploading \(Int(progress * 100))%...")
+                    if lifecycle == .uploading || uploading {
+                        Text("Uploading document…")
                             .font(LMSFont.caption)
                             .foregroundStyle(LMSColors.actionBlue)
-                    } else if ocr == "Scanning" {
-                        Text("⚡ OCR Scanning...")
+                    } else if lifecycle == .processing || ocr == "Scanning" {
+                        Text("Verifying document…")
                             .font(LMSFont.caption)
                             .foregroundStyle(LMSColors.amber)
+                    } else if lifecycle == .success || doc.status == .verified {
+                        Text("Verified Successfully")
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.emerald)
+                    } else if lifecycle == .failed || doc.status == .rejected || doc.status == .requiresResubmission {
+                        Text(failureReason ?? doc.status.rawValue)
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.coral)
+                            .lineLimit(2)
                     } else {
                         Text(doc.status.rawValue)
                             .font(LMSFont.caption)
@@ -1303,7 +1693,7 @@ private struct UploadRow: View {
                 
                 Spacer()
                 
-                if doc.status == .pendingUpload && !uploading {
+                if doc.status == .pendingUpload && !uploading && lifecycle != .processing {
                     Button(action: onTrigger) {
                         Text("Upload")
                             .font(LMSFont.caption.weight(.bold))
@@ -1313,7 +1703,10 @@ private struct UploadRow: View {
                             .background(LMSColors.brandNavy, in: Capsule())
                     }
                     .buttonStyle(LMSPressableStyle())
-                } else if doc.status != .pendingUpload && !uploading {
+                } else if lifecycle == .uploading || lifecycle == .processing || uploading {
+                    ProgressView()
+                        .tint(lifecycle == .processing ? LMSColors.amber : LMSColors.actionBlue)
+                } else if doc.status != .pendingUpload {
                     HStack(spacing: 8) {
                         Button(action: onTrigger) {
                             Image(systemName: "arrow.triangle.2.circlepath")
@@ -1323,23 +1716,157 @@ private struct UploadRow: View {
                                 .background(LMSColors.surfaceTertiary, in: Circle())
                         }
                         
-                        Image(systemName: "eye.fill")
-                            .font(.footnote)
-                            .foregroundStyle(LMSColors.textSecondary)
-                            .frame(width: 28, height: 28)
-                            .background(LMSColors.surfaceTertiary, in: Circle())
+                        Button(action: onView) {
+                            Image(systemName: "eye.fill")
+                                .font(.footnote)
+                                .foregroundStyle(LMSColors.textSecondary)
+                                .frame(width: 28, height: 28)
+                                .background(LMSColors.surfaceTertiary, in: Circle())
+                        }
+                        .disabled(thumbnail == nil)
                     }
                 }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             
-            if uploading {
+            if lifecycle == .uploading || uploading {
                 ProgressView(value: progress)
                     .tint(LMSColors.actionBlue)
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
+            } else if lifecycle == .processing || ocr == "Scanning" {
+                ProgressView()
+                    .tint(LMSColors.amber)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
             }
+
+            if lifecycle == .success || doc.status == .verified {
+                verifiedPreview
+            } else if lifecycle == .failed || doc.status == .rejected || doc.status == .requiresResubmission {
+                failurePreview
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var documentIcon: some View {
+        if let thumbnail {
+            Image(uiImage: thumbnail)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 48, height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(statusColor.opacity(0.35), lineWidth: 1)
+                )
+        } else {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(statusColor.opacity(0.1))
+                    .frame(width: 42, height: 42)
+                Image(systemName: statusIcon)
+                    .font(.title3)
+                    .foregroundStyle(statusColor)
+            }
+        }
+    }
+
+    private var verifiedPreview: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Document Verified", systemImage: "checkmark.seal.fill")
+                    .font(LMSFont.caption.weight(.bold))
+                    .foregroundStyle(LMSColors.emerald)
+                Spacer()
+                if let uploadDate {
+                    Text(uploadDate.formattedAsDDMMMYYYY())
+                        .font(LMSFont.caption2)
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+            }
+
+            if !extractedDetails.isEmpty {
+                Text("We extracted the following details. Please verify.")
+                    .font(LMSFont.caption)
+                    .foregroundStyle(LMSColors.textSecondary)
+
+                ForEach(extractedDetails.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
+                    HStack {
+                        Text(key)
+                            .font(LMSFont.caption2)
+                            .foregroundStyle(LMSColors.textSecondary)
+                        Spacer()
+                        Text(value)
+                            .font(LMSFont.caption2.weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                }
+            }
+
+            HStack(spacing: 10) {
+                Button("Replace", action: onTrigger)
+                    .font(LMSFont.caption.weight(.bold))
+                Button("View Document", action: onView)
+                    .font(LMSFont.caption.weight(.bold))
+                    .disabled(thumbnail == nil)
+            }
+            .foregroundStyle(LMSColors.brandNavy)
+        }
+        .padding(12)
+        .background(LMSColors.emerald.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(LMSColors.emerald.opacity(0.18), lineWidth: 0.8)
+        )
+        .padding(.horizontal, 16)
+        .padding(.bottom, 12)
+    }
+
+    private var failurePreview: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Verification Failed", systemImage: "xmark.octagon.fill")
+                .font(LMSFont.caption.weight(.bold))
+                .foregroundStyle(LMSColors.coral)
+            Text(failureReason ?? "The uploaded file does not match the selected document type. Please try again with a clear image.")
+                .font(LMSFont.caption)
+                .foregroundStyle(LMSColors.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Retry Upload", action: onTrigger)
+                .font(LMSFont.caption.weight(.bold))
+                .foregroundStyle(LMSColors.brandNavy)
+        }
+        .padding(12)
+        .background(LMSColors.coral.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(LMSColors.coral.opacity(0.18), lineWidth: 0.8)
+        )
+        .padding(.horizontal, 16)
+        .padding(.bottom, 12)
+    }
+
+    private var statusIcon: String {
+        switch lifecycle {
+        case .uploading: return "arrow.up.doc.fill"
+        case .processing: return "viewfinder"
+        case .success: return "checkmark.seal.fill"
+        case .failed: return "xmark.octagon.fill"
+        case .idle: return doc.status == .verified ? "checkmark.seal.fill" : doc.status.iconName
+        }
+    }
+
+    private var statusColor: Color {
+        switch lifecycle {
+        case .uploading: return LMSColors.actionBlue
+        case .processing: return LMSColors.amber
+        case .success: return LMSColors.emerald
+        case .failed: return LMSColors.coral
+        case .idle: return doc.status == .verified ? LMSColors.emerald : doc.status.tintColor
         }
     }
 }
@@ -1643,6 +2170,74 @@ private struct UploadSourceSelectionSheet: View {
     }
 }
 
+private struct DocumentImagePicker: UIViewControllerRepresentable {
+    let sourceType: UIImagePickerController.SourceType
+    let onImagePicked: (UIImage) -> Void
+    let onCancel: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onImagePicked: onImagePicked, onCancel: onCancel)
+    }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = UIImagePickerController.isSourceTypeAvailable(sourceType) ? sourceType : .photoLibrary
+        picker.mediaTypes = ["public.image"]
+        picker.allowsEditing = false
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        let onImagePicked: (UIImage) -> Void
+        let onCancel: () -> Void
+
+        init(onImagePicked: @escaping (UIImage) -> Void, onCancel: @escaping () -> Void) {
+            self.onImagePicked = onImagePicked
+            self.onCancel = onCancel
+        }
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let image = info[.originalImage] as? UIImage {
+                onImagePicked(image)
+            } else {
+                onCancel()
+            }
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            onCancel()
+        }
+    }
+}
+
+private extension CGImagePropertyOrientation {
+    init(_ orientation: UIImage.Orientation) {
+        switch orientation {
+        case .up:
+            self = .up
+        case .upMirrored:
+            self = .upMirrored
+        case .down:
+            self = .down
+        case .downMirrored:
+            self = .downMirrored
+        case .left:
+            self = .left
+        case .leftMirrored:
+            self = .leftMirrored
+        case .right:
+            self = .right
+        case .rightMirrored:
+            self = .rightMirrored
+        @unknown default:
+            self = .up
+        }
+    }
+}
+
 // MARK: - Preview Support
 #Preview("Loan Wizard") {
     let viewModel = PreviewSupport.loanApplicationViewModel
@@ -1654,4 +2249,3 @@ private struct UploadSourceSelectionSheet: View {
     }
     .previewBorrowerEnvironment()
 }
-

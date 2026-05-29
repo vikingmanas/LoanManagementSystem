@@ -535,6 +535,48 @@ final class LoanApplicationViewModel: ObservableObject {
         uploadDocument(documentID, fileName: defaultName, source: .pdf)
     }
 
+    func uploadDocumentForApplication(applicationID: UUID, documentID: UUID, fileName: String, source: BorrowerDocumentUploadSource) {
+        guard let appIndex = applications.firstIndex(where: { $0.id == applicationID }) else { return }
+        guard let docIndex = applications[appIndex].documents.firstIndex(where: { $0.id == documentID }) else { return }
+        
+        let now = Date()
+        applications[appIndex].documents[docIndex].status = .uploaded
+        applications[appIndex].documents[docIndex].uploadDate = now
+        applications[appIndex].documents[docIndex].lastUpdated = now
+        applications[appIndex].documents[docIndex].fileName = fileName
+        applications[appIndex].updatedAt = now
+        
+        CentralLoanRepository.shared.submitApplication(applications[appIndex])
+        
+        // Auto-verify simulation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+            guard let self = self else { return }
+            guard let aIndex = self.applications.firstIndex(where: { $0.id == applicationID }) else { return }
+            guard let dIndex = self.applications[aIndex].documents.firstIndex(where: { $0.id == documentID }) else { return }
+            
+            self.applications[aIndex].documents[dIndex].status = .verified
+            self.applications[aIndex].documents[dIndex].lastUpdated = Date()
+            
+            // Log a stage entry to show this document was verified
+            self.applications[aIndex].stageHistory.append(
+                BorrowerStageEntry(
+                    stage: self.applications[aIndex].currentStage,
+                    timestamp: Date(),
+                    note: "Document '\(self.applications[aIndex].documents[dIndex].name)' automatically verified."
+                )
+            )
+            
+            // If all docs are verified, advance stage from Document Verification to Loan Officer Review
+            let allVerified = self.applications[aIndex].documents.allSatisfy { $0.status == .verified }
+            if allVerified && self.applications[aIndex].currentStage == .documentVerification {
+                self.advanceStage(for: applicationID)
+            } else {
+                CentralLoanRepository.shared.submitApplication(self.applications[aIndex])
+            }
+            self.objectWillChange.send()
+        }
+    }
+
     func moveDocumentToVerification(_ documentID: UUID) {
         guard let index = documents.firstIndex(where: { $0.id == documentID }) else { return }
         guard !documents[index].isLocked else { return }
