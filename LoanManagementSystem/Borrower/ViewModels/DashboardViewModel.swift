@@ -196,36 +196,95 @@ public final class DashboardViewModel: ObservableObject {
             self.bankAccounts = []
         }
         
-        // Load loan accounts from approved/disbursed applications in CentralLoanRepository
-        let approvedApps = CentralLoanRepository.shared.applications.filter {
-            $0.currentStage == .approved || $0.currentStage == .disbursed
+        // Query active loan accounts and schedules from Supabase
+        var fetchedLoanAccounts: [DashboardLoanAccount] = []
+        var fetchedEMIs: [EMIRecord] = []
+        if let profile = BorrowerProfileStore.shared.profile,
+           let borrowerUUID = UUID(uuidString: profile.id) {
+            do {
+                let dbAccounts = try await DatabaseService.shared.fetchLoanAccounts(borrowerId: borrowerUUID)
+                for dbAcc in dbAccounts {
+                    let dbEMIs = try await DatabaseService.shared.fetchEMISchedule(accountId: dbAcc.accountId)
+                    
+                    let remainingMonths = dbEMIs.filter { $0.status == "pending" || $0.status == "overdue" }.count
+                    let nextEMIItem = dbEMIs.filter { $0.status == "pending" || $0.status == "overdue" }.sorted { $0.dueDate < $1.dueDate }.first
+                    
+                    let emiAmount = dbEMIs.first?.emiAmount ?? (dbAcc.principalAmount / Double(max(1, remainingMonths)))
+                    
+                    let app = CentralLoanRepository.shared.applications.first(where: { $0.id == dbAcc.applicationId })
+                    let loanTypeTitle = app?.product.type.title ?? "Loan"
+                    
+                    let repaidPct = dbAcc.principalAmount > 0 ? ((dbAcc.principalAmount - dbAcc.outstandingBalance) / dbAcc.principalAmount) : 0.0
+                    
+                    let dashboardAcc = DashboardLoanAccount(
+                        id: dbAcc.accountId,
+                        accountNumber: app?.applicationId ?? "L-\(dbAcc.accountId.uuidString.prefix(6).uppercased())",
+                        loanType: loanTypeTitle,
+                        sanctionedAmount: dbAcc.principalAmount,
+                        principalOutstanding: dbAcc.outstandingBalance,
+                        totalEMI: emiAmount,
+                        nextEMIDate: nextEMIItem?.dueDate ?? dbAcc.nextEmiDate ?? Date(),
+                        tenureRemainingMonths: remainingMonths,
+                        totalTenureMonths: dbEMIs.count,
+                        repaidPercentage: repaidPct,
+                        linkedBankAccountId: bankAccount.id
+                    )
+                    fetchedLoanAccounts.append(dashboardAcc)
+                    
+                    for dbEmi in dbEMIs {
+                        if dbEmi.status == "pending" || dbEmi.status == "overdue" {
+                            let emiRecordStatus: DashboardEMIStatus = dbEmi.status == "overdue" ? .overdue : .dueSoon
+                            fetchedEMIs.append(
+                                EMIRecord(
+                                    id: dbEmi.emiId,
+                                    dueDate: dbEmi.dueDate,
+                                    amount: dbEmi.emiAmount,
+                                    loanType: loanTypeTitle,
+                                    status: emiRecordStatus
+                                )
+                            )
+                        }
+                    }
+                }
+            } catch {
+                print("[DashboardViewModel] Error loading accounts/EMIs from Supabase: \(error.localizedDescription)")
+            }
         }
         
-        self.loanAccounts = approvedApps.map { app in
-            let totalEMI = app.formData.requestedAmountValue / Double(max(1, app.formData.preferredTenureMonths))
-            return DashboardLoanAccount(
-                id: app.id,
-                accountNumber: app.applicationId ?? "L-\(app.id.uuidString.prefix(6).uppercased())",
-                loanType: app.product.type.title,
-                sanctionedAmount: app.formData.requestedAmountValue,
-                principalOutstanding: app.formData.requestedAmountValue,
-                totalEMI: totalEMI,
-                nextEMIDate: Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date(),
-                tenureRemainingMonths: app.formData.preferredTenureMonths,
-                totalTenureMonths: app.formData.preferredTenureMonths,
-                repaidPercentage: 0.0,
-                linkedBankAccountId: bankAccount.id
-            )
-        }
-        
-        // Dynamically populate pending EMIs based on active loans
-        self.pendingEMIs = self.loanAccounts.compactMap { loan in
-            EMIRecord(
-                dueDate: loan.nextEMIDate,
-                amount: loan.totalEMI,
-                loanType: loan.loanType,
-                status: .dueSoon
-            )
+        if fetchedLoanAccounts.isEmpty {
+            // Fallback to local simulation if no records are found in database
+            let approvedApps = CentralLoanRepository.shared.applications.filter {
+                $0.currentStage == .approved || $0.currentStage == .disbursed
+            }
+            
+            self.loanAccounts = approvedApps.map { app in
+                let totalEMI = app.formData.requestedAmountValue / Double(max(1, app.formData.preferredTenureMonths))
+                return DashboardLoanAccount(
+                    id: app.id,
+                    accountNumber: app.applicationId ?? "L-\(app.id.uuidString.prefix(6).uppercased())",
+                    loanType: app.product.type.title,
+                    sanctionedAmount: app.formData.requestedAmountValue,
+                    principalOutstanding: app.formData.requestedAmountValue,
+                    totalEMI: totalEMI,
+                    nextEMIDate: Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date(),
+                    tenureRemainingMonths: app.formData.preferredTenureMonths,
+                    totalTenureMonths: app.formData.preferredTenureMonths,
+                    repaidPercentage: 0.0,
+                    linkedBankAccountId: bankAccount.id
+                )
+            }
+            
+            self.pendingEMIs = self.loanAccounts.compactMap { loan in
+                EMIRecord(
+                    dueDate: loan.nextEMIDate,
+                    amount: loan.totalEMI,
+                    loanType: loan.loanType,
+                    status: .dueSoon
+                )
+            }
+        } else {
+            self.loanAccounts = fetchedLoanAccounts
+            self.pendingEMIs = fetchedEMIs.sorted { $0.dueDate < $1.dueDate }
         }
         
         self.schemes = MockData.sampleSchemes
@@ -390,6 +449,8 @@ public final class DashboardViewModel: ObservableObject {
             )
             transactions.insert(newTx, at: 0)
 
+            let emiId = emi.id
+            let emiAmount = emi.amount
             if let profile = BorrowerProfileStore.shared.profile,
                let borrowerUUID = UUID(uuidString: profile.id) {
                 let dbTx = DBTransaction(
@@ -409,8 +470,16 @@ public final class DashboardViewModel: ObservableObject {
                             .insert(dbTx)
                             .execute()
                         print("[DashboardViewModel] Successfully saved EMI payment transaction to Supabase.")
+                        
+                        try await DatabaseService.shared.updateEMIScheduleItemStatus(
+                            emiId: emiId,
+                            status: "paid",
+                            paidDate: Date(),
+                            paidAmount: emiAmount
+                        )
+                        print("[DashboardViewModel] Successfully updated EMI status on Supabase.")
                     } catch {
-                        print("[DashboardViewModel] Error saving EMI payment transaction to Supabase: \(error.localizedDescription)")
+                        print("[DashboardViewModel] Error saving EMI payment resources: \(error.localizedDescription)")
                     }
                 }
             }
@@ -457,6 +526,22 @@ public final class DashboardViewModel: ObservableObject {
 
             if let emiIndex = pendingEMIs.firstIndex(where: { $0.loanType == loan.loanType && $0.status != .paid }) {
                 pendingEMIs[emiIndex].status = .paid
+                
+                let emiId = pendingEMIs[emiIndex].id
+                let emiAmount = pendingEMIs[emiIndex].amount
+                Task {
+                    do {
+                        try await DatabaseService.shared.updateEMIScheduleItemStatus(
+                            emiId: emiId,
+                            status: "paid",
+                            paidDate: Date(),
+                            paidAmount: emiAmount
+                        )
+                        print("[DashboardViewModel] Successfully updated EMI status on Supabase.")
+                    } catch {
+                        print("[DashboardViewModel] Failed to sync paid EMI status to Supabase: \(error.localizedDescription)")
+                    }
+                }
             }
 
             let refNo = "TXN\(Int.random(in: 1000000...9999999))"
