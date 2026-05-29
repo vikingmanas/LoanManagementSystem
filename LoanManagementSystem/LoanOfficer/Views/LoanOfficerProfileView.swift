@@ -119,30 +119,8 @@ struct LoanOfficerProfileView: View {
                         }
                     }
                 }
-                
-                // 5. ROLE CONFIGURATION & ACTIONS (SWITCH TO BORROWER)
-                Section("System Settings") {
-                    Button {
-                        HapticsManager.triggerImpact(style: .heavy)
-                        NotificationCenter.default.post(name: NSNotification.Name("SwitchRoleToBorrower"), object: nil)
-                        dismiss()
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "arrow.left.arrow.right.circle.fill")
-                                .font(.title2)
-                                .foregroundStyle(LMSColors.actionBlue)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Switch to Borrower Mode")
-                                    .font(.body.weight(.medium))
-                                    .foregroundStyle(LMSColors.textPrimary)
-                                Text("Access simulation client interface")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                }
+
+
                 
                 // 6. LOGOUT BUTTON
                 Section {
