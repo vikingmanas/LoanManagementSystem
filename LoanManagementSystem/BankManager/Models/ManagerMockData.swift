@@ -296,7 +296,7 @@ enum ManagerMockData {
 
     static let conversations: [ManagerChatConversation] = [
         ManagerChatConversation(
-            id: UUID(), officerName: "Aarav Patel", officerInitials: "AP",
+            id: UUID(), officerUserId: UUID(), officerName: "Aarav Patel", officerInitials: "AP",
             officerRole: "Senior Loan Officer",
             lastMessage: "Priya Sharma's property valuation report has been uploaded.",
             timestamp: Date().addingTimeInterval(-1200), unreadCount: 2, isPinned: true,
@@ -309,7 +309,7 @@ enum ManagerMockData {
             ]
         ),
         ManagerChatConversation(
-            id: UUID(), officerName: "Priya Menon", officerInitials: "PM",
+            id: UUID(), officerUserId: UUID(), officerName: "Priya Menon", officerInitials: "PM",
             officerRole: "Loan Officer",
             lastMessage: "Escalation for Vikram Joshi's case — GST discrepancy found.",
             timestamp: Date().addingTimeInterval(-3600), unreadCount: 1, isPinned: false,
@@ -321,7 +321,7 @@ enum ManagerMockData {
             ]
         ),
         ManagerChatConversation(
-            id: UUID(), officerName: "Rohan Gupta", officerInitials: "RG",
+            id: UUID(), officerUserId: UUID(), officerName: "Rohan Gupta", officerInitials: "RG",
             officerRole: "Junior Loan Officer",
             lastMessage: "Kavitha Nair's disbursement has been processed.",
             timestamp: Date().addingTimeInterval(-86400), unreadCount: 0, isPinned: false,
@@ -333,7 +333,7 @@ enum ManagerMockData {
             ]
         ),
         ManagerChatConversation(
-            id: UUID(), officerName: "Neha Singh", officerInitials: "NS",
+            id: UUID(), officerUserId: UUID(), officerName: "Neha Singh", officerInitials: "NS",
             officerRole: "Loan Officer",
             lastMessage: "Ananya Reddy's home loan file is ready for your review.",
             timestamp: Date().addingTimeInterval(-600), unreadCount: 3, isPinned: true,
@@ -364,4 +364,3 @@ enum ManagerMockData {
         approved: 187, rejected: 15, pending: 45
     )
 }
-

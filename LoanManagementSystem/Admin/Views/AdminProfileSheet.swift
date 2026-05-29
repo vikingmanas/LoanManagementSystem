@@ -10,11 +10,26 @@ struct AdminProfileSheet: View {
             List {
                 Section {
                     HStack(spacing: LMSSpacing.md) {
-                        Text(authManager.userInitials)
-                            .font(LMSFont.title)
-                            .foregroundStyle(.white)
-                            .frame(width: 64, height: 64)
-                            .background(LMSColors.brandNavy, in: Circle())
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [LMSColors.brandNavy, LMSColors.brandNavyLight],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                            
+                            Text(authManager.userInitials)
+                                .font(LMSFont.title)
+                                .foregroundStyle(.white)
+                        }
+                        .frame(width: 68, height: 68)
+                        .clipShape(Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1.5)
+                        )
                         
                         VStack(alignment: .leading, spacing: 4) {
                             Text(authManager.userDisplayName)

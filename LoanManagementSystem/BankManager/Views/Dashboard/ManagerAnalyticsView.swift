@@ -491,8 +491,8 @@ struct BranchPortfolioLedgerSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") { dismiss() }
-                        .font(.system(.body, design: .rounded).bold())
+                    Button("Done") { dismiss() }
+                        .bold()
                 }
             }
         }

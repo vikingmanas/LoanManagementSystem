@@ -16,6 +16,15 @@ struct AdminKPI: Identifiable, Hashable {
     let themeColor: Color
 }
 
+// MARK: - Branch KPI Data
+struct KPIBranchData: Identifiable, Hashable {
+    let id = UUID()
+    let branchName: String
+    let branchCode: String
+    let value: String
+    let trend: Double // Positive for up, negative for down
+}
+
 // MARK: - System Health
 struct SystemHealth: Equatable {
     var serverUptime: Double // Percentage (e.g. 99.98)
@@ -59,6 +68,123 @@ struct AuditLogEntry: Identifiable, Codable, Hashable {
     let timestamp: Date
     let details: String
     let type: AuditLogType
+}
+
+// MARK: - Admin Communication Center
+enum AdminIssueCategory: String, CaseIterable, Identifiable, Hashable {
+    case customerFeedback = "Customer Feedback"
+    case branchOperations = "Branch Operations"
+    case staffingRequest = "Staffing Request"
+    case employeeConcern = "Employee Concern"
+    case productFeedback = "Product Feedback"
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .customerFeedback: return "person.crop.circle.badge.exclamationmark"
+        case .branchOperations: return "building.2.crop.circle"
+        case .staffingRequest: return "person.2.badge.plus"
+        case .employeeConcern: return "person.badge.shield.checkmark"
+        case .productFeedback: return "lightbulb.max.fill"
+        }
+    }
+}
+
+enum AdminIssuePriority: String, CaseIterable, Identifiable, Hashable {
+    case low = "Low"
+    case medium = "Medium"
+    case high = "High"
+    case critical = "Critical"
+
+    var id: String { rawValue }
+
+    var color: Color {
+        switch self {
+        case .low: return LMSColors.actionBlue
+        case .medium: return LMSColors.amber
+        case .high: return LMSColors.coral
+        case .critical: return Color.purple
+        }
+    }
+}
+
+enum AdminIssueStatus: String, CaseIterable, Identifiable, Hashable {
+    case open = "Open"
+    case inProgress = "In Progress"
+    case waitingForResponse = "Waiting For Response"
+    case resolved = "Resolved"
+    case archived = "Archived"
+
+    var id: String { rawValue }
+
+    var color: Color {
+        switch self {
+        case .open: return LMSColors.coral
+        case .inProgress: return LMSColors.actionBlue
+        case .waitingForResponse: return LMSColors.amber
+        case .resolved: return LMSColors.emerald
+        case .archived: return LMSColors.textSecondary
+        }
+    }
+}
+
+struct AdminIssueReply: Identifiable, Hashable {
+    let id = UUID()
+    let author: String
+    let message: String
+    let timestamp: Date
+}
+
+struct AdminCommunicationIssue: Identifiable, Hashable {
+    let id: UUID
+    var issueId: String
+    var title: String
+    var branchName: String
+    var raisedBy: String
+    var category: AdminIssueCategory
+    var priority: AdminIssuePriority
+    var createdDate: Date
+    var status: AdminIssueStatus
+    var issue: String
+    var assignedTo: String?
+    var supportingDocuments: [String]
+    var replies: [AdminIssueReply]
+    var createdBy: String
+    var responseDate: Date?
+    var resolvedDate: Date?
+    var lastUpdatedBy: String
+}
+
+enum AdminBroadcastRecipient: String, CaseIterable, Identifiable, Hashable {
+    case allBranchManagers = "All Branch Managers"
+    case selectedBranchManagers = "Selected Branch Managers"
+    case allLoanOfficers = "All Loan Officers"
+    case selectedLoanOfficers = "Selected Loan Officers"
+    case entireOrganization = "Entire Organization"
+
+    var id: String { rawValue }
+}
+
+enum AdminAnnouncementType: String, CaseIterable, Identifiable, Hashable {
+    case operationalUpdate = "Operational Update"
+    case policyChange = "Policy Change"
+    case interestRateChange = "Interest Rate Change"
+    case holidayNotification = "Holiday Notification"
+    case systemMaintenance = "System Maintenance"
+    case trainingAnnouncement = "Training Announcement"
+    case complianceAlert = "Compliance Alert"
+
+    var id: String { rawValue }
+}
+
+struct AdminBroadcastMessage: Identifiable, Hashable {
+    let id = UUID()
+    var subject: String
+    var message: String
+    var recipients: AdminBroadcastRecipient
+    var type: AdminAnnouncementType
+    var createdDate: Date
 }
 
 // MARK: - Loan Products

@@ -50,6 +50,8 @@ struct BorrowerApplicationsTabView: View {
                             }
                         }
                     )
+                case .governmentSchemeDetail(let scheme):
+                    GovernmentSchemeDetailView(scheme: scheme)
                 }
             }
         }

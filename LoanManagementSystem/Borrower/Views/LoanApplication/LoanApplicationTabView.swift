@@ -18,6 +18,9 @@ struct LoanApplicationTabView: View {
                 onApply: { product in
                     viewModel.startDraft(for: product)
                     navigationPath.append(LoanApplicationRoute.applicationWizard(product))
+                },
+                onSchemeDetail: { scheme in
+                    navigationPath.append(LoanApplicationRoute.governmentSchemeDetail(scheme))
                 }
             )
             .background(LMSColors.background)
@@ -57,6 +60,8 @@ struct LoanApplicationTabView: View {
                             }
                         }
                     )
+                case .governmentSchemeDetail(let scheme):
+                    GovernmentSchemeDetailView(scheme: scheme)
                 }
             }
         }
@@ -810,6 +815,25 @@ private struct ApplicationCard: View {
 
 #endif
 
+// MARK: - Product Category Extension
+extension BorrowerLoanProductType {
+    var tintColor: Color {
+        switch self {
+        case .personal: return LMSColors.actionBlue
+        case .home: return LMSColors.brandNavy
+        case .education: return LMSColors.teal
+        case .business: return Color(hex: "7C3AED")
+        case .vehicle: return LMSColors.emeraldDark
+        case .agriculture: return Color(hex: "16A34A")
+        case .consumer: return Color(hex: "6366F1")
+        case .msmeStartup: return Color(hex: "4F46E5")
+        case .gold: return LMSColors.amber
+        case .loanAgainstProperty: return LMSColors.brandNavyLight
+        case .other: return LMSColors.textSecondary
+        }
+    }
+}
+
 // MARK: - Loan Application Tracking Screen
 struct LoanApplicationTrackingScreen: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
@@ -818,92 +842,74 @@ struct LoanApplicationTrackingScreen: View {
     let onDelete: () -> Void
 
     @State private var showDeleteConfirmation = false
+    @State private var resubmittingDocument: BorrowerLoanDocumentItem? = nil
+
+    private var currentApplication: BorrowerLoanApplication {
+        viewModel.applications.first(where: { $0.id == application.id }) ?? application
+    }
 
     var body: some View {
-        List {
-            Section {
-                VStack(spacing: 20) {
-                    HStack(spacing: 20) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(LMSColors.brandNavy.opacity(0.1))
-                                .frame(width: 64, height: 64)
-                            Image(systemName: application.product.type.iconName)
-                                .font(.title)
-                                .foregroundStyle(LMSColors.brandNavy)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(application.product.type.title)
-                                .font(.headline)
-                            Text(application.displayIdentifier)
-                                .font(.caption.monospaced())
-                                .foregroundStyle(LMSColors.textSecondary)
-                        }
-                        Spacer()
+        let app = currentApplication
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: LMSSpacing.sectionGap) {
+                
+                // Task 1: Premium Header Card
+                TrackingHeaderCard(
+                    application: app,
+                    progress: viewModel.progressValue(for: app),
+                    onResume: onResume
+                )
+                
+                // Task 2: Interactive Timeline Stepper
+                TimelineStepperCard(
+                    viewModel: viewModel,
+                    application: app
+                )
+                
+                // Task 4: Documents Section with Resubmission Action Sheet
+                SubmittedDocumentsCard(
+                    application: app,
+                    onResubmit: { doc in
+                        resubmittingDocument = doc
                     }
-                    
-                    VStack(spacing: 8) {
-                        ProgressView(value: viewModel.progressValue(for: application))
-                            .tint(application.currentStage.tintColor)
-                        
+                )
+                
+                // Task 3: Collapsible Info Sections
+                SubmittedInfoViewerCard(
+                    application: app
+                )
+                
+                // If it is draft, show standard delete option in page body too
+                if app.isDraft {
+                    Button(role: .destructive, action: {
+                        showDeleteConfirmation = true
+                    }) {
                         HStack {
-                            Text("Current Progress")
-                                .font(.caption2)
-                                .foregroundStyle(LMSColors.textSecondary)
-                            Spacer()
-                            Text(application.currentStage.rawValue)
-                                .font(.caption2.bold())
-                                .foregroundStyle(application.currentStage.tintColor)
+                            Image(systemName: "trash")
+                            Text("Delete Draft")
                         }
+                        .font(LMSFont.footnote.weight(.semibold))
+                        .foregroundColor(LMSColors.coral)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity)
+                        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.md))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: LMSRadius.md)
+                                .stroke(LMSColors.coral.opacity(0.2), lineWidth: 0.5)
+                        )
                     }
-
-                    if application.isDraft {
-                        Button(action: onResume) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "arrow.uturn.forward.circle.fill")
-                                Text("Resume Application")
-                                    .fontWeight(.semibold)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(LMSColors.brandNavy)
-                    }
+                    .buttonStyle(LMSPressableStyle())
+                    .padding(.top, 4)
                 }
-                .padding(.vertical, 12)
             }
-
-            Section {
-                let stages = viewModel.timelineStages(for: application)
-                ForEach(stages, id: \.self) { stage in
-                    TimelineRow(
-                        stage: stage.rawValue,
-                        date: viewModel.stageTimestamp(for: stage, application: application),
-                        isCompleted: isStageCompleted(stage, current: application.currentStage, stages: stages),
-                        isCurrent: stage == application.currentStage
-                    )
-                }
-            } header: {
-                Text("Status Timeline")
-            }
-
-            Section {
-                LabeledContent("Requested Amount", value: application.formData.requestedAmountValue.formattedAsINR())
-                LabeledContent("Tenure", value: "\(application.formData.preferredTenureMonths) months")
-                if let submittedAt = application.submittedAt {
-                    LabeledContent("Submitted On", value: submittedAt.formattedAsDDMMMYYYY())
-                }
-                LabeledContent("Processing Fee", value: application.product.processingFees)
-            } header: {
-                Text("Application Details")
-            }
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
+            .padding(.vertical, LMSSpacing.screenHorizontal)
         }
-        .navigationTitle("Tracking")
+        .background(LMSColors.background)
+        .navigationTitle("Application Tracking")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if application.isDraft {
+            if app.isDraft {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(role: .destructive) {
                         showDeleteConfirmation = true
@@ -917,10 +923,191 @@ struct LoanApplicationTrackingScreen: View {
             Button("Delete", role: .destructive, action: onDelete)
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This will permanently delete draft \(application.displayIdentifier). You cannot undo this action.")
+            Text("This will permanently delete draft \(app.displayIdentifier). You cannot undo this action.")
+        }
+        .sheet(item: $resubmittingDocument) { document in
+            DocumentUploadSheet(documentName: document.name) { fileName, source in
+                viewModel.uploadDocumentForApplication(
+                    applicationID: app.id,
+                    documentID: document.id,
+                    fileName: fileName,
+                    source: source
+                )
+            }
         }
     }
+}
 
+// MARK: - Task 1 Components (Header Card)
+private struct TrackingHeaderCard: View {
+    let application: BorrowerLoanApplication
+    let progress: Double
+    let onResume: () -> Void
+    
+    var body: some View {
+        VStack(spacing: LMSSpacing.lg) {
+            // Icon + Title + Status
+            HStack(alignment: .top, spacing: LMSSpacing.md) {
+                // Category Tinted Icon
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(application.product.type.tintColor.opacity(0.12))
+                        .frame(width: 52, height: 52)
+                    
+                    Image(systemName: application.product.type.iconName)
+                        .font(.title3)
+                        .foregroundStyle(application.product.type.tintColor)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: LMSSpacing.sm) {
+                        Text(application.product.type.title)
+                            .font(LMSFont.headline.weight(.bold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                        
+                        Text(application.product.type.rawValue.uppercased())
+                            .font(.system(size: 8, weight: .black))
+                            .foregroundStyle(LMSColors.brandNavy)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(LMSColors.brandNavy.opacity(0.08), in: Capsule())
+                    }
+                    
+                    Text(application.displayIdentifier)
+                        .font(LMSFont.caption.monospaced())
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+                
+                Spacer()
+                
+                // Large Badge Status
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(application.currentStage.tintColor)
+                        .frame(width: 6, height: 6)
+                    
+                    Text(application.currentStage.rawValue)
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(application.currentStage.tintColor)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(application.currentStage.tintColor.opacity(0.12), in: Capsule())
+            }
+            
+            Divider().background(LMSColors.separatorLight)
+            
+            // Grid details
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("SUBMITTED ON")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(LMSColors.textTertiary)
+                    
+                    Text(application.submittedAt?.formattedAsDDMMMYYYY() ?? "Draft")
+                        .font(LMSFont.footnote.weight(.semibold))
+                        .foregroundStyle(LMSColors.textPrimary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("CURRENT QUEUE")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(LMSColors.textTertiary)
+                    
+                    Text(application.assignedQueue ?? "Unsubmitted Draft")
+                        .font(LMSFont.footnote.weight(.semibold))
+                        .foregroundStyle(LMSColors.textPrimary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            
+            VStack(alignment: .leading, spacing: LMSSpacing.xs) {
+                HStack {
+                    Text("Processing Progress")
+                        .font(LMSFont.caption2)
+                        .foregroundStyle(LMSColors.textSecondary)
+                    Spacer()
+                    Text("\(Int(progress * 100))%")
+                        .font(LMSFont.caption2.weight(.bold))
+                        .foregroundStyle(LMSColors.brandNavy)
+                }
+                
+                ProgressView(value: progress)
+                    .tint(LMSColors.brandNavy)
+            }
+            .padding(.top, 4)
+            
+            if application.isDraft {
+                Button(action: onResume) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.uturn.forward.circle.fill")
+                        Text("Resume Application")
+                            .fontWeight(.semibold)
+                    }
+                    .font(LMSFont.button)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(LMSColors.brandNavy, in: RoundedRectangle(cornerRadius: LMSRadius.md))
+                    .foregroundStyle(.white)
+                }
+                .buttonStyle(LMSPressableStyle())
+                .padding(.top, 4)
+            }
+        }
+        .padding(LMSSpacing.lg)
+        .lmsCardElevated()
+    }
+}
+
+// MARK: - Task 2 Components (Timeline Stepper)
+private struct TimelineStepperCard: View {
+    @ObservedObject var viewModel: LoanApplicationViewModel
+    let application: BorrowerLoanApplication
+    
+    @State private var expandedStages: Set<BorrowerApplicationStage> = []
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: LMSSpacing.lg) {
+            Text("Status Timeline")
+                .font(LMSFont.title3)
+                .foregroundStyle(LMSColors.textPrimary)
+            
+            let stages = viewModel.timelineStages(for: application)
+            
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(0..<stages.count, id: \.self) { index in
+                    let stage = stages[index]
+                    let isCompleted = isStageCompleted(stage, current: application.currentStage, stages: stages)
+                    let isCurrent = stage == application.currentStage
+                    let date = viewModel.stageTimestamp(for: stage, application: application)
+                    
+                    TimelineStepRow(
+                        stage: stage,
+                        date: date,
+                        isCompleted: isCompleted,
+                        isCurrent: isCurrent,
+                        isLast: index == stages.count - 1,
+                        isExpanded: expandedStages.contains(stage),
+                        note: application.stageHistory.last(where: { $0.stage == stage })?.note,
+                        onTap: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                if expandedStages.contains(stage) {
+                                    expandedStages.remove(stage)
+                                } else {
+                                    expandedStages.insert(stage)
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+        }
+        .padding(LMSSpacing.lg)
+        .lmsCard()
+    }
+    
     private func isStageCompleted(_ stage: BorrowerApplicationStage, current: BorrowerApplicationStage, stages: [BorrowerApplicationStage]) -> Bool {
         guard let currentIndex = stages.firstIndex(of: current),
               let stageIndex = stages.firstIndex(of: stage) else { return false }
@@ -928,37 +1115,378 @@ struct LoanApplicationTrackingScreen: View {
     }
 }
 
-private struct TimelineRow: View {
-    let stage: String
+private struct TimelineStepRow: View {
+    let stage: BorrowerApplicationStage
     let date: Date?
     let isCompleted: Bool
     let isCurrent: Bool
-
+    let isLast: Bool
+    let isExpanded: Bool
+    let note: String?
+    let onTap: () -> Void
+    
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
+        HStack(alignment: .top, spacing: LMSSpacing.lg) {
+            // Icon and vertical connector
             VStack(spacing: 0) {
-                Circle()
-                    .fill(isCompleted ? LMSColors.emerald : (isCurrent ? LMSColors.brandNavy : Color(.systemGray4)))
-                    .frame(width: 10, height: 10)
-                Rectangle()
-                    .fill(Color(.systemGray4).opacity(0.5))
-                    .frame(width: 1.5, height: 28)
-            }
-            .padding(.top, 4)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(stage)
-                    .font(.system(size: 14, weight: isCurrent ? .bold : .regular))
-                    .foregroundStyle(isCurrent ? .primary : .secondary)
-                if let date = date {
-                    Text(date.formattedAsDDMMMYYYY())
-                        .font(.system(size: 11))
-                        .foregroundStyle(LMSColors.textTertiary)
+                ZStack {
+                    if isCompleted {
+                        Circle()
+                            .fill(LMSColors.emerald)
+                            .frame(width: 24, height: 24)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.white)
+                    } else if isCurrent {
+                        ZStack {
+                            Circle()
+                                .stroke(LMSColors.brandNavy.opacity(0.2), lineWidth: 3)
+                                .frame(width: 24, height: 24)
+                            Circle()
+                                .fill(LMSColors.brandNavy)
+                                .frame(width: 12, height: 12)
+                        }
+                    } else {
+                        Circle()
+                            .stroke(LMSColors.separator, lineWidth: 2)
+                            .fill(LMSColors.surface)
+                            .frame(width: 24, height: 24)
+                    }
+                }
+                
+                if !isLast {
+                    Rectangle()
+                        .fill(isCompleted ? LMSColors.emerald.opacity(0.5) : LMSColors.separatorLight)
+                        .frame(width: 2, height: isExpanded ? 70 : 36)
                 }
             }
-            Spacer()
+            
+            // Content
+            VStack(alignment: .leading, spacing: LMSSpacing.xs) {
+                Button(action: onTap) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(stage.rawValue)
+                                .font(LMSFont.footnote.weight(isCurrent ? .bold : .semibold))
+                                .foregroundStyle(isCurrent ? LMSColors.brandNavy : (isCompleted ? LMSColors.textPrimary : LMSColors.textSecondary))
+                            
+                            if let date = date {
+                                Text(date.formattedAsDDMMMYYYY())
+                                    .font(LMSFont.caption2)
+                                    .foregroundStyle(LMSColors.textTertiary)
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        if note != nil {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(LMSColors.textTertiary)
+                                .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                
+                if isExpanded, let note = note {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(note)
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.textSecondary)
+                            .padding(8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(LMSColors.background, in: RoundedRectangle(cornerRadius: LMSRadius.sm))
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                    .padding(.top, 2)
+                }
+            }
+            .padding(.bottom, isLast ? 0 : 12)
         }
-        .listRowSeparator(.hidden)
+    }
+}
+
+// MARK: - Task 3 Components (Submitted Info Viewer)
+private struct SubmittedInfoViewerCard: View {
+    let application: BorrowerLoanApplication
+    
+    @State private var isPersonalExpanded = false
+    @State private var isFinancialExpanded = false
+    @State private var isRequirementsExpanded = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            Text("Submitted Information")
+                .font(LMSFont.title3)
+                .foregroundStyle(LMSColors.textPrimary)
+            
+            VStack(spacing: LMSSpacing.sm) {
+                // Personal Section
+                CollapsibleSection(
+                    title: "Personal Details",
+                    icon: "person.crop.circle.fill",
+                    isExpanded: $isPersonalExpanded
+                ) {
+                    VStack(spacing: LMSSpacing.sm) {
+                        InfoRow(label: "Full Name", value: application.formData.fullName)
+                        InfoRow(label: "Date of Birth", value: application.formData.dateOfBirth.formattedAsDDMMMYYYY())
+                        InfoRow(label: "Gender", value: application.formData.gender.isEmpty ? "Not Specified" : application.formData.gender)
+                        InfoRow(label: "Mobile Number", value: application.formData.mobileNumber)
+                        InfoRow(label: "Email Address", value: application.formData.emailAddress)
+                        InfoRow(label: "Address", value: application.formData.address)
+                    }
+                    .padding(.top, 8)
+                }
+                
+                Divider().background(LMSColors.separatorLight)
+                
+                // Professional/Financial Section
+                CollapsibleSection(
+                    title: "Employment & Income",
+                    icon: "briefcase.fill",
+                    isExpanded: $isFinancialExpanded
+                ) {
+                    VStack(spacing: LMSSpacing.sm) {
+                        InfoRow(label: "Employment Type", value: application.formData.employmentType)
+                        InfoRow(label: "Occupation", value: application.formData.occupation)
+                        InfoRow(label: "Employer Name", value: application.formData.employerName)
+                        InfoRow(label: "Work Experience", value: "\(application.formData.workExperienceYears) Years")
+                        if !application.formData.gstNumber.isEmpty {
+                            InfoRow(label: "GST Number", value: application.formData.gstNumber)
+                        }
+                        InfoRow(label: "Monthly Income", value: application.formData.monthlyIncomeValue.formattedAsINR())
+                        InfoRow(label: "Annual Income", value: application.formData.annualIncomeValue.formattedAsINR())
+                        if !application.formData.existingEMIs.isEmpty {
+                            InfoRow(label: "Existing EMIs", value: application.formData.existingEMIsValue.formattedAsINR())
+                        }
+                        if !application.formData.creditScore.isEmpty {
+                            InfoRow(label: "Credit Score", value: application.formData.creditScore)
+                        }
+                    }
+                    .padding(.top, 8)
+                }
+                
+                Divider().background(LMSColors.separatorLight)
+                
+                // Loan Requirements Section
+                CollapsibleSection(
+                    title: "Loan Requirements",
+                    icon: "indianrupeesign.circle.fill",
+                    isExpanded: $isRequirementsExpanded
+                ) {
+                    VStack(spacing: LMSSpacing.sm) {
+                        InfoRow(label: "Requested Amount", value: application.formData.requestedAmountValue.formattedAsINR())
+                        InfoRow(label: "Preferred Tenure", value: "\(application.formData.preferredTenureMonths) months")
+                        InfoRow(label: "Loan Purpose", value: application.formData.loanPurpose)
+                        InfoRow(label: "Repayment Preference", value: application.formData.repaymentPreference)
+                        if application.formData.hasCoApplicant {
+                            InfoRow(label: "Co-Applicant Details", value: application.formData.coApplicantDetails)
+                        }
+                        if application.formData.hasGuarantor {
+                            InfoRow(label: "Guarantor Details", value: application.formData.guarantorDetails)
+                        }
+                    }
+                    .padding(.top, 8)
+                }
+            }
+        }
+        .padding(LMSSpacing.lg)
+        .lmsCard()
+    }
+}
+
+private struct CollapsibleSection<Content: View>: View {
+    let title: String
+    let icon: String
+    @Binding var isExpanded: Bool
+    @ViewBuilder let content: () -> Content
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack(spacing: LMSSpacing.md) {
+                    Image(systemName: icon)
+                        .font(.system(size: 16))
+                        .foregroundStyle(LMSColors.brandNavy)
+                        .frame(width: 28, height: 28)
+                        .background(LMSColors.brandNavy.opacity(0.08), in: RoundedRectangle(cornerRadius: LMSRadius.sm))
+                    
+                    Text(title)
+                        .font(LMSFont.footnote.weight(.semibold))
+                        .foregroundStyle(LMSColors.textPrimary)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+            }
+            .buttonStyle(.plain)
+            
+            if isExpanded {
+                content()
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+}
+
+private struct InfoRow: View {
+    let label: String
+    let value: String
+    
+    var body: some View {
+        HStack(alignment: .top) {
+            Text(label)
+                .font(LMSFont.footnote)
+                .foregroundStyle(LMSColors.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            Text(value)
+                .font(LMSFont.footnote.weight(.medium))
+                .foregroundStyle(LMSColors.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .multilineTextAlignment(.trailing)
+        }
+    }
+}
+
+// MARK: - Task 4 Components (Documents Section)
+private struct SubmittedDocumentsCard: View {
+    let application: BorrowerLoanApplication
+    let onResubmit: (BorrowerLoanDocumentItem) -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            Text("Documents Status")
+                .font(LMSFont.title3)
+                .foregroundStyle(LMSColors.textPrimary)
+            
+            VStack(spacing: LMSSpacing.md) {
+                ForEach(application.documents) { doc in
+                    TrackingDocumentStatusRow(doc: doc, onResubmit: { onResubmit(doc) })
+                    if doc.id != application.documents.last?.id {
+                        Divider().background(LMSColors.separatorLight)
+                    }
+                }
+            }
+        }
+        .padding(LMSSpacing.lg)
+        .lmsCard()
+    }
+}
+
+private struct TrackingDocumentStatusRow: View {
+    let doc: BorrowerLoanDocumentItem
+    let onResubmit: () -> Void
+    
+    @State private var showPreviewAlert = false
+    
+    var body: some View {
+        HStack(alignment: .center, spacing: LMSSpacing.md) {
+            // Icon
+            ZStack {
+                RoundedRectangle(cornerRadius: LMSRadius.sm)
+                    .fill(doc.status.tintColor.opacity(0.08))
+                    .frame(width: 40, height: 40)
+                
+                Image(systemName: iconName(for: doc))
+                    .font(.system(size: 18))
+                    .foregroundStyle(doc.status.tintColor)
+            }
+            
+            // Text
+            VStack(alignment: .leading, spacing: 2) {
+                Text(doc.name)
+                    .font(LMSFont.footnote.weight(.semibold))
+                    .foregroundStyle(LMSColors.textPrimary)
+                
+                HStack(spacing: 6) {
+                    Text(doc.category.rawValue)
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(LMSColors.background, in: Capsule())
+                    
+                    if let uploadDate = doc.uploadDate {
+                        Text("•  \(uploadDate.formattedAsDDMMMYYYY())")
+                            .font(.system(size: 9))
+                            .foregroundStyle(LMSColors.textTertiary)
+                    }
+                }
+            }
+            
+            Spacer()
+            
+            // Status and actions
+            VStack(alignment: .trailing, spacing: LMSSpacing.xs) {
+                HStack(spacing: LMSSpacing.xs) {
+                    Circle()
+                        .fill(doc.status.tintColor)
+                        .frame(width: 6, height: 6)
+                    
+                    Text(doc.status.rawValue)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(doc.status.tintColor)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(doc.status.tintColor.opacity(0.1), in: Capsule())
+                
+                if doc.status == .rejected || doc.status == .requiresResubmission {
+                    Button(action: onResubmit) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.triangle.2.circlepath.doc.on.clipboard")
+                                .font(.system(size: 10))
+                            Text("Resubmit")
+                                .font(.system(size: 10, weight: .bold))
+                        }
+                        .foregroundStyle(LMSColors.brandNavy)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(LMSColors.surfaceElevated, in: RoundedRectangle(cornerRadius: LMSRadius.sm))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: LMSRadius.sm)
+                                .stroke(LMSColors.brandNavy.opacity(0.2), lineWidth: 0.5)
+                        )
+                    }
+                    .buttonStyle(LMSPressableStyle())
+                } else if doc.status != .pendingUpload {
+                    Button(action: { showPreviewAlert = true }) {
+                        Text("View File")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(LMSColors.actionBlue)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .alert("File Preview", isPresented: $showPreviewAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Simulated viewing for \(doc.fileName ?? "uploaded file").\nStatus: \(doc.status.rawValue)\nCategory: \(doc.category.rawValue)")
+        }
+    }
+    
+    private func iconName(for doc: BorrowerLoanDocumentItem) -> String {
+        if doc.name.lowercased().contains("passport") {
+            return "globe"
+        } else if doc.name.lowercased().contains("bill") || doc.name.lowercased().contains("rent") {
+            return "doc.plaintext.fill"
+        } else if doc.name.lowercased().contains("salary") || doc.name.lowercased().contains("statement") {
+            return "banknote.fill"
+        } else if doc.name.lowercased().contains("signature") {
+            return "signature"
+        }
+        return doc.status.iconName
     }
 }
 

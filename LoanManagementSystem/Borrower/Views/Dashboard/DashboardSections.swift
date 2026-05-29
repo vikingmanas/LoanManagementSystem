@@ -28,6 +28,7 @@ struct ProfileCompletionCardSection: View {
     let percentage: Int
     let missingItems: [String]
     let onContinue: () -> Void
+    let onDismiss: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
@@ -61,6 +62,20 @@ struct ProfileCompletionCardSection: View {
                                 .foregroundStyle(LMSColors.textSecondary)
                         }
                         Spacer(minLength: 0)
+
+                        Button(action: onDismiss) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(LMSColors.textSecondary)
+                                .frame(width: 28, height: 28)
+                                .background(LMSColors.surfaceElevated, in: Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(LMSColors.separatorLight.opacity(0.7), lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Dismiss profile completion card")
                     }
 
                     if !missingItems.isEmpty {
@@ -403,58 +418,98 @@ struct DashboardQuickActionsSection: View {
     var onStatement: () -> Void
     var onSupport: () -> Void
     var onCalculator: () -> Void
+    var onForeclosure: () -> Void
+    var onTopUp: () -> Void
 
-    private let columns = [
-        GridItem(.flexible(), spacing: LMSSpacing.md),
-        GridItem(.flexible(), spacing: LMSSpacing.md)
-    ]
+    private var actions: [DashboardQuickAction] {
+        [
+            DashboardQuickAction(title: "Apply Loan", subtitle: "New credit", icon: "plus", tint: LMSColors.brandNavy, action: onApplyLoan),
+            DashboardQuickAction(title: "Pay EMI", subtitle: "Due payments", icon: "indianrupeesign", tint: LMSColors.emerald, action: onPayEMI),
+            DashboardQuickAction(title: "Top Up", subtitle: "Add funds", icon: "plus.circle.fill", tint: LMSColors.coral, action: onTopUp),
+            DashboardQuickAction(title: "Statements", subtitle: "Download", icon: "doc.text.fill", tint: LMSColors.actionBlue, action: onStatement),
+            DashboardQuickAction(title: "Support", subtitle: "Get help", icon: "headphones", tint: LMSColors.amber, action: onSupport),
+            DashboardQuickAction(title: "Loan Calculator", subtitle: "Plan EMI", icon: "function", tint: LMSColors.teal, action: onCalculator),
+            DashboardQuickAction(title: "Foreclosure", subtitle: "Close your loan early", icon: "lock.open.fill", tint: Color.orange, action: onForeclosure)
+        ]
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
-            DashboardSectionHeader(title: "Quick Actions", subtitle: "Common tasks")
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
+            DashboardSectionHeader(title: "Quick Actions", subtitle: "Fast banking shortcuts")
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
 
-            LazyVGrid(columns: columns, spacing: LMSSpacing.md) {
-                DashboardQuickActionTile(title: "Apply Loan", icon: "plus.circle.fill", tint: LMSColors.brandNavy, action: onApplyLoan)
-                DashboardQuickActionTile(title: "Pay EMI", icon: "indianrupeesign.circle.fill", tint: LMSColors.emerald, action: onPayEMI)
-                DashboardQuickActionTile(title: "Statement", icon: "doc.text.fill", tint: LMSColors.actionBlue, action: onStatement)
-                DashboardQuickActionTile(title: "Support", icon: "headphones.circle.fill", tint: LMSColors.amber, action: onSupport)
-                DashboardQuickActionTile(title: "Loan Calculator", icon: "function", tint: LMSColors.teal, action: onCalculator)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: LMSSpacing.sm) {
+                    ForEach(actions) { action in
+                        DashboardQuickActionTile(action: action)
+                    }
+                }
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+                .padding(.vertical, 2)
             }
+            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         }
-        .padding(.horizontal, LMSSpacing.screenHorizontal)
     }
 }
 
-struct DashboardQuickActionTile: View {
+struct DashboardQuickAction: Identifiable {
     let title: String
+    let subtitle: String
     let icon: String
     let tint: Color
     let action: () -> Void
 
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: LMSSpacing.md) {
-                Image(systemName: icon)
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(tint)
-                    .frame(width: 44, height: 44)
-                    .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+    var id: String { title }
+}
 
-                Text(title)
-                    .font(LMSFont.footnote.weight(.semibold))
-                    .foregroundStyle(LMSColors.textPrimary)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+struct DashboardQuickActionTile: View {
+    let action: DashboardQuickAction
+
+    var body: some View {
+        Button {
+            HapticsManager.triggerImpact(style: .light)
+            action.action()
+        } label: {
+            VStack(alignment: .leading, spacing: LMSSpacing.sm) {
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(action.tint)
+                    .frame(width: 42, height: 42)
+                    .background(
+                        action.tint.opacity(0.14),
+                        in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
+                    )
+
+                Spacer(minLength: 0)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(action.title)
+                        .font(LMSFont.caption.weight(.bold))
+                        .foregroundStyle(LMSColors.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+
+                    Text(action.subtitle)
+                        .font(LMSFont.caption2)
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
             }
-            .padding(LMSSpacing.md)
-            .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
+            .padding(12)
+            .frame(width: 124, height: 108, alignment: .leading)
             .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
                     .stroke(LMSColors.separatorLight, lineWidth: 0.5)
             )
+            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
         }
         .buttonStyle(DashboardPressableStyle())
+    }
+
+    private var icon: String {
+        action.icon
     }
 }
 

@@ -3,6 +3,7 @@ import SwiftUI
 struct ManagerDashboardView: View {
     @EnvironmentObject private var authManager: AuthManager
     @StateObject private var viewModel = ManagerDashboardViewModel()
+    @StateObject private var notificationViewModel = NotificationViewModel()
 
     @State private var selectedTab: ManagerWorkspaceTab = .dashboard
     @State private var showProfileSheet = false
@@ -53,6 +54,11 @@ struct ManagerDashboardView: View {
         .tint(LMSColors.brandNavy)
         .task {
             await viewModel.fetchDashboardData(authManager: authManager)
+            // Configure notification VM with current user ID
+            if let userId = authManager.currentUser?.uid,
+               let uuid = UUID(uuidString: userId) {
+                notificationViewModel.configure(userId: uuid)
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SwitchToApplicantsTab"))) { _ in
             selectedTab = .applicants
@@ -68,7 +74,7 @@ struct ManagerDashboardView: View {
             ManagerProfileView(viewModel: viewModel)
         }
         .sheet(isPresented: $showNotificationSheet) {
-            ManagerNotificationsView(viewModel: viewModel)
+            NotificationsListView(viewModel: notificationViewModel)
         }
         .sheet(isPresented: $showSearchSheet) {
             ManagerSearchSheet(viewModel: viewModel) { applicant in
@@ -114,7 +120,7 @@ struct ManagerDashboardView: View {
 
     private var notificationButton: some View {
         Button(action: { showNotificationSheet = true }) {
-            Image(systemName: viewModel.unreadNotificationCount > 0 ? "bell.badge" : "bell")
+            Image(systemName: notificationViewModel.unreadCount > 0 ? "bell.badge" : "bell")
         }
         .accessibilityLabel("Notifications")
     }
