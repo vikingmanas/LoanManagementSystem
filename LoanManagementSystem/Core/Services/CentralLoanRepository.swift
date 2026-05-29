@@ -360,7 +360,7 @@ final class CentralLoanRepository: ObservableObject {
                     }
                 }
             } catch {
-                print("[CentralLoanRepository] Failed to sync application \(app.displayIdentifier) to Supabase: \(error.localizedDescription)")
+                print("❌ [CentralLoanRepository] Failed to sync application \(app.displayIdentifier) to Supabase: \(error)")
             }
         }
     }

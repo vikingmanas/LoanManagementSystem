@@ -574,7 +574,7 @@ final class LoanApplicationViewModel: ObservableObject {
                     try await DatabaseService.shared.upsertDocument(dbDoc)
                     print("[LoanApplicationViewModel] Successfully uploaded wizard document to Supabase Storage and DB.")
                 } catch {
-                    print("[LoanApplicationViewModel] Error uploading wizard document: \(error.localizedDescription)")
+                    print("❌ [LoanApplicationViewModel] Error uploading wizard document: \(error)")
                 }
             }
         }
@@ -641,7 +641,7 @@ final class LoanApplicationViewModel: ObservableObject {
                 try await DatabaseService.shared.upsertDocument(dbDoc)
                 print("[LoanApplicationViewModel] Successfully synced uploaded document metadata to Supabase DB.")
             } catch {
-                print("[LoanApplicationViewModel] Error uploading document: \(error.localizedDescription)")
+                print("❌ [LoanApplicationViewModel] Error uploading document: \(error)")
             }
         }
         
