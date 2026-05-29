@@ -86,6 +86,7 @@ private struct LoanOfficerTodayView: View {
     @State private var showingEscalationSheet = false
     @State private var showingPendingAppsList = false
     @State private var showingReadyToSendApps = false
+    @State private var showingCalculator = false
     
     private var pendingApps: [OfficerLoanApplication] {
         viewModel.applications.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending || $0.status == .documentsRejected }
@@ -106,7 +107,8 @@ private struct LoanOfficerTodayView: View {
                     selectedTab: $selectedTab,
                     showingEscalationSheet: $showingEscalationSheet,
                     showingPendingAppsList: $showingPendingAppsList,
-                    showingReadyToSendApps: $showingReadyToSendApps
+                    showingReadyToSendApps: $showingReadyToSendApps,
+                    showingCalculator: $showingCalculator
                 )
                 .padding(.top, LMSSpacing.md)
 
@@ -164,6 +166,9 @@ private struct LoanOfficerTodayView: View {
         .sheet(isPresented: $showingEscalationSheet) {
             OfficerEscalationSheet()
         }
+        .sheet(isPresented: $showingCalculator) {
+            OfficerCalculatorSheet()
+        }
         .navigationDestination(isPresented: $showingPendingAppsList) {
             OfficerPushApplicationListView(
                 title: "Pending Applications",
@@ -193,6 +198,7 @@ private struct OfficerActionItemsRow: View {
     @Binding var showingEscalationSheet: Bool
     @Binding var showingPendingAppsList: Bool
     @Binding var showingReadyToSendApps: Bool
+    @Binding var showingCalculator: Bool
     
     private var pendingAppsCount: Int {
         viewModel.applications.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending || $0.status == .documentsRejected }.count
@@ -229,6 +235,43 @@ private struct OfficerActionItemsRow: View {
                 )
             }
             .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
+
+            Button {
+                HapticsManager.triggerImpact(style: .light)
+                showingCalculator = true
+            } label: {
+                HStack(alignment: .center, spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.purple.opacity(0.12))
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "plus.slash.minus")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(Color.purple)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("EMI Calculator")
+                            .font(.system(.body, design: .rounded).weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                        Text("Quick loan EMI & interest calculation")
+                            .font(.system(.subheadline, design: .rounded))
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(.headline, design: .rounded).weight(.semibold))
+                        .foregroundStyle(LMSColors.textTertiary)
+                }
+                .padding(LMSSpacing.lg)
+                .background(LMSColors.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
+            }
+            .buttonStyle(.plain)
             .padding(.horizontal, LMSSpacing.screenHorizontal)
         }
     }
@@ -1208,6 +1251,116 @@ struct OfficerApplicationReviewCard: View {
         case .verified: return "Verified ✓"
         case .rejectFlag: return "Re-upload Req."
         case .reUploaded: return "Re-Uploaded"
+        }
+    }
+}
+
+// MARK: - Calculator Sheet
+
+struct OfficerCalculatorSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var principalAmount: Double = 2500000.0
+    @State private var interestRate: Double = 8.65
+    @State private var tenureYears: Double = 15.0
+
+    private var calculatedEMI: Double {
+        let monthlyRate = (interestRate / 100.0) / 12.0
+        let totalMonths = tenureYears * 12.0
+        guard monthlyRate > 0 else { return principalAmount / totalMonths }
+        let emi = principalAmount * (monthlyRate * pow(1.0 + monthlyRate, totalMonths)) / (pow(1.0 + monthlyRate, totalMonths) - 1.0)
+        return emi.isNaN ? 0.0 : emi
+    }
+
+    private var totalInterest: Double {
+        (calculatedEMI * tenureYears * 12.0) - principalAmount
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: LMSSpacing.xl) {
+                    // Output metrics
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Monthly EMI")
+                                .font(.system(.caption, design: .rounded).bold())
+                                .foregroundStyle(LMSColors.textSecondary)
+                            Text(CurrencyFormatter.shared.format(calculatedEMI))
+                                .font(.system(.title, design: .rounded).bold())
+                                .foregroundStyle(LMSColors.actionBlue)
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("Total Interest Payable")
+                                .font(.system(.caption, design: .rounded).bold())
+                                .foregroundStyle(LMSColors.textSecondary)
+                            Text(CurrencyFormatter.shared.format(totalInterest))
+                                .font(.system(.body, design: .rounded).bold())
+                                .foregroundStyle(LMSColors.textPrimary)
+                        }
+                    }
+                    .padding(LMSSpacing.lg)
+                    .background(LMSColors.actionBlue.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+
+                    // Sliders
+                    VStack(spacing: LMSSpacing.lg) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Principal Loan Amount")
+                                    .font(.system(.caption, design: .rounded).weight(.bold))
+                                Spacer()
+                                Text(CurrencyFormatter.shared.format(principalAmount))
+                                    .font(.system(.caption, design: .rounded).bold())
+                                    .foregroundStyle(LMSColors.actionBlue)
+                            }
+                            Slider(value: $principalAmount, in: 500000...10000000, step: 100000)
+                                .tint(LMSColors.actionBlue)
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Interest Rate (p.a.)")
+                                    .font(.system(.caption, design: .rounded).weight(.bold))
+                                Spacer()
+                                Text(String(format: "%.2f %%", interestRate))
+                                    .font(.system(.caption, design: .rounded).bold())
+                                    .foregroundStyle(LMSColors.actionBlue)
+                            }
+                            Slider(value: $interestRate, in: 5.0...15.0, step: 0.05)
+                                .tint(LMSColors.actionBlue)
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Tenure Duration")
+                                    .font(.system(.caption, design: .rounded).weight(.bold))
+                                Spacer()
+                                Text("\(Int(tenureYears)) Years")
+                                    .font(.system(.caption, design: .rounded).bold())
+                                    .foregroundStyle(LMSColors.actionBlue)
+                            }
+                            Slider(value: $tenureYears, in: 1...30, step: 1)
+                                .tint(LMSColors.actionBlue)
+                        }
+                    }
+                    .padding(LMSSpacing.lg)
+                    .background(LMSColors.surfaceElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                }
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+                .padding(.top, LMSSpacing.md)
+            }
+            .background(LMSColors.background)
+            .navigationTitle("Quick Financial Calculator")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .font(.system(.body, design: .rounded).bold())
+                }
+            }
         }
     }
 }
