@@ -43,10 +43,10 @@ public enum RegistryFilter: String, CaseIterable, Identifiable {
 
     public var title: String {
         switch self {
-        case .all: return "All"
-        case .newCases: return "New Cases"
-        case .underCheck: return "Under Check"
-        case .approvalQueue: return "Approval Queue"
+        case .all: return "All Loans"
+        case .newCases: return "New"
+        case .underCheck: return "In Progress"
+        case .approvalQueue: return "Manager Review"
         case .completed: return "Completed"
         }
     }
@@ -119,12 +119,16 @@ enum ManagerStatus: String, CaseIterable, Codable, Hashable {
     case underReview = "Under Review"
     case approved = "Approved ✓"
     case needsClarification = "Needs Clarification"
+    case rejected = "Rejected ✗"
+    case sentBack = "Sent Back"
 
     var themeColor: Color {
         switch self {
         case .underReview: return AppTheme.warningAmber
         case .approved: return AppTheme.successGreen
         case .needsClarification: return AppTheme.criticalRed
+        case .rejected: return AppTheme.criticalRed
+        case .sentBack: return AppTheme.warningAmber
         }
     }
 }

@@ -39,6 +39,8 @@ final class ManagerDashboardViewModel: ObservableObject {
     @Published var selectedChatFilter: ChatFilterMode = .all
 
     private var cancellables = Set<AnyCancellable>()
+    private var currentManagerUserId: UUID?
+    private var databaseMessages: [DBMessage] = []
 
     enum ApplicantSortOrder: String, CaseIterable {
         case dateDesc = "Newest First"
@@ -157,12 +159,13 @@ final class ManagerDashboardViewModel: ObservableObject {
 
         await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
 
-        if let authManager {
-            configureProfileFromAuth(authManager)
-            await loadStaffContext(userId: authManager.currentUser?.uid)
-        } else {
-            rebuildDerivedDashboardState()
-        }
+            if let authManager {
+                configureProfileFromAuth(authManager)
+                await loadStaffContext(userId: authManager.currentUser?.uid)
+                await loadMessageThreads()
+            } else {
+                rebuildDerivedDashboardState()
+            }
 
         isLoading = false
     }
@@ -170,6 +173,7 @@ final class ManagerDashboardViewModel: ObservableObject {
     func refreshData() async {
         isRefreshing = true
         await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
+        await loadMessageThreads()
         rebuildDerivedDashboardState()
         isRefreshing = false
     }
@@ -255,21 +259,54 @@ final class ManagerDashboardViewModel: ObservableObject {
         guard let index = conversations.firstIndex(where: { $0.id == conversationId }),
               !cleanText.isEmpty else { return }
 
+        let messageId = UUID()
+        let timestamp = Date()
         let message = ManagerChatMessage(
-            id: UUID(),
+            id: messageId,
             senderName: managerProfile.name,
             text: cleanText,
-            timestamp: Date(),
+            timestamp: timestamp,
             isFromManager: true,
             isSystemMessage: false
         )
 
+        let receiverId = conversations[index].officerUserId
         conversations[index].messages.append(message)
         conversations[index].lastMessage = cleanText
-        conversations[index].timestamp = Date()
+        conversations[index].timestamp = timestamp
         appendAudit(action: "Messaged \(conversations[index].officerName)", severity: .info)
 
         HapticsManager.triggerImpact(style: .light)
+
+        guard let senderId = currentManagerUserId else { return }
+        Task {
+            let dbMessage = DBMessage(
+                messageId: messageId,
+                senderId: senderId,
+                receiverId: receiverId,
+                applicationId: nil,
+                content: cleanText,
+                sentAt: timestamp,
+                isRead: false
+            )
+            do {
+                try await DatabaseService.shared.sendMessage(dbMessage)
+                try? await DatabaseService.shared.createNotification(
+                    userId: receiverId,
+                    title: "New message from \(managerProfile.name)",
+                    message: cleanText
+                )
+                databaseMessages.append(dbMessage)
+                rebuildConversations()
+            } catch {
+                appendNotification(
+                    title: "Message not synced",
+                    message: "Could not save message for \(conversations[index].officerName).",
+                    type: .warning,
+                    relatedApplicantId: nil
+                )
+            }
+        }
     }
 
     func broadcastAnnouncement(subject: String, message: String) {
@@ -280,9 +317,13 @@ final class ManagerDashboardViewModel: ObservableObject {
         let body = "\(cleanSubject): \(cleanMessage)"
         let timestamp = Date()
 
+        let senderId = currentManagerUserId
+        var outgoing: [(receiverId: UUID, message: DBMessage)] = []
+
         for index in conversations.indices {
+            let messageId = UUID()
             let announcement = ManagerChatMessage(
-                id: UUID(),
+                id: messageId,
                 senderName: managerProfile.name,
                 text: body,
                 timestamp: timestamp,
@@ -293,6 +334,21 @@ final class ManagerDashboardViewModel: ObservableObject {
             conversations[index].lastMessage = cleanSubject
             conversations[index].timestamp = timestamp
             conversations[index].isPinned = true
+
+            if let senderId {
+                outgoing.append((
+                    receiverId: conversations[index].officerUserId,
+                    message: DBMessage(
+                        messageId: messageId,
+                        senderId: senderId,
+                        receiverId: conversations[index].officerUserId,
+                        applicationId: nil,
+                        content: body,
+                        sentAt: timestamp,
+                        isRead: false
+                    )
+                ))
+            }
         }
 
         appendAudit(action: "Broadcast announcement to \(officers.count) officers", severity: .info)
@@ -303,11 +359,46 @@ final class ManagerDashboardViewModel: ObservableObject {
             relatedApplicantId: nil
         )
         HapticsManager.triggerNotification(type: .success)
+
+        Task {
+            for item in outgoing {
+                try? await DatabaseService.shared.sendMessage(item.message)
+                try? await DatabaseService.shared.createNotification(
+                    userId: item.receiverId,
+                    title: cleanSubject,
+                    message: cleanMessage
+                )
+                databaseMessages.append(item.message)
+            }
+            rebuildConversations()
+        }
     }
 
     func markConversationRead(_ conversationId: UUID) {
         guard let index = conversations.firstIndex(where: { $0.id == conversationId }) else { return }
+        let unreadMessageIds = conversations[index].messages
+            .filter { !$0.isFromManager }
+            .map(\.id)
         conversations[index].unreadCount = 0
+
+        guard !unreadMessageIds.isEmpty else { return }
+        Task {
+            try? await DatabaseService.shared.markMessagesRead(messageIds: unreadMessageIds)
+            let ids = Set(unreadMessageIds)
+            databaseMessages = databaseMessages.map { message in
+                guard ids.contains(message.messageId) else { return message }
+                return DBMessage(
+                    messageId: message.messageId,
+                    senderId: message.senderId,
+                    receiverId: message.receiverId,
+                    applicationId: message.applicationId,
+                    content: message.content,
+                    sentAt: message.sentAt,
+                    isRead: true
+                )
+            }
+            rebuildConversations()
+        }
     }
 
     func publishMonthlyReport() {
@@ -341,6 +432,9 @@ final class ManagerDashboardViewModel: ObservableObject {
     private func configureProfileFromAuth(_ authManager: AuthManager) {
         managerProfile.name = authManager.userDisplayName
         managerProfile.email = authManager.userEmail ?? ""
+        if let uid = authManager.currentUser?.uid {
+            currentManagerUserId = UUID(uuidString: uid)
+        }
     }
 
     private func loadStaffContext(userId: String?) async {
@@ -351,6 +445,7 @@ final class ManagerDashboardViewModel: ObservableObject {
 
         if let userId, let uuid = UUID(uuidString: userId),
            let manager = staff.first(where: { $0.id == uuid && $0.role == .bankManager }) {
+            currentManagerUserId = uuid
             managerProfile = ManagerStaffProfile(
                 name: manager.fullName,
                 email: manager.email,
@@ -392,6 +487,21 @@ final class ManagerDashboardViewModel: ObservableObject {
         }
 
         rebuildDerivedDashboardState(keepStaff: true)
+    }
+
+    private func loadMessageThreads() async {
+        guard let currentManagerUserId else { return }
+        do {
+            databaseMessages = try await DatabaseService.shared.fetchMessages(for: currentManagerUserId)
+            rebuildConversations()
+        } catch {
+            appendNotification(
+                title: "Messages unavailable",
+                message: "Could not load branch conversations.",
+                type: .warning,
+                relatedApplicantId: nil
+            )
+        }
     }
 
     private func rebuildDerivedDashboardState(keepStaff: Bool = false) {
@@ -466,20 +576,53 @@ final class ManagerDashboardViewModel: ObservableObject {
         let existing = Dictionary(uniqueKeysWithValues: conversations.map { ($0.id, $0) })
         conversations = officers.map { officer in
             let id = stableId(for: "conversation-\(officer.id.uuidString)")
+            let threadMessages = databaseMessages
+                .filter { message in
+                    guard let currentManagerUserId else { return false }
+                    return (message.senderId == currentManagerUserId && message.receiverId == officer.id) ||
+                           (message.senderId == officer.id && message.receiverId == currentManagerUserId)
+                }
+                .sorted { $0.sentAt < $1.sentAt }
+            let mappedMessages = threadMessages.map { message in
+                let fromManager = message.senderId == currentManagerUserId
+                return ManagerChatMessage(
+                    id: message.messageId,
+                    senderName: fromManager ? managerProfile.name : officer.name,
+                    text: message.content,
+                    timestamp: message.sentAt,
+                    isFromManager: fromManager,
+                    isSystemMessage: message.applicationId == nil && message.content.contains(":")
+                )
+            }
+            let unreadCount = threadMessages.filter { $0.receiverId == currentManagerUserId && !$0.isRead }.count
+            let latest = mappedMessages.last
+            let priority: ManagerChatConversation.ChatPriority = unreadCount >= 3 ? .urgent : (officer.activeCases > 10 || unreadCount > 0 ? .high : .normal)
+
             if let conversation = existing[id] {
-                return conversation
+                var updated = conversation
+                updated.officerUserId = officer.id
+                updated.officerName = officer.name
+                updated.officerInitials = officer.initials
+                updated.officerRole = officer.role
+                updated.messages = mappedMessages.isEmpty ? conversation.messages : mappedMessages
+                updated.lastMessage = latest?.text ?? conversation.lastMessage
+                updated.timestamp = latest?.timestamp ?? conversation.timestamp
+                updated.unreadCount = unreadCount
+                updated.priority = priority
+                return updated
             }
             return ManagerChatConversation(
                 id: id,
+                officerUserId: officer.id,
                 officerName: officer.name,
                 officerInitials: officer.initials,
                 officerRole: officer.role,
-                lastMessage: "No messages yet",
-                timestamp: Date.distantPast,
-                unreadCount: 0,
+                lastMessage: latest?.text ?? "No messages yet",
+                timestamp: latest?.timestamp ?? Date.distantPast,
+                unreadCount: unreadCount,
                 isPinned: officer.activeCases > 0,
-                priority: officer.activeCases > 10 ? .high : .normal,
-                messages: []
+                priority: priority,
+                messages: mappedMessages
             )
         }
     }

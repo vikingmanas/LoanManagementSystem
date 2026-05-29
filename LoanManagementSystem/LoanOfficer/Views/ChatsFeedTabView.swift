@@ -258,25 +258,14 @@ private struct OfficerMessageThreadView: View {
                         timestamp: dbMsg.sentAt
                     )
                 }
-            } else {
-                // If there are no messages in the database, seed them in local state
-                // and write them to Supabase so they are saved
-                let seeded = OfficerThreadMessage.seed(from: conversation)
-                self.messages = seeded
-                for msg in seeded {
-                    let senderId = msg.sender == .officer ? (viewModel.officerProfile?.id ?? UUID()) : app.borrowerId
-                    let receiverId = msg.sender == .officer ? app.borrowerId : (viewModel.officerProfile?.id ?? UUID())
-                    let dbMsg = DBMessage(
-                        messageId: msg.id,
-                        senderId: senderId,
-                        receiverId: receiverId,
-                        applicationId: app.id,
-                        content: msg.text,
-                        sentAt: msg.timestamp,
-                        isRead: true
-                    )
-                    try? await DatabaseService.shared.sendMessage(dbMsg)
+                if let officerId = viewModel.officerProfile?.id {
+                    let unreadIncoming = dbMsgs
+                        .filter { $0.receiverId == officerId && !$0.isRead }
+                        .map(\.messageId)
+                    try? await DatabaseService.shared.markMessagesRead(messageIds: unreadIncoming)
                 }
+            } else {
+                self.messages = []
             }
         } catch {
             print("Failed to fetch messages: \(error)")
@@ -309,45 +298,15 @@ private struct OfficerMessageThreadView: View {
             )
             do {
                 try await DatabaseService.shared.sendMessage(dbMsg)
+                try? await DatabaseService.shared.createNotification(
+                    userId: borrowerId,
+                    title: "New message from your loan officer",
+                    message: trimmed
+                )
             } catch {
                 print("Failed to send officer message to DB: \(error)")
             }
         }
-
-        let replyText = autoReply(for: trimmed)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-            let borrowerMsgId = UUID()
-            let borrowerMsg = OfficerThreadMessage(id: borrowerMsgId, sender: .borrower, text: replyText, timestamp: Date())
-            messages.append(borrowerMsg)
-
-            Task {
-                let dbMsg = DBMessage(
-                    messageId: borrowerMsgId,
-                    senderId: borrowerId,
-                    receiverId: officerId,
-                    applicationId: appId,
-                    content: replyText,
-                    sentAt: Date(),
-                    isRead: false
-                )
-                do {
-                    try await DatabaseService.shared.sendMessage(dbMsg)
-                } catch {
-                    print("Failed to send automated reply to DB: \(error)")
-                }
-            }
-        }
-    }
-
-    private func autoReply(for text: String) -> String {
-        let lower = text.lowercased()
-        if lower.contains("document") || lower.contains("upload") {
-            return "I will upload the corrected document from my borrower portal today."
-        }
-        if lower.contains("income") || lower.contains("salary") {
-            return "I can share the latest salary proof and bank statement."
-        }
-        return "Thank you. I will follow the instructions and update you here."
     }
 }
 
@@ -522,6 +481,11 @@ private struct OfficerComposeMessageSheet: View {
             )
             do {
                 try await DatabaseService.shared.sendMessage(dbMsg)
+                try? await DatabaseService.shared.createNotification(
+                    userId: borrowerId,
+                    title: "New message from your loan officer",
+                    message: trimmed
+                )
                 print("Message composed and sent successfully.")
             } catch {
                 print("Failed to send composed message to DB: \(error)")

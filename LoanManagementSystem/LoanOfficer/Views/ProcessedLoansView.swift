@@ -121,6 +121,23 @@ struct ProcessedLoanRow: View {
                         .buttonStyle(PlainButtonStyle())
                         .accessibilityLabel("Respond to manager query for \(app.borrowerName)")
                     }
+
+                    if status == .sentBack {
+                        Button(action: {
+                            HapticsManager.triggerImpact(style: .medium)
+                            onRespond()
+                        }) {
+                            Text("Re-review")
+                                .font(.system(.caption2, design: .rounded).bold())
+                                .foregroundStyle(LMSColors.amber)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(LMSColors.amber.opacity(0.12))
+                                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .accessibilityLabel("Re-review application for \(app.borrowerName)")
+                    }
                 }
             }
         }
