@@ -18,6 +18,9 @@ struct LoanApplicationTabView: View {
                 onApply: { product in
                     viewModel.startDraft(for: product)
                     navigationPath.append(LoanApplicationRoute.applicationWizard(product))
+                },
+                onSchemeDetail: { scheme in
+                    navigationPath.append(LoanApplicationRoute.governmentSchemeDetail(scheme))
                 }
             )
             .background(LMSColors.background)
@@ -57,6 +60,8 @@ struct LoanApplicationTabView: View {
                             }
                         }
                     )
+                case .governmentSchemeDetail(let scheme):
+                    GovernmentSchemeDetailView(scheme: scheme)
                 }
             }
         }

@@ -6,6 +6,7 @@ struct LoansMarketplaceView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let onProductDetail: (BorrowerLoanProduct) -> Void
     let onApply: (BorrowerLoanProduct) -> Void
+    let onSchemeDetail: (GovernmentSchemeCardModel) -> Void
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -44,7 +45,7 @@ struct LoansMarketplaceView: View {
                     .padding(.horizontal, LMSSpacing.screenHorizontal)
                 }
 
-                GovernmentSchemesBenefitsSection()
+                GovernmentSchemesBenefitsSection(onSchemeDetail: onSchemeDetail)
             }
             .padding(.bottom, LMSSpacing.xxxl)
         }
@@ -348,6 +349,7 @@ private extension BorrowerLoanProductType {
 
 private struct GovernmentSchemesBenefitsSection: View {
     private let schemes = GovernmentSchemeCardModel.featured
+    let onSchemeDetail: (GovernmentSchemeCardModel) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
@@ -364,7 +366,9 @@ private struct GovernmentSchemesBenefitsSection: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: LMSSpacing.md) {
                     ForEach(schemes) { scheme in
-                        GovernmentSchemeCard(scheme: scheme)
+                        GovernmentSchemeCard(scheme: scheme) {
+                            onSchemeDetail(scheme)
+                        }
                     }
                 }
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
@@ -375,12 +379,18 @@ private struct GovernmentSchemesBenefitsSection: View {
     }
 }
 
-private struct GovernmentSchemeCardModel: Identifiable {
+struct GovernmentSchemeCardModel: Identifiable, Hashable {
     let id = UUID()
     let title: String
     let description: String
     let eligibility: String
     let benefit: String
+    let eligibilityItems: [String]
+    let benefits: [String]
+    let requiredDocuments: [String]
+    let applicationSteps: [String]
+    let websiteURL: URL?
+    let branchAvailable: Bool
     let badge: String
     let status: String
     let icon: String
@@ -392,6 +402,12 @@ private struct GovernmentSchemeCardModel: Identifiable {
             description: "Crop subsidy, low-interest agriculture credit, and irrigation support programs.",
             eligibility: "Farmers & cultivators",
             benefit: "Subsidy-linked support",
+            eligibilityItems: ["Farmers", "Tenant cultivators", "Agri entrepreneurs", "Kisan Credit Card users"],
+            benefits: ["Lower interest support", "Crop-season credit", "Reduced processing friction", "Flexible repayment windows"],
+            requiredDocuments: ["Aadhaar", "PAN", "Land/cultivation proof", "Bank statement"],
+            applicationSteps: ["Verify farming profile", "Upload identity and land proof", "Loan officer verifies eligibility", "Approval and disbursement"],
+            websiteURL: URL(string: "https://www.myscheme.gov.in"),
+            branchAvailable: true,
             badge: "Farmer Benefit",
             status: "Active",
             icon: "leaf.fill",
@@ -402,6 +418,12 @@ private struct GovernmentSchemeCardModel: Identifiable {
             description: "Reduced fees, faster approvals, lower rates, and salary-linked benefits.",
             eligibility: "Army, police & service staff",
             benefit: "Priority processing",
+            eligibilityItems: ["Army", "Navy", "Air Force", "Police Personnel", "Retired Service Members"],
+            benefits: ["Lower interest rates", "Priority processing", "Reduced documentation", "Dedicated support"],
+            requiredDocuments: ["Service ID Card", "Aadhaar", "PAN", "Salary Slip"],
+            applicationSteps: ["Verify service identity", "Upload documents", "Loan officer verification", "Approval and disbursement"],
+            websiteURL: URL(string: "https://www.myscheme.gov.in"),
+            branchAvailable: true,
             badge: "Service Benefit",
             status: "Active",
             icon: "shield.lefthalf.filled",
@@ -412,6 +434,12 @@ private struct GovernmentSchemeCardModel: Identifiable {
             description: "Startup support, MSME assistance, and reduced collateral requirements.",
             eligibility: "Women-led businesses",
             benefit: "Collateral relief",
+            eligibilityItems: ["Women entrepreneurs", "Women-led MSMEs", "Registered startups", "Self-employed applicants"],
+            benefits: ["Collateral relief", "Startup support", "MSME assistance", "Flexible assessment"],
+            requiredDocuments: ["Aadhaar", "PAN", "Business registration", "Bank statement"],
+            applicationSteps: ["Verify business ownership", "Upload KYC and business proof", "Eligibility assessment", "Approval and funding"],
+            websiteURL: URL(string: "https://www.myscheme.gov.in"),
+            branchAvailable: true,
             badge: "Women Empowerment",
             status: "Recommended",
             icon: "person.2.fill",
@@ -422,6 +450,12 @@ private struct GovernmentSchemeCardModel: Identifiable {
             description: "Mudra-style assistance, working capital, and business expansion schemes.",
             eligibility: "MSME & startups",
             benefit: "Growth funding",
+            eligibilityItems: ["MSME owners", "Registered startups", "Small businesses", "Working capital borrowers"],
+            benefits: ["Growth funding", "Working capital support", "Expansion finance", "Priority loan review"],
+            requiredDocuments: ["Aadhaar", "PAN", "Udyam/GST proof", "Bank statement"],
+            applicationSteps: ["Verify business profile", "Upload business documents", "Loan officer assessment", "Sanction and disbursement"],
+            websiteURL: URL(string: "https://www.myscheme.gov.in"),
+            branchAvailable: true,
             badge: "Business Growth",
             status: "Trending",
             icon: "chart.line.uptrend.xyaxis",
@@ -432,6 +466,12 @@ private struct GovernmentSchemeCardModel: Identifiable {
             description: "Subsidized housing assistance, education support loans, and welfare aid.",
             eligibility: "Eligible EWS profiles",
             benefit: "Welfare assistance",
+            eligibilityItems: ["EWS applicants", "Eligible family income group", "First-time borrowers", "Welfare-linked profiles"],
+            benefits: ["Subsidized support", "Housing assistance", "Education aid", "Lower processing burden"],
+            requiredDocuments: ["Aadhaar", "PAN", "Income certificate", "Address proof"],
+            applicationSteps: ["Verify income category", "Upload certificate and KYC", "Officer validates eligibility", "Benefit-linked approval"],
+            websiteURL: URL(string: "https://www.myscheme.gov.in"),
+            branchAvailable: true,
             badge: "Social Welfare",
             status: "Active",
             icon: "hands.sparkles.fill",
@@ -442,6 +482,7 @@ private struct GovernmentSchemeCardModel: Identifiable {
 
 private struct GovernmentSchemeCard: View {
     let scheme: GovernmentSchemeCardModel
+    let onLearnMore: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
@@ -470,22 +511,29 @@ private struct GovernmentSchemeCard: View {
                 Text(scheme.badge)
                     .font(LMSFont.caption2.weight(.bold))
                     .foregroundStyle(.white.opacity(0.74))
+                    .lineLimit(1)
                 Text(scheme.title)
                     .font(LMSFont.headline.weight(.bold))
                     .foregroundStyle(.white)
                     .lineLimit(2)
+                    .frame(height: 52, alignment: .topLeading)
                 Text(scheme.description)
                     .font(LMSFont.caption)
                     .foregroundStyle(.white.opacity(0.76))
-                    .lineLimit(3)
+                    .lineLimit(2)
+                    .frame(height: 42, alignment: .topLeading)
             }
 
             VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                 SchemeInfoPill(label: "Eligibility", value: scheme.eligibility)
                 SchemeInfoPill(label: "Key Benefit", value: scheme.benefit)
             }
+            .frame(height: 108, alignment: .top)
+
+            Spacer(minLength: 0)
 
             Button {
+                onLearnMore()
             } label: {
                 Text("Learn More")
                     .font(LMSFont.footnote.weight(.semibold))
@@ -497,8 +545,7 @@ private struct GovernmentSchemeCard: View {
             .buttonStyle(.plain)
         }
         .padding(LMSSpacing.lg)
-        .frame(width: 280, alignment: .topLeading)
-        .frame(minHeight: 272, alignment: .topLeading)
+        .frame(width: 280, height: 420, alignment: .topLeading)
         .background(
             LinearGradient(
                 colors: [scheme.theme, scheme.theme.opacity(0.72), Color(hex: "111827")],
@@ -534,12 +581,188 @@ private struct SchemeInfoPill: View {
             Text(value)
                 .font(LMSFont.caption.weight(.semibold))
                 .foregroundStyle(.white)
-                .lineLimit(1)
+                .lineLimit(2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 50, alignment: .leading)
         .padding(.horizontal, LMSSpacing.sm)
         .padding(.vertical, 7)
         .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous))
+    }
+}
+
+struct GovernmentSchemeDetailView: View {
+    let scheme: GovernmentSchemeCardModel
+    @Environment(\.openURL) private var openURL
+    @State private var didRequestApply = false
+
+    var body: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: LMSSpacing.lg) {
+                detailHero
+                detailSection(title: "Description", text: scheme.description)
+                bulletSection(title: "Eligibility", items: scheme.eligibilityItems)
+                bulletSection(title: "Benefits", items: scheme.benefits)
+                bulletSection(title: "Required Documents", items: scheme.requiredDocuments)
+                stepsSection
+                officialInfoSection
+                applyButton
+            }
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
+            .padding(.bottom, LMSSpacing.xxxl)
+        }
+        .background(LMSColors.background)
+        .navigationTitle("Scheme Details")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("Application Request Saved", isPresented: $didRequestApply) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("A loan officer will guide you through this scheme's eligibility and document verification.")
+        }
+    }
+
+    private var detailHero: some View {
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            Image(systemName: scheme.icon)
+                .font(.system(size: 30, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 64, height: 64)
+                .background(.white.opacity(0.16), in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+
+            Text(scheme.badge)
+                .font(LMSFont.caption.weight(.bold))
+                .foregroundStyle(.white.opacity(0.76))
+
+            Text(scheme.title)
+                .font(.title2.weight(.bold))
+                .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(scheme.benefit)
+                .font(LMSFont.footnote.weight(.semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(.white.opacity(0.16), in: Capsule())
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(LMSSpacing.lg)
+        .background(
+            LinearGradient(
+                colors: [scheme.theme, scheme.theme.opacity(0.72), Color(hex: "111827")],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous)
+        )
+        .padding(.top, LMSSpacing.sm)
+    }
+
+    private func detailSection(title: String, text: String) -> some View {
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
+            Text(title)
+                .font(LMSFont.headline)
+                .foregroundStyle(LMSColors.textPrimary)
+            Text(text)
+                .font(LMSFont.body)
+                .foregroundStyle(LMSColors.textSecondary)
+        }
+        .schemeDetailCard()
+    }
+
+    private func bulletSection(title: String, items: [String]) -> some View {
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
+            Text(title)
+                .font(LMSFont.headline)
+                .foregroundStyle(LMSColors.textPrimary)
+            ForEach(items, id: \.self) { item in
+                Label(item, systemImage: "checkmark.circle.fill")
+                    .font(LMSFont.callout)
+                    .foregroundStyle(LMSColors.textSecondary)
+            }
+        }
+        .schemeDetailCard()
+    }
+
+    private var stepsSection: some View {
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            Text("Application Process")
+                .font(LMSFont.headline)
+                .foregroundStyle(LMSColors.textPrimary)
+            ForEach(Array(scheme.applicationSteps.enumerated()), id: \.offset) { index, step in
+                HStack(alignment: .top, spacing: LMSSpacing.md) {
+                    Text("Step \(index + 1)")
+                        .font(LMSFont.caption.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(scheme.theme, in: Capsule())
+                    Text(step)
+                        .font(LMSFont.callout)
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        .schemeDetailCard()
+    }
+
+    private var officialInfoSection: some View {
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            Text("How to Avail")
+                .font(LMSFont.headline)
+                .foregroundStyle(LMSColors.textPrimary)
+
+            if scheme.branchAvailable {
+                Label("Visit Branch", systemImage: "building.columns.fill")
+                    .font(LMSFont.callout.weight(.semibold))
+                    .foregroundStyle(LMSColors.textPrimary)
+                Text("Nearest branch assistance available.")
+                    .font(LMSFont.caption)
+                    .foregroundStyle(LMSColors.textSecondary)
+            }
+
+            if let websiteURL = scheme.websiteURL {
+                Button {
+                    openURL(websiteURL)
+                } label: {
+                    Label("Open External Website", systemImage: "safari.fill")
+                        .font(LMSFont.callout.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 46)
+                }
+                .buttonStyle(.bordered)
+                .tint(scheme.theme)
+            }
+        }
+        .schemeDetailCard()
+    }
+
+    private var applyButton: some View {
+        Button {
+            didRequestApply = true
+        } label: {
+            Text("Apply Now")
+                .font(LMSFont.button)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(LMSColors.brandNavy, in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private extension View {
+    func schemeDetailCard() -> some View {
+        self
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(LMSSpacing.lg)
+            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous)
+                    .stroke(LMSColors.separatorLight.opacity(0.6), lineWidth: 1)
+            )
     }
 }
 

@@ -178,68 +178,84 @@ public struct DashboardView: View {
     @StateObject private var profileViewModel = BorrowerProfileViewModel()
     @State private var navigationPath = [DashboardRoute]()
     @State private var showingCalculatorAlert = false
+    @AppStorage("dashboard.dismissedProfileCompletionPercentage") private var dismissedProfileCompletionPercentage = -1
+
+    private var shouldShowProfileCompletionCard: Bool {
+        viewModel.profileCompletionPercentage < 100 &&
+        viewModel.profileCompletionPercentage > dismissedProfileCompletionPercentage
+    }
     
     public var body: some View {
         NavigationStack(path: $navigationPath) {
-            VStack(spacing: 0) {
-                dashboardHeader
-
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: LMSSpacing.xxl) {
-                        if viewModel.profileCompletionPercentage < 100 {
-                            ProfileCompletionCardSection(
-                                percentage: viewModel.profileCompletionPercentage,
-                                missingItems: viewModel.profileMissingRequirements
-                            ) {
-                                navigationPath.append(.profile)
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: LMSSpacing.xxl) {
+                    if shouldShowProfileCompletionCard {
+                        ProfileCompletionCardSection(
+                            percentage: viewModel.profileCompletionPercentage,
+                            missingItems: viewModel.profileMissingRequirements
+                        ) {
+                            navigationPath.append(.profile)
+                        } onDismiss: {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                dismissedProfileCompletionPercentage = viewModel.profileCompletionPercentage
                             }
                         }
-
-                        LoanPortfolioSummarySection(viewModel: viewModel)
-
-                        DashboardQuickActionsSection(
-                            onApplyLoan: { tabRouter.select(.loans) },
-                            onPayEMI: { navigationPath.append(.payEMI) },
-                            onStatement: { navigationPath.append(.statement) },
-                            onSupport: { navigationPath.append(.support) },
-                            onCalculator: { showingCalculatorAlert = true },
-                            onForeclosure: { navigationPath.append(.foreclosure) },
-                            onTopUp: { navigationPath.append(.topUp) }
-                        )
-
-                        ActiveLoanAccountsSection(
-                            viewModel: viewModel,
-                            onLoanTap: { loan in
-                                navigationPath.append(.loanDetails(loan))
-                            },
-                            onApplyLoan: {
-                                tabRouter.select(.loans)
-                            }
-                        )
-
-                        TransactionHistorySection(
-                            transactions: viewModel.recentTransactions,
-                            accounts: viewModel.bankAccounts,
-                            onViewAll: {
-                                navigationPath.append(.transactionHistory)
-                            }
-                        )
-
-                        UpcomingPaymentSection(
-                            viewModel: viewModel,
-                            onPayNow: { navigationPath.append(.payEMI) },
-                            onViewAll: { navigationPath.append(.allPendingEMIs) }
-                        )
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .move(edge: .top)),
+                            removal: .opacity.combined(with: .move(edge: .top))
+                        ))
                     }
-                    .padding(.top, LMSSpacing.sm)
-                    .padding(.bottom, LMSSpacing.xxxl)
+
+                    LoanPortfolioSummarySection(viewModel: viewModel)
+
+                    DashboardQuickActionsSection(
+                        onApplyLoan: { tabRouter.select(.loans) },
+                        onPayEMI: { navigationPath.append(.payEMI) },
+                        onStatement: { navigationPath.append(.statement) },
+                        onSupport: { navigationPath.append(.support) },
+                        onCalculator: { showingCalculatorAlert = true },
+                        onForeclosure: { navigationPath.append(.foreclosure) },
+                        onTopUp: { navigationPath.append(.topUp) }
+                    )
+
+                    ActiveLoanAccountsSection(
+                        viewModel: viewModel,
+                        onLoanTap: { loan in
+                            navigationPath.append(.loanDetails(loan))
+                        },
+                        onApplyLoan: {
+                            tabRouter.select(.loans)
+                        }
+                    )
+
+                    TransactionHistorySection(
+                        transactions: viewModel.recentTransactions,
+                        accounts: viewModel.bankAccounts,
+                        onViewAll: {
+                            navigationPath.append(.transactionHistory)
+                        }
+                    )
+
+                    UpcomingPaymentSection(
+                        viewModel: viewModel,
+                        onPayNow: { navigationPath.append(.payEMI) },
+                        onViewAll: { navigationPath.append(.allPendingEMIs) }
+                    )
                 }
-                .refreshable {
-                    await viewModel.fetchDashboardData()
-                }
+                .padding(.top, LMSSpacing.sm)
+                .padding(.bottom, LMSSpacing.xxxl)
+            }
+            .refreshable {
+                await viewModel.fetchDashboardData()
             }
             .background(LMSColors.background)
-            .toolbar(.hidden, for: .navigationBar)
+            .navigationTitle("Dashboard")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    dashboardToolbarActions
+                }
+            }
             .alert("Loan Calculator", isPresented: $showingCalculatorAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
@@ -295,51 +311,37 @@ public struct DashboardView: View {
         }
     }
 
-    private var dashboardHeader: some View {
-        HStack(alignment: .center, spacing: 16) {
-            Text("Dashboard")
-                .font(.system(size: 34, weight: .bold, design: .default))
-                .foregroundStyle(LMSColors.textPrimary)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-
-            Spacer(minLength: 12)
-
-            HStack(spacing: 4) {
-                Button {
-                    navigationPath.append(.notifications)
-                } label: {
-                    Image(systemName: viewModel.dashboardNotifications.contains(where: \.isUnread)
-                          ? "bell.badge.fill" : "bell")
-                        .symbolRenderingMode(.hierarchical)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(LMSColors.brandNavy)
-                        .frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("Notifications")
-
-                Button {
-                    navigationPath.append(.profile)
-                } label: {
-                    DashboardAvatar(
-                        initials: dashboardInitials(
-                            viewModel: viewModel,
-                            authManager: authManager
-                        )
-                    )
+    private var dashboardToolbarActions: some View {
+        HStack(spacing: 4) {
+            Button {
+                navigationPath.append(.notifications)
+            } label: {
+                Image(systemName: viewModel.dashboardNotifications.contains(where: \.isUnread)
+                      ? "bell.badge.fill" : "bell")
+                    .symbolRenderingMode(.hierarchical)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(LMSColors.brandNavy)
                     .frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("Profile")
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(.regularMaterial, in: Capsule())
+            .accessibilityLabel("Notifications")
+
+            Button {
+                navigationPath.append(.profile)
+            } label: {
+                DashboardAvatar(
+                    initials: dashboardInitials(
+                        viewModel: viewModel,
+                        authManager: authManager
+                    )
+                )
+                .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Profile")
         }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 24)
-        .padding(.top, 10)
-        .padding(.bottom, 8)
-        .background(LMSColors.background)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(.regularMaterial, in: Capsule())
+        .frame(width: 104, height: 52)
     }
 }
 
@@ -1628,55 +1630,53 @@ struct ForeclosureSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                foreclosureHeader
-                stepContent
+        Form {
+            foreclosureHeader
+            stepContent
+        }
+        .scrollContentBackground(.hidden)
+        .background(LMSColors.background)
+        .navigationTitle("Foreclosure")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { dismiss() }
             }
-            .scrollContentBackground(.hidden)
-            .background(LMSColors.background)
-            .navigationTitle("Foreclosure")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                if step != .selectLoan && !showingSuccess {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Back") {
-                            withAnimation(.smooth(duration: 0.22)) {
-                                step = step.previous
-                            }
+            if step != .selectLoan && !showingSuccess {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Back") {
+                        withAnimation(.smooth(duration: 0.22)) {
+                            step = step.previous
                         }
                     }
                 }
             }
-            .safeAreaInset(edge: .bottom) {
-                if !showingSuccess {
-                    bottomCTA
-                }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if !showingSuccess {
+                bottomCTA
             }
-            .confirmationDialog("Upload Document", isPresented: $showingUploadSource, titleVisibility: .visible) {
-                Button("Choose PNG, JPG or JPEG from Gallery") {
-                    showingImagePicker = true
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Gallery upload only")
+        }
+        .confirmationDialog("Upload Document", isPresented: $showingUploadSource, titleVisibility: .visible) {
+            Button("Choose PNG, JPG or JPEG from Gallery") {
+                showingImagePicker = true
             }
-            .sheet(isPresented: $showingImagePicker) {
-                ForeclosureImagePicker { image in
-                    showingImagePicker = false
-                    handleUpload(image)
-                } onCancel: {
-                    showingImagePicker = false
-                }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Gallery upload only")
+        }
+        .sheet(isPresented: $showingImagePicker) {
+            ForeclosureImagePicker { image in
+                showingImagePicker = false
+                handleUpload(image)
+            } onCancel: {
+                showingImagePicker = false
             }
-            .fullScreenCover(isPresented: $showingSuccess) {
-                ForeclosureSuccessView(requestID: requestID) {
-                    showingSuccess = false
-                    dismiss()
-                }
+        }
+        .fullScreenCover(isPresented: $showingSuccess) {
+            ForeclosureSuccessView(requestID: requestID) {
+                showingSuccess = false
+                dismiss()
             }
         }
     }
