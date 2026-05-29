@@ -934,7 +934,7 @@ struct BorrowerLoanWizardView: View {
                     isUploading[doc.name] = false
                     uploadLifecycle[docId] = .processing
                     ocrStatus[doc.name] = "Scanning"
-                    viewModel.uploadDocument(docId, fileName: imageFileName(for: doc), source: source)
+                    viewModel.uploadDocument(docId, fileName: imageFileName(for: doc), source: source, image: image)
                     viewModel.markDocument(docId, status: .underVerification)
 
                     Task {
