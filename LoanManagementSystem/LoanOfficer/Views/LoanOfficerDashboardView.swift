@@ -2,7 +2,9 @@ import SwiftUI
 import UIKit
 
 struct LoanOfficerDashboardView: View {
+    @EnvironmentObject private var authManager: AuthManager
     @StateObject private var viewModel = LoanOfficerDashboardViewModel()
+    @StateObject private var notificationViewModel = NotificationViewModel()
     @State private var selectedTab: OfficerWorkspaceTab = .dashboard
     @State private var showingNotifications = false
     @State private var showingProfile = false
@@ -51,9 +53,14 @@ struct LoanOfficerDashboardView: View {
         .tint(LMSColors.brandNavy)
         .task {
             await viewModel.fetchDashboardData()
+            // Configure notification VM with current user ID
+            if let userId = authManager.currentUser?.uid,
+               let uuid = UUID(uuidString: userId) {
+                notificationViewModel.configure(userId: uuid)
+            }
         }
         .sheet(isPresented: $showingNotifications) {
-            NotificationsFeedSheet(viewModel: viewModel)
+            NotificationsListView(viewModel: notificationViewModel)
         }
         .sheet(isPresented: $showingProfile) {
             LoanOfficerProfileView()
@@ -154,7 +161,7 @@ private struct LoanOfficerTodayView: View {
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button(action: onNotifications) {
-                    Image(systemName: viewModel.unreadActivityCount > 0 ? "bell.badge" : "bell")
+                    Image(systemName: "bell.badge")
                 }
                 .accessibilityLabel("Notifications")
 

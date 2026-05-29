@@ -89,6 +89,29 @@ final class CentralLoanRepository: ObservableObject {
         }
         persistState()
         syncApplicationToSupabase(updatedApp)
+        
+        // MARK: Notification — Application Submitted
+        let appNumber = updatedApp.applicationId ?? updatedApp.displayIdentifier
+        let borrowerName = updatedApp.formData.fullName.isEmpty ? "Borrower" : updatedApp.formData.fullName
+        if updatedApp.currentStage == .submitted {
+            Task {
+                // Notify borrower
+                if let borrowerId = updatedApp.borrowerId {
+                    await NotificationService.shared.insertNotification(
+                        userId: borrowerId,
+                        title: "Application Submitted",
+                        message: "Your loan application \(appNumber) has been submitted successfully and is now under review."
+                    )
+                }
+                // Notify all loan officers
+                let officerIds = await NotificationService.shared.fetchUserIds(byRole: "loan_officer")
+                await NotificationService.shared.insertNotifications(
+                    userIds: officerIds,
+                    title: "New Application Received",
+                    message: "\(borrowerName) has submitted loan application \(appNumber). Review required."
+                )
+            }
+        }
     }
     
     func updateApplication(_ app: BorrowerLoanApplication) {
@@ -448,6 +471,27 @@ final class CentralLoanRepository: ObservableObject {
                 } catch {
                     print("[CentralLoanRepository] Failed to sync reviewed document to Supabase: \(error.localizedDescription)")
                 }
+                
+                // MARK: Notification — Document Rejected
+                if borrowerDocStatus == .rejected {
+                    let docName = app.documents[docIndex].name
+                    let appNumber = app.applicationId ?? app.displayIdentifier
+                    await NotificationService.shared.insertNotification(
+                        userId: borrowerUUID,
+                        title: "Document Requires Resubmission",
+                        message: "Your \(docName) for application \(appNumber) has been rejected. Please re-upload the document."
+                    )
+                }
+                
+                // MARK: Notification — All Documents Verified
+                if app.documents.allSatisfy({ $0.status == .verified }) && !app.documents.isEmpty {
+                    let appNumber = app.applicationId ?? app.displayIdentifier
+                    await NotificationService.shared.insertNotification(
+                        userId: borrowerUUID,
+                        title: "Documents Verified",
+                        message: "All documents for application \(appNumber) have been verified successfully."
+                    )
+                }
             }
             
             syncApplicationToSupabase(app)
@@ -469,6 +513,27 @@ final class CentralLoanRepository: ObservableObject {
         applications[index] = app
         persistState()
         syncApplicationToSupabase(app)
+        
+        // MARK: Notification — Sent for Final Approval
+        let appNumber = app.applicationId ?? app.displayIdentifier
+        let borrowerName = app.formData.fullName.isEmpty ? "Borrower" : app.formData.fullName
+        Task {
+            // Notify borrower
+            if let borrowerId = app.borrowerId {
+                await NotificationService.shared.insertNotification(
+                    userId: borrowerId,
+                    title: "Sent for Final Approval",
+                    message: "Your loan application \(appNumber) has been forwarded to the Branch Manager for final approval."
+                )
+            }
+            // Notify all managers
+            let managerIds = await NotificationService.shared.fetchUserIds(byRole: "manager")
+            await NotificationService.shared.insertNotifications(
+                userIds: managerIds,
+                title: "New Application for Approval",
+                message: "\(borrowerName)'s application \(appNumber) has been verified by \(officerName) and is ready for your approval."
+            )
+        }
     }
     
     @discardableResult
@@ -610,19 +675,31 @@ final class CentralLoanRepository: ObservableObject {
             }
         }
 
-        borrowerNotifications.insert(
-            LMSNotification(
-                title: "Loan Approved",
-                body: "Your loan \(event.applicationNumber) is approved. \(CurrencyFormatter.shared.format(approvedAmount)) has been credited to OD account \(maskedAccountNumber(odAccountNumber)) for EMI deductions.",
-                timestamp: event.creditedAt,
-                icon: "checkmark.seal.fill",
-                tint: LMSColors.emerald
-            ),
-            at: 0
-        )
-
         persistState()
         syncApplicationToSupabase(app)
+        
+        // MARK: Notification — Loan Approved
+        let approvalAppNumber = applicationNumber
+        let approvalFormattedAmount = CurrencyFormatter.shared.format(approvedAmount)
+        let approvalMaskedAccount = maskedAccountNumber(odAccountNumber)
+        Task {
+            // Notify borrower
+            if let borrowerId = resolvedBorrowerId {
+                await NotificationService.shared.insertNotification(
+                    userId: borrowerId,
+                    title: "Loan Approved",
+                    message: "Your loan \(approvalAppNumber) is approved! \(approvalFormattedAmount) has been credited to OD account \(approvalMaskedAccount)."
+                )
+            }
+            // Notify loan officers
+            let officerIds = await NotificationService.shared.fetchUserIds(byRole: "loan_officer")
+            await NotificationService.shared.insertNotifications(
+                userIds: officerIds,
+                title: "Application Approved",
+                message: "Application \(approvalAppNumber) has been approved by the Branch Manager. Amount: \(approvalFormattedAmount)."
+            )
+        }
+        
         return true
     }
     
@@ -641,6 +718,27 @@ final class CentralLoanRepository: ObservableObject {
         applications[index] = app
         persistState()
         syncApplicationToSupabase(app)
+        
+        // MARK: Notification — Loan Rejected
+        let appNumber = app.applicationId ?? app.displayIdentifier
+        let rejectionNote = remarks.isEmpty ? "Rejected by Branch Manager." : remarks
+        Task {
+            // Notify borrower
+            if let borrowerId = app.borrowerId {
+                await NotificationService.shared.insertNotification(
+                    userId: borrowerId,
+                    title: "Application Rejected",
+                    message: "Your loan application \(appNumber) has been rejected. Reason: \(rejectionNote)"
+                )
+            }
+            // Notify loan officers
+            let officerIds = await NotificationService.shared.fetchUserIds(byRole: "loan_officer")
+            await NotificationService.shared.insertNotifications(
+                userIds: officerIds,
+                title: "Application Rejected",
+                message: "Application \(appNumber) has been rejected by the Branch Manager."
+            )
+        }
     }
     
     func sendBackApplication(id: UUID, remarks: String) {
@@ -658,6 +756,18 @@ final class CentralLoanRepository: ObservableObject {
         applications[index] = app
         persistState()
         syncApplicationToSupabase(app)
+        
+        // MARK: Notification — Sent Back by Manager
+        let appNumber = app.applicationId ?? app.displayIdentifier
+        Task {
+            // Notify loan officers
+            let officerIds = await NotificationService.shared.fetchUserIds(byRole: "loan_officer")
+            await NotificationService.shared.insertNotifications(
+                userIds: officerIds,
+                title: "Clarification Requested",
+                message: "Application \(appNumber) has been sent back by the Manager. Remarks: \(remarks)"
+            )
+        }
     }
     
     // MARK: - Private Helpers
