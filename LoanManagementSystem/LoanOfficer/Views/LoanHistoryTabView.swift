@@ -116,7 +116,7 @@ struct LoanHistoryTabView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle("Registry")
+        .navigationTitle("All Loans")
         .searchable(text: $viewModel.historySearchQuery, placement: .navigationBarDrawer(displayMode: .always), prompt: "Borrower, ID, branch")
         .refreshable { await viewModel.fetchDashboardData() }
         .sheet(item: $activeDetailApp) { app in

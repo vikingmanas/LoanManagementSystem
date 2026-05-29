@@ -23,7 +23,7 @@ struct LoanOfficerDashboardView: View {
             NavigationStack {
                 LoanOfficerReviewQueueView(viewModel: viewModel)
             }
-            .tabItem { Label("Review", systemImage: "checklist.checked") }
+            .tabItem { Label("Pending Docs", systemImage: "doc.text.magnifyingglass") }
             .badge(viewModel.pendingDocumentCount > 0 ? viewModel.pendingDocumentCount : 0)
             .tag(OfficerWorkspaceTab.review)
 
@@ -35,7 +35,7 @@ struct LoanOfficerDashboardView: View {
             NavigationStack {
                 LoanHistoryTabView(viewModel: viewModel)
             }
-            .tabItem { Label("Registry", systemImage: "tray.full") }
+            .tabItem { Label("All Loans", systemImage: "tray.full") }
             .tag(OfficerWorkspaceTab.registry)
         }
         .tint(LMSColors.brandNavy)
@@ -350,7 +350,7 @@ private struct OfficerEscalationsSection: View {
     @Binding var selectedApplication: OfficerLoanApplication?
 
     var body: some View {
-        let needsClarification = viewModel.sentToManagerApps.filter { $0.managerStatus == .needsClarification }
+        let needsClarification = viewModel.sentToManagerApps.filter { $0.managerStatus == .needsClarification || $0.managerStatus == .sentBack || $0.managerStatus == .rejected }
 
         if !needsClarification.isEmpty {
             VStack(alignment: .leading, spacing: LMSSpacing.md) {
@@ -364,7 +364,7 @@ private struct OfficerEscalationsSection: View {
                         Button {
                             selectedApplication = app
                         } label: {
-                            OfficerApplicationCompactRow(app: app, accessory: "Respond")
+                            OfficerApplicationCompactRow(app: app, accessory: accessoryText(for: app))
                         }
                         .buttonStyle(.plain)
 
@@ -378,6 +378,16 @@ private struct OfficerEscalationsSection: View {
                 .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
             }
+        }
+    }
+
+    private func accessoryText(for app: OfficerLoanApplication) -> String {
+        if app.managerStatus == .rejected {
+            return "Rejected"
+        } else if app.managerStatus == .sentBack {
+            return "Re-review"
+        } else {
+            return "Respond"
         }
     }
 }
@@ -581,7 +591,7 @@ private struct LoanOfficerReviewQueueView: View {
             .padding(.vertical, LMSSpacing.md)
         }
         .background(LMSColors.background)
-        .navigationTitle("Review")
+        .navigationTitle("Pending Docs")
         .searchable(text: $query, prompt: "Borrower, document, application")
         .refreshable { await viewModel.fetchDashboardData() }
     }

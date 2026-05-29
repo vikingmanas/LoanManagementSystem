@@ -527,4 +527,42 @@ final class DatabaseService {
             .insert(msg)
             .execute()
     }
+
+    func markMessagesRead(messageIds: [UUID]) async throws {
+        guard !messageIds.isEmpty else { return }
+        struct ReadUpdate: Encodable {
+            let isRead: Bool
+
+            enum CodingKeys: String, CodingKey {
+                case isRead = "is_read"
+            }
+        }
+
+        try await client
+            .from("messages")
+            .update(ReadUpdate(isRead: true))
+            .in("message_id", values: messageIds.map(\.uuidString))
+            .execute()
+    }
+
+    func createNotification(userId: UUID, title: String, message: String, type: String = "push") async throws {
+        struct NotificationInsert: Encodable {
+            let userId: UUID
+            let notifType: String
+            let title: String
+            let message: String
+
+            enum CodingKeys: String, CodingKey {
+                case userId = "user_id"
+                case notifType = "notif_type"
+                case title
+                case message
+            }
+        }
+
+        try await client
+            .from("notifications")
+            .insert(NotificationInsert(userId: userId, notifType: type, title: title, message: message))
+            .execute()
+    }
 }
