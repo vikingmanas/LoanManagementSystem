@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import Supabase
+import UIKit
 
 @MainActor
 final class LoanApplicationViewModel: ObservableObject {
@@ -530,7 +531,7 @@ final class LoanApplicationViewModel: ObservableObject {
         }
     }
 
-    func uploadDocument(_ documentID: UUID, fileName: String, source: BorrowerDocumentUploadSource) {
+    func uploadDocument(_ documentID: UUID, fileName: String, source: BorrowerDocumentUploadSource, image: UIImage? = nil) {
         guard let index = documents.firstIndex(where: { $0.id == documentID }) else { return }
         guard !documents[index].isLocked else { return }
 
@@ -540,12 +541,63 @@ final class LoanApplicationViewModel: ObservableObject {
         documents[index].lastUpdated = now
         documents[index].fileName = fileName
 
+        if let currentDraftID = currentDraftID {
+            let data = image?.jpegData(compressionQuality: 0.8) ?? Data("dummy file content for \(fileName)".utf8)
+            let bucket = "documents"
+            let path = "\(currentDraftID)/\(documentID).jpg"
+            
+            Task {
+                do {
+                    let publicUrl = try await StorageService.shared.uploadDocument(data: data, bucket: bucket, path: path)
+                    
+                    await MainActor.run {
+                        if let idx = self.documents.firstIndex(where: { $0.id == documentID }) {
+                            self.documents[idx].fileUrl = publicUrl.absoluteString;
+                        }
+                    }
+                    
+                    let borrowerUUID = UUID(uuidString: BorrowerProfileStore.shared.profile?.id ?? "") ?? UUID()
+                    let docType = resolveDocType(category: documents[index].category, name: documents[index].name)
+                    
+                    let dbDoc = DBDocument(
+                        documentId: documentID,
+                        borrowerId: borrowerUUID,
+                        applicationId: currentDraftID,
+                        docType: docType,
+                        fileUrl: publicUrl.absoluteString,
+                        fileName: fileName,
+                        status: "uploaded",
+                        uploadedAt: now,
+                        verifiedBy: nil
+                    )
+                    
+                    try await DatabaseService.shared.upsertDocument(dbDoc)
+                    print("[LoanApplicationViewModel] Successfully uploaded wizard document to Supabase Storage and DB.")
+                } catch {
+                    print("❌ [LoanApplicationViewModel] Error uploading wizard document: \(error)")
+                }
+            }
+        }
+
         autosaveDraft()
     }
 
     func uploadDocument(_ documentID: UUID) {
         let defaultName = "document-\(Int(Date().timeIntervalSince1970)).pdf"
         uploadDocument(documentID, fileName: defaultName, source: .pdf)
+    }
+
+    private func resolveDocType(category: BorrowerDocumentCategory, name: String) -> String {
+        switch category {
+        case .identityVerification: return "identity_proof"
+        case .addressVerification: return "address_proof"
+        case .incomeVerification: return "income_proof"
+        case .loanSpecific:
+            let n = name.lowercased()
+            if n.contains("statement") { return "bank_statement" }
+            if n.contains("property") || n.contains("land") || n.contains("tax") || n.contains("invoice") || n.contains("quotation") { return "property_document" }
+            return "identity_proof"
+        }
     }
 
     func uploadDocumentForApplication(applicationID: UUID, documentID: UUID, fileName: String, source: BorrowerDocumentUploadSource) {
@@ -559,7 +611,39 @@ final class LoanApplicationViewModel: ObservableObject {
         applications[appIndex].documents[docIndex].fileName = fileName
         applications[appIndex].updatedAt = now
         
-        CentralLoanRepository.shared.submitApplication(applications[appIndex])
+        let app = applications[appIndex]
+        CentralLoanRepository.shared.submitApplication(app)
+        
+        // Sync to Supabase Storage & Database
+        Task {
+            do {
+                let dummyData = Data("dummy file content for \(fileName)".utf8)
+                let bucket = "documents"
+                let path = "\(applicationID)/\(documentID).pdf"
+                
+                let publicUrl = try await StorageService.shared.uploadDocument(data: dummyData, bucket: bucket, path: path)
+                
+                let borrowerUUID = app.borrowerId ?? UUID(uuidString: BorrowerProfileStore.shared.profile?.id ?? "") ?? UUID()
+                let docType = resolveDocType(category: app.documents[docIndex].category, name: app.documents[docIndex].name)
+                
+                let dbDoc = DBDocument(
+                    documentId: documentID,
+                    borrowerId: borrowerUUID,
+                    applicationId: applicationID,
+                    docType: docType,
+                    fileUrl: publicUrl.absoluteString,
+                    fileName: fileName,
+                    status: "uploaded",
+                    uploadedAt: now,
+                    verifiedBy: nil
+                )
+                
+                try await DatabaseService.shared.upsertDocument(dbDoc)
+                print("[LoanApplicationViewModel] Successfully synced uploaded document metadata to Supabase DB.")
+            } catch {
+                print("❌ [LoanApplicationViewModel] Error uploading document: \(error)")
+            }
+        }
         
         // Auto-verify simulation
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
@@ -567,17 +651,44 @@ final class LoanApplicationViewModel: ObservableObject {
             guard let aIndex = self.applications.firstIndex(where: { $0.id == applicationID }) else { return }
             guard let dIndex = self.applications[aIndex].documents.firstIndex(where: { $0.id == documentID }) else { return }
             
+            let verificationTime = Date()
             self.applications[aIndex].documents[dIndex].status = .verified
-            self.applications[aIndex].documents[dIndex].lastUpdated = Date()
+            self.applications[aIndex].documents[dIndex].lastUpdated = verificationTime
+            
+            let updatedApp = self.applications[aIndex]
             
             // Log a stage entry to show this document was verified
             self.applications[aIndex].stageHistory.append(
                 BorrowerStageEntry(
                     stage: self.applications[aIndex].currentStage,
-                    timestamp: Date(),
+                    timestamp: verificationTime,
                     note: "Document '\(self.applications[aIndex].documents[dIndex].name)' automatically verified."
                 )
             )
+            
+            // Sync status update to database
+            Task {
+                do {
+                    let borrowerUUID = updatedApp.borrowerId ?? UUID(uuidString: BorrowerProfileStore.shared.profile?.id ?? "") ?? UUID()
+                    let docType = self.resolveDocType(category: updatedApp.documents[dIndex].category, name: updatedApp.documents[dIndex].name)
+                    
+                    let dbDoc = DBDocument(
+                        documentId: documentID,
+                        borrowerId: borrowerUUID,
+                        applicationId: applicationID,
+                        docType: docType,
+                        fileUrl: "", // Preserved path
+                        fileName: fileName,
+                        status: "verified",
+                        uploadedAt: updatedApp.documents[dIndex].uploadDate ?? verificationTime,
+                        verifiedBy: UUID(uuidString: "00000000-0000-0000-0000-000000000002") // Simulated system auditor
+                    )
+                    try await DatabaseService.shared.upsertDocument(dbDoc)
+                    print("[LoanApplicationViewModel] Auto-verified document synced to Supabase DB.")
+                } catch {
+                    print("[LoanApplicationViewModel] Error updating verification status: \(error.localizedDescription)")
+                }
+            }
             
             // If all docs are verified, advance stage from Document Verification to Loan Officer Review
             let allVerified = self.applications[aIndex].documents.allSatisfy { $0.status == .verified }

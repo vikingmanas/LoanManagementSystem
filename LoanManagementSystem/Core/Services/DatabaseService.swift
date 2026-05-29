@@ -427,4 +427,104 @@ final class DatabaseService {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: nil)
         return directory.appendingPathComponent("\(userId).json")
     }
+
+    // MARK: - Supabase Document Sync Operations
+
+    func upsertDocument(_ doc: DBDocument) async throws {
+        do {
+            try await client
+                .from("documents")
+                .upsert(doc, onConflict: "document_id")
+                .execute()
+            print("[DatabaseService] Document upserted successfully: \(doc.documentId)")
+        } catch {
+            print("❌ [DatabaseService] upsertDocument failed: \(error)")
+            throw error
+        }
+    }
+
+    func fetchDocuments(applicationId: UUID) async throws -> [DBDocument] {
+        return try await client
+            .from("documents")
+            .select()
+            .eq("application_id", value: applicationId.uuidString)
+            .execute()
+            .value
+    }
+
+    // MARK: - Supabase Repayment & Account Operations
+
+    func insertLoanAccount(_ account: DBLoanAccount) async throws {
+        try await client
+            .from("loan_accounts")
+            .insert(account)
+            .execute()
+    }
+
+    func insertEMISchedule(_ schedule: [DBEMISchedule]) async throws {
+        try await client
+            .from("emi_schedule")
+            .insert(schedule)
+            .execute()
+    }
+
+    func fetchLoanAccounts(borrowerId: UUID) async throws -> [DBLoanAccount] {
+        return try await client
+            .from("loan_accounts")
+            .select()
+            .eq("borrower_id", value: borrowerId.uuidString)
+            .execute()
+            .value
+    }
+
+    func fetchEMISchedule(accountId: UUID) async throws -> [DBEMISchedule] {
+        return try await client
+            .from("emi_schedule")
+            .select()
+            .eq("account_id", value: accountId.uuidString)
+            .execute()
+            .value
+    }
+
+    func updateEMIScheduleItemStatus(emiId: UUID, status: String, paidDate: Date?, paidAmount: Double?) async throws {
+        struct EMIUpdate: Codable {
+            let status: String
+            let paidDate: Date?
+            let paidAmount: Double?
+        }
+        try await client
+            .from("emi_schedule")
+            .update(EMIUpdate(status: status, paidDate: paidDate, paidAmount: paidAmount))
+            .eq("emi_id", value: emiId.uuidString)
+            .execute()
+    }
+
+    // MARK: - Supabase Chat Sync Operations
+
+    func fetchMessagesForApplication(applicationId: UUID) async throws -> [DBMessage] {
+        return try await client
+            .from("messages")
+            .select()
+            .eq("application_id", value: applicationId.uuidString)
+            .order("sent_at", ascending: true)
+            .execute()
+            .value
+    }
+
+    func fetchMessages(for userId: UUID) async throws -> [DBMessage] {
+        return try await client
+            .from("messages")
+            .select()
+            .or("sender_id.eq.\(userId.uuidString),receiver_id.eq.\(userId.uuidString)")
+            .order("sent_at", ascending: true)
+            .execute()
+            .value
+    }
+
+    func sendMessage(_ msg: DBMessage) async throws {
+        try await client
+            .from("messages")
+            .insert(msg)
+            .execute()
+    }
 }

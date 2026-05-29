@@ -12,6 +12,43 @@ struct AdminDashboardTabView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: LMSSpacing.sectionGap) {
+                    if let errorMessage = viewModel.errorMessage {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(LMSColors.coral)
+                                Text("Failed to Load Dashboard Data")
+                                    .font(LMSFont.subheadline.weight(.semibold))
+                                    .foregroundStyle(LMSColors.textPrimary)
+                            }
+                            Text(errorMessage)
+                                .font(LMSFont.caption)
+                                .foregroundStyle(LMSColors.textSecondary)
+                                .lineLimit(3)
+                            
+                            Button {
+                                Task {
+                                    await viewModel.loadDashboardData()
+                                }
+                            } label: {
+                                Text("Retry")
+                                    .font(LMSFont.caption.weight(.semibold))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(LMSColors.brandNavy, in: Capsule())
+                                    .foregroundStyle(.white)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: LMSRadius.lg)
+                                .stroke(LMSColors.coral.opacity(0.3), lineWidth: 1)
+                        )
+                    }
+                    
                     headerSection
                     kpiSection
                     healthSection

@@ -89,7 +89,7 @@ struct ChatsFeedTabView: View {
             }
             .refreshable { await viewModel.fetchDashboardData() }
             .sheet(isPresented: $showingCompose) {
-                OfficerComposeMessageSheet(applications: viewModel.applications)
+                OfficerComposeMessageSheet(viewModel: viewModel)
             }
         }
     }
@@ -237,19 +237,105 @@ private struct OfficerMessageThreadView: View {
         }
         .onAppear {
             conversation.items.forEach { viewModel.markActivityRead($0.id) }
+            Task {
+                await loadMessages()
+            }
         }
         .toolbar(.hidden, for: .tabBar)
+    }
+
+    private func loadMessages() async {
+        guard let app = viewModel.applications.first(where: { $0.applicationId == conversation.applicationId }) else { return }
+        do {
+            let dbMsgs = try await DatabaseService.shared.fetchMessagesForApplication(applicationId: app.id)
+            if !dbMsgs.isEmpty {
+                self.messages = dbMsgs.map { dbMsg in
+                    let isOfficerSender = dbMsg.senderId == viewModel.officerProfile?.id
+                    return OfficerThreadMessage(
+                        id: dbMsg.messageId,
+                        sender: isOfficerSender ? .officer : .borrower,
+                        text: dbMsg.content,
+                        timestamp: dbMsg.sentAt
+                    )
+                }
+            } else {
+                // If there are no messages in the database, seed them in local state
+                // and write them to Supabase so they are saved
+                let seeded = OfficerThreadMessage.seed(from: conversation)
+                self.messages = seeded
+                for msg in seeded {
+                    let senderId = msg.sender == .officer ? (viewModel.officerProfile?.id ?? UUID()) : app.borrowerId
+                    let receiverId = msg.sender == .officer ? app.borrowerId : (viewModel.officerProfile?.id ?? UUID())
+                    let dbMsg = DBMessage(
+                        messageId: msg.id,
+                        senderId: senderId,
+                        receiverId: receiverId,
+                        applicationId: app.id,
+                        content: msg.text,
+                        sentAt: msg.timestamp,
+                        isRead: true
+                    )
+                    try? await DatabaseService.shared.sendMessage(dbMsg)
+                }
+            }
+        } catch {
+            print("Failed to fetch messages: \(error)")
+        }
     }
 
     private func sendMessage() {
         let trimmed = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-
-        messages.append(OfficerThreadMessage(sender: .officer, text: trimmed, timestamp: Date()))
         messageText = ""
 
+        guard let app = viewModel.applications.first(where: { $0.applicationId == conversation.applicationId }) else { return }
+        let officerId = viewModel.officerProfile?.id ?? UUID()
+        let borrowerId = app.borrowerId
+        let appId = app.id
+
+        let officerMsgId = UUID()
+        let officerMsg = OfficerThreadMessage(id: officerMsgId, sender: .officer, text: trimmed, timestamp: Date())
+        messages.append(officerMsg)
+
+        Task {
+            let dbMsg = DBMessage(
+                messageId: officerMsgId,
+                senderId: officerId,
+                receiverId: borrowerId,
+                applicationId: appId,
+                content: trimmed,
+                sentAt: Date(),
+                isRead: false
+            )
+            do {
+                try await DatabaseService.shared.sendMessage(dbMsg)
+            } catch {
+                print("Failed to send officer message to DB: \(error)")
+            }
+        }
+
+        let replyText = autoReply(for: trimmed)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-            messages.append(OfficerThreadMessage(sender: .borrower, text: autoReply(for: trimmed), timestamp: Date()))
+            let borrowerMsgId = UUID()
+            let borrowerMsg = OfficerThreadMessage(id: borrowerMsgId, sender: .borrower, text: replyText, timestamp: Date())
+            messages.append(borrowerMsg)
+
+            Task {
+                let dbMsg = DBMessage(
+                    messageId: borrowerMsgId,
+                    senderId: borrowerId,
+                    receiverId: officerId,
+                    applicationId: appId,
+                    content: replyText,
+                    sentAt: Date(),
+                    isRead: false
+                )
+                do {
+                    try await DatabaseService.shared.sendMessage(dbMsg)
+                } catch {
+                    print("Failed to send automated reply to DB: \(error)")
+                }
+            }
         }
     }
 
@@ -345,10 +431,17 @@ private struct OfficerMessageBubble: View {
 private struct OfficerThreadMessage: Identifiable, Hashable {
     enum Sender { case officer, borrower }
 
-    let id = UUID()
+    let id: UUID
     let sender: Sender
     let text: String
     let timestamp: Date
+
+    init(id: UUID = UUID(), sender: Sender, text: String, timestamp: Date) {
+        self.id = id
+        self.sender = sender
+        self.text = text
+        self.timestamp = timestamp
+    }
 
     static func seed(from conversation: OfficerConversation) -> [OfficerThreadMessage] {
         var seeded: [OfficerThreadMessage] = [
@@ -368,7 +461,7 @@ private struct OfficerThreadMessage: Identifiable, Hashable {
 }
 
 private struct OfficerComposeMessageSheet: View {
-    let applications: [OfficerLoanApplication]
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var selectedApplicationId = ""
     @State private var message = ""
@@ -379,7 +472,7 @@ private struct OfficerComposeMessageSheet: View {
                 Section("Borrower") {
                     Picker("Application", selection: $selectedApplicationId) {
                         Text("Select").tag("")
-                        ForEach(applications) { app in
+                        ForEach(viewModel.applications) { app in
                             Text("\(app.borrowerName) · \(app.applicationId)").tag(app.applicationId)
                         }
                     }
@@ -397,9 +490,41 @@ private struct OfficerComposeMessageSheet: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Send") { dismiss() }
-                        .disabled(selectedApplicationId.isEmpty || message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("Send") {
+                        sendMessage()
+                        dismiss()
+                    }
+                    .disabled(selectedApplicationId.isEmpty || message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
+            }
+        }
+    }
+
+    private func sendMessage() {
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard let app = viewModel.applications.first(where: { $0.applicationId == selectedApplicationId }) else { return }
+        let officerId = viewModel.officerProfile?.id ?? UUID()
+        let borrowerId = app.borrowerId
+        let appId = app.id
+        
+        let messageId = UUID()
+        
+        Task {
+            let dbMsg = DBMessage(
+                messageId: messageId,
+                senderId: officerId,
+                receiverId: borrowerId,
+                applicationId: appId,
+                content: trimmed,
+                sentAt: Date(),
+                isRead: false
+            )
+            do {
+                try await DatabaseService.shared.sendMessage(dbMsg)
+                print("Message composed and sent successfully.")
+            } catch {
+                print("Failed to send composed message to DB: \(error)")
             }
         }
     }
