@@ -9,6 +9,8 @@ final class AdminDashboardViewModel: ObservableObject {
     @Published var systemHealth = SystemHealth(serverUptime: 100.0, activeSessions: 0, lastBackupTime: Date())
     @Published var recentAuditLogs: [AuditLogEntry] = []
     @Published var approvalBreakdown: (approved: Int, rejected: Int, pending: Int) = (0, 0, 0)
+    @Published var communicationIssues: [AdminCommunicationIssue] = AdminDashboardViewModel.sampleCommunicationIssues()
+    @Published var broadcastMessages: [AdminBroadcastMessage] = AdminDashboardViewModel.sampleBroadcastMessages()
     
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -220,5 +222,219 @@ final class AdminDashboardViewModel: ObservableObject {
     
     func getBranchBreakdown(for kpi: AdminKPI) -> [KPIBranchData] {
         return branchBreakdowns[kpi.title] ?? []
+    }
+
+    var communicationSummary: (open: Int, underReview: Int, resolved: Int, broadcasts: Int) {
+        (
+            communicationIssues.filter { $0.status == .open }.count,
+            communicationIssues.filter { $0.status == .inProgress || $0.status == .waitingForResponse }.count,
+            communicationIssues.filter { $0.status == .resolved }.count,
+            broadcastMessages.count
+        )
+    }
+
+    func assignIssue(_ issue: AdminCommunicationIssue, to department: String) {
+        guard let index = communicationIssues.firstIndex(where: { $0.id == issue.id }) else { return }
+        communicationIssues[index].assignedTo = department
+        communicationIssues[index].status = .inProgress
+        communicationIssues[index].responseDate = Date()
+        communicationIssues[index].lastUpdatedBy = "Head Office Admin"
+        communicationIssues[index].replies.append(AdminIssueReply(
+            author: "Admin",
+            message: "Issue assigned to \(department) for review.",
+            timestamp: Date()
+        ))
+    }
+
+    func reply(to issue: AdminCommunicationIssue, message: String) {
+        guard let index = communicationIssues.firstIndex(where: { $0.id == issue.id }) else { return }
+        communicationIssues[index].status = .waitingForResponse
+        communicationIssues[index].responseDate = Date()
+        communicationIssues[index].lastUpdatedBy = "Head Office Admin"
+        communicationIssues[index].replies.append(AdminIssueReply(author: "Admin", message: message, timestamp: Date()))
+    }
+
+    func markIssueResolved(_ issue: AdminCommunicationIssue) {
+        guard let index = communicationIssues.firstIndex(where: { $0.id == issue.id }) else { return }
+        communicationIssues[index].status = .resolved
+        communicationIssues[index].resolvedDate = Date()
+        communicationIssues[index].lastUpdatedBy = "Head Office Admin"
+        communicationIssues[index].replies.append(AdminIssueReply(
+            author: "Admin",
+            message: "Marked resolved after branch and department review.",
+            timestamp: Date()
+        ))
+    }
+
+    func escalateIssue(_ issue: AdminCommunicationIssue) {
+        guard let index = communicationIssues.firstIndex(where: { $0.id == issue.id }) else { return }
+        communicationIssues[index].priority = .critical
+        communicationIssues[index].status = .inProgress
+        communicationIssues[index].lastUpdatedBy = "Head Office Admin"
+        communicationIssues[index].replies.append(AdminIssueReply(
+            author: "Admin",
+            message: "Escalated to senior operations leadership.",
+            timestamp: Date()
+        ))
+    }
+
+    func archiveIssue(_ issue: AdminCommunicationIssue) {
+        guard let index = communicationIssues.firstIndex(where: { $0.id == issue.id }) else { return }
+        communicationIssues[index].status = .archived
+        communicationIssues[index].lastUpdatedBy = "Head Office Admin"
+    }
+
+    func createBroadcast(subject: String, message: String, recipients: AdminBroadcastRecipient, type: AdminAnnouncementType) {
+        broadcastMessages.insert(
+            AdminBroadcastMessage(subject: subject, message: message, recipients: recipients, type: type, createdDate: Date()),
+            at: 0
+        )
+    }
+
+    func createBroadcast(from issue: AdminCommunicationIssue) {
+        let message = "\(issue.title) is under review. Further updates will be shared with all branches."
+        createBroadcast(
+            subject: issue.title,
+            message: message,
+            recipients: .allBranchManagers,
+            type: issue.category == .productFeedback || issue.category == .customerFeedback ? .operationalUpdate : .policyChange
+        )
+
+        if let index = communicationIssues.firstIndex(where: { $0.id == issue.id }) {
+            communicationIssues[index].lastUpdatedBy = "Head Office Admin"
+            communicationIssues[index].replies.append(AdminIssueReply(
+                author: "Admin",
+                message: "Created an organization broadcast from this issue.",
+                timestamp: Date()
+            ))
+        }
+    }
+
+    private static func sampleCommunicationIssues() -> [AdminCommunicationIssue] {
+        let calendar = Calendar.current
+        let now = Date()
+
+        return [
+            AdminCommunicationIssue(
+                id: UUID(),
+                issueId: "ISS-2026-1025",
+                title: "Vehicle Loan Interest Rate Too High",
+                branchName: "ICICI Bengaluru Main Branch",
+                raisedBy: "Branch Manager",
+                category: .customerFeedback,
+                priority: .high,
+                createdDate: calendar.date(byAdding: .day, value: -1, to: now) ?? now,
+                status: .open,
+                issue: "Vehicle loan interest rates are impacting customer conversion rates.",
+                assignedTo: nil,
+                supportingDocuments: ["Vehicle loan rejection summary.pdf"],
+                replies: [
+                    AdminIssueReply(author: "Manager", message: "Customers are rejecting vehicle loan offers due to high interest rates.", timestamp: calendar.date(byAdding: .hour, value: -18, to: now) ?? now)
+                ],
+                createdBy: "Branch Manager",
+                responseDate: nil,
+                resolvedDate: nil,
+                lastUpdatedBy: "Branch Manager"
+            ),
+            AdminCommunicationIssue(
+                id: UUID(),
+                issueId: "ISS-2026-1026",
+                title: "Branch Server Downtime",
+                branchName: "Mumbai West Branch",
+                raisedBy: "Operations Lead",
+                category: .branchOperations,
+                priority: .critical,
+                createdDate: calendar.date(byAdding: .day, value: -2, to: now) ?? now,
+                status: .inProgress,
+                issue: "Branch is facing intermittent server downtime during peak processing hours.",
+                assignedTo: "IT Operations",
+                supportingDocuments: ["Downtime screenshots.zip", "Server latency report.csv"],
+                replies: [
+                    AdminIssueReply(author: "Operations Lead", message: "Application processing is delayed because LOS is timing out.", timestamp: calendar.date(byAdding: .day, value: -2, to: now) ?? now),
+                    AdminIssueReply(author: "Admin", message: "Issue forwarded to IT Operations for immediate review.", timestamp: calendar.date(byAdding: .day, value: -1, to: now) ?? now)
+                ],
+                createdBy: "Operations Lead",
+                responseDate: calendar.date(byAdding: .day, value: -1, to: now),
+                resolvedDate: nil,
+                lastUpdatedBy: "Head Office Admin"
+            ),
+            AdminCommunicationIssue(
+                id: UUID(),
+                issueId: "ISS-2026-1027",
+                title: "Need Two Additional Loan Officers",
+                branchName: "Delhi North Branch",
+                raisedBy: "Branch Manager",
+                category: .staffingRequest,
+                priority: .medium,
+                createdDate: calendar.date(byAdding: .day, value: -4, to: now) ?? now,
+                status: .waitingForResponse,
+                issue: "Need 2 additional Loan Officers to handle high application workload.",
+                assignedTo: "HR Staffing",
+                supportingDocuments: ["Workload dashboard.png"],
+                replies: [
+                    AdminIssueReply(author: "Branch Manager", message: "Current queue volume is exceeding officer capacity.", timestamp: calendar.date(byAdding: .day, value: -4, to: now) ?? now),
+                    AdminIssueReply(author: "Admin", message: "Please confirm whether overtime support is sufficient until hiring approval.", timestamp: calendar.date(byAdding: .day, value: -3, to: now) ?? now)
+                ],
+                createdBy: "Branch Manager",
+                responseDate: calendar.date(byAdding: .day, value: -3, to: now),
+                resolvedDate: nil,
+                lastUpdatedBy: "Head Office Admin"
+            ),
+            AdminCommunicationIssue(
+                id: UUID(),
+                issueId: "ISS-2026-1028",
+                title: "Additional Training Required",
+                branchName: "Chennai Central Branch",
+                raisedBy: "Loan Officer",
+                category: .employeeConcern,
+                priority: .low,
+                createdDate: calendar.date(byAdding: .day, value: -8, to: now) ?? now,
+                status: .resolved,
+                issue: "Additional training required for foreclosure workflow and document exception handling.",
+                assignedTo: "Training Team",
+                supportingDocuments: [],
+                replies: [
+                    AdminIssueReply(author: "Loan Officer", message: "The new foreclosure workflow has frequent edge cases.", timestamp: calendar.date(byAdding: .day, value: -8, to: now) ?? now),
+                    AdminIssueReply(author: "Training Team", message: "Training batch scheduled for affected branches.", timestamp: calendar.date(byAdding: .day, value: -6, to: now) ?? now)
+                ],
+                createdBy: "Loan Officer",
+                responseDate: calendar.date(byAdding: .day, value: -7, to: now),
+                resolvedDate: calendar.date(byAdding: .day, value: -6, to: now),
+                lastUpdatedBy: "Training Team"
+            ),
+            AdminCommunicationIssue(
+                id: UUID(),
+                issueId: "ISS-2026-1029",
+                title: "Education Loan Processing Delay",
+                branchName: "Pune East Branch",
+                raisedBy: "Branch Manager",
+                category: .productFeedback,
+                priority: .medium,
+                createdDate: calendar.date(byAdding: .day, value: -10, to: now) ?? now,
+                status: .open,
+                issue: "Education loan processing is too lengthy; customers are requesting faster sanction options.",
+                assignedTo: nil,
+                supportingDocuments: ["Education loan TAT report.xlsx"],
+                replies: [
+                    AdminIssueReply(author: "Branch Manager", message: "Customer drop-off is increasing after document verification.", timestamp: calendar.date(byAdding: .day, value: -10, to: now) ?? now)
+                ],
+                createdBy: "Branch Manager",
+                responseDate: nil,
+                resolvedDate: nil,
+                lastUpdatedBy: "Branch Manager"
+            )
+        ]
+    }
+
+    private static func sampleBroadcastMessages() -> [AdminBroadcastMessage] {
+        [
+            AdminBroadcastMessage(
+                subject: "Vehicle Loan Rate Revision",
+                message: "Effective from 01 June 2026, vehicle loan rates have been revised for eligible customers.",
+                recipients: .allBranchManagers,
+                type: .interestRateChange,
+                createdDate: Date()
+            )
+        ]
     }
 }
