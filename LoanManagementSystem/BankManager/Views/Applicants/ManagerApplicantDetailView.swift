@@ -60,15 +60,55 @@ struct ManagerApplicantDetailView: View {
 
 
                     VStack(spacing: 0) {
-                        DetailRow(label: "LOAN TYPE", value: applicant.loanType.rawValue, icon: applicant.loanType.symbol)
-                        Divider()
-                        DetailRow(label: "REQUESTED AMOUNT", value: CurrencyFormatter.shared.format(applicant.requestedAmount))
-                        Divider()
-                        DetailRow(label: "TENURE", value: "\(applicant.tenure) months")
-                        Divider()
-                        DetailRow(label: "INTEREST RATE", value: String(format: "%.2f%% p.a.", applicant.interestRate))
-                        Divider()
-                        DetailRow(label: "SUBMISSION DATE", value: RelativeDateFormatter.shared.absoluteString(from: applicant.submissionDate))
+                        LabeledContent {
+                            Text(applicant.loanType.rawValue)
+                                .font(.body.weight(.semibold))
+                        } label: {
+                            Label("LOAN TYPE", systemImage: applicant.loanType.symbol)
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .foregroundStyle(LMSColors.textSecondary)
+                        }
+                        .padding(.vertical, 14)
+                        .padding(.horizontal, LMSSpacing.lg)
+
+                        Divider().padding(.leading, 44)
+
+                        LabeledContent {
+                            Text(CurrencyFormatter.shared.format(applicant.requestedAmount))
+                                .font(.body.weight(.semibold))
+                        } label: {
+                            Label("AMOUNT", systemImage: "indianrupeesign.circle")
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .foregroundStyle(LMSColors.textSecondary)
+                        }
+                        .padding(.vertical, 14)
+                        .padding(.horizontal, LMSSpacing.lg)
+
+                        Divider().padding(.leading, 44)
+
+                        LabeledContent {
+                            Text("\(applicant.tenure) months")
+                                .font(.body.weight(.semibold))
+                        } label: {
+                            Label("TENURE", systemImage: "calendar")
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .foregroundStyle(LMSColors.textSecondary)
+                        }
+                        .padding(.vertical, 14)
+                        .padding(.horizontal, LMSSpacing.lg)
+
+                        Divider().padding(.leading, 44)
+
+                        LabeledContent {
+                            Text(String(format: "%.2f%% p.a.", applicant.interestRate))
+                                .font(.body.weight(.semibold))
+                        } label: {
+                            Label("INTEREST", systemImage: "percent")
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .foregroundStyle(LMSColors.textSecondary)
+                        }
+                        .padding(.vertical, 14)
+                        .padding(.horizontal, LMSSpacing.lg)
                     }
                     .background(LMSColors.surfaceElevated)
                     .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
@@ -149,8 +189,8 @@ struct ManagerApplicantDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") { dismiss() }
-                        .font(.system(.body, design: .rounded).bold())
+                    Button("Done") { dismiss() }
+                        .bold()
                 }
             }
             .sheet(item: $actionType) { action in

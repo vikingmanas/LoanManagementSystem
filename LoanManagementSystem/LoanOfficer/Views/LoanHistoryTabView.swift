@@ -41,6 +41,39 @@ struct LoanHistoryTabView: View {
 
     var body: some View {
         List {
+            // Style: Perfectly Native Segmented, Function: Scrollable (No Truncation)
+            Section {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 0) {
+                        ForEach(RegistryFilter.allCases) { filter in
+                            Button {
+                                withAnimation(.snappy(duration: 0.2)) {
+                                    selectedFilter = filter
+                                }
+                            } label: {
+                                Text(filter.title)
+                                    .font(.subheadline.weight(.medium))
+                                    .padding(.vertical, 7)
+                                    .padding(.horizontal, 16)
+                                    .background {
+                                        if selectedFilter == filter {
+                                            RoundedRectangle(cornerRadius: 6.5, style: .continuous)
+                                                .fill(Color(.systemBackground))
+                                                .shadow(color: .black.opacity(0.1), radius: 1.5, x: 0, y: 1)
+                                        }
+                                    }
+                                    .foregroundStyle(selectedFilter == filter ? Color(.label) : Color(.secondaryLabel))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(2)
+                    .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 8.5, style: .continuous))
+                }
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 10, leading: 0, bottom: 10, trailing: 0))
+
             Section {
                 if filteredApplications.isEmpty {
                     ContentUnavailableView(
@@ -83,21 +116,8 @@ struct LoanHistoryTabView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle("All Loans")
+        .navigationTitle("Registry")
         .searchable(text: $viewModel.historySearchQuery, placement: .navigationBarDrawer(displayMode: .always), prompt: "Borrower, ID, branch")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Picker("Filter by Status", selection: $selectedFilter) {
-                        ForEach(RegistryFilter.allCases) { filter in
-                            Text(filter.title).tag(filter)
-                        }
-                    }
-                } label: {
-                    Label("Filter", systemImage: selectedFilter == .all ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-                }
-            }
-        }
         .refreshable { await viewModel.fetchDashboardData() }
         .sheet(item: $activeDetailApp) { app in
             LoanApplicationReviewDetailView(applicationId: app.applicationId, viewModel: viewModel)
@@ -125,7 +145,6 @@ struct LoanHistoryTabView: View {
     }
 }
 
-// MARK: - Registry Application Row
 private struct RegistryApplicationRow: View {
     let app: OfficerLoanApplication
 

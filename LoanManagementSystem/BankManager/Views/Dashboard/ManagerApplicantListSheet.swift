@@ -27,10 +27,9 @@ struct ManagerApplicantListSheet: View {
                     ScrollView {
                         LazyVStack(spacing: LMSSpacing.sm) {
                             ForEach(applicants) { applicant in
-                                Button(action: {
-                                    HapticsManager.triggerImpact(style: .medium)
-                                    selectedApplicant = applicant
-                                }) {
+                                NavigationLink {
+                                    ManagerApplicantDetailView(applicant: applicant, viewModel: viewModel)
+                                } label: {
                                     ApplicantListCard(applicant: applicant)
                                 }
                                 .buttonStyle(LMSPressableStyle())
@@ -45,11 +44,9 @@ struct ManagerApplicantListSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") { dismiss() }
+                    Button("Done") { dismiss() }
+                        .bold()
                 }
-            }
-            .sheet(item: $selectedApplicant) { applicant in
-                ManagerApplicantDetailView(applicant: applicant, viewModel: viewModel)
             }
         }
     }

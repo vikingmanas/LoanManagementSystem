@@ -1,5 +1,11 @@
 import SwiftUI
 
+private struct DocumentRejectionPrompt: Identifiable {
+    let document: LoanDocument
+
+    var id: UUID { document.id }
+}
+
 struct LoanApplicationReviewDetailView: View {
     typealias LoanApplication = OfficerLoanApplication
     let applicationId: String
@@ -12,9 +18,8 @@ struct LoanApplicationReviewDetailView: View {
     
     @State private var selectedDocForPreview: LoanDocument? = nil
     @State private var showingActionSheetForDoc: LoanDocument? = nil
-    @State private var showingRejectionTextAlert = false
     @State private var rejectionText = ""
-    @State private var activeDocForRejection: LoanDocument? = nil
+    @State private var rejectionPrompt: DocumentRejectionPrompt?
     
     var app: LoanApplication? {
         viewModel.applications.first { $0.applicationId == applicationId }
@@ -123,23 +128,23 @@ struct LoanApplicationReviewDetailView: View {
                 )
             }
         }
-        .alert("Flag Document", isPresented: $showingRejectionTextAlert) {
+        .alert("Flag Document", isPresented: rejectionPromptIsPresented) {
             TextField("Reason (e.g. Blurry photo)", text: $rejectionText)
             Button("Submit", role: .destructive) {
-                if let doc = activeDocForRejection {
+                if let prompt = rejectionPrompt {
                     viewModel.updateDocumentStatus(
                         applicationId: currentApp.applicationId,
-                        docId: doc.id,
+                        docId: prompt.document.id,
                         newStatus: .rejectFlag,
                         rejectionReason: rejectionText.isEmpty ? "Incorrect copy. Please re-upload." : rejectionText
                     )
                 }
                 rejectionText = ""
-                activeDocForRejection = nil
+                rejectionPrompt = nil
             }
             Button("Cancel", role: .cancel) {
                 rejectionText = ""
-                activeDocForRejection = nil
+                rejectionPrompt = nil
             }
         } message: {
             Text("Provide correction guidelines to send to borrower.")
@@ -182,9 +187,12 @@ struct LoanApplicationReviewDetailView: View {
                         icon: "arrow.triangle.2.circlepath",
                         tint: LMSColors.coral
                     ) {
-                        activeDocForRejection = doc
                         showingActionSheetForDoc = nil
-                        showingRejectionTextAlert = true
+                        rejectionText = ""
+                        let prompt = DocumentRejectionPrompt(document: doc)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            rejectionPrompt = prompt
+                        }
                     }
 
                     verificationActionButton(
@@ -241,6 +249,17 @@ struct LoanApplicationReviewDetailView: View {
             .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
+    }
+
+    private var rejectionPromptIsPresented: Binding<Bool> {
+        Binding {
+            rejectionPrompt != nil
+        } set: { isPresented in
+            if !isPresented {
+                rejectionText = ""
+                rejectionPrompt = nil
+            }
+        }
     }
     
     // MARK: - Application Header
