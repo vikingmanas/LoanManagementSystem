@@ -6,29 +6,40 @@ struct NotificationsDetailView: View {
     @State private var paymentReminders = true
     @State private var securityAlerts = true
     @State private var promoOffers = false
-    @ObservedObject private var loanRepository = CentralLoanRepository.shared
+    @ObservedObject var notificationViewModel: NotificationViewModel
 
-    private var notifications: [LMSNotification] {
-        (loanRepository.borrowerNotifications + LMSMockNotifications.sample)
-            .sorted { $0.timestamp > $1.timestamp }
-    }
-    
     var body: some View {
         Form {
             Section {
-                if notifications.isEmpty {
+                if notificationViewModel.notifications.isEmpty {
                     ContentUnavailableView(
                         "No Messages",
                         systemImage: "bell.slash",
                         description: Text("Loan approval and payment updates will appear here.")
                     )
                 } else {
-                    ForEach(notifications) { notification in
+                    ForEach(notificationViewModel.lmsNotifications) { notification in
                         LMSNotificationRow(notification: notification)
+                            .onTapGesture {
+                                withAnimation {
+                                    notificationViewModel.markRead(id: notification.id)
+                                }
+                            }
                     }
                 }
             } header: {
-                Text("Messages")
+                HStack {
+                    Text("Messages")
+                    Spacer()
+                    if notificationViewModel.unreadCount > 0 {
+                        Button("Mark All Read") {
+                            withAnimation {
+                                notificationViewModel.markAllRead()
+                            }
+                        }
+                        .font(.caption)
+                    }
+                }
             }
 
             if showSettings {
@@ -99,11 +110,8 @@ struct NotificationsDetailView: View {
         }
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-#Preview {
-    NavigationStack {
-        NotificationsDetailView()
+        .refreshable {
+            await notificationViewModel.loadNotifications()
+        }
     }
 }

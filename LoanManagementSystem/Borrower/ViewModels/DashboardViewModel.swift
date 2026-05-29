@@ -21,6 +21,9 @@ public final class DashboardViewModel: ObservableObject {
     @Published public var profileName: String = ""
     @Published public var profileCompletionPercentage: Int = 0
     
+    // Notification support
+    public let notificationViewModel = NotificationViewModel()
+    
     // Quick demonstration toggle state (e.g. to mock low balance vs normal)
     @Published public var forceLowBalanceMockState: Bool = false
 
@@ -110,11 +113,7 @@ public final class DashboardViewModel: ObservableObject {
     }
 
     public var dashboardNotifications: [LMSNotification] {
-        let live = CentralLoanRepository.shared.borrowerNotifications
-        let merged = live + LMSMockNotifications.sample
-        var seen = Set<UUID>()
-        return merged.filter { seen.insert($0.id).inserted }
-            .sorted { $0.timestamp > $1.timestamp }
+        return notificationViewModel.lmsNotifications
     }
 
     public var profileMissingRequirements: [String] {
@@ -326,6 +325,12 @@ public final class DashboardViewModel: ObservableObject {
         }
 
         self.transactions = dbTransactionsList.sorted { $0.date > $1.date }
+        
+        // Configure notifications from Supabase
+        if let profile = BorrowerProfileStore.shared.profile,
+           let userId = UUID(uuidString: profile.id) {
+            notificationViewModel.configure(userId: userId)
+        }
     }
 
 

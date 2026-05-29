@@ -362,51 +362,7 @@ public struct LMSNotification: Identifiable, Hashable {
     }
 }
 
-public enum LMSMockNotifications {
-    public static let sample: [LMSNotification] = [
-        LMSNotification(
-            title: "EMI Reminder",
-            body: "Your home loan EMI of ₹42,500 is due on 5 Jun. Ensure sufficient balance in SBI ••7890.",
-            timestamp: MockData.makeDate(year: 2025, month: 5, day: 22, hour: 9, minute: 15),
-            icon: "calendar.badge.clock",
-            tint: LMSColors.amber
-        ),
-        LMSNotification(
-            title: "Payment Received",
-            body: "EMI of ₹18,200 was debited successfully from HDFC ••3421 for Personal Loan.",
-            timestamp: MockData.makeDate(year: 2025, month: 5, day: 20, hour: 14, minute: 2),
-            icon: "checkmark.circle.fill",
-            tint: LMSColors.emerald,
-            isUnread: false
-        ),
-        LMSNotification(
-            title: "KYC Update",
-            body: "Upload your latest address proof to complete profile verification.",
-            timestamp: MockData.makeDate(year: 2025, month: 5, day: 18, hour: 11, minute: 0),
-            icon: "doc.badge.plus",
-            tint: LMSColors.actionBlue
-        ),
-        LMSNotification(
-            title: "Scheme Eligible",
-            body: "You may qualify for PMAY subsidy on your home loan. Tap to explore benefits.",
-            timestamp: MockData.makeDate(year: 2025, month: 5, day: 15, hour: 16, minute: 45),
-            icon: "sparkles",
-            tint: LMSColors.teal,
-            isUnread: false
-        ),
-        LMSNotification(
-            title: "Low Balance Alert",
-            body: "SBI ••7890 balance is below the recommended amount for your upcoming EMI.",
-            timestamp: MockData.makeDate(year: 2025, month: 5, day: 14, hour: 8, minute: 30),
-            icon: "exclamationmark.triangle.fill",
-            tint: LMSColors.coral
-        )
-    ]
 
-    public static var unreadCount: Int {
-        sample.filter(\.isUnread).count
-    }
-}
 
 public struct LMSNotificationRow: View {
     let notification: LMSNotification

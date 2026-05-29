@@ -291,7 +291,7 @@ public struct DashboardView: View {
                 case .profileInfo:
                     ProfileInfoDetailView(viewModel: profileViewModel)
                 case .notifications:
-                    NotificationsDetailView()
+                    NotificationsDetailView(notificationViewModel: viewModel.notificationViewModel)
                 case .transactionHistory:
                     TransactionHistoryFullScreen(viewModel: viewModel)
                 case .payEMI:

@@ -9,6 +9,7 @@ struct ProfileView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel = BorrowerProfileViewModel()
+    @StateObject private var notifVM = NotificationViewModel()
     @State private var activeSheet: ProfileEditSheet?
 
     var body: some View {
@@ -37,6 +38,11 @@ struct ProfileView: View {
                 email: authManager.userEmail,
                 displayName: authManager.userDisplayName
             )
+            // Configure notification VM with current user ID
+            if let profile = BorrowerProfileStore.shared.profile,
+               let userId = UUID(uuidString: profile.id) {
+                notifVM.configure(userId: userId)
+            }
         }
     }
 
@@ -90,7 +96,7 @@ struct ProfileView: View {
                             Label("Privacy Controls", systemImage: "hand.raised")
                         }
                         
-                        NavigationLink(destination: NotificationsDetailView(showSettings: true)) {
+                        NavigationLink(destination: NotificationsDetailView(showSettings: true, notificationViewModel: notifVM)) {
                             Label("Notifications", systemImage: "bell")
                         }
                     } header: {
