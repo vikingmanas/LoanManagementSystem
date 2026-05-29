@@ -431,10 +431,16 @@ final class DatabaseService {
     // MARK: - Supabase Document Sync Operations
 
     func upsertDocument(_ doc: DBDocument) async throws {
-        try await client
-            .from("documents")
-            .upsert(doc, onConflict: "document_id")
-            .execute()
+        do {
+            try await client
+                .from("documents")
+                .upsert(doc, onConflict: "document_id")
+                .execute()
+            print("[DatabaseService] Document upserted successfully: \(doc.documentId)")
+        } catch {
+            print("❌ [DatabaseService] upsertDocument failed: \(error)")
+            throw error
+        }
     }
 
     func fetchDocuments(applicationId: UUID) async throws -> [DBDocument] {
