@@ -27,11 +27,26 @@ struct AdminDashboardTabView: View {
                     Button {
                         showingProfile = true
                     } label: {
-                        Text(authManager.userInitials)
-                            .font(LMSFont.caption2.weight(.bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 32, height: 32)
-                            .background(LMSColors.brandNavy, in: Circle())
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [LMSColors.brandNavy, LMSColors.brandNavyLight],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                            
+                            Text(authManager.userInitials)
+                                .font(LMSFont.caption2.weight(.bold))
+                                .foregroundStyle(.white)
+                        }
+                        .frame(width: 34, height: 34)
+                        .clipShape(Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
                     }
                 }
             }
@@ -63,7 +78,7 @@ struct AdminDashboardTabView: View {
                     AdminBranchKPIView(kpi: kpi, viewModel: viewModel)
                 } label: {
                     VStack(alignment: .leading, spacing: 12) {
-                        HStack {
+                        HStack(alignment: .top) {
                             Image(systemName: kpi.icon)
                                 .font(.title2)
                                 .foregroundStyle(kpi.themeColor)
@@ -76,17 +91,22 @@ struct AdminDashboardTabView: View {
                             .foregroundStyle(kpi.trend >= 0 ? LMSColors.emerald : LMSColors.coral)
                         }
                         
+                        Spacer(minLength: 0)
+                        
                         VStack(alignment: .leading, spacing: 2) {
                             Text(kpi.value)
                                 .font(LMSFont.title)
                                 .foregroundStyle(LMSColors.textPrimary)
+                                .minimumScaleFactor(0.8)
+                                .lineLimit(1)
                             Text(kpi.title)
                                 .font(LMSFont.caption)
                                 .foregroundStyle(LMSColors.textSecondary)
+                                .lineLimit(2)
                         }
                     }
                     .padding(16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, minHeight: 115, alignment: .leading)
                     .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg))
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -154,11 +174,16 @@ struct AdminDashboardTabView: View {
                 } else {
                     ForEach(viewModel.recentAuditLogs) { log in
                         HStack(spacing: 12) {
-                            Image(systemName: log.type.icon)
-                                .font(.title3)
-                                .foregroundStyle(log.type.color)
-                                .frame(width: 32, height: 32)
-                                .background(log.type.color.opacity(0.1), in: Circle())
+                            ZStack {
+                                Circle()
+                                    .fill(log.type.color.opacity(0.1))
+                                
+                                Image(systemName: log.type.icon)
+                                    .font(.title3)
+                                    .foregroundStyle(log.type.color)
+                            }
+                            .frame(width: 32, height: 32)
+                            .clipShape(Circle())
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(log.action)

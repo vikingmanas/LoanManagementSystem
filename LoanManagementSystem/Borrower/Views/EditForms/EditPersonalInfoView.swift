@@ -31,6 +31,10 @@ struct EditPersonalInfoView: View {
         viewModel.profile?.isKYCVerified ?? false
     }
 
+    private let genders = ["Male", "Female", "Other", "Prefer not to say"]
+    private let maritalStatuses = ["Single", "Married", "Divorced", "Widowed"]
+    private let nationalities = ["Indian", "Non-Resident Indian (NRI)", "Other"]
+
     var body: some View {
         NavigationStack {
             Form {
@@ -76,6 +80,14 @@ struct EditPersonalInfoView: View {
                             TextField("Enter Aadhaar Number", text: $aadhaarNumber)
                                 .keyboardType(.numberPad)
                                 .font(Font.AppTheme.input)
+                                .onChange(of: aadhaarNumber) { _, newValue in
+                                    let filtered = newValue.filter { "0123456789".contains($0) }
+                                    if filtered.count > 12 {
+                                        aadhaarNumber = String(filtered.prefix(12))
+                                    } else {
+                                        aadhaarNumber = filtered
+                                    }
+                                }
                         }
 
                         VStack(alignment: .leading, spacing: 4) {
@@ -85,34 +97,42 @@ struct EditPersonalInfoView: View {
                             TextField("Enter PAN Number", text: $panNumber)
                                 .autocapitalization(.allCharacters)
                                 .font(Font.AppTheme.input)
+                                .onChange(of: panNumber) { _, newValue in
+                                    let uppercased = newValue.uppercased()
+                                    if uppercased.count > 10 {
+                                        panNumber = String(uppercased.prefix(10))
+                                    } else {
+                                        panNumber = uppercased
+                                    }
+                                }
                         }
                     }
                 }
 
                 Section(header: Text("Other Personal Details")) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Gender")
-                            .font(Font.AppTheme.caption)
-                            .foregroundStyle(Color.AppTheme.textSecondary)
-                        TextField("Enter Gender", text: $gender)
-                            .font(Font.AppTheme.input)
+                    Picker("Gender", selection: $gender) {
+                        Text("Select Gender").tag("")
+                        ForEach(genders, id: \.self) {
+                            Text($0).tag($0)
+                        }
                     }
+                    .font(Font.AppTheme.body)
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Marital Status")
-                            .font(Font.AppTheme.caption)
-                            .foregroundStyle(Color.AppTheme.textSecondary)
-                        TextField("Enter Marital Status", text: $maritalStatus)
-                            .font(Font.AppTheme.input)
+                    Picker("Marital Status", selection: $maritalStatus) {
+                        Text("Select Status").tag("")
+                        ForEach(maritalStatuses, id: \.self) {
+                            Text($0).tag($0)
+                        }
                     }
+                    .font(Font.AppTheme.body)
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Nationality")
-                            .font(Font.AppTheme.caption)
-                            .foregroundStyle(Color.AppTheme.textSecondary)
-                        TextField("Enter Nationality", text: $nationality)
-                            .font(Font.AppTheme.input)
+                    Picker("Nationality", selection: $nationality) {
+                        Text("Select Nationality").tag("")
+                        ForEach(nationalities, id: \.self) {
+                            Text($0).tag($0)
+                        }
                     }
+                    .font(Font.AppTheme.body)
                 }
             }
             .navigationTitle("Edit Personal Info")
