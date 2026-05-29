@@ -89,7 +89,7 @@ struct ProfileHeaderView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.bottom, 18)
-        .padding(.top, -10)
+        .padding(.top, 32)
     }
 }
 

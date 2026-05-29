@@ -306,7 +306,7 @@ public struct DashboardView: View {
                 case .profileInfo:
                     ProfileInfoDetailView(viewModel: profileViewModel)
                 case .notifications:
-                    NotificationsDetailView()
+                    NotificationsDetailView(showSettings: false)
                 }
             }
             .sheet(isPresented: $showingQuickPaySheet) {

@@ -117,12 +117,16 @@ struct StaffMemberRow: View {
 
     var body: some View {
         HStack(spacing: LMSSpacing.md) {
-
-            Text(member.initials)
-                .font(LMSFont.headline)
-                .foregroundStyle(.white)
-                .frame(width: 46, height: 46)
-                .background(member.role.themeColor, in: Circle())
+            ZStack {
+                Circle()
+                    .fill(member.role.themeColor)
+                
+                Text(member.initials)
+                    .font(LMSFont.headline)
+                    .foregroundStyle(.white)
+            }
+            .frame(width: 46, height: 46)
+            .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: LMSSpacing.xs) {
