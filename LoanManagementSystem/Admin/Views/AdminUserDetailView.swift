@@ -75,11 +75,16 @@ struct AdminUserDetailView: View {
                 HStack {
                     Spacer()
                     VStack(spacing: LMSSpacing.sm) {
-                        Text(member.initials)
-                            .font(LMSFont.largeTitle)
-                            .foregroundStyle(.white)
-                            .frame(width: 80, height: 80)
-                            .background(member.role.themeColor, in: Circle())
+                        ZStack {
+                            Circle()
+                                .fill(member.role.themeColor)
+                            
+                            Text(member.initials)
+                                .font(LMSFont.largeTitle)
+                                .foregroundStyle(.white)
+                        }
+                        .frame(width: 80, height: 80)
+                        .clipShape(Circle())
 
                         Text(member.fullName)
                             .font(LMSFont.title3)

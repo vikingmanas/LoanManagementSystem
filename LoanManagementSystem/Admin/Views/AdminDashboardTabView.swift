@@ -7,7 +7,6 @@ struct AdminDashboardTabView: View {
     @EnvironmentObject private var authManager: AuthManager
     
     let columns = [GridItem(.flexible()), GridItem(.flexible())]
-    @State private var selectedKPI: KPIType? = nil
 
     var body: some View {
         NavigationStack {
@@ -21,9 +20,6 @@ struct AdminDashboardTabView: View {
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
                 .padding(.vertical, LMSSpacing.md)
             }
-            .refreshable {
-                await viewModel.loadDashboardData()
-            }
             .background(LMSColors.background.ignoresSafeArea())
             .navigationTitle("Admin Portal")
             .toolbar {
@@ -31,19 +27,33 @@ struct AdminDashboardTabView: View {
                     Button {
                         showingProfile = true
                     } label: {
-                        Text(authManager.userInitials)
-                            .font(LMSFont.caption2.weight(.bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 32, height: 32)
-                            .background(LMSColors.brandNavy, in: Circle())
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [LMSColors.brandNavy, LMSColors.brandNavyLight],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                            
+                            Text(authManager.userInitials)
+                                .font(LMSFont.caption2.weight(.bold))
+                                .foregroundStyle(.white)
+                        }
+                        .frame(width: 34, height: 34)
+                        .clipShape(Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
                     }
                 }
             }
             .task {
-                await viewModel.loadDashboardData()
-            }
-            .sheet(item: $selectedKPI) { kpi in
-                AdminApplicationListSheet(kpiType: kpi, applications: viewModel.rawApplications)
+                if viewModel.kpis.isEmpty {
+                    await viewModel.loadDashboardData()
+                }
             }
         }
     }
@@ -64,11 +74,11 @@ struct AdminDashboardTabView: View {
     private var kpiSection: some View {
         LazyVGrid(columns: columns, spacing: 16) {
             ForEach(viewModel.kpis) { kpi in
-                Button {
-                    selectedKPI = KPIType(rawValue: kpi.title)
+                NavigationLink {
+                    AdminBranchKPIView(kpi: kpi, viewModel: viewModel)
                 } label: {
                     VStack(alignment: .leading, spacing: 12) {
-                        HStack {
+                        HStack(alignment: .top) {
                             Image(systemName: kpi.icon)
                                 .font(.title2)
                                 .foregroundStyle(kpi.themeColor)
@@ -81,23 +91,25 @@ struct AdminDashboardTabView: View {
                             .foregroundStyle(kpi.trend >= 0 ? LMSColors.emerald : LMSColors.coral)
                         }
                         
+                        Spacer(minLength: 0)
+                        
                         VStack(alignment: .leading, spacing: 2) {
                             Text(kpi.value)
                                 .font(LMSFont.title)
+                                .foregroundStyle(LMSColors.textPrimary)
+                                .minimumScaleFactor(0.8)
+                                .lineLimit(1)
                             Text(kpi.title)
                                 .font(LMSFont.caption)
                                 .foregroundStyle(LMSColors.textSecondary)
+                                .lineLimit(2)
                         }
                     }
                     .padding(16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, minHeight: 115, alignment: .leading)
                     .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: LMSRadius.lg)
-                            .stroke(LMSColors.separatorLight, lineWidth: 0.5)
-                    )
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PlainButtonStyle())
             }
         }
     }
@@ -162,11 +174,16 @@ struct AdminDashboardTabView: View {
                 } else {
                     ForEach(viewModel.recentAuditLogs) { log in
                         HStack(spacing: 12) {
-                            Image(systemName: log.type.icon)
-                                .font(.title3)
-                                .foregroundStyle(log.type.color)
-                                .frame(width: 32, height: 32)
-                                .background(log.type.color.opacity(0.1), in: Circle())
+                            ZStack {
+                                Circle()
+                                    .fill(log.type.color.opacity(0.1))
+                                
+                                Image(systemName: log.type.icon)
+                                    .font(.title3)
+                                    .foregroundStyle(log.type.color)
+                            }
+                            .frame(width: 32, height: 32)
+                            .clipShape(Circle())
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(log.action)
@@ -195,14 +212,3 @@ struct AdminDashboardTabView: View {
         }
     }
 }
-
-// MARK: - KPI Type Enum
-enum KPIType: String, Identifiable, CaseIterable {
-    case totalApplications = "Total Applications"
-    case activeLoans = "Active Loans"
-    case pendingApprovals = "Pending Approvals"
-    case totalDisbursed = "Total Disbursed"
-    
-    var id: String { rawValue }
-}
-

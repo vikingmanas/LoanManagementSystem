@@ -59,6 +59,14 @@ struct EditAdditionalInfoView: View {
                         TextField("Enter 10-digit number", text: $emergencyContactNumber)
                             .keyboardType(.phonePad)
                             .font(Font.AppTheme.input)
+                            .onChange(of: emergencyContactNumber) { _, newValue in
+                                let filtered = newValue.filter { "0123456789".contains($0) }
+                                if filtered.count > 10 {
+                                    emergencyContactNumber = String(filtered.prefix(10))
+                                } else {
+                                    emergencyContactNumber = filtered
+                                }
+                            }
                     }
                 }
 

@@ -72,10 +72,6 @@ struct ProfileView: View {
                         NavigationLink(destination: LinkedBankAccountsDetailView(viewModel: viewModel)) {
                             Label("Linked Bank Accounts", systemImage: "building.columns")
                         }
-                        
-                        NavigationLink(destination: DocumentManagementDetailView(viewModel: viewModel)) {
-                            Label("Document Management", systemImage: "doc.on.doc")
-                        }
                     } header: {
                         Text("Account Details")
                     }
@@ -94,7 +90,7 @@ struct ProfileView: View {
                             Label("Privacy Controls", systemImage: "hand.raised")
                         }
                         
-                        NavigationLink(destination: NotificationsDetailView()) {
+                        NavigationLink(destination: NotificationsDetailView(showSettings: true)) {
                             Label("Notifications", systemImage: "bell")
                         }
                     } header: {

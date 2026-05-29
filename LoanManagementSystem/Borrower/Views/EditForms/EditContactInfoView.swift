@@ -49,6 +49,14 @@ struct EditContactInfoView: View {
                             TextField("Enter Mobile Number", text: $mobileNumber)
                                 .keyboardType(.phonePad)
                                 .font(Font.AppTheme.input)
+                                .onChange(of: mobileNumber) { _, newValue in
+                                    let filtered = newValue.filter { "0123456789".contains($0) }
+                                    if filtered.count > 10 {
+                                        mobileNumber = String(filtered.prefix(10))
+                                    } else {
+                                        mobileNumber = filtered
+                                    }
+                                }
                         }
                     }
                 }
@@ -61,6 +69,14 @@ struct EditContactInfoView: View {
                         TextField("Enter Alternate Number (Optional)", text: $alternateNumber)
                             .keyboardType(.phonePad)
                             .font(Font.AppTheme.input)
+                            .onChange(of: alternateNumber) { _, newValue in
+                                let filtered = newValue.filter { "0123456789".contains($0) }
+                                if filtered.count > 10 {
+                                    alternateNumber = String(filtered.prefix(10))
+                                } else {
+                                    alternateNumber = filtered
+                                }
+                            }
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
