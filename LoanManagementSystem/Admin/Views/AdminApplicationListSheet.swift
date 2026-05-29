@@ -1,5 +1,6 @@
 import SwiftUI
 
+
 struct AdminApplicationListSheet: View {
     let kpiType: KPIType
     let applications: [DBLoanApplication]
@@ -229,4 +230,13 @@ func statusIcon(_ status: String) -> String {
 // Make DBLoanApplication Identifiable for sheet bindings
 extension DBLoanApplication: Identifiable {
     public var id: UUID { applicationId }
+}
+
+enum KPIType: String, Identifiable, CaseIterable {
+    case totalApplications = "Total Applications"
+    case activeLoans = "Active Loans"
+    case pendingApprovals = "Pending Approvals"
+    case totalDisbursed = "Total Disbursed"
+    
+    var id: String { rawValue }
 }
