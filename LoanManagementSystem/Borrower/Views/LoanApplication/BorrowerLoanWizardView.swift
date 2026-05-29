@@ -348,6 +348,12 @@ struct BorrowerLoanWizardView: View {
     // Step 8 Verification Alerts Overrides
     @State private var showVerificationResolutionSheet = false
     @State private var hasResolvedMismatches = false
+
+    // Step 10 Consent & Submission
+    @State private var acceptTerms = false
+    @State private var acceptBureau = false
+    @State private var acceptDebit = false
+
     @State private var submissionErrorMessage: String?
     @State private var stepValidationMessage: String?
 
@@ -607,7 +613,10 @@ struct BorrowerLoanWizardView: View {
             case 10:
                 Step10TermsConsentView(
                     viewModel: viewModel,
-                    product: product
+                    product: product,
+                    acceptTerms: $acceptTerms,
+                    acceptBureau: $acceptBureau,
+                    acceptDebit: $acceptDebit
                 )
             default:
                 Text("Unknown Step")
@@ -647,12 +656,30 @@ struct BorrowerLoanWizardView: View {
                     .font(LMSFont.button)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 52)
-                    .background(LMSColors.brandNavy, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(
+                        isCurrentStepActionDisabled ? LMSColors.brandNavy.opacity(0.35) : LMSColors.brandNavy,
+                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    )
             }
+            .disabled(isCurrentStepActionDisabled)
             .buttonStyle(LMSPressableStyle())
         }
         .padding(.horizontal, 16)
         .padding(.top, 4)
+    }
+
+    private var isCurrentStepActionDisabled: Bool {
+        guard currentStep == 10 else { return false }
+        return !isStep10ReadyForSubmission
+    }
+
+    private var isStep10ReadyForSubmission: Bool {
+        isLoanPurposeValid && acceptTerms && acceptBureau && acceptDebit
+    }
+
+    private var isLoanPurposeValid: Bool {
+        let count = viewModel.formData.loanPurpose.trimmingCharacters(in: .whitespacesAndNewlines).count
+        return count >= 10 && count <= 500
     }
     
     // MARK: - Helper Methods
@@ -810,6 +837,12 @@ struct BorrowerLoanWizardView: View {
                 currentStep += 1
             }
         } else {
+            if let validationMessage = validationMessageForCurrentStep() {
+                stepValidationMessage = validationMessage
+                HapticsManager.triggerNotification(type: .warning)
+                return
+            }
+
             if viewModel.currentDraftID == nil {
                 viewModel.startDraft(for: product)
                 ensureRequiredDocumentsLoaded()
@@ -854,6 +887,14 @@ struct BorrowerLoanWizardView: View {
                 return nomineeValidation
             }
             return MobileNumberValidator.validationMessage(for: ocrPANNumber)
+        case 10:
+            if !isLoanPurposeValid {
+                return "Please provide the purpose of the loan."
+            }
+            if !acceptTerms || !acceptBureau || !acceptDebit {
+                return "Please accept all consent checklist items."
+            }
+            return nil
         default:
             return nil
         }
@@ -2477,10 +2518,11 @@ private struct Step9ReviewOverhaulView: View {
 private struct Step10TermsConsentView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
-    
-    @State private var acceptTerms = true
-    @State private var acceptBureau = true
-    @State private var acceptDebit = true
+    @Binding var acceptTerms: Bool
+    @Binding var acceptBureau: Bool
+    @Binding var acceptDebit: Bool
+
+    private let maxPurposeLength = 500
 
     var body: some View {
         VStack(spacing: LMSSpacing.lg) {
@@ -2499,6 +2541,8 @@ private struct Step10TermsConsentView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
             }
+
+            loanPurposeSection
             
             WizardFormSection(title: "Consent Checklist") {
                 WizardToggleRow(label: "Accept Terms & Conditions", subtitle: "I agree to terms, processing regulations, and verification policies.", isOn: $acceptTerms)
@@ -2524,6 +2568,63 @@ private struct Step10TermsConsentView: View {
             )
             .padding(.horizontal, 16)
         }
+    }
+
+    private var loanPurposeSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("LOAN PURPOSE")
+                .font(LMSFont.caption2.weight(.bold))
+                .foregroundStyle(LMSColors.textSecondary)
+                .padding(.horizontal, 4)
+
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Loan Purpose")
+                        .font(LMSFont.body.weight(.semibold))
+                        .foregroundStyle(LMSColors.textPrimary)
+                    Text("Tell us why you are applying for this loan.")
+                        .font(LMSFont.caption)
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+
+                TextEditor(text: Binding(
+                    get: { viewModel.formData.loanPurpose },
+                    set: { newValue in
+                        viewModel.formData.loanPurpose = String(newValue.prefix(maxPurposeLength))
+                        viewModel.autosaveDraft()
+                    }
+                ))
+                .font(LMSFont.body)
+                .foregroundStyle(LMSColors.textPrimary)
+                .scrollContentBackground(.hidden)
+                .frame(minHeight: 120)
+                .padding(10)
+                .background(LMSColors.surfaceTertiary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(alignment: .topLeading) {
+                    if viewModel.formData.loanPurpose.isEmpty {
+                        Text("Home renovation\nMedical expenses\nEducation fees\nBusiness expansion\nDebt consolidation\nVehicle purchase")
+                            .font(LMSFont.body)
+                            .foregroundStyle(LMSColors.textTertiary)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 18)
+                            .allowsHitTesting(false)
+                    }
+                }
+
+                Text("\(viewModel.formData.loanPurpose.count) / \(maxPurposeLength)")
+                    .font(LMSFont.caption2.weight(.medium))
+                    .foregroundStyle(viewModel.formData.loanPurpose.count > maxPurposeLength ? LMSColors.coral : LMSColors.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .padding(16)
+            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(LMSColors.separatorLight.opacity(0.4), lineWidth: 0.8)
+            )
+            .shadow(color: Color.black.opacity(0.015), radius: 6, x: 0, y: 3)
+        }
+        .padding(.horizontal, 16)
     }
 }
 
