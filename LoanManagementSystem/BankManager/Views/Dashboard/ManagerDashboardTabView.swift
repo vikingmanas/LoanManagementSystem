@@ -374,7 +374,8 @@ struct OfficerPerformanceReportSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") { dismiss() }
+                    Button("Done") { dismiss() }
+                        .bold()
                 }
             }
         }

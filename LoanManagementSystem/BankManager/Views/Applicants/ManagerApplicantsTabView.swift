@@ -145,7 +145,7 @@ struct ManagerApplicantsTabView: View {
                 Text("Filters")
                     .font(.system(.body, design: .rounded))
             }
-            .foregroundStyle(LMSColors.actionBlue)
+            .foregroundStyle(.black)
             .overlay(
                 Group {
                     if viewModel.selectedStatusFilter != nil || viewModel.selectedRiskFilter != nil || viewModel.selectedLoanTypeFilter != nil || viewModel.selectedOfficerFilter != nil {
