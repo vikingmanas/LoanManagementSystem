@@ -29,11 +29,24 @@ class ProductService {
                 .value
             
             logger.info("ProductService: Successfully fetched \(products.count) live products.")
-            return products.isEmpty ? BorrowerLoanProduct.sampleProducts : products
+            return mergedProductCatalog(liveProducts: products)
         } catch {
             logger.error("ProductService Error: Failed to fetch live products. Error: \(error.localizedDescription)")
             logger.info("ProductService: Falling back to sample products.")
             return BorrowerLoanProduct.sampleProducts
         }
+    }
+
+    private func mergedProductCatalog(liveProducts: [BorrowerLoanProduct]) -> [BorrowerLoanProduct] {
+        guard !liveProducts.isEmpty else { return BorrowerLoanProduct.sampleProducts }
+
+        var products = liveProducts
+        let liveTypes = Set(liveProducts.map(\.type))
+        let missingConfiguredProducts = BorrowerLoanProduct.sampleProducts.filter {
+            !liveTypes.contains($0.type)
+        }
+
+        products.append(contentsOf: missingConfiguredProducts)
+        return products
     }
 }

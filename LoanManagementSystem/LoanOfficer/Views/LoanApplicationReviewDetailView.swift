@@ -81,22 +81,19 @@ struct LoanApplicationReviewDetailView: View {
                 Button("Done") { dismiss() }
             }
         }
-        .sheet(item: $selectedDocForPreview) { doc in
-            NavigationStack {
-                DocumentReviewDetailView(
-                    item: DocumentQueueItem(
-                        id: doc.id,
-                        borrowerName: currentApp.borrowerName,
-                        docType: doc.docType,
-                        status: doc.status,
-                        submittedDate: Date(),
-                        applicationId: currentApp.applicationId,
-                        fileURL: doc.fileURL
-                    ),
-                    viewModel: viewModel,
-                    isPresentedModally: true
-                )
-            }
+        .navigationDestination(item: $selectedDocForPreview) { doc in
+            DocumentReviewDetailView(
+                item: DocumentQueueItem(
+                    id: doc.id,
+                    borrowerName: currentApp.borrowerName,
+                    docType: doc.docType,
+                    status: doc.status,
+                    submittedDate: doc.uploadedDate ?? currentApp.submittedDate,
+                    applicationId: currentApp.applicationId,
+                    fileURL: doc.fileURL
+                ),
+                viewModel: viewModel
+            )
         }
         .alert("Document Remarks", isPresented: rejectionPromptIsPresented) {
             TextField("Reason / remarks", text: $rejectionText)
@@ -326,18 +323,18 @@ struct LoanApplicationReviewDetailView: View {
     
     private func personalDetailsSection(_ app: LoanApplication) -> some View {
         Section("Personal Information") {
-            LabeledContent("Date of Birth", value: borrowerData.dob)
-            LabeledContent("Gender", value: borrowerData.gender)
-            LabeledContent("PAN Number", value: borrowerData.pan)
-            
-            LabeledContent("CIBIL Score") {
-                Text(app.cibilScore.map(String.init) ?? "Not provided")
-                    .fontWeight(.bold)
-                    .foregroundStyle(app.cibilScore.map(cibilColor(for:)) ?? .secondary)
+            VStack(spacing: 0) {
+                ApplicationDetailRow("Full Name", value: app.borrowerName)
+                ApplicationDetailRow("Date of Birth", value: borrowerData.dob)
+                ApplicationDetailRow("Age", value: borrowerData.age)
+                ApplicationDetailRow("Gender", value: borrowerData.gender)
+                ApplicationDetailRow("PAN Number", value: borrowerData.pan)
+                ApplicationDetailRow("CIBIL Score", value: app.cibilScore.map(String.init) ?? "Not provided", valueColor: app.cibilScore.map(cibilColor(for:)) ?? .secondary)
+                ApplicationDetailRow("Email", value: borrowerData.email)
+                ApplicationDetailRow("Phone", value: borrowerData.phone)
+                ApplicationDetailRow("Address", value: borrowerData.address, isLast: true)
             }
-            
-            LabeledContent("Email", value: borrowerData.email)
-            LabeledContent("Phone", value: borrowerData.phone)
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         }
     }
     
@@ -345,21 +342,28 @@ struct LoanApplicationReviewDetailView: View {
     
     private func loanEmploymentSection(_ app: LoanApplication) -> some View {
         Section("Loan & Employment") {
-            LabeledContent("Loan Type") {
-                Label(app.loanType.rawValue, systemImage: app.loanType.symbol)
-                    .foregroundStyle(app.loanType.themeColor)
-                    .fontWeight(.semibold)
+            VStack(spacing: 0) {
+                ApplicationDetailRow(
+                    "Loan Type",
+                    value: app.loanType.rawValue,
+                    icon: app.loanType.symbol,
+                    valueColor: app.loanType.themeColor
+                )
+                ApplicationDetailRow("Requested Amount", value: CurrencyFormatter.shared.format(app.requestedAmount), valueColor: LMSColors.brandNavy)
+                ApplicationDetailRow("Tenure", value: borrowerData.tenure)
+                ApplicationDetailRow("Purpose", value: borrowerData.loanPurpose)
+                ApplicationDetailRow("Employment Type", value: borrowerData.employmentStatus)
+                ApplicationDetailRow("Occupation", value: borrowerData.occupation)
+                ApplicationDetailRow("Employer", value: borrowerData.employer)
+                ApplicationDetailRow("Work Experience", value: borrowerData.workExperience)
+                ApplicationDetailRow("Monthly Income", value: borrowerData.monthlyIncome)
+                ApplicationDetailRow("Annual Income", value: borrowerData.annualIncome)
+                ApplicationDetailRow("Existing EMIs", value: borrowerData.existingEMIs)
+                ApplicationDetailRow("Credit Card Obligations", value: borrowerData.creditCardObligations)
+                ApplicationDetailRow("Repayment", value: borrowerData.repaymentPreference)
+                ApplicationDetailRow("Branch", value: app.branch, isLast: true)
             }
-            
-            LabeledContent("Requested Amount") {
-                Text(CurrencyFormatter.shared.format(app.requestedAmount))
-                    .fontWeight(.semibold)
-            }
-            
-            LabeledContent("Employer", value: borrowerData.employer)
-            LabeledContent("Monthly Income", value: borrowerData.monthlyIncome)
-            LabeledContent("Employment", value: borrowerData.employmentStatus)
-            LabeledContent("Branch", value: app.branch)
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         }
     }
     
@@ -538,6 +542,59 @@ struct InfoCell: View {
                 .foregroundStyle(color)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct ApplicationDetailRow: View {
+    let label: String
+    let value: String
+    var icon: String?
+    var valueColor: Color
+    var isLast: Bool
+
+    init(_ label: String, value: String, icon: String? = nil, valueColor: Color = .primary, isLast: Bool = false) {
+        self.label = label
+        self.value = value
+        self.icon = icon
+        self.valueColor = valueColor
+        self.isLast = isLast
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .frame(minWidth: 118, maxWidth: 142, alignment: .leading)
+
+                Spacer(minLength: 8)
+
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    if let icon {
+                        Image(systemName: icon)
+                            .font(.subheadline.weight(.semibold))
+                    }
+
+                    Text(displayValue)
+                        .font(.subheadline.weight(value == "Not provided" ? .regular : .semibold))
+                        .foregroundStyle(value == "Not provided" ? .secondary : valueColor)
+                        .multilineTextAlignment(.trailing)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .padding(.vertical, 11)
+
+            if !isLast {
+                Divider()
+            }
+        }
+    }
+
+    private var displayValue: String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Not provided" : value
     }
 }
 
