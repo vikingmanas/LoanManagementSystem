@@ -423,12 +423,10 @@ struct DashboardQuickActionsSection: View {
 
     private var actions: [DashboardQuickAction] {
         [
-            DashboardQuickAction(title: "Apply Loan", subtitle: "New credit", icon: "plus", tint: LMSColors.brandNavy, action: onApplyLoan),
             DashboardQuickAction(title: "Pay EMI", subtitle: "Due payments", icon: "indianrupeesign", tint: LMSColors.emerald, action: onPayEMI),
             DashboardQuickAction(title: "Top Up", subtitle: "Add funds", icon: "plus.circle.fill", tint: LMSColors.coral, action: onTopUp),
             DashboardQuickAction(title: "Statements", subtitle: "Download", icon: "doc.text.fill", tint: LMSColors.actionBlue, action: onStatement),
             DashboardQuickAction(title: "Support", subtitle: "Get help", icon: "headphones", tint: LMSColors.amber, action: onSupport),
-            DashboardQuickAction(title: "Loan Calculator", subtitle: "Plan EMI", icon: "function", tint: LMSColors.teal, action: onCalculator),
             DashboardQuickAction(title: "Foreclosure", subtitle: "Close your loan early", icon: "lock.open.fill", tint: Color.orange, action: onForeclosure)
         ]
     }
