@@ -22,6 +22,10 @@ struct DocumentReviewDetailView: View {
         viewModel.applications.first { $0.applicationId == item.applicationId }
     }
     
+    var documentDetails: LoanDocument? {
+        loanDetails?.documents.first { $0.id == item.id }
+    }
+    
     var body: some View {
         List {
             borrowerSection
@@ -126,11 +130,46 @@ struct DocumentReviewDetailView: View {
     private var documentPreviewSection: some View {
         Section {
             VStack(spacing: 0) {
-                DocumentGraphicMockView(docType: item.docType, borrowerName: item.borrowerName)
+                if let urlString = documentDetails?.fileURL, let url = URL(string: urlString) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                                .frame(height: 220)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 220)
+                        case .failure:
+                            VStack(spacing: 12) {
+                                Image(systemName: item.docType.symbol)
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(item.docType.iconColor)
+                                Text("Failed to load document image")
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                            .frame(height: 220)
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .background(Color(.tertiarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                } else {
+                    VStack(spacing: 12) {
+                        Image(systemName: item.docType.symbol)
+                            .font(.system(size: 40))
+                            .foregroundStyle(item.docType.iconColor)
+                        Text("No Document Uploaded")
+                            .font(.subheadline.weight(.semibold))
+                    }
                     .frame(maxWidth: .infinity)
                     .frame(height: 220)
                     .background(Color(.tertiarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         } header: {
