@@ -153,7 +153,7 @@ private struct LoanOfficerTodayView: View {
         .refreshable {
             await viewModel.fetchDashboardData()
         }
-        .sheet(item: $selectedApplication) { app in
+        .navigationDestination(item: $selectedApplication) { app in
             LoanApplicationReviewDetailView(applicationId: app.applicationId, viewModel: viewModel)
         }
         .alert("Report queued", isPresented: $showingReportConfirmation) {
@@ -1077,7 +1077,7 @@ private struct OfficerApplicationListSheet: View {
                     Button("Close") { dismiss() }
                 }
             }
-            .sheet(item: $selectedApplication) { application in
+            .navigationDestination(item: $selectedApplication) { application in
                 LoanApplicationReviewDetailView(applicationId: application.applicationId, viewModel: viewModel)
             }
         }
@@ -1122,7 +1122,7 @@ private struct OfficerPushApplicationListView: View {
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $selectedApplication) { application in
+        .navigationDestination(item: $selectedApplication) { application in
             LoanApplicationReviewDetailView(applicationId: application.applicationId, viewModel: viewModel)
         }
     }

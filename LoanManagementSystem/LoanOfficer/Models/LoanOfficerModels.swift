@@ -34,23 +34,43 @@ struct OfficerLoanApplication: Identifiable, Hashable {
 
 struct BorrowerDetails: Hashable {
     let dob: String
+    let age: String
     let gender: String
     let pan: String
     let email: String
     let phone: String
+    let address: String
+    let occupation: String
     let employer: String
+    let annualIncome: String
     let monthlyIncome: String
     let employmentStatus: String
+    let workExperience: String
+    let existingEMIs: String
+    let creditCardObligations: String
+    let loanPurpose: String
+    let tenure: String
+    let repaymentPreference: String
 
     static let empty = BorrowerDetails(
         dob: "Not provided",
+        age: "Not provided",
         gender: "Not provided",
         pan: "Not provided",
         email: "Not provided",
         phone: "Not provided",
+        address: "Not provided",
+        occupation: "Not provided",
         employer: "Not provided",
+        annualIncome: "Not provided",
         monthlyIncome: "Not provided",
-        employmentStatus: "Not provided"
+        employmentStatus: "Not provided",
+        workExperience: "Not provided",
+        existingEMIs: "Not provided",
+        creditCardObligations: "Not provided",
+        loanPurpose: "Not provided",
+        tenure: "Not provided",
+        repaymentPreference: "Not provided"
     )
 }
 
@@ -81,6 +101,12 @@ enum OfficerLoanType: String, CaseIterable, Codable, Hashable {
     case business = "Business Loan"
     case vehicle = "Vehicle Loan"
     case education = "Education Loan"
+    case agriculture = "Agriculture Loan"
+    case consumer = "Credit Card / Consumer Loan"
+    case msmeStartup = "MSME / Startup Loan"
+    case gold = "Gold Loan"
+    case loanAgainstProperty = "Loan Against Property"
+    case other = "Special Assistance Loan"
 
     var symbol: String {
         switch self {
@@ -89,6 +115,12 @@ enum OfficerLoanType: String, CaseIterable, Codable, Hashable {
         case .personal: return "person.fill"
         case .vehicle: return "car.fill"
         case .education: return "graduationcap.fill"
+        case .agriculture: return "leaf.fill"
+        case .consumer: return "creditcard.fill"
+        case .msmeStartup: return "chart.line.uptrend.xyaxis"
+        case .gold: return "seal.fill"
+        case .loanAgainstProperty: return "building.columns.fill"
+        case .other: return "sparkles"
         }
     }
 
@@ -99,6 +131,12 @@ enum OfficerLoanType: String, CaseIterable, Codable, Hashable {
         case .personal: return Color.teal
         case .vehicle: return AppTheme.warningAmber
         case .education: return AppTheme.actionBlue
+        case .agriculture: return Color.green
+        case .consumer: return Color.indigo
+        case .msmeStartup: return Color.cyan
+        case .gold: return AppTheme.warningAmber
+        case .loanAgainstProperty: return AppTheme.brandNavy
+        case .other: return AppTheme.actionBlue
         }
     }
 }
