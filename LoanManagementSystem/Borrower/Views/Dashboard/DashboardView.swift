@@ -305,7 +305,7 @@ public struct DashboardView: View {
                 case .foreclosure:
                     ForeclosureSheet(viewModel: viewModel)
                 case .support:
-                    SupportSheet()
+                    HelpSupportDetailView()
                 }
             }
         }
