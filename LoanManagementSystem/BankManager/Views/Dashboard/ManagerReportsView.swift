@@ -32,14 +32,6 @@ struct ManagerReportsView: View {
                         ) {
                             showAuditLog = true
                         }
-
-                        ReportButton(
-                            icon: "paperplane.fill",
-                            title: "Publish",
-                            tint: LMSColors.actionBlue
-                        ) {
-                            viewModel.publishMonthlyReport()
-                        }
                     }
                     .padding(.horizontal, LMSSpacing.screenHorizontal)
                 }
@@ -88,6 +80,7 @@ private struct ReportButton: View {
 
 private struct ManagerInsightCard: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
+    @State private var showBranchOverview = false
 
     private var insightText: String {
         if let highRisk = viewModel.applicants.first(where: { $0.riskLevel == .high || $0.riskLevel == .critical }) {
@@ -100,47 +93,64 @@ private struct ManagerInsightCard: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: LMSSpacing.md) {
-            ZStack {
-                RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.purple.opacity(0.15), LMSColors.actionBlue.opacity(0.15)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+        Button {
+            HapticsManager.triggerImpact(style: .light)
+            showBranchOverview = true
+        } label: {
+            HStack(spacing: LMSSpacing.md) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.purple.opacity(0.15), LMSColors.actionBlue.opacity(0.15)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
-                    .frame(width: 48, height: 48)
-                Image(systemName: "sparkles")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(Color.purple)
-            }
+                        .frame(width: 48, height: 48)
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(Color.purple)
+                }
 
-            VStack(alignment: .leading, spacing: LMSSpacing.xs) {
-                Text("Branch Insight")
-                    .font(.system(.subheadline, design: .rounded).bold())
-                    .foregroundStyle(Color.purple)
+                VStack(alignment: .leading, spacing: LMSSpacing.xs) {
+                    Text("Branch Insight")
+                        .font(.system(.subheadline, design: .rounded).bold())
+                        .foregroundStyle(Color.purple)
 
-                Text(insightText)
-                    .font(.system(.callout, design: .rounded))
-                    .foregroundStyle(LMSColors.textSecondary)
-                    .lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
+                    Text(insightText)
+                        .font(.system(.callout, design: .rounded))
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.purple.opacity(0.5))
             }
-        }
-        .padding(LMSSpacing.lg)
-        .background(
-            LinearGradient(
-                colors: [Color.purple.opacity(0.04), LMSColors.actionBlue.opacity(0.04)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+            .padding(LMSSpacing.lg)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                LinearGradient(
+                    colors: [Color.purple.opacity(0.04), LMSColors.actionBlue.opacity(0.04)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
             )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
-                .stroke(Color.purple.opacity(0.12), lineWidth: 0.5)
-        )
+            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                    .stroke(Color.purple.opacity(0.12), lineWidth: 0.5)
+            )
+        }
+        .buttonStyle(LMSPressableStyle())
+        .sheet(isPresented: $showBranchOverview) {
+            BranchOverviewDetailSheet(overview: viewModel.branchOverview)
+        }
     }
 }
 
@@ -169,12 +179,6 @@ private struct ManagerReportSheet: View {
                     LabeledContent("Officers Tracked", value: "\(viewModel.officers.count)")
                 }
 
-                if let lastReportPublishedAt = viewModel.lastReportPublishedAt {
-                    Section("Published") {
-                        LabeledContent("Last Published", value: lastReportPublishedAt.formatted(date: .abbreviated, time: .shortened))
-                    }
-                }
-
                 Section {
                     Button(action: {
                         HapticsManager.triggerImpact(style: .medium)
@@ -195,19 +199,6 @@ private struct ManagerReportSheet: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 4)
                     }
-                    
-                    Button(action: {
-                        HapticsManager.triggerImpact(style: .medium)
-                        viewModel.publishMonthlyReport()
-                        dismiss()
-                    }) {
-                        Text("Publish Monthly Report")
-                            .font(.system(.body, design: .rounded).weight(.bold))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 4)
-                    }
-                    .listRowBackground(LMSColors.brandNavy)
                 }
             }
             .navigationTitle("Monthly Report")

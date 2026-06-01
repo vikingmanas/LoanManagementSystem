@@ -172,10 +172,33 @@ final class ManagerDashboardViewModel: ObservableObject {
 
     func refreshData() async {
         isRefreshing = true
-        await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
-        await loadMessageThreads()
-        rebuildDerivedDashboardState()
-        isRefreshing = false
+
+        // SwiftUI's .refreshable cancels the task when the user releases the pull gesture.
+        // We run the actual fetch in a non-cancellable context so the network call completes.
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            Task.detached { [weak self] in
+                await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
+                guard let self else {
+                    continuation.resume()
+                    return
+                }
+                await MainActor.run {
+                    if self.currentManagerUserId != nil {
+                        Task {
+                            await self.loadStaffContext(userId: self.currentManagerUserId?.uuidString)
+                            await self.loadMessageThreads()
+                            self.rebuildDerivedDashboardState(keepStaff: !self.officers.isEmpty)
+                            self.isRefreshing = false
+                            continuation.resume()
+                        }
+                    } else {
+                        self.rebuildDerivedDashboardState(keepStaff: !self.officers.isEmpty)
+                        self.isRefreshing = false
+                        continuation.resume()
+                    }
+                }
+            }
+        }
     }
 
     @discardableResult
@@ -219,22 +242,14 @@ final class ManagerDashboardViewModel: ObservableObject {
     }
 
     func escalateApplicant(_ id: UUID) {
-        guard let index = applicants.firstIndex(where: { $0.id == id }) else { return }
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-            applicants[index].status = .escalated
-            applicants[index].managerRemarks = "Escalated for senior review."
-        }
+        CentralLoanRepository.shared.escalateApplication(id: id)
         appendAudit(action: "Escalated \(applicationLabel(for: id))", severity: .critical)
         HapticsManager.triggerNotification(type: .warning)
     }
 
     func reassignApplicant(_ id: UUID, to officerId: UUID) {
-        guard let index = applicants.firstIndex(where: { $0.id == id }),
-              let officer = officers.first(where: { $0.id == officerId }) else { return }
-        withAnimation {
-            applicants[index].assignedOfficerId = officerId
-            applicants[index].assignedOfficer = officer.name
-        }
+        guard let officer = officers.first(where: { $0.id == officerId }) else { return }
+        CentralLoanRepository.shared.reassignApplication(id: id, newOfficerId: officerId, newOfficerName: officer.name)
         appendAudit(action: "Reassigned \(applicationLabel(for: id)) to \(officer.name)", severity: .info)
         HapticsManager.triggerImpact(style: .medium)
     }
@@ -399,18 +414,6 @@ final class ManagerDashboardViewModel: ObservableObject {
             }
             rebuildConversations()
         }
-    }
-
-    func publishMonthlyReport() {
-        lastReportPublishedAt = Date()
-        appendAudit(action: "Published monthly branch performance report", severity: .info)
-        appendNotification(
-            title: "Monthly report published",
-            message: "Branch performance report is available for \(branchOverview.name).",
-            type: .info,
-            relatedApplicantId: nil
-        )
-        HapticsManager.triggerNotification(type: .success)
     }
 
     func navigateToApplicantsWithPending() {

@@ -95,6 +95,7 @@ enum OfficerApplicationStatus: String, CaseIterable, Codable, Hashable {
     case verificationCompleted = "Verification Completed"
     case sentToManager = "Sent to Manager"
     case finalApprovalPending = "Final Approval Pending"
+    case escalated = "Escalated"
 
     var displayName: String {
         self.rawValue
@@ -111,6 +112,7 @@ enum OfficerApplicationStatus: String, CaseIterable, Codable, Hashable {
         case .documentsRejected: return AppTheme.criticalRed
         case .verificationCompleted: return AppTheme.successGreen
         case .sentToManager, .finalApprovalPending: return AppTheme.brandNavy
+        case .escalated: return Color.purple
         }
     }
 }
@@ -121,6 +123,7 @@ enum ManagerStatus: String, CaseIterable, Codable, Hashable {
     case needsClarification = "Needs Clarification"
     case rejected = "Rejected ✗"
     case sentBack = "Sent Back"
+    case escalated = "Escalated"
 
     var themeColor: Color {
         switch self {
@@ -129,6 +132,7 @@ enum ManagerStatus: String, CaseIterable, Codable, Hashable {
         case .needsClarification: return AppTheme.criticalRed
         case .rejected: return AppTheme.criticalRed
         case .sentBack: return AppTheme.warningAmber
+        case .escalated: return Color.purple
         }
     }
 }
