@@ -1405,21 +1405,25 @@ extension BorrowerLoanDocumentItem {
             )
         ]
 
-        let baseDocumentKeys = Set((identity + address + income).map { canonicalDocumentKey($0.name) })
-        let loanSpecific = product.loanSpecificDocuments.filter {
-            !baseDocumentKeys.contains(canonicalDocumentKey($0))
-        }.map {
-            BorrowerLoanDocumentItem(
-                id: UUID(),
-                name: $0,
-                category: .loanSpecific,
-                status: .pendingUpload,
-                fileName: nil,
-                uploadDate: nil,
-                lastUpdated: nil,
-                isLocked: false
-            )
-        }
+        let baseDocKeys = Set([
+            canonicalDocumentKey(identityDoc),
+            canonicalDocumentKey(addressDoc),
+            canonicalDocumentKey(incomeDoc)
+        ])
+        let loanSpecific = product.loanSpecificDocuments
+            .filter { !baseDocKeys.contains(canonicalDocumentKey($0)) }
+            .map {
+                BorrowerLoanDocumentItem(
+                    id: UUID(),
+                    name: $0,
+                    category: .loanSpecific,
+                    status: .pendingUpload,
+                    fileName: nil,
+                    uploadDate: nil,
+                    lastUpdated: nil,
+                    isLocked: false
+                )
+            }
 
         return identity + address + income + loanSpecific
     }
