@@ -6,44 +6,58 @@ struct NotificationsListView: View {
     @ObservedObject var viewModel: NotificationViewModel
     @Environment(\.dismiss) private var dismiss
     
+    /// Determines if the view is being pushed into a NavigationStack or presented as a sheet.
+    /// If true, it omits its own NavigationStack and the 'Close' button.
+    var isPushed: Bool = false
+    
     var body: some View {
-        NavigationStack {
-            Group {
-                if viewModel.isLoading && viewModel.notifications.isEmpty {
-                    loadingView
-                } else if viewModel.notifications.isEmpty {
-                    emptyView
-                } else {
-                    notificationsList
-                }
+        if isPushed {
+            notificationContent
+        } else {
+            NavigationStack {
+                notificationContent
             }
-            .navigationTitle("Notifications")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
+        }
+    }
+    
+    private var notificationContent: some View {
+        Group {
+            if viewModel.isLoading && viewModel.notifications.isEmpty {
+                loadingView
+            } else if viewModel.notifications.isEmpty {
+                emptyView
+            } else {
+                notificationsList
+            }
+        }
+        .navigationTitle("Notifications")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !isPushed {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Close") {
                         dismiss()
                     }
                 }
-                
-                if viewModel.unreadCount > 0 {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                viewModel.markAllRead()
-                            }
-                        } label: {
-                            Text("Mark All Read")
-                                .font(.caption.weight(.semibold))
+            }
+            
+            if viewModel.unreadCount > 0 {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            viewModel.markAllRead()
                         }
+                    } label: {
+                        Text("Mark All Read")
+                            .font(.caption.weight(.semibold))
                     }
                 }
             }
-            .refreshable {
-                await viewModel.loadNotifications()
-            }
-            .lmsScreenBackground()
         }
+        .refreshable {
+            await viewModel.loadNotifications()
+        }
+        .lmsScreenBackground()
     }
     
     // MARK: - Subviews

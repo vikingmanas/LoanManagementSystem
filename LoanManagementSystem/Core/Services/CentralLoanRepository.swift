@@ -92,7 +92,7 @@ final class CentralLoanRepository: ObservableObject {
         
         // MARK: Notification — Application Submitted
         let appNumber = updatedApp.applicationId ?? updatedApp.displayIdentifier
-        let borrowerName = updatedApp.formData.fullName.isEmpty ? "Name not provided" : updatedApp.formData.fullName
+        let borrowerName = updatedApp.formData.fullName.isEmpty ? "Borrower" : updatedApp.formData.fullName
         if updatedApp.currentStage == .submitted {
             Task {
                 // Notify borrower
@@ -141,27 +141,60 @@ final class CentralLoanRepository: ObservableObject {
         }
     }
     
+    private func mapToDBDocType(category: BorrowerDocumentCategory, name: String) -> String {
+        switch category {
+        case .identityVerification: return "identity_proof"
+        case .addressVerification: return "address_proof"
+        case .incomeVerification: return "income_proof"
+        case .loanSpecific:
+            let n = name.lowercased()
+            if n.contains("statement") { return "bank_statement" }
+            if n.contains("property") || n.contains("land") || n.contains("tax") || n.contains("invoice") || n.contains("quotation") { return "property_document" }
+            return "identity_proof"
+        }
+    }
+
+    /// Derive a user-friendly document name from the raw `file_name` stored in Supabase.
+    /// e.g. "aadhaar_card_1780293575.jpg" → "Aadhaar Card"
+    private func friendlyNameFromFileName(_ fileName: String) -> String? {
+        // Strip extension, then drop trailing numeric timestamp segment
+        let base = fileName.replacingOccurrences(of: ".jpg", with: "")
+            .replacingOccurrences(of: ".jpeg", with: "")
+            .replacingOccurrences(of: ".png", with: "")
+            .replacingOccurrences(of: ".pdf", with: "")
+        var parts = base.split(separator: "_").map(String.init)
+        // Remove trailing pure-numeric parts (timestamps)
+        while let last = parts.last, last.allSatisfy({ $0.isNumber }) {
+            parts.removeLast()
+        }
+        guard !parts.isEmpty else { return nil }
+        return parts.map { $0.capitalized }.joined(separator: " ")
+    }
+
     private func mapToDocumentItem(from db: DBDocument) -> BorrowerLoanDocumentItem {
+        // Derive the best friendly name from the file_name first, then fall back to docType
+        let derivedName = friendlyNameFromFileName(db.fileName)
+        
         let friendlyName: String
         let category: BorrowerDocumentCategory
         switch db.docType {
         case "identity_proof":
-            friendlyName = inferDocumentName(from: db.fileName, fallback: "Identity Proof")
+            friendlyName = derivedName ?? "Identity Proof"
             category = .identityVerification
         case "address_proof":
-            friendlyName = inferDocumentName(from: db.fileName, fallback: "Address Proof")
+            friendlyName = derivedName ?? "Address Proof"
             category = .addressVerification
         case "income_proof":
-            friendlyName = inferDocumentName(from: db.fileName, fallback: "Income Proof")
+            friendlyName = derivedName ?? "Income Proof"
             category = .incomeVerification
         case "bank_statement":
-            friendlyName = "Bank Statement"
+            friendlyName = derivedName ?? "Bank Statement"
             category = .loanSpecific
         case "property_document":
-            friendlyName = "Property Documents"
+            friendlyName = derivedName ?? "Property Documents"
             category = .loanSpecific
         default:
-            friendlyName = db.fileName
+            friendlyName = derivedName ?? db.fileName
             category = .identityVerification
         }
 
@@ -170,6 +203,8 @@ final class CentralLoanRepository: ObservableObject {
         case "uploaded": docStatus = .uploaded
         case "verified": docStatus = .verified
         case "rejected": docStatus = .rejected
+        case "under_review": docStatus = .underVerification
+        case "requires_resubmission": docStatus = .requiresResubmission
         default: docStatus = .pendingUpload
         }
 
@@ -186,34 +221,6 @@ final class CentralLoanRepository: ObservableObject {
         )
     }
 
-    private func inferDocumentName(from fileName: String, fallback: String) -> String {
-        let normalized = fileName.lowercased()
-
-        if normalized.contains("aadhaar") || normalized.contains("aadhar") {
-            return "Aadhaar Card"
-        }
-        if normalized.contains("pan") {
-            return "PAN Card"
-        }
-        if normalized.contains("salary") || normalized.contains("payslip") {
-            return "Salary Slips"
-        }
-        if normalized.contains("bank") && normalized.contains("statement") {
-            return "Bank Statement"
-        }
-        if normalized.contains("utility") {
-            return "Utility Bill"
-        }
-        if normalized.contains("passport") {
-            return "Passport"
-        }
-        if normalized.contains("driving") {
-            return "Driving License"
-        }
-
-        return fallback
-    }
-
     func fetchApplicationsFromSupabase(borrowerId: UUID) async {
         do {
             let products = await ProductService.shared.fetchLoanProducts()
@@ -225,50 +232,56 @@ final class CentralLoanRepository: ObservableObject {
                     ?? BorrowerLoanProduct.sampleProducts.first(where: { $0.id == dbApp.productId })
                     ?? BorrowerLoanProduct.sampleProducts[0]
                 
-                let docs = await fetchDocumentItems(applicationId: dbApp.applicationId, borrowerId: dbApp.borrowerId)
+                var docs: [BorrowerLoanDocumentItem] = []
+                do {
+                    let dbDocs = try await DatabaseService.shared.fetchDocuments(applicationId: dbApp.applicationId)
+                    print("[CentralLoanRepository] Borrower fetch: \(dbDocs.count) documents for app \(dbApp.applicationId)")
+                    for dbDoc in dbDocs {
+                        print("[CentralLoanRepository]   → doc_type=\(dbDoc.docType), file_url=\(dbDoc.fileUrl.isEmpty ? "EMPTY" : dbDoc.fileUrl.prefix(80).description), status=\(dbDoc.status)")
+                    }
+                    docs = dbDocs.map { self.mapToDocumentItem(from: $0) }
+                } catch {
+                    print("❌ [CentralLoanRepository] Borrower fetch docs error for app \(dbApp.applicationId): \(error)")
+                }
                 
                 let app = dbApp.toBorrowerApplication(product: product, documents: docs)
                 mappedApps.append(app)
             }
             
             var hasChanges = false
-            var updatedApplications = self.applications
             
             // Update existing applications if their values changed, or append new ones.
             for remoteApp in mappedApps {
-                if let index = updatedApplications.firstIndex(where: { $0.id == remoteApp.id }) {
-                    let localApp = updatedApplications[index]
+                if let index = self.applications.firstIndex(where: { $0.id == remoteApp.id }) {
                     var mergedApp = remoteApp
-                    mergedApp.draftStepIndex = localApp.draftStepIndex
                     // If documents list is empty on remote, fallback to local cache
                     if mergedApp.documents.isEmpty {
-                        mergedApp.documents = localApp.documents
+                        mergedApp.documents = self.applications[index].documents
                     }
-                    if updatedApplications[index] != mergedApp {
-                        updatedApplications[index] = mergedApp
+                    if self.applications[index] != mergedApp {
+                        self.applications[index] = mergedApp
                         hasChanges = true
                     }
                 } else {
-                    updatedApplications.append(remoteApp)
+                    self.applications.append(remoteApp)
                     hasChanges = true
                 }
             }
             
             // Remove local applications belonging to this borrower that are no longer present on Supabase.
             let remoteIds = Set(mappedApps.map { $0.id })
-            let initialCount = updatedApplications.count
-            updatedApplications.removeAll { localApp in
+            let initialCount = self.applications.count
+            self.applications.removeAll { localApp in
                 if let localBorrowerId = localApp.borrowerId, localBorrowerId == borrowerId {
                     return !remoteIds.contains(localApp.id)
                 }
                 return false
             }
-            if updatedApplications.count != initialCount {
+            if self.applications.count != initialCount {
                 hasChanges = true
             }
             
             if hasChanges {
-                self.applications = updatedApplications
                 self.persistState()
             }
             
@@ -290,50 +303,56 @@ final class CentralLoanRepository: ObservableObject {
                     ?? BorrowerLoanProduct.sampleProducts.first(where: { $0.id == dbApp.productId })
                     ?? BorrowerLoanProduct.sampleProducts[0]
                 
-                let docs = await fetchDocumentItems(applicationId: dbApp.applicationId, borrowerId: dbApp.borrowerId)
+                var docs: [BorrowerLoanDocumentItem] = []
+                do {
+                    let dbDocs = try await DatabaseService.shared.fetchDocuments(applicationId: dbApp.applicationId)
+                    print("[CentralLoanRepository] Fetched \(dbDocs.count) documents for application \(dbApp.applicationId)")
+                    for dbDoc in dbDocs {
+                        print("[CentralLoanRepository]   → doc_type=\(dbDoc.docType), file_url=\(dbDoc.fileUrl.isEmpty ? "EMPTY" : dbDoc.fileUrl.prefix(80).description), status=\(dbDoc.status)")
+                    }
+                    docs = dbDocs.map { self.mapToDocumentItem(from: $0) }
+                } catch {
+                    print("❌ [CentralLoanRepository] Failed to fetch documents for app \(dbApp.applicationId): \(error)")
+                }
                 
                 let app = dbApp.toBorrowerApplication(product: product, documents: docs)
                 mappedApps.append(app)
             }
             
             var hasChanges = false
-            var updatedApplications = self.applications
             
             // Merge with existing local applications, updating any modified data.
             for remoteApp in mappedApps {
-                if let index = updatedApplications.firstIndex(where: { $0.id == remoteApp.id }) {
-                    let localApp = updatedApplications[index]
+                if let index = self.applications.firstIndex(where: { $0.id == remoteApp.id }) {
                     var mergedApp = remoteApp
-                    mergedApp.draftStepIndex = localApp.draftStepIndex
                     if mergedApp.documents.isEmpty {
-                        mergedApp.documents = localApp.documents
+                        mergedApp.documents = self.applications[index].documents
                     }
-                    if updatedApplications[index] != mergedApp {
-                        updatedApplications[index] = mergedApp
+                    if self.applications[index] != mergedApp {
+                        self.applications[index] = mergedApp
                         hasChanges = true
                     }
                 } else {
-                    updatedApplications.append(remoteApp)
+                    self.applications.append(remoteApp)
                     hasChanges = true
                 }
             }
             
             // Clean up any non-draft applications locally that are no longer returned in the submitted fetch.
             let remoteIds = Set(mappedApps.map { $0.id })
-            let initialCount = updatedApplications.count
-            updatedApplications.removeAll { localApp in
+            let initialCount = self.applications.count
+            self.applications.removeAll { localApp in
                 // Only clean up if it's not a draft, meaning it was submitted/in process but is no longer present.
                 if localApp.currentStage != .draft {
                     return !remoteIds.contains(localApp.id)
                 }
                 return false
             }
-            if updatedApplications.count != initialCount {
+            if self.applications.count != initialCount {
                 hasChanges = true
             }
             
             if hasChanges {
-                self.applications = updatedApplications
                 self.persistState()
             }
             
@@ -341,40 +360,6 @@ final class CentralLoanRepository: ObservableObject {
         } catch {
             print("[CentralLoanRepository] Failed to fetch all submitted applications: \(error.localizedDescription)")
         }
-    }
-
-    private func fetchDocumentItems(applicationId: UUID, borrowerId: UUID) async -> [BorrowerLoanDocumentItem] {
-        var documentsById: [UUID: DBDocument] = [:]
-
-        if let applicationDocs = try? await DatabaseService.shared.fetchDocuments(applicationId: applicationId) {
-            for doc in applicationDocs {
-                documentsById[doc.documentId] = doc
-            }
-        }
-
-        if let borrowerDocs = try? await DatabaseService.shared.fetchDocuments(borrowerId: borrowerId) {
-            for doc in borrowerDocs where doc.applicationId == nil || doc.applicationId == applicationId {
-                documentsById[doc.documentId] = doc
-            }
-        }
-
-        return documentsById.values
-            .sorted { $0.uploadedAt < $1.uploadedAt }
-            .map { self.mapToDocumentItem(from: $0) }
-    }
-
-    func refreshDocumentsForApplication(id: UUID) async {
-        guard let index = applications.firstIndex(where: { $0.id == id }),
-              let borrowerId = applications[index].borrowerId else {
-            return
-        }
-
-        let documents = await fetchDocumentItems(applicationId: id, borrowerId: borrowerId)
-        guard !documents.isEmpty else { return }
-
-        applications[index].documents = documents
-        applications[index].updatedAt = Date()
-        persistState()
     }
     
     private func resolveDocTypeString(category: BorrowerDocumentCategory, name: String) -> String {
@@ -474,26 +459,6 @@ final class CentralLoanRepository: ObservableObject {
         guard let index = applications.firstIndex(where: { $0.applicationId == applicationId }) else { return }
         var app = applications[index]
         
-        if docId == stableDocumentId(applicationId: app.id, suffix: "signature") {
-            app.formData.signatureVerificationStatus = persistedOfficerStatus(status)
-            app.updatedAt = Date()
-            recomputeVerificationStage(app: &app)
-            applications[index] = app
-            persistState()
-            syncApplicationToSupabase(app)
-            return
-        }
-
-        if docId == stableDocumentId(applicationId: app.id, suffix: "selfie") {
-            app.formData.selfieVerificationStatus = persistedOfficerStatus(status)
-            app.updatedAt = Date()
-            recomputeVerificationStage(app: &app)
-            applications[index] = app
-            persistState()
-            syncApplicationToSupabase(app)
-            return
-        }
-
         if let docIndex = app.documents.firstIndex(where: { $0.id == docId }) {
             let borrowerDocStatus: BorrowerDocumentStatus
             switch status {
@@ -581,26 +546,10 @@ final class CentralLoanRepository: ObservableObject {
             syncApplicationToSupabase(app)
         }
     }
-
-    private func persistedOfficerStatus(_ status: OfficerDocumentStatus) -> String {
-        switch status {
-        case .verified: return "verified"
-        case .rejectFlag: return "needs_reupload"
-        case .underReview: return "under_review"
-        default: return "uploaded"
-        }
-    }
     
     func sendForFinalApproval(applicationId: String, officerName: String = "Officer") {
         guard let index = applications.firstIndex(where: { $0.applicationId == applicationId }) else { return }
         var app = applications[index]
-        guard !app.documents.isEmpty,
-              app.documents.allSatisfy({ $0.status == .verified }),
-              (app.formData.signatureImageData.isEmpty || app.formData.signatureVerificationStatus == "verified"),
-              (!app.formData.liveVerificationCompleted || app.formData.selfieVerificationStatus == "verified") else {
-            print("[CentralLoanRepository] Blocked manager submission: document verification incomplete.")
-            return
-        }
         app.currentStage = .bankManagerReview
         app.updatedAt = Date()
         app.stageHistory.append(
@@ -616,7 +565,7 @@ final class CentralLoanRepository: ObservableObject {
         
         // MARK: Notification — Sent for Final Approval
         let appNumber = app.applicationId ?? app.displayIdentifier
-        let borrowerName = app.formData.fullName.isEmpty ? "Name not provided" : app.formData.fullName
+        let borrowerName = app.formData.fullName.isEmpty ? "Borrower" : app.formData.fullName
         Task {
             // Notify borrower
             if let borrowerId = app.borrowerId {
@@ -960,47 +909,16 @@ final class CentralLoanRepository: ObservableObject {
         let sentToManagerDate = app.stageHistory.first(where: { $0.stage == .bankManagerReview })?.timestamp
         let assignedOfficerId = UUID(uuidString: "00000000-0000-0000-0000-000000000002") ?? app.id
         
-        var officerDocuments = app.documents.map { mapToLoanDocument(from: $0, formData: app.formData) }
-        if !app.formData.signatureImageData.isEmpty {
-            officerDocuments.append(
-                LoanDocument(
-                    id: stableDocumentId(applicationId: app.id, suffix: "signature"),
-                    docType: .signature,
-                    status: documentOfficerStatus(from: app.formData.signatureVerificationStatus, defaultStatus: .uploaded),
-                    uploadedDate: app.updatedAt,
-                    reviewedDate: nil,
-                    rejectionReason: nil,
-                    fileURL: "data:image/png;base64,\(app.formData.signatureImageData)",
-                    ocrStatus: "Captured",
-                    extractedFields: ["Signature": "Captured"]
-                )
-            )
+        // Debug logging for document URL tracing
+        print("[CentralLoanRepository] toOfficerApplication: app \(app.applicationId ?? app.id.uuidString) has \(app.documents.count) documents")
+        for doc in app.documents {
+            print("[CentralLoanRepository]   → \(doc.name): status=\(doc.status), fileUrl=\(doc.fileUrl ?? "nil")")
         }
-        if app.formData.liveVerificationCompleted {
-            officerDocuments.append(
-                LoanDocument(
-                    id: stableDocumentId(applicationId: app.id, suffix: "selfie"),
-                    docType: .selfie,
-                    status: documentOfficerStatus(from: app.formData.selfieVerificationStatus, defaultStatus: .uploaded),
-                    uploadedDate: app.updatedAt,
-                    reviewedDate: nil,
-                    rejectionReason: nil,
-                    fileURL: nil,
-                    ocrStatus: "Liveness Passed",
-                    extractedFields: [
-                        "Live Verification": "Completed",
-                        "Reference": app.formData.liveVerificationReference.isEmpty ? "Not provided" : app.formData.liveVerificationReference,
-                        "Liveness Score": "Passed",
-                        "Face Match": "Pending officer review"
-                    ]
-                )
-            )
-        }
-
+        
         return OfficerLoanApplication(
             id: app.id,
             applicationId: app.applicationId ?? "APP-2026-\(app.id.uuidString.prefix(4))",
-            borrowerName: app.formData.fullName.isEmpty ? "Name not provided" : app.formData.fullName,
+            borrowerName: app.formData.fullName.isEmpty ? "Borrower" : app.formData.fullName,
             borrowerId: app.id,
             loanType: type,
             requestedAmount: app.formData.requestedAmountValue,
@@ -1008,23 +926,23 @@ final class CentralLoanRepository: ObservableObject {
             submittedDate: app.submittedAt ?? Date(),
             lastUpdatedDate: app.updatedAt,
             assignedOfficerId: assignedOfficerId,
-            documents: officerDocuments,
-            notes: app.formData.loanPurpose,
-            branch: app.assignedQueue ?? "Not assigned",
-            cibilScore: app.formData.creditScoreValue > 0 ? app.formData.creditScoreValue : nil,
+            documents: app.documents.map { mapToLoanDocument(from: $0) }.reduce(into: [LoanDocument]()) { result, doc in
+                if let idx = result.firstIndex(where: { $0.docType == doc.docType }) {
+                    if let newDate = doc.uploadedDate, let oldDate = result[idx].uploadedDate, newDate > oldDate {
+                        result[idx] = doc
+                    } else if result[idx].uploadedDate == nil && doc.uploadedDate != nil {
+                        result[idx] = doc
+                    }
+                } else {
+                    result.append(doc)
+                }
+            },
+            notes: app.formData.loanPurpose.isEmpty ? "General financing requirement" : app.formData.loanPurpose,
+            branch: "Main Branch",
+            cibilScore: app.formData.creditScoreValue > 0 ? app.formData.creditScoreValue : 750,
             sentToManagerDate: sentToManagerDate,
-            managerStatus: managerStatus,
-            borrowerDetails: mapToBorrowerDetails(from: app.formData)
+            managerStatus: managerStatus
         )
-    }
-
-    private func documentOfficerStatus(from storedStatus: String, defaultStatus: OfficerDocumentStatus) -> OfficerDocumentStatus {
-        switch storedStatus {
-        case "verified": return .verified
-        case "rejected", "needs_reupload": return .rejectFlag
-        case "under_review": return .underReview
-        default: return defaultStatus
-        }
     }
     
     func toManagerApplicant(from app: BorrowerLoanApplication) -> ManagerApplicant? {
@@ -1060,13 +978,13 @@ final class CentralLoanRepository: ObservableObject {
         return ManagerApplicant(
             id: app.id,
             applicationId: app.applicationId ?? "APP-2026-\(app.id.uuidString.prefix(4))",
-            borrowerName: app.formData.fullName.isEmpty ? "Name not provided" : app.formData.fullName,
-            borrowerInitials: initials.isEmpty ? "--" : initials,
+            borrowerName: app.formData.fullName.isEmpty ? "Borrower" : app.formData.fullName,
+            borrowerInitials: initials.isEmpty ? "B" : initials,
             loanType: type,
             requestedAmount: app.formData.requestedAmountValue,
-            cibilScore: app.formData.creditScoreValue,
+            cibilScore: app.formData.creditScoreValue > 0 ? app.formData.creditScoreValue : 750,
             status: status,
-            riskLevel: app.formData.creditScoreValue <= 0 ? .medium : (app.formData.creditScoreValue >= 750 ? .low : (app.formData.creditScoreValue >= self.globalRules.minCibilScore ? .medium : .high)),
+            riskLevel: app.formData.creditScoreValue >= 750 ? .low : (app.formData.creditScoreValue >= self.globalRules.minCibilScore ? .medium : .high),
             assignedOfficer: assignedOfficerName,
             assignedOfficerId: assignedOfficerId,
             submissionDate: app.submittedAt ?? Date(),
@@ -1079,20 +997,28 @@ final class CentralLoanRepository: ObservableObject {
         )
     }
     
-    private func mapToLoanDocument(from item: BorrowerLoanDocumentItem, formData: BorrowerLoanFormData) -> LoanDocument {
+    private func mapToLoanDocument(from item: BorrowerLoanDocumentItem) -> LoanDocument {
         let officerDocType: OfficerDocumentType
-        switch item.name.lowercased() {
+        // Check name, fileName, and category to determine the correct officer doc type
+        let combined = "\(item.name) \(item.fileName ?? "")".lowercased()
+        switch combined {
         case let s where s.contains("aadhaar"): officerDocType = .aadhaar
         case let s where s.contains("pan"): officerDocType = .pan
-        case let s where s.contains("salary"): officerDocType = .salarySlip
-        case let s where s.contains("statement"): officerDocType = .bankStatement
-        case let s where s.contains("property"): officerDocType = .propertyDoc
+        case let s where s.contains("salary") || s.contains("slip"): officerDocType = .salarySlip
+        case let s where s.contains("statement") || s.contains("bank"): officerDocType = .bankStatement
+        case let s where s.contains("property") || s.contains("land"): officerDocType = .propertyDoc
         case let s where s.contains("gst"): officerDocType = .gstCertificate
         case let s where s.contains("admission"): officerDocType = .admissionLetter
-        case let s where s.contains("income tax") || s.contains("itr"): officerDocType = .incomeTaxReturn
-        case let s where s.contains("signature"): officerDocType = .signature
-        case let s where s.contains("selfie") || s.contains("live"): officerDocType = .selfie
-        default: officerDocType = .photograph
+        case let s where s.contains("income") || s.contains("itr") || s.contains("tax"): officerDocType = .incomeTaxReturn
+        case let s where s.contains("utility") || s.contains("bill") || s.contains("rental") || s.contains("agreement"): officerDocType = .propertyDoc
+        default:
+            // Fallback: use the category
+            switch item.category {
+            case .identityVerification: officerDocType = .aadhaar
+            case .addressVerification: officerDocType = .propertyDoc
+            case .incomeVerification: officerDocType = .salarySlip
+            case .loanSpecific: officerDocType = .bankStatement
+            }
         }
         
         let officerStatus: OfficerDocumentStatus
@@ -1111,95 +1037,8 @@ final class CentralLoanRepository: ObservableObject {
             uploadedDate: item.uploadDate,
             reviewedDate: item.lastUpdated,
             rejectionReason: nil,
-            fileURL: item.fileUrl ?? item.fileName,
-            ocrStatus: item.status == .pendingUpload ? "Awaiting Upload" : "Success",
-            extractedFields: extractedFields(for: officerDocType, formData: formData)
+            fileURL: item.fileUrl
         )
-    }
-
-    private func extractedFields(for docType: OfficerDocumentType, formData: BorrowerLoanFormData) -> [String: String] {
-        switch docType {
-        case .aadhaar:
-            return [
-                "Name": emptyAware(formData.fullName),
-                "DOB": formattedDate(formData.dateOfBirth),
-                "Aadhaar": "Not stored",
-                "Status": "Pending officer match"
-            ]
-        case .pan:
-            return [
-                "PAN": "Not provided",
-                "Name": emptyAware(formData.fullName),
-                "Status": "Pending officer match"
-            ]
-        case .salarySlip, .bankStatement, .incomeTaxReturn:
-            return [
-                "Employer": emptyAware(formData.employerName),
-                "Monthly Income": formData.monthlyIncomeValue > 0 ? CurrencyFormatter.shared.format(formData.monthlyIncomeValue) : "Not provided",
-                "Employment": emptyAware(formData.employmentType)
-            ]
-        case .signature:
-            return ["Signature": "Captured"]
-        case .selfie:
-            return [
-                "Live Verification": formData.liveVerificationCompleted ? "Completed" : "Not completed",
-                "Reference": emptyAware(formData.liveVerificationReference)
-            ]
-        default:
-            return ["Status": "Pending officer review"]
-        }
-    }
-
-    private func emptyAware(_ value: String) -> String {
-        value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Not provided" : value
-    }
-
-    private func stableDocumentId(applicationId: UUID, suffix: String) -> UUID {
-        var first = UInt64(0xcbf29ce484222325)
-        var second = UInt64(0x84222325cbf29ce4)
-
-        for byte in "\(applicationId.uuidString)-\(suffix)".utf8 {
-            first = (first ^ UInt64(byte)) &* 0x100000001b3
-            second = (second &+ UInt64(byte)) &* 0x9e3779b185ebca87
-        }
-
-        return UUID(uuid: (
-            UInt8((first >> 56) & 0xff),
-            UInt8((first >> 48) & 0xff),
-            UInt8((first >> 40) & 0xff),
-            UInt8((first >> 32) & 0xff),
-            UInt8((first >> 24) & 0xff),
-            UInt8((first >> 16) & 0xff),
-            UInt8((first >> 8) & 0xff),
-            UInt8(first & 0xff),
-            UInt8((second >> 56) & 0xff),
-            UInt8((second >> 48) & 0xff),
-            UInt8((second >> 40) & 0xff),
-            UInt8((second >> 32) & 0xff),
-            UInt8((second >> 24) & 0xff),
-            UInt8((second >> 16) & 0xff),
-            UInt8((second >> 8) & 0xff),
-            UInt8(second & 0xff)
-        ))
-    }
-
-    private func mapToBorrowerDetails(from formData: BorrowerLoanFormData) -> BorrowerDetails {
-        BorrowerDetails(
-            dob: formattedDate(formData.dateOfBirth),
-            gender: formData.gender.isEmpty ? "Not provided" : formData.gender,
-            pan: "Not provided",
-            email: formData.emailAddress.isEmpty ? "Not provided" : formData.emailAddress,
-            phone: formData.mobileNumber.isEmpty ? "Not provided" : formData.mobileNumber,
-            employer: formData.employerName.isEmpty ? "Not provided" : formData.employerName,
-            monthlyIncome: formData.monthlyIncomeValue > 0 ? CurrencyFormatter.shared.format(formData.monthlyIncomeValue) : "Not provided",
-            employmentStatus: formData.employmentType.isEmpty ? "Not provided" : formData.employmentType
-        )
-    }
-
-    private func formattedDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d MMM yyyy"
-        return formatter.string(from: date)
     }
     
     private func mapToManagerDocument(from item: BorrowerLoanDocumentItem) -> ManagerDocument {

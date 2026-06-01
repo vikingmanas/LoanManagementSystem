@@ -11,7 +11,6 @@ struct DocumentReviewDetailView: View {
     
     @State private var showingRejectionAlert = false
     @State private var rejectionReason = ""
-    @State private var showingDocumentViewer = false
     
     init(item: DocumentQueueItem, viewModel: LoanOfficerDashboardViewModel, isPresentedModally: Bool = false) {
         self.item = item
@@ -22,20 +21,15 @@ struct DocumentReviewDetailView: View {
     var loanDetails: LoanApplication? {
         viewModel.applications.first { $0.applicationId == item.applicationId }
     }
-
-    private var reviewedDocument: LoanDocument? {
+    
+    var documentDetails: LoanDocument? {
         loanDetails?.documents.first { $0.id == item.id }
-    }
-
-    private var documentURLString: String? {
-        reviewedDocument?.fileURL ?? item.fileURL
     }
     
     var body: some View {
         List {
             borrowerSection
             documentPreviewSection
-            extractedDataSection
             documentMetadataSection
             
             Section {
@@ -68,12 +62,6 @@ struct DocumentReviewDetailView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Enter clarification reason for requesting re-upload from borrower.")
-        }
-        .fullScreenCover(isPresented: $showingDocumentViewer) {
-            LoanOfficerDocumentViewer(
-                title: item.docType.rawValue,
-                fileURLString: documentURLString
-            )
         }
     }
     
@@ -142,43 +130,50 @@ struct DocumentReviewDetailView: View {
     private var documentPreviewSection: some View {
         Section {
             VStack(spacing: 0) {
-                OfficerUploadedDocumentPreview(
-                    docType: item.docType,
-                    borrowerName: item.borrowerName,
-                    fileURLString: documentURLString
-                )
+                if let urlString = documentDetails?.fileURL, let url = URL(string: urlString) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                                .frame(height: 220)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 220)
+                        case .failure:
+                            VStack(spacing: 12) {
+                                Image(systemName: item.docType.symbol)
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(item.docType.iconColor)
+                                Text("Failed to load document image")
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                            .frame(height: 220)
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .background(Color(.tertiarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                } else {
+                    VStack(spacing: 12) {
+                        Image(systemName: item.docType.symbol)
+                            .font(.system(size: 40))
+                            .foregroundStyle(item.docType.iconColor)
+                        Text("No Document Uploaded")
+                            .font(.subheadline.weight(.semibold))
+                    }
                     .frame(maxWidth: .infinity)
                     .frame(height: 220)
                     .background(Color(.tertiarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .onTapGesture {
-                        showingDocumentViewer = true
-                    }
-
-                Button {
-                    showingDocumentViewer = true
-                } label: {
-                    Label("Open Full Screen Viewer", systemImage: "arrow.up.left.and.arrow.down.right")
-                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
-                .padding(.top, 10)
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         } header: {
             Text("Uploaded Document")
-        }
-    }
-
-    private var extractedDataSection: some View {
-        Section("OCR Data Extraction") {
-            if let fields = reviewedDocument?.extractedFields, !fields.isEmpty {
-                ForEach(fields.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
-                    LabeledContent(key, value: value)
-                }
-            } else {
-                ContentUnavailableView("No OCR Data", systemImage: "text.viewfinder")
-            }
         }
     }
     
@@ -191,28 +186,13 @@ struct DocumentReviewDetailView: View {
             }
             
             LabeledContent("Submitted") {
-                Text(reviewedDocument?.uploadedDate ?? item.submittedDate, style: .date)
+                Text(item.submittedDate, style: .date)
             }
             
             LabeledContent("Status") {
                 Text(item.status.rawValue)
                     .foregroundStyle(item.status.themeColor)
                     .fontWeight(.semibold)
-            }
-
-            LabeledContent("OCR") {
-                Text(reviewedDocument?.ocrStatus ?? "Pending Review")
-                    .fontWeight(.semibold)
-            }
-
-            if let documentURLString {
-                LabeledContent("File URL") {
-                    Text(documentURLString)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
             }
         } header: {
             Text("File Details")
@@ -256,207 +236,6 @@ struct DocumentReviewDetailView: View {
         if score >= 750 { return LMSColors.emerald }
         if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return LMSColors.amber }
         return LMSColors.coral
-    }
-}
-
-struct OfficerUploadedDocumentPreview: View {
-    let docType: OfficerDocumentType
-    let borrowerName: String
-    let fileURLString: String?
-
-    var body: some View {
-        if let fileURLString,
-           fileURLString.hasPrefix("data:image"),
-           let image = imageFromDataURL(fileURLString) {
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFit()
-                .padding(8)
-        } else if let fileURLString,
-           let url = URL(string: fileURLString),
-           url.scheme?.hasPrefix("http") == true {
-            if url.pathExtension.lowercased() == "pdf" {
-                VStack(spacing: 10) {
-                    Image(systemName: "doc.richtext.fill")
-                        .font(.system(size: 42, weight: .semibold))
-                        .foregroundStyle(docType.iconColor)
-                    Text("PDF document")
-                        .font(.subheadline.weight(.semibold))
-                    Text("Tap to open full screen")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            } else {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFit()
-                            .padding(8)
-                    case .failure:
-                        uploadedFileFallback
-                    @unknown default:
-                        uploadedFileFallback
-                    }
-                }
-            }
-        } else {
-            uploadedFileFallback
-        }
-    }
-
-    private var uploadedFileFallback: some View {
-        VStack(spacing: 12) {
-            Image(systemName: docType.symbol)
-                .font(.system(size: 42, weight: .semibold))
-                .foregroundStyle(docType.iconColor)
-            Text(fileURLString == nil ? "No uploaded file URL available" : "Uploaded file")
-                .font(.subheadline.weight(.semibold))
-            if let fileURLString {
-                Text(fileURLString)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                    .truncationMode(.middle)
-            }
-        }
-        .padding(20)
-    }
-
-    private func imageFromDataURL(_ dataURL: String) -> UIImage? {
-        guard let commaIndex = dataURL.firstIndex(of: ",") else { return nil }
-        let payload = String(dataURL[dataURL.index(after: commaIndex)...])
-        guard let data = Data(base64Encoded: payload) else { return nil }
-        return UIImage(data: data)
-    }
-}
-
-private struct LoanOfficerDocumentViewer: View {
-    let title: String
-    let fileURLString: String?
-    @Environment(\.dismiss) private var dismiss
-    @State private var scale: CGFloat = 1
-    @State private var rotation: Angle = .zero
-    @State private var page = 1
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.black.ignoresSafeArea()
-                content
-                    .scaleEffect(scale)
-                    .rotationEffect(rotation)
-                    .gesture(
-                        MagnificationGesture()
-                            .onChanged { value in
-                                scale = min(max(value, 0.75), 5)
-                            }
-                    )
-            }
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItemGroup(placement: .bottomBar) {
-                    Button { scale = max(0.75, scale - 0.25) } label: {
-                        Image(systemName: "minus.magnifyingglass")
-                    }
-                    Button { scale = min(5, scale + 0.25) } label: {
-                        Image(systemName: "plus.magnifyingglass")
-                    }
-                    Button { rotation += .degrees(90) } label: {
-                        Image(systemName: "rotate.right")
-                    }
-                    Button { page = max(1, page - 1) } label: {
-                        Image(systemName: "chevron.left")
-                    }
-                    Text("Page \(page)")
-                        .font(.caption.weight(.semibold))
-                    Button { page += 1 } label: {
-                        Image(systemName: "chevron.right")
-                    }
-                    if let url = externalURL {
-                        ShareLink(item: url) {
-                            Image(systemName: "square.and.arrow.down")
-                        }
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(.black, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-        }
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        if let fileURLString,
-           fileURLString.hasPrefix("data:image"),
-           let image = imageFromDataURL(fileURLString) {
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFit()
-                .padding()
-        } else if let url = externalURL {
-            if url.pathExtension.lowercased() == "pdf" {
-                VStack(spacing: 14) {
-                    Image(systemName: "doc.richtext.fill")
-                        .font(.system(size: 58, weight: .semibold))
-                    Text("PDF Preview")
-                        .font(.headline)
-                    Link("Open PDF", destination: url)
-                        .buttonStyle(.borderedProminent)
-                }
-                .foregroundStyle(.white)
-            } else {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView().tint(.white)
-                    case .success(let image):
-                        image.resizable().scaledToFit().padding()
-                    case .failure:
-                        unavailableView
-                    @unknown default:
-                        unavailableView
-                    }
-                }
-            }
-        } else {
-            unavailableView
-        }
-    }
-
-    private var externalURL: URL? {
-        guard let fileURLString,
-              let url = URL(string: fileURLString),
-              url.scheme?.hasPrefix("http") == true else {
-            return nil
-        }
-        return url
-    }
-
-    private var unavailableView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "doc.badge.questionmark")
-                .font(.system(size: 52, weight: .semibold))
-            Text("Document preview unavailable")
-                .font(.headline)
-        }
-        .foregroundStyle(.white)
-    }
-
-    private func imageFromDataURL(_ dataURL: String) -> UIImage? {
-        guard let commaIndex = dataURL.firstIndex(of: ",") else { return nil }
-        let payload = String(dataURL[dataURL.index(after: commaIndex)...])
-        guard let data = Data(base64Encoded: payload) else { return nil }
-        return UIImage(data: data)
     }
 }
 
