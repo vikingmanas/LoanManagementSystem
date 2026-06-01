@@ -199,6 +199,7 @@ private struct ManagerChatDetailView: View {
         }
         .navigationTitle(conversation.officerName)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 VStack {
