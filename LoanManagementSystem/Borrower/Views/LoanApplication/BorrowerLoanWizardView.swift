@@ -1010,9 +1010,9 @@ struct BorrowerLoanWizardView: View {
             }
 
             if currentStep == 6 {
-                let unverifiedDocuments = viewModel.documents.filter { $0.status != .verified }
-                if !unverifiedDocuments.isEmpty {
-                    stepValidationMessage = "Upload and verify all required documents: \(unverifiedDocuments.map(\.name).joined(separator: ", "))."
+                let unuploadedDocuments = viewModel.documents.filter { $0.status == .pendingUpload }
+                if !unuploadedDocuments.isEmpty {
+                    stepValidationMessage = "Upload all required documents: \(unuploadedDocuments.map(\.name).joined(separator: ", "))."
                     HapticsManager.triggerNotification(type: .warning)
                     return
                 }
@@ -1325,7 +1325,7 @@ struct BorrowerLoanWizardView: View {
 
         return DocumentOCRResult(
             isValid: isValid,
-            title: isValid ? "Document Verified" : invalidTitle,
+            title: isValid ? "Document Uploaded" : invalidTitle,
             message: isValid ? "We extracted the following details. Please verify." : invalidMessage,
             extractedDetails: [
                 "Document": title,
@@ -1346,7 +1346,7 @@ struct BorrowerLoanWizardView: View {
         if result.isValid {
             documentUploadDates[doc.id] = Date()
             documentFailureReasons[doc.id] = nil
-            viewModel.markDocument(doc.id, status: .verified)
+            viewModel.markDocument(doc.id, status: .uploaded)
 
             if let fullName = result.fullName,
                !fullName.isEmpty,
@@ -2002,10 +2002,10 @@ private struct UploadRow: View {
                         Text("Verifying document…")
                             .font(LMSFont.caption)
                             .foregroundStyle(LMSColors.amber)
-                    } else if lifecycle == .success || doc.status == .verified {
-                        Text("Verified Successfully")
+                    } else if lifecycle == .success || doc.status == .uploaded || doc.status == .verified {
+                        Text(doc.status == .verified ? "Verified Successfully" : "Uploaded Successfully")
                             .font(LMSFont.caption)
-                            .foregroundStyle(LMSColors.emerald)
+                            .foregroundStyle(doc.status == .verified ? LMSColors.emerald : LMSColors.actionBlue)
                     } else if lifecycle == .failed || doc.status == .rejected || doc.status == .requiresResubmission {
                         Text(failureReason ?? doc.status.rawValue)
                             .font(LMSFont.caption)
@@ -2069,7 +2069,7 @@ private struct UploadRow: View {
                     .padding(.bottom, 8)
             }
 
-            if lifecycle == .success || doc.status == .verified {
+            if lifecycle == .success || doc.status == .uploaded || doc.status == .verified {
                 verifiedPreview
             } else if lifecycle == .failed || doc.status == .rejected || doc.status == .requiresResubmission {
                 failurePreview
@@ -2104,9 +2104,12 @@ private struct UploadRow: View {
     private var verifiedPreview: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Label("Document Verified", systemImage: "checkmark.seal.fill")
-                    .font(LMSFont.caption.weight(.bold))
-                    .foregroundStyle(LMSColors.emerald)
+                Label(
+                    doc.status == .verified ? "Document Verified" : "Document Uploaded",
+                    systemImage: doc.status == .verified ? "checkmark.seal.fill" : "arrow.up.doc.fill"
+                )
+                .font(LMSFont.caption.weight(.bold))
+                .foregroundStyle(doc.status == .verified ? LMSColors.emerald : LMSColors.actionBlue)
                 Spacer()
                 if let uploadDate {
                     Text(uploadDate.formattedAsDDMMMYYYY())
@@ -2145,10 +2148,10 @@ private struct UploadRow: View {
             .foregroundStyle(LMSColors.brandNavy)
         }
         .padding(12)
-        .background(LMSColors.emerald.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background((doc.status == .verified ? LMSColors.emerald : LMSColors.actionBlue).opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(LMSColors.emerald.opacity(0.18), lineWidth: 0.8)
+                .stroke((doc.status == .verified ? LMSColors.emerald : LMSColors.actionBlue).opacity(0.18), lineWidth: 0.8)
         )
         .padding(.horizontal, 16)
         .padding(.bottom, 12)
@@ -2181,9 +2184,9 @@ private struct UploadRow: View {
         switch lifecycle {
         case .uploading: return "arrow.up.doc.fill"
         case .processing: return "viewfinder"
-        case .success: return "checkmark.seal.fill"
+        case .success: return "arrow.up.doc.fill"
         case .failed: return "xmark.octagon.fill"
-        case .idle: return doc.status == .verified ? "checkmark.seal.fill" : doc.status.iconName
+        case .idle: return doc.status == .verified ? "checkmark.seal.fill" : (doc.status == .uploaded ? "arrow.up.doc.fill" : doc.status.iconName)
         }
     }
 
@@ -2191,9 +2194,9 @@ private struct UploadRow: View {
         switch lifecycle {
         case .uploading: return LMSColors.actionBlue
         case .processing: return LMSColors.amber
-        case .success: return LMSColors.emerald
+        case .success: return LMSColors.actionBlue
         case .failed: return LMSColors.coral
-        case .idle: return doc.status == .verified ? LMSColors.emerald : doc.status.tintColor
+        case .idle: return doc.status == .verified ? LMSColors.emerald : (doc.status == .uploaded ? LMSColors.actionBlue : doc.status.tintColor)
         }
     }
 }

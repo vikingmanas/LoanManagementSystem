@@ -673,7 +673,6 @@ private struct DocumentVerificationResultView: View {
         .sheet(item: $activeUploadDocument) { document in
             DocumentUploadSheet(documentName: document.name) { fileName, source in
                 viewModel.uploadDocument(document.id, fileName: fileName, source: source)
-                viewModel.runBulkVerification()
             }
         }
     }
