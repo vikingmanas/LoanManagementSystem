@@ -194,7 +194,10 @@ struct AdminAddUserSheet: View {
     }
 
     private func submitForm() async {
-        guard validateForm(), let branchId = selectedBranchId else { return }
+        guard validateForm(), let branchId = selectedBranchId else {
+            submissionError = validationErrors.values.first ?? "Please fill all required fields."
+            return
+        }
 
         isSubmitting = true
         submissionError = nil

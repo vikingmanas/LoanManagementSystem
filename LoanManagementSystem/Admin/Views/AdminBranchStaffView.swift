@@ -8,8 +8,8 @@ struct AdminBranchStaffView: View {
         viewModel.staff(for: branch.branchId)
     }
     
-    var manager: StaffMember? {
-        branchStaff.first { $0.role == .bankManager }
+    var managers: [StaffMember] {
+        branchStaff.filter { $0.role == .bankManager }
     }
     
     var loanOfficers: [StaffMember] {
@@ -32,8 +32,8 @@ struct AdminBranchStaffView: View {
                     .padding(.top, 40)
                 } else {
                     VStack(spacing: LMSSpacing.xl) {
-                        if let manager = manager {
-                            staffSection(title: "Branch Manager", members: [manager])
+                        if !managers.isEmpty {
+                            staffSection(title: managers.count == 1 ? "Branch Manager" : "Branch Managers", members: managers)
                         }
                         
                         if !loanOfficers.isEmpty {
