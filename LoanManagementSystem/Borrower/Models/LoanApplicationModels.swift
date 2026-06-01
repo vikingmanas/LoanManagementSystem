@@ -1397,9 +1397,13 @@ extension BorrowerLoanDocumentItem {
             )
         ]
 
-        let baseDocNames = Set([identityDoc, addressDoc, incomeDoc])
+        let baseDocKeys = Set([
+            canonicalDocumentKey(identityDoc),
+            canonicalDocumentKey(addressDoc),
+            canonicalDocumentKey(incomeDoc)
+        ])
         let loanSpecific = product.loanSpecificDocuments
-            .filter { !baseDocNames.contains($0) }
+            .filter { !baseDocKeys.contains(canonicalDocumentKey($0)) }
             .map {
                 BorrowerLoanDocumentItem(
                     id: UUID(),
