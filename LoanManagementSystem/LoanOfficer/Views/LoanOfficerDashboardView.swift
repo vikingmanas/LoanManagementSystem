@@ -6,7 +6,6 @@ struct LoanOfficerDashboardView: View {
     @StateObject private var viewModel = LoanOfficerDashboardViewModel()
     @StateObject private var notificationViewModel = NotificationViewModel()
     @State private var selectedTab: OfficerWorkspaceTab = .dashboard
-    @State private var showingNotifications = false
     @State private var showingProfile = false
 
     private var appsRequiringReviewCount: Int {
@@ -21,7 +20,7 @@ struct LoanOfficerDashboardView: View {
                 LoanOfficerTodayView(
                     viewModel: viewModel,
                     selectedTab: $selectedTab,
-                    onNotifications: { showingNotifications = true },
+                    notificationViewModel: notificationViewModel,
                     onProfile: { showingProfile = true }
                 )
             }
@@ -55,9 +54,6 @@ struct LoanOfficerDashboardView: View {
                 notificationViewModel.configure(userId: uuid)
             }
         }
-        .sheet(isPresented: $showingNotifications) {
-            NotificationsListView(viewModel: notificationViewModel)
-        }
         .sheet(isPresented: $showingProfile) {
             LoanOfficerProfileView()
         }
@@ -77,7 +73,7 @@ private struct LoanOfficerTodayView: View {
     @EnvironmentObject var authManager: AuthManager
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Binding var selectedTab: OfficerWorkspaceTab
-    var onNotifications: () -> Void
+    @ObservedObject var notificationViewModel: NotificationViewModel
     var onProfile: () -> Void
 
     @State private var selectedMetricStatus: OfficerApplicationStatus?
@@ -137,8 +133,10 @@ private struct LoanOfficerTodayView: View {
         .navigationTitle("Dashboard")
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Button(action: onNotifications) {
-                    Image(systemName: "bell.badge")
+                NavigationLink {
+                    NotificationsListView(viewModel: notificationViewModel, isPushed: true)
+                } label: {
+                    Image(systemName: notificationViewModel.unreadCount > 0 ? "bell.badge" : "bell")
                 }
                 .accessibilityLabel("Notifications")
 
