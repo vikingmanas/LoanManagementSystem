@@ -1,9 +1,9 @@
-# 🎓 LMS iOS App
+# 💰 Loan Management System (LMS) iOS App
 
-A modern Learning Management System (LMS) built with **SwiftUI**, designed to deliver a seamless learning experience for students, instructors, and administrators.
+A modern and secure Loan Management System built with **SwiftUI**, designed to simplify loan application, approval, disbursement, repayment tracking, and customer support for borrowers, loan officers, and administrators.
 
 <p align="center">
-  <img src="docs/images/app-banner.png" alt="LMS App Banner" width="100%">
+  <img src="docs/images/app-banner.png" alt="Loan Management System Banner" width="100%">
 </p>
 
 ![Platform](https://img.shields.io/badge/platform-iOS-blue)
@@ -15,86 +15,90 @@ A modern Learning Management System (LMS) built with **SwiftUI**, designed to de
 
 ## 📖 Overview
 
-The LMS iOS App provides an intuitive and engaging platform for online education. Built using SwiftUI, the application enables learners to access courses, track progress, complete assessments, and interact with educational content directly from their mobile devices.
+The Loan Management System (LMS) provides a complete digital lending experience, enabling users to apply for loans, track application status, manage repayments, raise complaints, and receive real-time updates.
 
-The app focuses on:
+Built with SwiftUI and MVVM architecture, the application delivers a secure, scalable, and user-friendly financial management solution.
 
-- 📚 Easy access to learning materials
-- 🎯 Personalized learning experiences
-- 📊 Progress tracking and analytics
-- 🔔 Real-time notifications
-- 🎥 Rich multimedia learning content
-- 🔒 Secure authentication and user management
+### 🎯 Key Objectives
+
+* Simplify loan application processes
+* Improve approval workflow efficiency
+* Enable seamless repayment tracking
+* Enhance customer experience
+* Provide secure and transparent loan management
 
 ---
 
 ## ✨ Features
 
-### 👨‍🎓 Student Features
+### 👤 Customer Features
 
-- User registration and login
-- Browse available courses
-- Course enrollment
-- Video lessons and learning materials
-- Assignments and quizzes
-- Progress tracking
-- Certificates of completion
-- Push notifications
-- Offline content support
+* User Registration & Login
+* Profile Management
+* KYC Verification
+* Apply for New Loans
+* Upload Required Documents
+* Track Application Status
+* View Loan Details
+* EMI Schedule Tracking
+* Repayment History
+* Raise Complaints & Support Requests
+* Push Notifications
 
-### 👨‍🏫 Instructor Features
+### 🏦 Loan Officer Features
 
-- Create and manage courses
-- Upload videos and resources
-- Create quizzes and assignments
-- Track student performance
-- Manage enrollments
-- Course analytics
+* Review Loan Applications
+* Verify Documents
+* Approve or Reject Applications
+* Customer Verification
+* Manage Assigned Cases
+* Track Loan Processing Progress
 
 ### 👨‍💼 Admin Features
 
-- User management
-- Course moderation
-- Analytics dashboard
-- Content management
-- Platform configuration
+* User Management
+* Loan Product Management
+* Complaint Management
+* Analytics Dashboard
+* Audit Logs
+* System Configuration
 
 ---
 
 ## 📱 Screenshots
 
-| Home | Course Details | Learning Progress |
-|--------|--------|--------|
-| ![Home](docs/images/home.png) | ![Course](docs/images/course.png) | ![Progress](docs/images/progress.png) |
+| Dashboard                               | Loan Details                          | Repayment Tracking                      |
+| --------------------------------------- | ------------------------------------- | --------------------------------------- |
+| ![Dashboard](docs/images/dashboard.png) | ![Loan](docs/images/loan-details.png) | ![Repayment](docs/images/repayment.png) |
 
 ---
 
 ## 🏗️ Architecture
 
-The application follows the **MVVM (Model-View-ViewModel)** architecture pattern for maintainability, scalability, and testability.
+The application follows the **MVVM (Model-View-ViewModel)** architecture pattern.
 
 ```text
-┌──────────────────┐
-│      Views       │
-│     SwiftUI      │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│   View Models    │
-│  Business Logic  │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│     Services     │
-│ API & Data Layer │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│ Backend / APIs   │
-└──────────────────┘
+┌────────────────────┐
+│      SwiftUI       │
+│       Views        │
+└──────────┬─────────┘
+           │
+           ▼
+┌────────────────────┐
+│    View Models     │
+│  Business Logic    │
+└──────────┬─────────┘
+           │
+           ▼
+┌────────────────────┐
+│      Services      │
+│ API & Data Layer   │
+└──────────┬─────────┘
+           │
+           ▼
+┌────────────────────┐
+│    Backend APIs    │
+└────────────────────┘
 ```
 
 ---
@@ -103,35 +107,36 @@ The application follows the **MVVM (Model-View-ViewModel)** architecture pattern
 
 ### Frontend
 
-- SwiftUI
-- Combine
-- Async/Await
-- MVVM Architecture
+* SwiftUI
+* Combine
+* Async/Await
+* MVVM Architecture
 
 ### Backend Integration
 
-- REST APIs
-- JSON Parsing
-- URLSession Networking
+* REST APIs
+* URLSession
+* JSON Decoding
+
+### Security
+
+* JWT Authentication
+* Secure Token Storage
+* Face ID / Touch ID Authentication
+* Keychain Storage
 
 ### Storage
 
-- UserDefaults
-- Keychain
-- Local Caching
-
-### Authentication
-
-- JWT Authentication
-- Secure Token Storage
-- Biometric Authentication (Face ID / Touch ID)
+* UserDefaults
+* Local Caching
+* Keychain
 
 ---
 
 ## 📂 Project Structure
 
 ```text
-LMS-iOS/
+LoanManagementSystem/
 │
 ├── App/
 │
@@ -149,10 +154,11 @@ LMS-iOS/
 │
 ├── Views/
 │   ├── Authentication/
-│   ├── Home/
-│   ├── Courses/
-│   ├── Profile/
-│   └── Settings/
+│   ├── Dashboard/
+│   ├── Loans/
+│   ├── Repayments/
+│   ├── Complaints/
+│   └── Profile/
 │
 ├── Resources/
 │
@@ -167,40 +173,103 @@ LMS-iOS/
 
 Before running the project, ensure you have:
 
-- Xcode 15+
-- iOS 17+
-- Swift 5.9+
-- Apple Developer Account (optional)
+* Xcode 15+
+* iOS 17+
+* Swift 5.9+
+* Apple Developer Account (Optional)
 
 ### Installation
 
-#### 1. Clone the Repository
+#### Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/lms-ios.git
+git clone https://github.com/yourusername/loan-management-system-ios.git
 ```
 
-#### 2. Open the Project
+#### Open Project
 
 ```bash
-cd lms-ios
+cd loan-management-system-ios
 open LMS.xcodeproj
 ```
 
-#### 3. Configure Environment Variables
-
-Update API configuration:
+#### Configure API
 
 ```swift
 enum AppConfig {
-    static let baseURL = "https://api.example.com"
+    static let baseURL = "https://api.yourdomain.com"
 }
 ```
 
-#### 4. Run the Application
+#### Run Application
 
-- Select an iOS Simulator or physical device.
-- Press **⌘ + R** to build and run.
+1. Select Simulator or Physical Device
+2. Press **⌘ + R**
+3. Launch the app
+
+---
+
+## 🔄 Loan Lifecycle
+
+```text
+Loan Application
+        │
+        ▼
+Document Submission
+        │
+        ▼
+Verification Process
+        │
+        ▼
+Approval / Rejection
+        │
+        ▼
+Loan Disbursement
+        │
+        ▼
+Repayment Tracking
+        │
+        ▼
+Loan Closure
+```
+
+---
+
+## 📊 Core Modules
+
+### 📝 Loan Application
+
+* New Loan Requests
+* Loan Eligibility Checks
+* Document Uploads
+* Status Tracking
+
+### 💰 Loan Management
+
+* Active Loans
+* Loan Details
+* Interest Calculation
+* Outstanding Amount Tracking
+
+### 📅 EMI & Repayment
+
+* EMI Schedule
+* Payment History
+* Due Date Reminders
+* Outstanding Balance
+
+### 🎫 Complaint Management
+
+* Raise Complaints
+* Track Complaint Status
+* Customer Support Integration
+
+### 🔔 Notifications
+
+* Loan Approval Updates
+* EMI Reminders
+* Complaint Updates
+* System Announcements
 
 ---
 
@@ -208,82 +277,39 @@ enum AppConfig {
 
 ```text
 Launch App
-    │
-    ▼
-Login / Signup
-    │
-    ▼
-Token Validation
-    │
-    ▼
-Home Dashboard
-    │
-    ├── Courses
-    ├── Assignments
-    ├── Profile
-    └── Settings
+     │
+     ▼
+Login / Register
+     │
+     ▼
+OTP Verification
+     │
+     ▼
+Dashboard
+     │
+     ├── Apply Loan
+     ├── Active Loans
+     ├── Repayments
+     ├── Complaints
+     └── Profile
 ```
-
----
-
-## 📊 Core Modules
-
-### 📚 Course Management
-
-- Browse courses
-- Search and filter courses
-- Enroll in courses
-- Access course content
-
-### 🎥 Learning Experience
-
-- Video streaming
-- Downloadable resources
-- Interactive lessons
-- Progress tracking
-
-### 📝 Assessments
-
-- Quizzes
-- Assignments
-- Score tracking
-- Instant feedback
-
-### 👤 User Profile
-
-- Personal information
-- Learning statistics
-- Certificates
-- Settings management
 
 ---
 
 ## 🧪 Testing
 
-Run unit tests:
+Run all tests:
 
 ```bash
 ⌘ + U
 ```
 
-Testing includes:
+Testing Includes:
 
-- Unit Tests
-- ViewModel Tests
-- API Layer Tests
-- UI Tests
-
----
-
-## 🔄 Continuous Integration
-
-Recommended CI workflow:
-
-- Build validation
-- Unit testing
-- UI testing
-- Code quality checks
-- Automated deployment
+* Unit Tests
+* ViewModel Tests
+* API Integration Tests
+* UI Tests
 
 ---
 
@@ -291,14 +317,14 @@ Recommended CI workflow:
 
 ### Upcoming Features
 
-- [ ] Live classes
-- [ ] AI learning assistant
-- [ ] Discussion forums
-- [ ] Gamification badges
-- [ ] Dark mode enhancements
-- [ ] Apple Watch support
-- [ ] Offline-first learning
-- [ ] Multi-language support
+* [ ] AI Loan Eligibility Assessment
+* [ ] Credit Score Integration
+* [ ] Digital Signature Support
+* [ ] Loan Calculator
+* [ ] Multi-language Support
+* [ ] Dark Mode
+* [ ] Advanced Analytics Dashboard
+* [ ] Chat Support Integration
 
 ---
 
@@ -306,26 +332,26 @@ Recommended CI workflow:
 
 Contributions are welcome.
 
-1. Fork the repository
-2. Create your feature branch
+1. Fork the Repository
+2. Create a Feature Branch
 
 ```bash
 git checkout -b feature/new-feature
 ```
 
-3. Commit your changes
+3. Commit Changes
 
 ```bash
 git commit -m "Add new feature"
 ```
 
-4. Push to the branch
+4. Push Changes
 
 ```bash
 git push origin feature/new-feature
 ```
 
-5. Open a Pull Request
+5. Create a Pull Request
 
 ---
 
@@ -337,9 +363,11 @@ See `LICENSE` for more information.
 
 ---
 
-## 🙌 Acknowledgements
+## 👨‍💻 Developed By
 
-Special thanks to all contributors and educators helping build a better digital learning experience.
+**Loan Management System Team**
+
+Building secure, efficient, and user-friendly digital lending experiences.
 
 ---
 
