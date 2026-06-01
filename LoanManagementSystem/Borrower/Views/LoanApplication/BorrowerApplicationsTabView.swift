@@ -20,6 +20,29 @@ struct BorrowerApplicationsTabView: View {
             .background(LMSColors.background)
             .navigationTitle("Applications")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        ForEach(BorrowerApplicationFilter.allCases) { filter in
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    viewModel.selectedApplicationFilter = filter
+                                }
+                            } label: {
+                                if viewModel.selectedApplicationFilter == filter {
+                                    Label(filter.rawValue, systemImage: "checkmark")
+                                } else {
+                                    Text(filter.rawValue)
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.system(size: 18, weight: .semibold))
+                    }
+                    .accessibilityLabel("Filter applications")
+                }
+            }
             .task(id: authManager.userEmail) {
                 viewModel.setBorrowerAuthContext(
                     email: authManager.userEmail ?? "",
@@ -79,9 +102,6 @@ struct BorrowerApplicationsHub: View {
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
 
                 ApplicationMetricsRow(metrics: viewModel.dashboardMetrics)
-
-                ApplicationFilterChipRow(selection: $viewModel.selectedApplicationFilter)
-                    .padding(.horizontal, LMSSpacing.screenHorizontal)
 
                 if viewModel.filteredSubmittedApplications.isEmpty {
                     ApplicationsEmptyState(
@@ -165,41 +185,6 @@ private struct ApplicationMetricTile: View {
             RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
                 .stroke(LMSColors.separatorLight, lineWidth: 0.5)
         )
-    }
-}
-
-// MARK: - Filter Chips
-
-private struct ApplicationFilterChipRow: View {
-    @Binding var selection: BorrowerApplicationFilter
-
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: LMSSpacing.sm) {
-                ForEach(BorrowerApplicationFilter.allCases) { filter in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            selection = filter
-                        }
-                    } label: {
-                        Text(filter.rawValue)
-                            .font(LMSFont.footnote.weight(.semibold))
-                            .foregroundStyle(selection == filter ? .white : LMSColors.textPrimary)
-                            .padding(.horizontal, LMSSpacing.lg)
-                            .padding(.vertical, LMSSpacing.sm)
-                            .background(
-                                selection == filter ? LMSColors.brandNavy : LMSColors.surface,
-                                in: Capsule()
-                            )
-                            .overlay(
-                                Capsule()
-                                    .stroke(selection == filter ? Color.clear : LMSColors.separatorLight, lineWidth: 0.5)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
     }
 }
 

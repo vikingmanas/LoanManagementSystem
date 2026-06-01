@@ -226,7 +226,7 @@ struct OnboardingQuestionnaireView: View {
                             .font(.headline)
                             .foregroundStyle(.primary)
                         
-                        Text("Please link at least one bank account to calculate eligibility and setup auto-debit.")
+                        Text("You can link a bank account now or finish setup and add one later from your profile.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -402,11 +402,6 @@ struct OnboardingQuestionnaireView: View {
             }
             
         case 1:
-            if linkedAccountsList.isEmpty {
-                showError("Please link at least one bank account to proceed.")
-                return
-            }
-            
             isLoading = true
             Task {
                 _ = await saveFinancialDetailsAndComplete()
