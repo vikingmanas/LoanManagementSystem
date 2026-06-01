@@ -24,21 +24,14 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     @Published var selectedTab: Int = 0              // 0=Dashboard, 1=History
     
     private var cancellables = Set<AnyCancellable>()
+    private var isFetchingDashboardData = false
     
     init() {
-        CentralLoanRepository.shared.$applications
-            .map { apps in
-                apps.compactMap { CentralLoanRepository.shared.toOfficerApplication(from: $0) }
-            }
-            .sink { [weak self] mappedApps in
-                guard let self = self else { return }
-                self.applications = mappedApps
-            }
-            .store(in: &cancellables)
+        refreshFromRepository()
     }
     
     // Tab 2 History Filter parameters
-    @Published var historyFilter: RegistryFilter? = nil
+    @Published var historyFilter: RegistryFilter = .all
     @Published var historyLoanTypeFilter: LoanType? = nil
     @Published var historySortOrder: HistorySortOrder = .newest
     @Published var historySearchQuery: String = ""
@@ -117,7 +110,8 @@ class LoanOfficerDashboardViewModel: ObservableObject {
                     docType: doc.docType,
                     status: doc.status,
                     submittedDate: date,
-                    applicationId: app.applicationId
+                    applicationId: app.applicationId,
+                    fileURL: doc.fileURL
                 ))
             }
         }
@@ -157,20 +151,18 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         var list = applications
         
         // 1. Filter by Status (Registry Category)
-        if let filter = historyFilter {
-            list = list.filter { app in
-                switch filter {
-                case .all:
-                    return true
-                case .newCases:
-                    return [.pending, .applied].contains(app.status)
-                case .underCheck:
-                    return [.underReview, .verificationCompleted, .documentsPending, .documentsRejected, .onHold].contains(app.status)
-                case .approvalQueue:
-                    return [.sentToManager, .finalApprovalPending].contains(app.status) || app.sentToManagerDate != nil
-                case .completed:
-                    return [.approved, .disbursed, .rejected].contains(app.status)
-                }
+        list = list.filter { app in
+            switch historyFilter {
+            case .all:
+                return true
+            case .newCases:
+                return [.pending, .applied].contains(app.status)
+            case .underCheck:
+                return [.underReview, .verificationCompleted, .documentsPending, .documentsRejected, .onHold].contains(app.status)
+            case .approvalQueue:
+                return [.sentToManager, .finalApprovalPending].contains(app.status) || app.sentToManagerDate != nil
+            case .completed:
+                return [.approved, .disbursed, .rejected].contains(app.status)
             }
         }
         
@@ -212,8 +204,11 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     
     // MARK: - Fetch Data
     func fetchDashboardData() async {
+        guard !isFetchingDashboardData else { return }
+        isFetchingDashboardData = true
         isLoading = true
         hasError = false
+        defer { isFetchingDashboardData = false }
         
         do {
             if let user = try? await SupabaseManager.shared.client.auth.session.user {
@@ -224,6 +219,7 @@ class LoanOfficerDashboardViewModel: ObservableObject {
             
             // Fetch all submitted applications from Supabase for the officer view
             await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
+            refreshFromRepository()
             
             // Simulate brief loading delay for UI
             try await Task.sleep(nanoseconds: 400_000_000)
@@ -236,6 +232,12 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         } catch {
             self.hasError = true
             self.isLoading = false
+        }
+    }
+
+    private func refreshFromRepository() {
+        applications = CentralLoanRepository.shared.applications.compactMap {
+            CentralLoanRepository.shared.toOfficerApplication(from: $0)
         }
     }
     
@@ -270,6 +272,7 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     
     func updateDocumentStatus(applicationId: String, docId: UUID, newStatus: DocumentStatus, rejectionReason: String? = nil) {
         CentralLoanRepository.shared.updateDocumentStatus(applicationId: applicationId, docId: docId, status: newStatus, reason: rejectionReason)
+        refreshFromRepository()
         
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }),
            let doc = applications[idx].documents.first(where: { $0.id == docId }) {
@@ -283,6 +286,12 @@ class LoanOfficerDashboardViewModel: ObservableObject {
                 description: newStatus == .verified ? "\(docName) verified successfully by \(officerName)." : "\(docName) rejected: \(rejectionReason ?? "Incorrect format.")"
             )
         }
+    }
+
+    func refreshDocuments(for applicationId: String) async {
+        guard let app = applications.first(where: { $0.applicationId == applicationId }) else { return }
+        await CentralLoanRepository.shared.refreshDocumentsForApplication(id: app.id)
+        refreshFromRepository()
     }
     
     func updateApplicationStatus(applicationId: String, newStatus: ApplicationStatus) {
@@ -301,8 +310,14 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
     
     func sendForFinalApproval(applicationId: String) {
+        guard let app = applications.first(where: { $0.applicationId == applicationId }),
+              !app.documents.isEmpty,
+              app.documents.allSatisfy({ $0.status == .verified }) else {
+            return
+        }
         let officerName = officerProfile?.fullName ?? "Officer Arjun"
         CentralLoanRepository.shared.sendForFinalApproval(applicationId: applicationId, officerName: officerName)
+        refreshFromRepository()
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }) {
             logActivity(
                 borrowerName: applications[idx].borrowerName,
@@ -363,4 +378,5 @@ struct DocumentQueueItem: Identifiable, Hashable {
     var status: DocumentStatus
     var submittedDate: Date
     var applicationId: String
+    var fileURL: String?
 }

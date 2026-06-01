@@ -2,7 +2,7 @@ import SwiftUI
 
 struct KPIGridView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
-    var onCardSelected: (RegistryFilter?) -> Void
+    var onCardSelected: (RegistryFilter) -> Void
     
     var body: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: LMSSpacing.md), GridItem(.flexible(), spacing: LMSSpacing.md)], spacing: LMSSpacing.md) {

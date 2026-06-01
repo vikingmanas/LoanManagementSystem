@@ -26,6 +26,29 @@ struct LoanApplicationTabView: View {
             .background(LMSColors.background)
             .navigationTitle("Loans")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        ForEach(LoanProductCategoryFilter.allCases) { category in
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    viewModel.selectedProductCategory = category
+                                }
+                            } label: {
+                                if viewModel.selectedProductCategory == category {
+                                    Label(category.rawValue, systemImage: "checkmark")
+                                } else {
+                                    Text(category.rawValue)
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.system(size: 18, weight: .semibold))
+                    }
+                    .accessibilityLabel("Filter loan products")
+                }
+            }
             .task(id: authManager.userEmail) {
                 viewModel.setBorrowerAuthContext(
                     email: authManager.userEmail ?? "",
@@ -650,7 +673,6 @@ private struct DocumentVerificationResultView: View {
         .sheet(item: $activeUploadDocument) { document in
             DocumentUploadSheet(documentName: document.name) { fileName, source in
                 viewModel.uploadDocument(document.id, fileName: fileName, source: source)
-                viewModel.runBulkVerification()
             }
         }
     }
@@ -790,8 +812,14 @@ private struct ApplicationCard: View {
                     Text(application.displayIdentifier)
                         .font(.caption.monospaced())
                         .foregroundStyle(LMSColors.textSecondary)
-                    if let submittedAt = application.submittedAt {
-                        Text("Last Update: \(submittedAt.formattedAsDDMMMYYYY())")
+                    Text(application.isDraft ? "Step \(application.draftStepIndex) of 10" : "Last Update: \((application.submittedAt ?? application.updatedAt).formattedAsDDMMMYYYY())")
+                        .font(.system(size: 10))
+                        .foregroundStyle(LMSColors.textTertiary)
+                    if application.isDraft {
+                        Text("\(Int((Double(min(max(application.draftStepIndex, 1), 10)) / 10.0) * 100))% Complete")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(LMSColors.brandNavy)
+                        Text("Updated \(RelativeDateFormatter.shared.relativeString(from: application.updatedAt))")
                             .font(.system(size: 10))
                             .foregroundStyle(LMSColors.textTertiary)
                     }

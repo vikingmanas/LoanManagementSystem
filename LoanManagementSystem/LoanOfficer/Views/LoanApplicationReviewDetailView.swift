@@ -20,6 +20,7 @@ struct LoanApplicationReviewDetailView: View {
     @State private var showingActionSheetForDoc: LoanDocument? = nil
     @State private var rejectionText = ""
     @State private var rejectionPrompt: DocumentRejectionPrompt?
+    @State private var documentActionStatus: OfficerDocumentStatus = .rejectFlag
     
     var app: LoanApplication? {
         viewModel.applications.first { $0.applicationId == applicationId }
@@ -27,43 +28,11 @@ struct LoanApplicationReviewDetailView: View {
     
     var loanDocuments: [LoanDocument] {
         guard let app = app else { return [] }
-        if app.documents.isEmpty {
-            switch app.loanType {
-            case .home:
-                return [
-                    LoanDocument(id: UUID(), docType: .aadhaar, status: .uploaded),
-                    LoanDocument(id: UUID(), docType: .pan, status: .verified),
-                    LoanDocument(id: UUID(), docType: .salarySlip, status: .uploaded),
-                    LoanDocument(id: UUID(), docType: .propertyDoc, status: .pending)
-                ]
-            case .business:
-                return [
-                    LoanDocument(id: UUID(), docType: .aadhaar, status: .verified),
-                    LoanDocument(id: UUID(), docType: .pan, status: .verified),
-                    LoanDocument(id: UUID(), docType: .gstCertificate, status: .uploaded),
-                    LoanDocument(id: UUID(), docType: .incomeTaxReturn, status: .uploaded)
-                ]
-            case .education:
-                return [
-                    LoanDocument(id: UUID(), docType: .aadhaar, status: .verified),
-                    LoanDocument(id: UUID(), docType: .pan, status: .verified),
-                    LoanDocument(id: UUID(), docType: .admissionLetter, status: .uploaded),
-                    LoanDocument(id: UUID(), docType: .bankStatement, status: .uploaded)
-                ]
-            default:
-                return [
-                    LoanDocument(id: UUID(), docType: .aadhaar, status: .uploaded),
-                    LoanDocument(id: UUID(), docType: .pan, status: .verified),
-                    LoanDocument(id: UUID(), docType: .salarySlip, status: .uploaded),
-                    LoanDocument(id: UUID(), docType: .bankStatement, status: .uploaded)
-                ]
-            }
-        }
         return app.documents
     }
     
     var borrowerData: BorrowerDetails {
-        details(for: app?.borrowerName ?? "")
+        app?.borrowerDetails ?? .empty
     }
     
     var isReadyForFinalApproval: Bool {
@@ -112,31 +81,29 @@ struct LoanApplicationReviewDetailView: View {
                 Button("Done") { dismiss() }
             }
         }
-        .sheet(item: $selectedDocForPreview) { doc in
-            NavigationStack {
-                DocumentReviewDetailView(
-                    item: DocumentQueueItem(
-                        id: doc.id,
-                        borrowerName: currentApp.borrowerName,
-                        docType: doc.docType,
-                        status: doc.status,
-                        submittedDate: Date(),
-                        applicationId: currentApp.applicationId
-                    ),
-                    viewModel: viewModel,
-                    isPresentedModally: true
-                )
-            }
+        .navigationDestination(item: $selectedDocForPreview) { doc in
+            DocumentReviewDetailView(
+                item: DocumentQueueItem(
+                    id: doc.id,
+                    borrowerName: currentApp.borrowerName,
+                    docType: doc.docType,
+                    status: doc.status,
+                    submittedDate: doc.uploadedDate ?? currentApp.submittedDate,
+                    applicationId: currentApp.applicationId,
+                    fileURL: doc.fileURL
+                ),
+                viewModel: viewModel
+            )
         }
-        .alert("Flag Document", isPresented: rejectionPromptIsPresented) {
-            TextField("Reason (e.g. Blurry photo)", text: $rejectionText)
+        .alert("Document Remarks", isPresented: rejectionPromptIsPresented) {
+            TextField("Reason / remarks", text: $rejectionText)
             Button("Submit", role: .destructive) {
                 if let prompt = rejectionPrompt {
                     viewModel.updateDocumentStatus(
                         applicationId: currentApp.applicationId,
                         docId: prompt.document.id,
-                        newStatus: .rejectFlag,
-                        rejectionReason: rejectionText.isEmpty ? "Incorrect copy. Please re-upload." : rejectionText
+                        newStatus: documentActionStatus,
+                        rejectionReason: rejectionText.isEmpty ? defaultReason(for: documentActionStatus) : rejectionText
                     )
                 }
                 rejectionText = ""
@@ -147,7 +114,10 @@ struct LoanApplicationReviewDetailView: View {
                 rejectionPrompt = nil
             }
         } message: {
-            Text("Provide correction guidelines to send to borrower.")
+            Text("Add a reason for the borrower and audit trail.")
+        }
+        .task {
+            await viewModel.refreshDocuments(for: currentApp.applicationId)
         }
     }
 
@@ -183,12 +153,27 @@ struct LoanApplicationReviewDetailView: View {
                     }
 
                     verificationActionButton(
-                        title: "Flag for Re-upload",
+                        title: "Reject Document",
+                        icon: "xmark.octagon.fill",
+                        tint: LMSColors.coral
+                    ) {
+                        showingActionSheetForDoc = nil
+                        rejectionText = ""
+                        documentActionStatus = .rejectFlag
+                        let prompt = DocumentRejectionPrompt(document: doc)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            rejectionPrompt = prompt
+                        }
+                    }
+
+                    verificationActionButton(
+                        title: "Request Re-upload",
                         icon: "arrow.triangle.2.circlepath",
                         tint: LMSColors.coral
                     ) {
                         showingActionSheetForDoc = nil
                         rejectionText = ""
+                        documentActionStatus = .rejectFlag
                         let prompt = DocumentRejectionPrompt(document: doc)
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                             rejectionPrompt = prompt
@@ -261,6 +246,12 @@ struct LoanApplicationReviewDetailView: View {
             }
         }
     }
+
+    private func defaultReason(for status: OfficerDocumentStatus) -> String {
+        status == .rejectFlag
+            ? "Document requires re-upload. Please provide a clear valid copy."
+            : "Reviewed by loan officer."
+    }
     
     // MARK: - Application Header
     
@@ -294,6 +285,8 @@ struct LoanApplicationReviewDetailView: View {
     
     private func progressSection(_ app: LoanApplication) -> some View {
         let verifiedCount = loanDocuments.filter { $0.status == .verified }.count
+        let pendingCount = loanDocuments.filter { $0.status != .verified && $0.status != .rejectFlag }.count
+        let rejectedCount = loanDocuments.filter { $0.status == .rejectFlag }.count
         let totalDocs = loanDocuments.count
         let completionPct = totalDocs > 0 ? Double(verifiedCount) / Double(totalDocs) : 0
         
@@ -311,6 +304,16 @@ struct LoanApplicationReviewDetailView: View {
                 
                 ProgressView(value: completionPct)
                     .tint(completionPct >= 1.0 ? LMSColors.emerald : LMSColors.actionBlue)
+
+                HStack(spacing: 12) {
+                    Label("\(verifiedCount) Verified", systemImage: "checkmark.seal.fill")
+                        .foregroundStyle(LMSColors.emerald)
+                    Label("\(pendingCount) Pending", systemImage: "clock.fill")
+                        .foregroundStyle(LMSColors.amber)
+                    Label("\(rejectedCount) Rejected", systemImage: "xmark.octagon.fill")
+                        .foregroundStyle(LMSColors.coral)
+                }
+                .font(.caption2.weight(.semibold))
             }
             .padding(.vertical, 4)
         }
@@ -320,18 +323,18 @@ struct LoanApplicationReviewDetailView: View {
     
     private func personalDetailsSection(_ app: LoanApplication) -> some View {
         Section("Personal Information") {
-            LabeledContent("Date of Birth", value: borrowerData.dob)
-            LabeledContent("Gender", value: borrowerData.gender)
-            LabeledContent("PAN Number", value: borrowerData.pan)
-            
-            LabeledContent("CIBIL Score") {
-                Text("\(app.cibilScore ?? 720)")
-                    .fontWeight(.bold)
-                    .foregroundStyle(cibilColor(for: app.cibilScore ?? 720))
+            VStack(spacing: 0) {
+                ApplicationDetailRow("Full Name", value: app.borrowerName)
+                ApplicationDetailRow("Date of Birth", value: borrowerData.dob)
+                ApplicationDetailRow("Age", value: borrowerData.age)
+                ApplicationDetailRow("Gender", value: borrowerData.gender)
+                ApplicationDetailRow("PAN Number", value: borrowerData.pan)
+                ApplicationDetailRow("CIBIL Score", value: app.cibilScore.map(String.init) ?? "Not provided", valueColor: app.cibilScore.map(cibilColor(for:)) ?? .secondary)
+                ApplicationDetailRow("Email", value: borrowerData.email)
+                ApplicationDetailRow("Phone", value: borrowerData.phone)
+                ApplicationDetailRow("Address", value: borrowerData.address, isLast: true)
             }
-            
-            LabeledContent("Email", value: borrowerData.email)
-            LabeledContent("Phone", value: borrowerData.phone)
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         }
     }
     
@@ -339,21 +342,28 @@ struct LoanApplicationReviewDetailView: View {
     
     private func loanEmploymentSection(_ app: LoanApplication) -> some View {
         Section("Loan & Employment") {
-            LabeledContent("Loan Type") {
-                Label(app.loanType.rawValue, systemImage: app.loanType.symbol)
-                    .foregroundStyle(app.loanType.themeColor)
-                    .fontWeight(.semibold)
+            VStack(spacing: 0) {
+                ApplicationDetailRow(
+                    "Loan Type",
+                    value: app.loanType.rawValue,
+                    icon: app.loanType.symbol,
+                    valueColor: app.loanType.themeColor
+                )
+                ApplicationDetailRow("Requested Amount", value: CurrencyFormatter.shared.format(app.requestedAmount), valueColor: LMSColors.brandNavy)
+                ApplicationDetailRow("Tenure", value: borrowerData.tenure)
+                ApplicationDetailRow("Purpose", value: borrowerData.loanPurpose)
+                ApplicationDetailRow("Employment Type", value: borrowerData.employmentStatus)
+                ApplicationDetailRow("Occupation", value: borrowerData.occupation)
+                ApplicationDetailRow("Employer", value: borrowerData.employer)
+                ApplicationDetailRow("Work Experience", value: borrowerData.workExperience)
+                ApplicationDetailRow("Monthly Income", value: borrowerData.monthlyIncome)
+                ApplicationDetailRow("Annual Income", value: borrowerData.annualIncome)
+                ApplicationDetailRow("Existing EMIs", value: borrowerData.existingEMIs)
+                ApplicationDetailRow("Credit Card Obligations", value: borrowerData.creditCardObligations)
+                ApplicationDetailRow("Repayment", value: borrowerData.repaymentPreference)
+                ApplicationDetailRow("Branch", value: app.branch, isLast: true)
             }
-            
-            LabeledContent("Requested Amount") {
-                Text(CurrencyFormatter.shared.format(app.requestedAmount))
-                    .fontWeight(.semibold)
-            }
-            
-            LabeledContent("Employer", value: borrowerData.employer)
-            LabeledContent("Monthly Income", value: borrowerData.monthlyIncome)
-            LabeledContent("Employment", value: borrowerData.employmentStatus)
-            LabeledContent("Branch", value: app.branch)
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         }
     }
     
@@ -375,33 +385,13 @@ struct LoanApplicationReviewDetailView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(LMSColors.emerald)
                 
-                AIFindingRow(
-                    type: .warning,
-                    docName: "Aadhaar Card",
-                    desc: "Image clarity: 94%. Passed."
-                )
-                
-                if app.borrowerName == "Rohit Mehta" {
+                ForEach(loanDocuments) { doc in
                     AIFindingRow(
-                        type: .critical,
-                        docName: "Salary Slip",
-                        desc: "Blurry document (42% readability). Manual review needed."
+                        type: doc.status == .rejectFlag ? .critical : (doc.status == .verified ? .success : .warning),
+                        docName: doc.docType.rawValue,
+                        desc: "\(doc.ocrStatus). \(doc.status.rawValue)."
                     )
                 }
-                
-                if app.borrowerName == "Anita Desai" {
-                    AIFindingRow(
-                        type: .warning,
-                        docName: "PAN Card",
-                        desc: "Name mismatch: 'Anita D.' vs 'Anita Desai'."
-                    )
-                }
-                
-                AIFindingRow(
-                    type: .success,
-                    docName: "All Files",
-                    desc: "No expired document records."
-                )
             } else {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -415,7 +405,7 @@ struct LoanApplicationReviewDetailView: View {
                     Spacer()
                     
                     Button("Run Audit") {
-                        runMockAIAudit()
+                        runAIAudit()
                     }
                     .font(.caption.weight(.bold))
                     .buttonStyle(.borderedProminent)
@@ -430,49 +420,21 @@ struct LoanApplicationReviewDetailView: View {
     
     private func documentChecklistSection(_ app: LoanApplication) -> some View {
         Section("Documents (\(loanDocuments.filter { $0.status == .verified }.count)/\(loanDocuments.count) verified)") {
-            ForEach(loanDocuments) { doc in
-                HStack(spacing: 12) {
-                    Image(systemName: doc.status == .verified ? "checkmark.circle.fill" : (doc.status == .rejectFlag ? "xmark.circle.fill" : "circle"))
-                        .foregroundStyle(doc.status.themeColor)
-                        .font(.title3)
-                    
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(doc.docType.rawValue)
-                            .font(.body.weight(.medium))
-                        
-                        if let reason = doc.rejectionReason {
-                            Text(reason)
-                                .font(.caption)
-                                .foregroundStyle(LMSColors.coral)
-                                .lineLimit(1)
-                        } else {
-                            Text(doc.status.rawValue)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    Button {
-                        selectedDocForPreview = doc
-                    } label: {
-                        Image(systemName: "eye")
-                            .font(.body)
-                            .foregroundStyle(LMSColors.actionBlue)
-                    }
-                    .buttonStyle(.plain)
-                    
-                    Button {
-                        showingActionSheetForDoc = doc
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
+            if loanDocuments.isEmpty {
+                ContentUnavailableView(
+                    "No Uploaded Documents",
+                    systemImage: "doc.badge.questionmark",
+                    description: Text("No borrower document records were found for this application or customer.")
+                )
+            } else {
+                ForEach(loanDocuments) { doc in
+                    OfficerDocumentReviewCard(
+                        doc: doc,
+                        borrowerName: app.borrowerName,
+                        onPreview: { selectedDocForPreview = doc },
+                        onAction: { showingActionSheetForDoc = doc }
+                    )
                 }
-                .padding(.vertical, 4)
             }
         }
     }
@@ -540,7 +502,7 @@ struct LoanApplicationReviewDetailView: View {
     
     // MARK: - Helpers
     
-    private func runMockAIAudit() {
+    private func runAIAudit() {
         HapticsManager.triggerImpact(style: .medium)
         isRunningAIAudit = true
         aiStatusText = "Extracting document boundaries..."
@@ -580,6 +542,59 @@ struct InfoCell: View {
                 .foregroundStyle(color)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct ApplicationDetailRow: View {
+    let label: String
+    let value: String
+    var icon: String?
+    var valueColor: Color
+    var isLast: Bool
+
+    init(_ label: String, value: String, icon: String? = nil, valueColor: Color = .primary, isLast: Bool = false) {
+        self.label = label
+        self.value = value
+        self.icon = icon
+        self.valueColor = valueColor
+        self.isLast = isLast
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .frame(minWidth: 118, maxWidth: 142, alignment: .leading)
+
+                Spacer(minLength: 8)
+
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    if let icon {
+                        Image(systemName: icon)
+                            .font(.subheadline.weight(.semibold))
+                    }
+
+                    Text(displayValue)
+                        .font(.subheadline.weight(value == "Not provided" ? .regular : .semibold))
+                        .foregroundStyle(value == "Not provided" ? .secondary : valueColor)
+                        .multilineTextAlignment(.trailing)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .padding(.vertical, 11)
+
+            if !isLast {
+                Divider()
+            }
+        }
+    }
+
+    private var displayValue: String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Not provided" : value
     }
 }
 
@@ -624,6 +639,112 @@ struct AIFindingRow: View {
             }
         }
         .padding(.vertical, 2)
+    }
+}
+
+private struct OfficerDocumentReviewCard: View {
+    let doc: LoanDocument
+    let borrowerName: String
+    var onPreview: () -> Void
+    var onAction: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                OfficerDocumentThumb(doc: doc, borrowerName: borrowerName)
+                    .frame(width: 54, height: 54)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(doc.docType.rawValue)
+                        .font(.body.weight(.semibold))
+                    Text("Uploaded: \(doc.uploadedDate?.formattedAsDDMMMYYYY() ?? "Not available")")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("OCR: \(doc.ocrStatus)")
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(LMSColors.actionBlue)
+                }
+
+                Spacer()
+
+                Text(doc.status.rawValue)
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(doc.status.themeColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(doc.status.themeColor.opacity(0.12), in: Capsule())
+            }
+
+            HStack {
+                Button(action: onPreview) {
+                    Label("Preview", systemImage: "eye.fill")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
+                Spacer()
+
+                Button(action: onAction) {
+                    Label("Review", systemImage: "checklist.checked")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+
+            if let reason = doc.rejectionReason, !reason.isEmpty {
+                Text(reason)
+                    .font(.caption)
+                    .foregroundStyle(LMSColors.coral)
+            }
+        }
+        .padding(.vertical, 6)
+    }
+}
+
+private struct OfficerDocumentThumb: View {
+    let doc: LoanDocument
+    let borrowerName: String
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(doc.docType.iconColor.opacity(0.12))
+
+            if let fileURL = doc.fileURL,
+               fileURL.hasPrefix("data:image"),
+               let image = imageFromDataURL(fileURL) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            } else if let fileURL = doc.fileURL,
+                      let url = URL(string: fileURL),
+                      url.scheme?.hasPrefix("http") == true,
+                      url.pathExtension.lowercased() != "pdf" {
+                AsyncImage(url: url) { phase in
+                    if case .success(let image) = phase {
+                        image.resizable().scaledToFill()
+                    } else {
+                        Image(systemName: doc.docType.symbol)
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(doc.docType.iconColor)
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            } else {
+                Image(systemName: doc.docType.symbol)
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(doc.docType.iconColor)
+            }
+        }
+        .clipped()
+    }
+
+    private func imageFromDataURL(_ dataURL: String) -> UIImage? {
+        guard let commaIndex = dataURL.firstIndex(of: ",") else { return nil }
+        let payload = String(dataURL[dataURL.index(after: commaIndex)...])
+        guard let data = Data(base64Encoded: payload) else { return nil }
+        return UIImage(data: data)
     }
 }
 
@@ -702,32 +823,5 @@ struct DocumentChecklistItemRow: View {
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
-    }
-}
-
-// Mock Borrower details mapping helper
-struct BorrowerDetails {
-    let dob: String
-    let gender: String
-    let pan: String
-    let email: String
-    let phone: String
-    let employer: String
-    let monthlyIncome: String
-    let employmentStatus: String
-}
-
-func details(for borrowerName: String) -> BorrowerDetails {
-    switch borrowerName {
-    case "Priya Sharma":
-        return BorrowerDetails(dob: "12 Dec 1994", gender: "Female", pan: "BVDPS8942A", email: "priya.sharma@techcorp.in", phone: "+91 98765 43210", employer: "Tech Corp India", monthlyIncome: "₹ 1,25,000", employmentStatus: "Salaried")
-    case "Rohit Mehta":
-        return BorrowerDetails(dob: "05 Jun 1988", gender: "Male", pan: "CPYRM9140B", email: "rohit.mehta@crown.co", phone: "+91 99123 45678", employer: "Crown Industries", monthlyIncome: "₹ 95,000", employmentStatus: "Salaried")
-    case "Anita Desai":
-        return BorrowerDetails(dob: "22 Aug 1980", gender: "Female", pan: "DKLPA2938C", email: "anita@vibrantretail.com", phone: "+91 98111 22233", employer: "Vibrant Retailers", monthlyIncome: "₹ 2,40,000", employmentStatus: "Self-Employed (Business)")
-    case "Kavya Nair":
-        return BorrowerDetails(dob: "14 Feb 2003", gender: "Female", pan: "FRVPN4830D", email: "kavya.nair@student.edu", phone: "+91 97444 88899", employer: "N/A (Co-Applicant: Rajesh Nair)", monthlyIncome: "₹ 1,80,000 (Co-Applicant)", employmentStatus: "Student / Co-Applicant Salaried")
-    default:
-        return BorrowerDetails(dob: "18 Oct 1991", gender: "Male", pan: "AZYPM9876Z", email: "borrower.service@bank.com", phone: "+91 98000 11122", employer: "Global Enterprises", monthlyIncome: "₹ 1,10,000", employmentStatus: "Salaried")
     }
 }

@@ -25,9 +25,6 @@ struct LoansMarketplaceView: View {
                 LoansSearchBar(text: $viewModel.searchQuery)
                     .padding(.horizontal, LMSSpacing.screenHorizontal)
 
-                LoanCategoryChipRow(selection: $viewModel.selectedProductCategory)
-                    .padding(.horizontal, LMSSpacing.screenHorizontal)
-
                 if viewModel.filteredProducts.isEmpty {
                     LoansEmptySearchState(query: viewModel.searchQuery)
                         .padding(.horizontal, LMSSpacing.screenHorizontal)
@@ -86,41 +83,6 @@ private struct LoansSearchBar: View {
                 .stroke(LMSColors.separatorLight, lineWidth: 0.5)
         )
         .shadow(color: .black.opacity(0.025), radius: 8, x: 0, y: 3)
-    }
-}
-
-// MARK: - Category Chips
-
-private struct LoanCategoryChipRow: View {
-    @Binding var selection: LoanProductCategoryFilter
-
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: LMSSpacing.sm) {
-                ForEach(LoanProductCategoryFilter.allCases) { category in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            selection = category
-                        }
-                    } label: {
-                        Text(category.rawValue)
-                            .font(LMSFont.footnote.weight(.semibold))
-                            .foregroundStyle(selection == category ? Color.white : LMSColors.textPrimary)
-                            .padding(.horizontal, LMSSpacing.lg)
-                            .padding(.vertical, LMSSpacing.sm)
-                            .background(
-                                selection == category ? LMSColors.brandNavy : LMSColors.surface,
-                                in: Capsule()
-                            )
-                            .overlay(
-                                Capsule()
-                                    .stroke(selection == category ? Color.clear : LMSColors.separatorLight, lineWidth: 0.5)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
     }
 }
 
