@@ -1137,6 +1137,7 @@ private struct TimelineStepperCard: View {
     }
     
     private func isStageCompleted(_ stage: BorrowerApplicationStage, current: BorrowerApplicationStage, stages: [BorrowerApplicationStage]) -> Bool {
+        if current == .disbursed { return true }
         guard let currentIndex = stages.firstIndex(of: current),
               let stageIndex = stages.firstIndex(of: stage) else { return false }
         return stageIndex < currentIndex

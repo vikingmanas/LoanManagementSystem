@@ -864,7 +864,7 @@ final class LoanApplicationViewModel: ObservableObject {
             if application.currentStage == .rejected || application.stageHistory.contains(where: { $0.stage == .rejected }) {
                 return BorrowerApplicationStage.rejectionFlow
             }
-            return BorrowerApplicationStage.approvalFlow
+            return BorrowerApplicationStage.approvalFlow.filter { $0 != .disbursed }
         }
         
         func stageTimestamp(for stage: BorrowerApplicationStage, application: BorrowerLoanApplication) -> Date? {
@@ -874,8 +874,10 @@ final class LoanApplicationViewModel: ObservableObject {
         }
         
         func progressValue(for application: BorrowerLoanApplication) -> Double {
+            if application.currentStage == .disbursed { return 1.0 }
             let stages = timelineStages(for: application)
-            guard let stageIndex = stages.firstIndex(of: application.currentStage), !stages.isEmpty else {
+            let checkStage = application.currentStage
+            guard let stageIndex = stages.firstIndex(of: checkStage), !stages.isEmpty else {
                 return 0
             }
             return Double(stageIndex + 1) / Double(stages.count)
