@@ -321,6 +321,7 @@ final class LoanApplicationViewModel: ObservableObject {
 
         formData = BorrowerLoanFormData.prefilled(from: BorrowerProfileStore.shared.profile)
         currentStepIndex = 1
+        formData.draftStepIndex = currentStepIndex
         if formData.loanAmountRequested.isEmpty {
             let recommended = max(100_000, min(product.maximumAmount * 0.25, product.maximumAmount))
             formData.loanAmountRequested = String(Int(recommended))
@@ -369,8 +370,9 @@ final class LoanApplicationViewModel: ObservableObject {
         guard freshestDraft.currentStage == .draft else { return }
         selectedProductID = freshestDraft.product.id
         currentDraftID = freshestDraft.id
-        currentStepIndex = min(max(freshestDraft.draftStepIndex, 1), 10)
+        currentStepIndex = min(max(max(freshestDraft.draftStepIndex, freshestDraft.formData.draftStepIndex), 1), 10)
         formData = freshestDraft.formData
+        formData.draftStepIndex = currentStepIndex
         documents = freshestDraft.documents
         normalizeDuplicateDocumentRequirements()
         lastDraftSavedAt = Date()
@@ -386,6 +388,7 @@ final class LoanApplicationViewModel: ObservableObject {
         }
 
         applications[draftIndex].draftStepIndex = clampedStep
+        applications[draftIndex].formData.draftStepIndex = clampedStep
         applications[draftIndex].updatedAt = Date()
         CentralLoanRepository.shared.submitApplication(applications[draftIndex])
         lastDraftSavedAt = Date()
@@ -416,6 +419,7 @@ final class LoanApplicationViewModel: ObservableObject {
         }
 
         applications[draftIndex].formData = formData
+        applications[draftIndex].formData.draftStepIndex = currentStepIndex
         applications[draftIndex].documents = documents
         applications[draftIndex].draftStepIndex = currentStepIndex
         applications[draftIndex].updatedAt = Date()
@@ -994,6 +998,9 @@ final class LoanApplicationViewModel: ObservableObject {
     }
 
     func progressValue(for application: BorrowerLoanApplication) -> Double {
+        if application.isDraft {
+            return Double(min(max(application.draftStepIndex, 1), 10)) / 10.0
+        }
         let stages = timelineStages(for: application)
         guard let stageIndex = stages.firstIndex(of: application.currentStage), !stages.isEmpty else {
             return 0

@@ -164,6 +164,8 @@ struct LoanDocument: Identifiable, Hashable {
     var reviewedDate: Date?
     var rejectionReason: String?
     var fileURL: String?
+    var ocrStatus: String = "Pending Review"
+    var extractedFields: [String: String] = [:]
 }
 
 enum OfficerDocumentStatus: String, CaseIterable, Codable, Hashable {
@@ -196,6 +198,8 @@ enum OfficerDocumentType: String, CaseIterable, Codable, Hashable {
     case admissionLetter = "Admission Letter"
     case incomeTaxReturn = "ITR"
     case photograph = "Photograph"
+    case signature = "Signature"
+    case selfie = "Selfie Verification"
 
     var symbol: String {
         switch self {
@@ -208,6 +212,8 @@ enum OfficerDocumentType: String, CaseIterable, Codable, Hashable {
         case .admissionLetter: return "graduationcap"
         case .incomeTaxReturn: return "doc.text"
         case .photograph: return "photo"
+        case .signature: return "signature"
+        case .selfie: return "faceid"
         }
     }
     
@@ -223,7 +229,7 @@ enum OfficerDocumentType: String, CaseIterable, Codable, Hashable {
             return .orange
         case .admissionLetter:
             return .teal
-        case .photograph:
+        case .photograph, .signature, .selfie:
             return .pink
         }
     }

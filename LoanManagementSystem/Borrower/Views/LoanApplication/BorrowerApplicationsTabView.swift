@@ -224,12 +224,17 @@ struct ApplicationTrackingCard: View {
 
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Submitted")
+                    Text(application.isDraft ? "Current Step" : "Submitted")
                         .font(LMSFont.caption2)
                         .foregroundStyle(LMSColors.textSecondary)
-                    Text((application.submittedAt ?? application.updatedAt).formattedAsDDMMMYYYY())
+                    Text(application.isDraft ? "Step \(application.draftStepIndex) of 10" : (application.submittedAt ?? application.updatedAt).formattedAsDDMMMYYYY())
                         .font(LMSFont.footnote.weight(.medium))
                         .foregroundStyle(LMSColors.textPrimary)
+                    if application.isDraft {
+                        Text("Updated \(RelativeDateFormatter.shared.relativeString(from: application.updatedAt))")
+                            .font(LMSFont.caption2)
+                            .foregroundStyle(LMSColors.textTertiary)
+                    }
                 }
                 Spacer()
                 if application.formData.requestedAmountValue > 0 {

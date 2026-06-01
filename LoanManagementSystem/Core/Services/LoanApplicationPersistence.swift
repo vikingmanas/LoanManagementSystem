@@ -11,8 +11,10 @@ struct StoredLoanApplication: Codable {
     var applicationId: String?
     var productType: String
     var formData: StoredLoanFormData
+    var documents: [BorrowerLoanDocumentItem]?
     var currentStage: String
     var stageHistory: [StoredStageEntry]
+    var draftStepIndex: Int?
     var submittedAt: Date?
     var updatedAt: Date
     var assignedQueue: String?
@@ -46,6 +48,38 @@ struct StoredLoanFormData: Codable {
     var hasGuarantor: Bool
     var guarantorDetails: String
     var gstNumber: String
+    var selectedIdentityDoc: String?
+    var selectedAddressDoc: String?
+    var selectedIncomeDoc: String?
+    var draftStepIndex: Int?
+    var bankName: String?
+    var bankAccountNumber: String?
+    var bankIFSCCode: String?
+    var bankRegisteredMobile: String?
+    var monthlySalaryDeposited: String?
+    var employmentJoiningDate: Date?
+    var creditCardLimit: String?
+    var savingsInvestments: String?
+    var coApplicantMobile: String?
+    var coApplicantPAN: String?
+    var coApplicantAadhaar: String?
+    var coApplicantIncome: String?
+    var autoDebitConsent: Bool?
+    var nomineeName: String?
+    var nomineeRelation: String?
+    var nomineeMobile: String?
+    var referenceName: String?
+    var referenceMobile: String?
+    var emergencyContactName: String?
+    var emergencyContactMobile: String?
+    var signatureImageData: String?
+    var signatureVerificationStatus: String?
+    var liveVerificationCompleted: Bool?
+    var liveVerificationReference: String?
+    var selfieVerificationStatus: String?
+    var acceptedTerms: Bool?
+    var acceptedBureauConsent: Bool?
+    var acceptedDebitConsent: Bool?
 }
 
 struct StoredDisbursementEvent: Codable {
@@ -147,12 +181,46 @@ enum LoanApplicationPersistence {
                 coApplicantDetails: app.formData.coApplicantDetails,
                 hasGuarantor: app.formData.hasGuarantor,
                 guarantorDetails: app.formData.guarantorDetails,
-                gstNumber: app.formData.gstNumber
+                gstNumber: app.formData.gstNumber,
+                selectedIdentityDoc: app.formData.selectedIdentityDoc,
+                selectedAddressDoc: app.formData.selectedAddressDoc,
+                selectedIncomeDoc: app.formData.selectedIncomeDoc,
+                draftStepIndex: app.draftStepIndex,
+                bankName: app.formData.bankName,
+                bankAccountNumber: app.formData.bankAccountNumber,
+                bankIFSCCode: app.formData.bankIFSCCode,
+                bankRegisteredMobile: app.formData.bankRegisteredMobile,
+                monthlySalaryDeposited: app.formData.monthlySalaryDeposited,
+                employmentJoiningDate: app.formData.employmentJoiningDate,
+                creditCardLimit: app.formData.creditCardLimit,
+                savingsInvestments: app.formData.savingsInvestments,
+                coApplicantMobile: app.formData.coApplicantMobile,
+                coApplicantPAN: app.formData.coApplicantPAN,
+                coApplicantAadhaar: app.formData.coApplicantAadhaar,
+                coApplicantIncome: app.formData.coApplicantIncome,
+                autoDebitConsent: app.formData.autoDebitConsent,
+                nomineeName: app.formData.nomineeName,
+                nomineeRelation: app.formData.nomineeRelation,
+                nomineeMobile: app.formData.nomineeMobile,
+                referenceName: app.formData.referenceName,
+                referenceMobile: app.formData.referenceMobile,
+                emergencyContactName: app.formData.emergencyContactName,
+                emergencyContactMobile: app.formData.emergencyContactMobile,
+                signatureImageData: app.formData.signatureImageData,
+                signatureVerificationStatus: app.formData.signatureVerificationStatus,
+                liveVerificationCompleted: app.formData.liveVerificationCompleted,
+                liveVerificationReference: app.formData.liveVerificationReference,
+                selfieVerificationStatus: app.formData.selfieVerificationStatus,
+                acceptedTerms: app.formData.acceptedTerms,
+                acceptedBureauConsent: app.formData.acceptedBureauConsent,
+                acceptedDebitConsent: app.formData.acceptedDebitConsent
             ),
+            documents: app.documents,
             currentStage: app.currentStage.rawValue,
             stageHistory: app.stageHistory.map {
                 StoredStageEntry(stage: $0.stage.rawValue, timestamp: $0.timestamp, note: $0.note)
             },
+            draftStepIndex: app.draftStepIndex,
             submittedAt: app.submittedAt,
             updatedAt: app.updatedAt,
             assignedQueue: app.assignedQueue,
@@ -194,7 +262,39 @@ enum LoanApplicationPersistence {
             coApplicantDetails: stored.formData.coApplicantDetails,
             hasGuarantor: stored.formData.hasGuarantor,
             guarantorDetails: stored.formData.guarantorDetails,
-            gstNumber: stored.formData.gstNumber
+            gstNumber: stored.formData.gstNumber,
+            selectedIdentityDoc: stored.formData.selectedIdentityDoc ?? "Aadhaar Card",
+            selectedAddressDoc: stored.formData.selectedAddressDoc ?? "Utility Bill",
+            selectedIncomeDoc: stored.formData.selectedIncomeDoc ?? "Salary Slips",
+            draftStepIndex: stored.draftStepIndex ?? stored.formData.draftStepIndex ?? 1,
+            bankName: stored.formData.bankName ?? "",
+            bankAccountNumber: stored.formData.bankAccountNumber ?? "",
+            bankIFSCCode: stored.formData.bankIFSCCode ?? "",
+            bankRegisteredMobile: stored.formData.bankRegisteredMobile ?? "",
+            monthlySalaryDeposited: stored.formData.monthlySalaryDeposited ?? "",
+            employmentJoiningDate: stored.formData.employmentJoiningDate,
+            creditCardLimit: stored.formData.creditCardLimit ?? "",
+            savingsInvestments: stored.formData.savingsInvestments ?? "",
+            coApplicantMobile: stored.formData.coApplicantMobile ?? "",
+            coApplicantPAN: stored.formData.coApplicantPAN ?? "",
+            coApplicantAadhaar: stored.formData.coApplicantAadhaar ?? "",
+            coApplicantIncome: stored.formData.coApplicantIncome ?? "",
+            autoDebitConsent: stored.formData.autoDebitConsent ?? false,
+            nomineeName: stored.formData.nomineeName ?? "",
+            nomineeRelation: stored.formData.nomineeRelation ?? "",
+            nomineeMobile: stored.formData.nomineeMobile ?? "",
+            referenceName: stored.formData.referenceName ?? "",
+            referenceMobile: stored.formData.referenceMobile ?? "",
+            emergencyContactName: stored.formData.emergencyContactName ?? "",
+            emergencyContactMobile: stored.formData.emergencyContactMobile ?? "",
+            signatureImageData: stored.formData.signatureImageData ?? "",
+            signatureVerificationStatus: stored.formData.signatureVerificationStatus ?? "",
+            liveVerificationCompleted: stored.formData.liveVerificationCompleted ?? false,
+            liveVerificationReference: stored.formData.liveVerificationReference ?? "",
+            selfieVerificationStatus: stored.formData.selfieVerificationStatus ?? "",
+            acceptedTerms: stored.formData.acceptedTerms ?? false,
+            acceptedBureauConsent: stored.formData.acceptedBureauConsent ?? false,
+            acceptedDebitConsent: stored.formData.acceptedDebitConsent ?? false
         )
 
         let history = stored.stageHistory.compactMap { entry -> BorrowerStageEntry? in
@@ -207,9 +307,10 @@ enum LoanApplicationPersistence {
             applicationId: stored.applicationId,
             product: product,
             formData: formData,
-            documents: BorrowerLoanDocumentItem.defaultRequirements(for: product),
+            documents: stored.documents ?? [],
             currentStage: stage,
             stageHistory: history.isEmpty ? [BorrowerStageEntry(stage: stage, timestamp: stored.updatedAt, note: "Restored application")] : history,
+            draftStepIndex: min(max(stored.draftStepIndex ?? formData.draftStepIndex, 1), 10),
             submittedAt: stored.submittedAt,
             updatedAt: stored.updatedAt,
             assignedQueue: stored.assignedQueue,

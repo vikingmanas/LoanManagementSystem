@@ -452,6 +452,15 @@ final class DatabaseService {
             .value
     }
 
+    func fetchDocuments(borrowerId: UUID) async throws -> [DBDocument] {
+        return try await client
+            .from("documents")
+            .select()
+            .eq("borrower_id", value: borrowerId.uuidString)
+            .execute()
+            .value
+    }
+
     // MARK: - Supabase Repayment & Account Operations
 
     func insertLoanAccount(_ account: DBLoanAccount) async throws {
