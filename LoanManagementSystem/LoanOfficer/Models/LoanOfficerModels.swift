@@ -169,7 +169,7 @@ struct LoanDocument: Identifiable, Hashable {
 }
 
 enum OfficerDocumentStatus: String, CaseIterable, Codable, Hashable {
-    case pending = "Awaiting Upload"
+    case pending = "Missing"
     case uploaded = "New Upload"
     case underReview = "In Review"
     case verified = "Verified ✓"

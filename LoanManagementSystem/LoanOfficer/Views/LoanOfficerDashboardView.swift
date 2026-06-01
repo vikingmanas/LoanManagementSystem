@@ -1138,38 +1138,43 @@ struct OfficerApplicationReviewCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Header: Borrower Avatar, Name, Loan details, status
-            HStack(spacing: 12) {
-                OfficerAvatar(name: application.borrowerName, tint: application.loanType.themeColor)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(application.borrowerName)
-                        .font(.system(.body, design: .rounded).weight(.semibold))
-                        .foregroundStyle(LMSColors.textPrimary)
+            NavigationLink {
+                LoanApplicationReviewDetailView(applicationId: application.applicationId, viewModel: viewModel)
+            } label: {
+                HStack(spacing: 12) {
+                    OfficerAvatar(name: application.borrowerName, tint: application.loanType.themeColor)
                     
-                    Text("\(application.loanType.rawValue) · \(CurrencyFormatter.shared.format(application.requestedAmount))")
-                        .font(.system(.caption, design: .rounded).weight(.medium))
-                        .foregroundStyle(LMSColors.textSecondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(application.borrowerName)
+                            .font(.system(.body, design: .rounded).weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                        
+                        Text("\(application.loanType.rawValue) · \(CurrencyFormatter.shared.format(application.requestedAmount))")
+                            .font(.system(.caption, design: .rounded).weight(.medium))
+                            .foregroundStyle(LMSColors.textSecondary)
+                        
+                        Text("App ID: \(application.applicationId)")
+                            .font(.system(.caption2, design: .rounded).monospaced())
+                            .foregroundStyle(LMSColors.textTertiary)
+                    }
                     
-                    Text("App ID: \(application.applicationId)")
-                        .font(.system(.caption2, design: .rounded).monospaced())
-                        .foregroundStyle(LMSColors.textTertiary)
-                }
-                
-                Spacer()
-                
-                // Document progress indicator
-                VStack(alignment: .trailing, spacing: 4) {
-                    let total = application.documents.count
-                    let verified = application.documents.filter { $0.status == .verified }.count
-                    Text("\(verified)/\(total) Verified")
-                        .font(.system(.caption2, design: .rounded).bold())
-                        .foregroundStyle(verified == total ? LMSColors.emerald : LMSColors.actionBlue)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background((verified == total ? LMSColors.emerald : LMSColors.actionBlue).opacity(0.1))
-                        .clipShape(Capsule())
+                    Spacer()
+                    
+                    // Document progress indicator
+                    VStack(alignment: .trailing, spacing: 4) {
+                        let total = application.documents.count
+                        let verified = application.documents.filter { $0.status == .verified }.count
+                        Text("\(verified)/\(total) Verified")
+                            .font(.system(.caption2, design: .rounded).bold())
+                            .foregroundStyle(verified == total ? LMSColors.emerald : LMSColors.actionBlue)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background((verified == total ? LMSColors.emerald : LMSColors.actionBlue).opacity(0.1))
+                            .clipShape(Capsule())
+                    }
                 }
             }
+            .buttonStyle(.plain)
             
             Divider()
                 .padding(.vertical, 4)
@@ -1219,7 +1224,7 @@ struct OfficerApplicationReviewCard: View {
                             Spacer()
                             
                             // Status tag
-                            Text(statusText(doc.status))
+                            Text(doc.status.rawValue)
                                 .font(.system(size: 10, weight: .bold, design: .rounded))
                                 .foregroundStyle(doc.status == .pending ? LMSColors.amber : .white)
                                 .padding(.horizontal, 8)
@@ -1246,16 +1251,7 @@ struct OfficerApplicationReviewCard: View {
         .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
     }
     
-    private func statusText(_ status: OfficerDocumentStatus) -> String {
-        switch status {
-        case .pending: return "Missing"
-        case .uploaded: return "New Upload"
-        case .underReview: return "In Review"
-        case .verified: return "Verified ✓"
-        case .rejectFlag: return "Re-upload Req."
-        case .reUploaded: return "Re-Uploaded"
-        }
-    }
+
 }
 
 // MARK: - Calculator Sheet
