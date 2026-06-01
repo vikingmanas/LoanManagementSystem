@@ -17,6 +17,10 @@ struct ContentView: View {
     // Splash control
     @State private var showSplash = true
 
+    // Biometrics State
+    @AppStorage("biometricEnabled") private var biometricEnabled = false
+    @State private var isAppUnlocked = false
+
     var body: some View {
         ZStack {
 
@@ -41,8 +45,12 @@ struct ContentView: View {
 
                     // MARK: - Authenticated Flow
                     if isCurrentRoleAuthenticated {
-
-                        switch appState.selectedRole {
+                        
+                        if biometricEnabled && !isAppUnlocked {
+                            AppLockView(isUnlocked: $isAppUnlocked)
+                                .transition(.opacity)
+                        } else {
+                            switch appState.selectedRole {
                         case .customer:
                             if appState.requiresBorrowerOnboarding && profileStore.profile?.isOnboardingCompleted != true {
                                 OnboardingQuestionnaireView()
@@ -85,6 +93,7 @@ struct ContentView: View {
                                     insertion: .move(edge: .trailing).combined(with: .opacity),
                                     removal: .move(edge: .leading).combined(with: .opacity)
                                 ))
+                        }
                         }
 
                     } else {

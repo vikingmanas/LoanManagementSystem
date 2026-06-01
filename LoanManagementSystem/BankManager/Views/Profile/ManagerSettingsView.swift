@@ -15,6 +15,9 @@ struct ManagerSettingsView: View {
     @AppStorage("managerNotifApprovals") private var notifApprovals = true
     @AppStorage("managerNotifEscalations") private var notifEscalations = true
     @AppStorage("managerNotifReports") private var notifReports = true
+    
+    @AppStorage("biometricEnabled") private var biometricEnabled = true
+    @StateObject private var localSecurity = LocalSecurityService.shared
 
     var body: some View {
         List {
@@ -80,6 +83,9 @@ struct ManagerSettingsView: View {
             }
 
             Section {
+                Toggle(isOn: $biometricEnabled) {
+                    Label("\(localSecurity.biometricTypeName) Login", systemImage: "faceid")
+                }
                 Toggle(isOn: $twoFactorEnabled) {
                     Text("Two-Factor Authentication")
                 }
