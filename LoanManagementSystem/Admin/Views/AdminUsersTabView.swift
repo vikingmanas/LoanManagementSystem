@@ -6,54 +6,56 @@ struct AdminUsersTabView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-
+            Group {
                 if viewModel.isLoading && viewModel.branches.isEmpty {
-                    Spacer()
-                    ProgressView("Loading directory...")
-                        .font(LMSFont.footnote)
-                    Spacer()
-                } else if viewModel.filteredBranches.isEmpty {
-                    Spacer()
-                    VStack(spacing: LMSSpacing.md) {
-                        Image(systemName: "building.2.crop.circle.badge.xmark")
-                            .font(.system(size: 48))
-                            .foregroundStyle(LMSColors.textTertiary)
-                        Text(viewModel.searchText.isEmpty ? "No branches available" : "No branches match your search")
-                            .font(LMSFont.headline)
-                            .foregroundStyle(LMSColors.textPrimary)
-                        Text(viewModel.searchText.isEmpty ? "Branches will appear here once added." : "Check spelling or adjust your search.")
-                            .font(LMSFont.subheadline)
-                            .foregroundStyle(LMSColors.textSecondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
-                    }
-                    Spacer()
-                } else {
-                    HStack {
-                        Text("\(viewModel.filteredBranches.count) Branches")
-                            .font(LMSFont.subheadline.weight(.semibold))
-                            .foregroundStyle(LMSColors.textSecondary)
+                    VStack {
+                        Spacer()
+                        ProgressView("Loading directory...")
+                            .font(LMSFont.footnote)
                         Spacer()
                     }
-                    .padding(.horizontal, LMSSpacing.screenHorizontal)
-                    .padding(.bottom, 8)
-                    
+                } else if viewModel.filteredBranches.isEmpty {
+                    VStack {
+                        Spacer()
+                        VStack(spacing: LMSSpacing.md) {
+                            Image(systemName: "building.2.crop.circle.badge.xmark")
+                                .font(.system(size: 48))
+                                .foregroundStyle(LMSColors.textTertiary)
+                            Text(viewModel.searchText.isEmpty ? "No branches available" : "No branches match your search")
+                                .font(LMSFont.headline)
+                                .foregroundStyle(LMSColors.textPrimary)
+                            Text(viewModel.searchText.isEmpty ? "Branches will appear here once added." : "Check spelling or adjust your search.")
+                                .font(LMSFont.subheadline)
+                                .foregroundStyle(LMSColors.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 40)
+                        }
+                        Spacer()
+                    }
+                } else {
                     List {
-                        ForEach(viewModel.filteredBranches) { branch in
-                            ZStack(alignment: .leading) {
-                                AdminBranchCard(branch: branch, staffCount: viewModel.staff(for: branch.branchId).count)
-                                
-                                NavigationLink(destination: AdminBranchStaffView(branch: branch, viewModel: viewModel)) {
-                                    EmptyView()
+                        Section {
+                            ForEach(viewModel.filteredBranches) { branch in
+                                ZStack(alignment: .leading) {
+                                    AdminBranchCard(branch: branch, staffCount: viewModel.staff(for: branch.branchId).count)
+                                    
+                                    NavigationLink(destination: AdminBranchStaffView(branch: branch, viewModel: viewModel)) {
+                                        EmptyView()
+                                    }
+                                    .opacity(0)
                                 }
-                                .opacity(0)
+                                .listRowInsets(EdgeInsets())
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .padding(.horizontal, LMSSpacing.screenHorizontal)
+                                .padding(.vertical, LMSSpacing.xs)
                             }
-                            .listRowInsets(EdgeInsets())
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                            .padding(.horizontal, LMSSpacing.screenHorizontal)
-                            .padding(.vertical, LMSSpacing.xs)
+                        } header: {
+                            Text("\(viewModel.filteredBranches.count) Branches")
+                                .font(LMSFont.subheadline.weight(.semibold))
+                                .foregroundStyle(LMSColors.textSecondary)
+                                .textCase(nil)
+                                .padding(.leading, 4)
                         }
                     }
                     .listStyle(.plain)

@@ -18,9 +18,6 @@ struct AdminBranchKPIView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: LMSSpacing.lg) {
-                // Header Summary Card
-                headerCard
-                
                 // Search Bar
                 HStack {
                     Image(systemName: "magnifyingglass")
@@ -74,53 +71,6 @@ struct AdminBranchKPIView: View {
         }
     }
     
-    private var headerCard: some View {
-        VStack(spacing: 16) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Total Overview")
-                        .font(LMSFont.subheadline)
-                        .foregroundStyle(LMSColors.textSecondary)
-                    Text(kpi.value)
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
-                        .foregroundStyle(LMSColors.textPrimary)
-                }
-                
-                Spacer()
-                
-                ZStack {
-                    Circle()
-                        .fill(kpi.themeColor.opacity(0.15))
-                        .frame(width: 56, height: 56)
-                    Image(systemName: kpi.icon)
-                        .font(.title2.weight(.semibold))
-                        .foregroundStyle(kpi.themeColor)
-                }
-            }
-            
-            Divider()
-            
-            HStack {
-                HStack(spacing: 4) {
-                    Image(systemName: kpi.trend >= 0 ? "arrow.up.right" : "arrow.down.right")
-                    Text("\(abs(kpi.trend), specifier: "%.1f")%")
-                }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(kpi.trend >= 0 ? LMSColors.emerald : LMSColors.coral)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background((kpi.trend >= 0 ? LMSColors.emerald : LMSColors.coral).opacity(0.15), in: Capsule())
-                
-                Text("vs last month")
-                    .font(LMSFont.caption)
-                    .foregroundStyle(LMSColors.textSecondary)
-                
-                Spacer()
-            }
-        }
-        .padding(20)
-        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg))
-    }
     
     private func branchRow(for data: KPIBranchData) -> some View {
         HStack(spacing: 16) {
