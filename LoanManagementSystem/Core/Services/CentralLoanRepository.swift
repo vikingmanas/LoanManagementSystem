@@ -361,6 +361,18 @@ final class CentralLoanRepository: ObservableObject {
             print("[CentralLoanRepository] Failed to fetch all submitted applications: \(error.localizedDescription)")
         }
     }
+
+    func refreshDocumentsForApplication(id: UUID) async {
+        guard let index = applications.firstIndex(where: { $0.id == id }) else { return }
+
+        do {
+            let dbDocs = try await DatabaseService.shared.fetchDocuments(applicationId: id)
+            applications[index].documents = dbDocs.map { self.mapToDocumentItem(from: $0) }
+            persistState()
+        } catch {
+            print("[CentralLoanRepository] Failed to refresh documents for app \(id): \(error.localizedDescription)")
+        }
+    }
     
     private func resolveDocTypeString(category: BorrowerDocumentCategory, name: String) -> String {
         switch category {
