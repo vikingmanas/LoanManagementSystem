@@ -6,6 +6,13 @@ enum CSVExportService {
         applicants: [ManagerApplicant],
         officers: [ManagerOfficer]
     ) throws -> URL {
+        func escape(_ value: String) -> String {
+            if value.contains(",") || value.contains("\"") || value.contains("\n") {
+                return "\"\(value.replacingOccurrences(of: "\"", with: "\"\""))\""
+            }
+            return value
+        }
+
         var rows: [[String]] = [
             ["Application ID", "Borrower", "Loan Type", "Amount", "CIBIL", "Status", "Risk", "Assigned Officer", "Submitted"]
         ]
@@ -49,12 +56,5 @@ enum CSVExportService {
             .appendingPathComponent("Monthly_Branch_Report_\(safeBranchName).csv")
         try csv.write(to: url, atomically: true, encoding: .utf8)
         return url
-    }
-
-    private static func escape(_ value: String) -> String {
-        if value.contains(",") || value.contains("\"") || value.contains("\n") {
-            return "\"\(value.replacingOccurrences(of: "\"", with: "\"\""))\""
-        }
-        return value
     }
 }

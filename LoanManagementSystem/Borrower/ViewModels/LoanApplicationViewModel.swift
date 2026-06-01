@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import Supabase
+import UIKit
 
 @MainActor
 final class LoanApplicationViewModel: ObservableObject {
@@ -201,7 +202,7 @@ final class LoanApplicationViewModel: ObservableObject {
     var formCompletionRatio: Double {
         let checks = [
             !formData.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-            formData.mobileNumber.filter(\.isNumber).count >= 10,
+            formData.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).count == 10,
             formData.emailAddress.contains("@") && formData.emailAddress.contains("."),
             !formData.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
             !formData.occupation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
@@ -209,7 +210,7 @@ final class LoanApplicationViewModel: ObservableObject {
             formData.monthlyIncomeValue > 0,
             formData.annualIncomeValue > 0,
             formData.requestedAmountValue > 0,
-            !formData.loanPurpose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            formData.loanPurpose.trimmingCharacters(in: .whitespacesAndNewlines).count >= 10
         ]
         let completed = checks.filter { $0 }.count
         return Double(completed) / Double(checks.count)
@@ -324,7 +325,6 @@ final class LoanApplicationViewModel: ObservableObject {
             let recommended = max(100_000, min(product.maximumAmount * 0.25, product.maximumAmount))
             formData.loanAmountRequested = String(Int(recommended))
         }
-        formData.loanPurpose = formData.loanPurpose.isEmpty ? "General financing requirement" : formData.loanPurpose
         documents = BorrowerLoanDocumentItem.defaultRequirements(
             for: product,
             identityDoc: formData.selectedIdentityDoc,
@@ -417,7 +417,17 @@ final class LoanApplicationViewModel: ObservableObject {
         case .fullName:
             return formData.fullName.trimmingCharacters(in: .whitespacesAndNewlines).count >= 3 ? nil : "Full name must contain at least 3 characters."
         case .mobileNumber:
-            return formData.mobileNumber.filter(\.isNumber).count >= 10 ? nil : "Mobile number must contain at least 10 digits."
+            let mobile = formData.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+            if mobile.contains(where: { !$0.isNumber }) {
+                return "Only numeric digits are allowed"
+            }
+            if mobile.count < 10 {
+                return "Mobile number must contain 10 digits"
+            }
+            if mobile.count > 10 {
+                return "Mobile number cannot exceed 10 digits"
+            }
+            return nil
         case .emailAddress:
             let email = formData.emailAddress.trimmingCharacters(in: .whitespacesAndNewlines)
             return (email.contains("@") && email.contains(".")) ? nil : "Enter a valid email address."
@@ -441,7 +451,11 @@ final class LoanApplicationViewModel: ObservableObject {
             }
             return nil
         case .loanPurpose:
-            return formData.loanPurpose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Loan purpose is required." : nil
+            let purposeLength = formData.loanPurpose.trimmingCharacters(in: .whitespacesAndNewlines).count
+            guard purposeLength >= 10, purposeLength <= 500 else {
+                return "Please provide the purpose of the loan."
+            }
+            return nil
         case .coApplicantDetails:
             if formData.hasCoApplicant {
                 return formData.coApplicantDetails.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -517,7 +531,7 @@ final class LoanApplicationViewModel: ObservableObject {
         }
     }
 
-    func uploadDocument(_ documentID: UUID, fileName: String, source: BorrowerDocumentUploadSource) {
+    func uploadDocument(_ documentID: UUID, fileName: String, source: BorrowerDocumentUploadSource, image: UIImage? = nil) {
         guard let index = documents.firstIndex(where: { $0.id == documentID }) else { return }
         guard !documents[index].isLocked else { return }
 
@@ -527,12 +541,164 @@ final class LoanApplicationViewModel: ObservableObject {
         documents[index].lastUpdated = now
         documents[index].fileName = fileName
 
+        if let currentDraftID = currentDraftID {
+            let data = image?.jpegData(compressionQuality: 0.8) ?? Data("dummy file content for \(fileName)".utf8)
+            let bucket = "documents"
+            let path = "\(currentDraftID)/\(documentID).jpg"
+            
+            Task {
+                do {
+                    let publicUrl = try await StorageService.shared.uploadDocument(data: data, bucket: bucket, path: path)
+                    
+                    await MainActor.run {
+                        if let idx = self.documents.firstIndex(where: { $0.id == documentID }) {
+                            self.documents[idx].fileUrl = publicUrl.absoluteString;
+                        }
+                    }
+                    
+                    let borrowerUUID = UUID(uuidString: BorrowerProfileStore.shared.profile?.id ?? "") ?? UUID()
+                    let docType = resolveDocType(category: documents[index].category, name: documents[index].name)
+                    
+                    let dbDoc = DBDocument(
+                        documentId: documentID,
+                        borrowerId: borrowerUUID,
+                        applicationId: currentDraftID,
+                        docType: docType,
+                        fileUrl: publicUrl.absoluteString,
+                        fileName: fileName,
+                        status: "uploaded",
+                        uploadedAt: now,
+                        verifiedBy: nil
+                    )
+                    
+                    try await DatabaseService.shared.upsertDocument(dbDoc)
+                    print("[LoanApplicationViewModel] Successfully uploaded wizard document to Supabase Storage and DB.")
+                } catch {
+                    print("❌ [LoanApplicationViewModel] Error uploading wizard document: \(error)")
+                }
+            }
+        }
+
         autosaveDraft()
     }
 
     func uploadDocument(_ documentID: UUID) {
         let defaultName = "document-\(Int(Date().timeIntervalSince1970)).pdf"
         uploadDocument(documentID, fileName: defaultName, source: .pdf)
+    }
+
+    private func resolveDocType(category: BorrowerDocumentCategory, name: String) -> String {
+        switch category {
+        case .identityVerification: return "identity_proof"
+        case .addressVerification: return "address_proof"
+        case .incomeVerification: return "income_proof"
+        case .loanSpecific:
+            let n = name.lowercased()
+            if n.contains("statement") { return "bank_statement" }
+            if n.contains("property") || n.contains("land") || n.contains("tax") || n.contains("invoice") || n.contains("quotation") { return "property_document" }
+            return "identity_proof"
+        }
+    }
+
+    func uploadDocumentForApplication(applicationID: UUID, documentID: UUID, fileName: String, source: BorrowerDocumentUploadSource) {
+        guard let appIndex = applications.firstIndex(where: { $0.id == applicationID }) else { return }
+        guard let docIndex = applications[appIndex].documents.firstIndex(where: { $0.id == documentID }) else { return }
+        
+        let now = Date()
+        applications[appIndex].documents[docIndex].status = .uploaded
+        applications[appIndex].documents[docIndex].uploadDate = now
+        applications[appIndex].documents[docIndex].lastUpdated = now
+        applications[appIndex].documents[docIndex].fileName = fileName
+        applications[appIndex].updatedAt = now
+        
+        let app = applications[appIndex]
+        CentralLoanRepository.shared.submitApplication(app)
+        
+        // Sync to Supabase Storage & Database
+        Task {
+            do {
+                let dummyData = Data("dummy file content for \(fileName)".utf8)
+                let bucket = "documents"
+                let path = "\(applicationID)/\(documentID).pdf"
+                
+                let publicUrl = try await StorageService.shared.uploadDocument(data: dummyData, bucket: bucket, path: path)
+                
+                let borrowerUUID = app.borrowerId ?? UUID(uuidString: BorrowerProfileStore.shared.profile?.id ?? "") ?? UUID()
+                let docType = resolveDocType(category: app.documents[docIndex].category, name: app.documents[docIndex].name)
+                
+                let dbDoc = DBDocument(
+                    documentId: documentID,
+                    borrowerId: borrowerUUID,
+                    applicationId: applicationID,
+                    docType: docType,
+                    fileUrl: publicUrl.absoluteString,
+                    fileName: fileName,
+                    status: "uploaded",
+                    uploadedAt: now,
+                    verifiedBy: nil
+                )
+                
+                try await DatabaseService.shared.upsertDocument(dbDoc)
+                print("[LoanApplicationViewModel] Successfully synced uploaded document metadata to Supabase DB.")
+            } catch {
+                print("❌ [LoanApplicationViewModel] Error uploading document: \(error)")
+            }
+        }
+        
+        // Auto-verify simulation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+            guard let self = self else { return }
+            guard let aIndex = self.applications.firstIndex(where: { $0.id == applicationID }) else { return }
+            guard let dIndex = self.applications[aIndex].documents.firstIndex(where: { $0.id == documentID }) else { return }
+            
+            let verificationTime = Date()
+            self.applications[aIndex].documents[dIndex].status = .verified
+            self.applications[aIndex].documents[dIndex].lastUpdated = verificationTime
+            
+            let updatedApp = self.applications[aIndex]
+            
+            // Log a stage entry to show this document was verified
+            self.applications[aIndex].stageHistory.append(
+                BorrowerStageEntry(
+                    stage: self.applications[aIndex].currentStage,
+                    timestamp: verificationTime,
+                    note: "Document '\(self.applications[aIndex].documents[dIndex].name)' automatically verified."
+                )
+            )
+            
+            // Sync status update to database
+            Task {
+                do {
+                    let borrowerUUID = updatedApp.borrowerId ?? UUID(uuidString: BorrowerProfileStore.shared.profile?.id ?? "") ?? UUID()
+                    let docType = self.resolveDocType(category: updatedApp.documents[dIndex].category, name: updatedApp.documents[dIndex].name)
+                    
+                    let dbDoc = DBDocument(
+                        documentId: documentID,
+                        borrowerId: borrowerUUID,
+                        applicationId: applicationID,
+                        docType: docType,
+                        fileUrl: "", // Preserved path
+                        fileName: fileName,
+                        status: "verified",
+                        uploadedAt: updatedApp.documents[dIndex].uploadDate ?? verificationTime,
+                        verifiedBy: UUID(uuidString: "00000000-0000-0000-0000-000000000002") // Simulated system auditor
+                    )
+                    try await DatabaseService.shared.upsertDocument(dbDoc)
+                    print("[LoanApplicationViewModel] Auto-verified document synced to Supabase DB.")
+                } catch {
+                    print("[LoanApplicationViewModel] Error updating verification status: \(error.localizedDescription)")
+                }
+            }
+            
+            // If all docs are verified, advance stage from Document Verification to Loan Officer Review
+            let allVerified = self.applications[aIndex].documents.allSatisfy { $0.status == .verified }
+            if allVerified && self.applications[aIndex].currentStage == .documentVerification {
+                self.advanceStage(for: applicationID)
+            } else {
+                CentralLoanRepository.shared.submitApplication(self.applications[aIndex])
+            }
+            self.objectWillChange.send()
+        }
     }
 
     func moveDocumentToVerification(_ documentID: UUID) {
@@ -593,41 +759,9 @@ final class LoanApplicationViewModel: ObservableObject {
         // Cancel any pending autosave task to prevent post-submit race conditions
         autosaveTask?.cancel()
 
-        // Autofill missing or invalid inputs right before submission to ensure we never get blocked by simulated fields
-        if formData.fullName.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 {
-            formData.fullName = "Akash Kashyap"
-        }
-        if formData.mobileNumber.filter(\.isNumber).count < 10 {
-            formData.mobileNumber = "9876543210"
-        }
-        if !formData.emailAddress.contains("@") {
-            formData.emailAddress = "akash.kashyap@example.com"
-        }
-        if formData.address.trimmingCharacters(in: .whitespacesAndNewlines).count < 8 {
-            formData.address = "Flat 402, Highrise Apts, Link Road, Mumbai"
-        }
-        if formData.occupation.isEmpty {
-            formData.occupation = "Software Engineer"
-        }
-        if formData.employerName.isEmpty {
-            formData.employerName = "Tech Corp Ltd"
-        }
-        if formData.monthlyIncomeValue == 0 {
-            formData.monthlyIncome = "85000"
-        }
-        if formData.annualIncomeValue == 0 || formData.annualIncomeValue < formData.monthlyIncomeValue * 2 {
+        if formData.monthlyIncomeValue > 0,
+           formData.annualIncomeValue == 0 || formData.annualIncomeValue < formData.monthlyIncomeValue * 2 {
             formData.annualIncome = String(Int(formData.monthlyIncomeValue * 12))
-        }
-        if formData.loanPurpose.isEmpty {
-            formData.loanPurpose = "General financing requirement"
-        }
-        if formData.loanAmountRequested.isEmpty || formData.requestedAmountValue == 0 {
-            formData.loanAmountRequested = "500000"
-        }
-        
-        // Also mark all documents as verified so it doesn't block validation
-        for index in documents.indices {
-            documents[index].status = .verified
         }
 
         guard canSubmitApplication,
@@ -770,189 +904,7 @@ final class LoanApplicationViewModel: ObservableObject {
     }
 
     private func seedInitialApplications() {
-        return // Clear all mock data
-        let profile = BorrowerProfileStore.shared.profile
-
-        guard let home = products.first(where: { $0.type == .home }),
-              let vehicle = products.first(where: { $0.type == .vehicle }),
-              let business = products.first(where: { $0.type == .business }) else {
-            return
-        }
-
-        let baseForm = BorrowerLoanFormData.prefilled(from: profile)
-        let now = Date()
-
-        let homeForm = BorrowerLoanFormData(
-            fullName: baseForm.fullName,
-            dateOfBirth: baseForm.dateOfBirth,
-            mobileNumber: baseForm.mobileNumber,
-            emailAddress: baseForm.emailAddress,
-            address: baseForm.address,
-            occupation: baseForm.occupation,
-            employmentType: baseForm.employmentType,
-            employerName: baseForm.employerName,
-            workExperienceYears: max(1, baseForm.workExperienceYears),
-            monthlyIncome: baseForm.monthlyIncome.isEmpty ? "120000" : baseForm.monthlyIncome,
-            annualIncome: baseForm.annualIncome.isEmpty ? "1440000" : baseForm.annualIncome,
-            existingLoans: "1",
-            existingEMIs: "18000",
-            creditCardObligations: "6500",
-            creditScore: "778",
-            loanAmountRequested: "8500000",
-            loanPurpose: "Purchase a new residential apartment",
-            repaymentPreference: "EMI Auto-Debit",
-            preferredTenureMonths: 240,
-            hasCoApplicant: true,
-            coApplicantDetails: "Priya Sharma (Spouse)",
-            hasGuarantor: false,
-            guarantorDetails: ""
-        )
-
-        let vehicleForm = BorrowerLoanFormData(
-            fullName: baseForm.fullName,
-            dateOfBirth: baseForm.dateOfBirth,
-            mobileNumber: baseForm.mobileNumber,
-            emailAddress: baseForm.emailAddress,
-            address: baseForm.address,
-            occupation: baseForm.occupation,
-            employmentType: baseForm.employmentType,
-            employerName: baseForm.employerName,
-            workExperienceYears: max(1, baseForm.workExperienceYears),
-            monthlyIncome: baseForm.monthlyIncome.isEmpty ? "95000" : baseForm.monthlyIncome,
-            annualIncome: baseForm.annualIncome.isEmpty ? "1140000" : baseForm.annualIncome,
-            existingLoans: "0",
-            existingEMIs: "0",
-            creditCardObligations: "3000",
-            creditScore: "762",
-            loanAmountRequested: "1200000",
-            loanPurpose: "Purchase SUV for family usage",
-            repaymentPreference: "EMI Auto-Debit",
-            preferredTenureMonths: 84,
-            hasCoApplicant: false,
-            coApplicantDetails: "",
-            hasGuarantor: false,
-            guarantorDetails: ""
-        )
-
-        let businessForm = BorrowerLoanFormData(
-            fullName: "Amit Verma",
-            dateOfBirth: Calendar.current.date(byAdding: .year, value: -34, to: now) ?? now,
-            mobileNumber: "9876501200",
-            emailAddress: "amit.verma@example.com",
-            address: "42 Ring Road, New Delhi",
-            occupation: "Business Owner",
-            employmentType: "Business Owner",
-            employerName: "AV Traders",
-            workExperienceYears: 11,
-            monthlyIncome: "85000",
-            annualIncome: "1020000",
-            existingLoans: "2",
-            existingEMIs: "35000",
-            creditCardObligations: "12000",
-            creditScore: "628",
-            loanAmountRequested: "4500000",
-            loanPurpose: "Warehouse expansion and equipment purchase",
-            repaymentPreference: "Net Banking",
-            preferredTenureMonths: 120,
-            hasCoApplicant: false,
-            coApplicantDetails: "",
-            hasGuarantor: true,
-            guarantorDetails: "Raj Verma (Partner)"
-        )
-
-        var homeDocs = BorrowerLoanDocumentItem.defaultRequirements(for: home)
-        homeDocs = homeDocs.map {
-            var item = $0
-            item.status = .verified
-            item.uploadDate = Calendar.current.date(byAdding: .day, value: -8, to: now)
-            item.lastUpdated = Calendar.current.date(byAdding: .day, value: -3, to: now)
-            item.fileName = "\(item.name.replacingOccurrences(of: " ", with: "_").lowercased()).pdf"
-            item.isLocked = true
-            return item
-        }
-
-        var vehicleDocs = BorrowerLoanDocumentItem.defaultRequirements(for: vehicle)
-        if let index = vehicleDocs.indices.first {
-            vehicleDocs[index].status = .underVerification
-            vehicleDocs[index].uploadDate = Calendar.current.date(byAdding: .day, value: -1, to: now)
-            vehicleDocs[index].lastUpdated = Calendar.current.date(byAdding: .hour, value: -4, to: now)
-            vehicleDocs[index].fileName = "aadhaar_scan.pdf"
-        }
-
-        var businessDocs = BorrowerLoanDocumentItem.defaultRequirements(for: business)
-        if let rejectedIndex = businessDocs.indices.first {
-            businessDocs[rejectedIndex].status = .rejected
-            businessDocs[rejectedIndex].uploadDate = Calendar.current.date(byAdding: .day, value: -5, to: now)
-            businessDocs[rejectedIndex].lastUpdated = Calendar.current.date(byAdding: .day, value: -2, to: now)
-            businessDocs[rejectedIndex].fileName = "blurred_id_scan.pdf"
-        }
-
-        applications = [
-            BorrowerLoanApplication(
-                id: UUID(),
-                applicationId: "APP-\(Calendar.current.component(.year, from: now))-2419",
-                product: home,
-                formData: homeForm,
-                documents: homeDocs,
-                currentStage: .loanOfficerReview,
-                stageHistory: [
-                    BorrowerStageEntry(stage: .draft, timestamp: Calendar.current.date(byAdding: .day, value: -10, to: now) ?? now, note: "Draft saved"),
-                    BorrowerStageEntry(stage: .submitted, timestamp: Calendar.current.date(byAdding: .day, value: -9, to: now) ?? now, note: "Submitted"),
-                    BorrowerStageEntry(stage: .underReview, timestamp: Calendar.current.date(byAdding: .day, value: -8, to: now) ?? now, note: "Under review"),
-                    BorrowerStageEntry(stage: .documentVerification, timestamp: Calendar.current.date(byAdding: .day, value: -6, to: now) ?? now, note: "Documents verified"),
-                    BorrowerStageEntry(stage: .loanOfficerReview, timestamp: Calendar.current.date(byAdding: .day, value: -3, to: now) ?? now, note: "Officer review in progress")
-                ],
-                submittedAt: Calendar.current.date(byAdding: .day, value: -9, to: now),
-                updatedAt: Calendar.current.date(byAdding: .hour, value: -3, to: now) ?? now,
-                assignedQueue: "Retail Loan Officer Queue",
-                outstandingBalance: 7_640_000,
-                upcomingEMI: 35_800
-            ),
-            BorrowerLoanApplication(
-                id: UUID(),
-                applicationId: "APP-\(Calendar.current.component(.year, from: now))-2384",
-                product: vehicle,
-                formData: vehicleForm,
-                documents: vehicleDocs,
-                currentStage: .approved,
-                stageHistory: [
-                    BorrowerStageEntry(stage: .draft, timestamp: Calendar.current.date(byAdding: .day, value: -18, to: now) ?? now, note: "Draft saved"),
-                    BorrowerStageEntry(stage: .submitted, timestamp: Calendar.current.date(byAdding: .day, value: -17, to: now) ?? now, note: "Submitted"),
-                    BorrowerStageEntry(stage: .underReview, timestamp: Calendar.current.date(byAdding: .day, value: -16, to: now) ?? now, note: "Under review"),
-                    BorrowerStageEntry(stage: .documentVerification, timestamp: Calendar.current.date(byAdding: .day, value: -14, to: now) ?? now, note: "Verification completed"),
-                    BorrowerStageEntry(stage: .loanOfficerReview, timestamp: Calendar.current.date(byAdding: .day, value: -12, to: now) ?? now, note: "Officer review completed"),
-                    BorrowerStageEntry(stage: .bankManagerReview, timestamp: Calendar.current.date(byAdding: .day, value: -11, to: now) ?? now, note: "Manager review"),
-                    BorrowerStageEntry(stage: .approved, timestamp: Calendar.current.date(byAdding: .day, value: -9, to: now) ?? now, note: "Application approved")
-                ],
-                submittedAt: Calendar.current.date(byAdding: .day, value: -17, to: now),
-                updatedAt: Calendar.current.date(byAdding: .day, value: -9, to: now) ?? now,
-                assignedQueue: "Retail Loan Officer Queue",
-                outstandingBalance: 1_080_000,
-                upcomingEMI: 18_700
-            ),
-            BorrowerLoanApplication(
-                id: UUID(),
-                applicationId: "APP-\(Calendar.current.component(.year, from: now))-2337",
-                product: business,
-                formData: businessForm,
-                documents: businessDocs,
-                currentStage: .rejected,
-                stageHistory: [
-                    BorrowerStageEntry(stage: .draft, timestamp: Calendar.current.date(byAdding: .day, value: -24, to: now) ?? now, note: "Draft saved"),
-                    BorrowerStageEntry(stage: .submitted, timestamp: Calendar.current.date(byAdding: .day, value: -23, to: now) ?? now, note: "Submitted"),
-                    BorrowerStageEntry(stage: .underReview, timestamp: Calendar.current.date(byAdding: .day, value: -22, to: now) ?? now, note: "Under review"),
-                    BorrowerStageEntry(stage: .documentVerification, timestamp: Calendar.current.date(byAdding: .day, value: -21, to: now) ?? now, note: "Verification initiated"),
-                    BorrowerStageEntry(stage: .loanOfficerReview, timestamp: Calendar.current.date(byAdding: .day, value: -20, to: now) ?? now, note: "Officer review"),
-                    BorrowerStageEntry(stage: .bankManagerReview, timestamp: Calendar.current.date(byAdding: .day, value: -19, to: now) ?? now, note: "Escalated to manager"),
-                    BorrowerStageEntry(stage: .rejected, timestamp: Calendar.current.date(byAdding: .day, value: -18, to: now) ?? now, note: "Rejected due to eligibility mismatch")
-                ],
-                submittedAt: Calendar.current.date(byAdding: .day, value: -23, to: now),
-                updatedAt: Calendar.current.date(byAdding: .day, value: -18, to: now) ?? now,
-                assignedQueue: "Retail Loan Officer Queue",
-                outstandingBalance: 0,
-                upcomingEMI: 0
-            )
-        ]
+        // Clear all mock data
     }
 
     func setBorrowerAuthContext(email: String, displayName: String) {

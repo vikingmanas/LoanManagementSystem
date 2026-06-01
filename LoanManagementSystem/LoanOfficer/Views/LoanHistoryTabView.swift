@@ -145,29 +145,6 @@ struct LoanHistoryTabView: View {
     }
 }
 
-// MARK: - Native Styled Filter Chip
-private struct FilterChip: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.subheadline.weight(isSelected ? .semibold : .medium))
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    isSelected ? Color(.label) : Color(.secondarySystemFill),
-                    in: Capsule()
-                )
-                .foregroundStyle(isSelected ? Color(.systemBackground) : Color(.label))
-        }
-        .buttonStyle(.plain)
-        .fixedSize(horizontal: true, vertical: false) // Prevent truncation
-    }
-}
-
 private struct RegistryApplicationRow: View {
     let app: OfficerLoanApplication
 

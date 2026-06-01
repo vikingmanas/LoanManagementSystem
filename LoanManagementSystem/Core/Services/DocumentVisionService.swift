@@ -1,6 +1,6 @@
 import Foundation
 import UIKit
-import Vision
+@preconcurrency import Vision
 
 struct DocumentVisionResult {
     let extractedText: String
@@ -25,21 +25,20 @@ enum DocumentVisionService {
             return nil
         }
 
-        return await withCheckedContinuation { continuation in
-            let request = VNRecognizeTextRequest { request, _ in
-                let observations = request.results as? [VNRecognizedTextObservation] ?? []
-                let candidates = observations.compactMap { $0.topCandidates(1).first }
-                let text = candidates.map(\.string).joined(separator: " ")
-                let confidence = candidates.isEmpty ? 0 : candidates.map(\.confidence).reduce(0, +) / Float(candidates.count)
-                continuation.resume(returning: DocumentVisionResult(extractedText: text, confidence: confidence))
-            }
-            request.recognitionLevel = .accurate
-            request.usesLanguageCorrection = true
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = true
 
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            DispatchQueue.global(qos: .userInitiated).async {
-                try? handler.perform([request])
-            }
+        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+        do {
+            try handler.perform([request])
+            let observations = request.results ?? []
+            let candidates = observations.compactMap { $0.topCandidates(1).first }
+            let text = candidates.map(\.string).joined(separator: " ")
+            let confidence = candidates.isEmpty ? 0 : candidates.map(\.confidence).reduce(0, +) / Float(candidates.count)
+            return DocumentVisionResult(extractedText: text, confidence: confidence)
+        } catch {
+            return nil
         }
     }
 }
