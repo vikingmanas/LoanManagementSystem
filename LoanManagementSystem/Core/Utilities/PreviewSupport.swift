@@ -71,7 +71,8 @@ enum PreviewSupport {
             docType: doc.docType,
             status: doc.status,
             submittedDate: doc.uploadedDate ?? Date(),
-            applicationId: app.applicationId
+            applicationId: app.applicationId,
+            fileURL: doc.fileURL
         )
     }
 
@@ -183,4 +184,3 @@ extension View {
             .environmentObject(PreviewSupport.authManager)
     }
 }
-

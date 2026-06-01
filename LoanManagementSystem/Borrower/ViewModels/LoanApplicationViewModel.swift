@@ -331,6 +331,7 @@ final class LoanApplicationViewModel: ObservableObject {
             addressDoc: formData.selectedAddressDoc,
             incomeDoc: formData.selectedIncomeDoc
         )
+        normalizeDuplicateDocumentRequirements(autosave: false)
 
         let now = Date()
         let draft = BorrowerLoanApplication(
@@ -361,12 +362,17 @@ final class LoanApplicationViewModel: ObservableObject {
     }
 
     func resumeDraft(_ application: BorrowerLoanApplication) {
-        guard application.currentStage == .draft else { return }
-        selectedProductID = application.product.id
-        currentDraftID = application.id
-        currentStepIndex = min(max(application.draftStepIndex, 1), 10)
-        formData = application.formData
-        documents = application.documents
+        let freshestDraft = applications.first(where: { $0.id == application.id })
+            ?? CentralLoanRepository.shared.applications.first(where: { $0.id == application.id })
+            ?? application
+
+        guard freshestDraft.currentStage == .draft else { return }
+        selectedProductID = freshestDraft.product.id
+        currentDraftID = freshestDraft.id
+        currentStepIndex = min(max(freshestDraft.draftStepIndex, 1), 10)
+        formData = freshestDraft.formData
+        documents = freshestDraft.documents
+        normalizeDuplicateDocumentRequirements()
         lastDraftSavedAt = Date()
     }
 
@@ -396,6 +402,11 @@ final class LoanApplicationViewModel: ObservableObject {
                 self.performAutosave()
             } catch {}
         }
+    }
+
+    func flushAutosave() {
+        autosaveTask?.cancel()
+        performAutosave()
     }
 
     private func performAutosave() {
@@ -477,6 +488,62 @@ final class LoanApplicationViewModel: ObservableObject {
         documents.filter { $0.category == category }
     }
 
+    @discardableResult
+    func normalizeDuplicateDocumentRequirements(autosave: Bool = true) -> Bool {
+        var updated = documents
+        var keeperIndexByKey: [String: Int] = [:]
+        var indicesToRemove = Set<Int>()
+
+        for index in updated.indices {
+            let key = BorrowerLoanDocumentItem.canonicalDocumentKey(updated[index].name)
+
+            if updated[index].category != .loanSpecific {
+                keeperIndexByKey[key] = index
+                continue
+            }
+
+            if let keeperIndex = keeperIndexByKey[key] {
+                mergeDocumentState(from: updated[index], into: &updated[keeperIndex])
+                indicesToRemove.insert(index)
+            } else {
+                keeperIndexByKey[key] = index
+            }
+        }
+
+        guard !indicesToRemove.isEmpty else { return false }
+
+        documents = updated.enumerated()
+            .filter { !indicesToRemove.contains($0.offset) }
+            .map(\.element)
+
+        if autosave {
+            autosaveDraft()
+        }
+
+        return true
+    }
+
+    private func mergeDocumentState(from source: BorrowerLoanDocumentItem, into destination: inout BorrowerLoanDocumentItem) {
+        guard documentStatusRank(source.status) > documentStatusRank(destination.status) else { return }
+
+        destination.status = source.status
+        destination.fileName = source.fileName
+        destination.fileUrl = source.fileUrl
+        destination.uploadDate = source.uploadDate
+        destination.lastUpdated = source.lastUpdated
+    }
+
+    private func documentStatusRank(_ status: BorrowerDocumentStatus) -> Int {
+        switch status {
+        case .pendingUpload: return 0
+        case .rejected: return 1
+        case .requiresResubmission: return 2
+        case .uploaded: return 3
+        case .underVerification: return 4
+        case .verified: return 5
+        }
+    }
+
     func document(for category: BorrowerDocumentCategory) -> BorrowerLoanDocumentItem? {
         documents.first(where: { $0.category == category })
     }
@@ -552,7 +619,9 @@ final class LoanApplicationViewModel: ObservableObject {
                     
                     await MainActor.run {
                         if let idx = self.documents.firstIndex(where: { $0.id == documentID }) {
-                            self.documents[idx].fileUrl = publicUrl.absoluteString;
+                            self.documents[idx].fileUrl = publicUrl.absoluteString
+                            self.documents[idx].lastUpdated = Date()
+                            self.autosaveDraft()
                         }
                     }
                     
@@ -718,7 +787,52 @@ final class LoanApplicationViewModel: ObservableObject {
         guard !documents[index].isLocked else { return }
         documents[index].status = status
         documents[index].lastUpdated = Date()
+        syncDocumentStatusToDatabase(documents[index])
         autosaveDraft()
+    }
+
+    private func syncDocumentStatusToDatabase(_ document: BorrowerLoanDocumentItem) {
+        guard let currentDraftID,
+              let fileUrl = document.fileUrl,
+              let fileName = document.fileName else {
+            return
+        }
+
+        let dbStatus: String
+        switch document.status {
+        case .verified:
+            dbStatus = "verified"
+        case .rejected, .requiresResubmission:
+            dbStatus = "rejected"
+        case .uploaded, .underVerification:
+            dbStatus = "uploaded"
+        case .pendingUpload:
+            return
+        }
+
+        let borrowerUUID = UUID(uuidString: BorrowerProfileStore.shared.profile?.id ?? "") ?? UUID()
+        let docType = resolveDocType(category: document.category, name: document.name)
+        let uploadedAt = document.uploadDate ?? document.lastUpdated ?? Date()
+
+        let dbDoc = DBDocument(
+            documentId: document.id,
+            borrowerId: borrowerUUID,
+            applicationId: currentDraftID,
+            docType: docType,
+            fileUrl: fileUrl,
+            fileName: fileName,
+            status: dbStatus,
+            uploadedAt: uploadedAt,
+            verifiedBy: nil
+        )
+
+        Task {
+            do {
+                try await DatabaseService.shared.upsertDocument(dbDoc)
+            } catch {
+                print("❌ [LoanApplicationViewModel] Error syncing document status: \(error)")
+            }
+        }
     }
 
     func runBulkVerification() {

@@ -27,43 +27,11 @@ struct LoanApplicationReviewDetailView: View {
     
     var loanDocuments: [LoanDocument] {
         guard let app = app else { return [] }
-        if app.documents.isEmpty {
-            switch app.loanType {
-            case .home:
-                return [
-                    LoanDocument(id: UUID(), docType: .aadhaar, status: .uploaded),
-                    LoanDocument(id: UUID(), docType: .pan, status: .verified),
-                    LoanDocument(id: UUID(), docType: .salarySlip, status: .uploaded),
-                    LoanDocument(id: UUID(), docType: .propertyDoc, status: .pending)
-                ]
-            case .business:
-                return [
-                    LoanDocument(id: UUID(), docType: .aadhaar, status: .verified),
-                    LoanDocument(id: UUID(), docType: .pan, status: .verified),
-                    LoanDocument(id: UUID(), docType: .gstCertificate, status: .uploaded),
-                    LoanDocument(id: UUID(), docType: .incomeTaxReturn, status: .uploaded)
-                ]
-            case .education:
-                return [
-                    LoanDocument(id: UUID(), docType: .aadhaar, status: .verified),
-                    LoanDocument(id: UUID(), docType: .pan, status: .verified),
-                    LoanDocument(id: UUID(), docType: .admissionLetter, status: .uploaded),
-                    LoanDocument(id: UUID(), docType: .bankStatement, status: .uploaded)
-                ]
-            default:
-                return [
-                    LoanDocument(id: UUID(), docType: .aadhaar, status: .uploaded),
-                    LoanDocument(id: UUID(), docType: .pan, status: .verified),
-                    LoanDocument(id: UUID(), docType: .salarySlip, status: .uploaded),
-                    LoanDocument(id: UUID(), docType: .bankStatement, status: .uploaded)
-                ]
-            }
-        }
         return app.documents
     }
     
     var borrowerData: BorrowerDetails {
-        details(for: app?.borrowerName ?? "")
+        app?.borrowerDetails ?? .empty
     }
     
     var isReadyForFinalApproval: Bool {
@@ -121,7 +89,8 @@ struct LoanApplicationReviewDetailView: View {
                         docType: doc.docType,
                         status: doc.status,
                         submittedDate: Date(),
-                        applicationId: currentApp.applicationId
+                        applicationId: currentApp.applicationId,
+                        fileURL: doc.fileURL
                     ),
                     viewModel: viewModel,
                     isPresentedModally: true
@@ -702,32 +671,5 @@ struct DocumentChecklistItemRow: View {
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
-    }
-}
-
-// Mock Borrower details mapping helper
-struct BorrowerDetails {
-    let dob: String
-    let gender: String
-    let pan: String
-    let email: String
-    let phone: String
-    let employer: String
-    let monthlyIncome: String
-    let employmentStatus: String
-}
-
-func details(for borrowerName: String) -> BorrowerDetails {
-    switch borrowerName {
-    case "Priya Sharma":
-        return BorrowerDetails(dob: "12 Dec 1994", gender: "Female", pan: "BVDPS8942A", email: "priya.sharma@techcorp.in", phone: "+91 98765 43210", employer: "Tech Corp India", monthlyIncome: "₹ 1,25,000", employmentStatus: "Salaried")
-    case "Rohit Mehta":
-        return BorrowerDetails(dob: "05 Jun 1988", gender: "Male", pan: "CPYRM9140B", email: "rohit.mehta@crown.co", phone: "+91 99123 45678", employer: "Crown Industries", monthlyIncome: "₹ 95,000", employmentStatus: "Salaried")
-    case "Anita Desai":
-        return BorrowerDetails(dob: "22 Aug 1980", gender: "Female", pan: "DKLPA2938C", email: "anita@vibrantretail.com", phone: "+91 98111 22233", employer: "Vibrant Retailers", monthlyIncome: "₹ 2,40,000", employmentStatus: "Self-Employed (Business)")
-    case "Kavya Nair":
-        return BorrowerDetails(dob: "14 Feb 2003", gender: "Female", pan: "FRVPN4830D", email: "kavya.nair@student.edu", phone: "+91 97444 88899", employer: "N/A (Co-Applicant: Rajesh Nair)", monthlyIncome: "₹ 1,80,000 (Co-Applicant)", employmentStatus: "Student / Co-Applicant Salaried")
-    default:
-        return BorrowerDetails(dob: "18 Oct 1991", gender: "Male", pan: "AZYPM9876Z", email: "borrower.service@bank.com", phone: "+91 98000 11122", employer: "Global Enterprises", monthlyIncome: "₹ 1,10,000", employmentStatus: "Salaried")
     }
 }

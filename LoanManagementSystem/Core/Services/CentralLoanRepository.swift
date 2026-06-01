@@ -146,13 +146,13 @@ final class CentralLoanRepository: ObservableObject {
         let category: BorrowerDocumentCategory
         switch db.docType {
         case "identity_proof":
-            friendlyName = "Identity Proof"
+            friendlyName = inferDocumentName(from: db.fileName, fallback: "Identity Proof")
             category = .identityVerification
         case "address_proof":
-            friendlyName = "Address Proof"
+            friendlyName = inferDocumentName(from: db.fileName, fallback: "Address Proof")
             category = .addressVerification
         case "income_proof":
-            friendlyName = "Income Proof"
+            friendlyName = inferDocumentName(from: db.fileName, fallback: "Income Proof")
             category = .incomeVerification
         case "bank_statement":
             friendlyName = "Bank Statement"
@@ -186,6 +186,34 @@ final class CentralLoanRepository: ObservableObject {
         )
     }
 
+    private func inferDocumentName(from fileName: String, fallback: String) -> String {
+        let normalized = fileName.lowercased()
+
+        if normalized.contains("aadhaar") || normalized.contains("aadhar") {
+            return "Aadhaar Card"
+        }
+        if normalized.contains("pan") {
+            return "PAN Card"
+        }
+        if normalized.contains("salary") || normalized.contains("payslip") {
+            return "Salary Slips"
+        }
+        if normalized.contains("bank") && normalized.contains("statement") {
+            return "Bank Statement"
+        }
+        if normalized.contains("utility") {
+            return "Utility Bill"
+        }
+        if normalized.contains("passport") {
+            return "Passport"
+        }
+        if normalized.contains("driving") {
+            return "Driving License"
+        }
+
+        return fallback
+    }
+
     func fetchApplicationsFromSupabase(borrowerId: UUID) async {
         do {
             let products = await ProductService.shared.fetchLoanProducts()
@@ -211,10 +239,12 @@ final class CentralLoanRepository: ObservableObject {
             // Update existing applications if their values changed, or append new ones.
             for remoteApp in mappedApps {
                 if let index = self.applications.firstIndex(where: { $0.id == remoteApp.id }) {
+                    let localApp = self.applications[index]
                     var mergedApp = remoteApp
+                    mergedApp.draftStepIndex = localApp.draftStepIndex
                     // If documents list is empty on remote, fallback to local cache
                     if mergedApp.documents.isEmpty {
-                        mergedApp.documents = self.applications[index].documents
+                        mergedApp.documents = localApp.documents
                     }
                     if self.applications[index] != mergedApp {
                         self.applications[index] = mergedApp
@@ -275,9 +305,11 @@ final class CentralLoanRepository: ObservableObject {
             // Merge with existing local applications, updating any modified data.
             for remoteApp in mappedApps {
                 if let index = self.applications.firstIndex(where: { $0.id == remoteApp.id }) {
+                    let localApp = self.applications[index]
                     var mergedApp = remoteApp
+                    mergedApp.draftStepIndex = localApp.draftStepIndex
                     if mergedApp.documents.isEmpty {
-                        mergedApp.documents = self.applications[index].documents
+                        mergedApp.documents = localApp.documents
                     }
                     if self.applications[index] != mergedApp {
                         self.applications[index] = mergedApp
@@ -873,10 +905,11 @@ final class CentralLoanRepository: ObservableObject {
             assignedOfficerId: assignedOfficerId,
             documents: app.documents.map { mapToLoanDocument(from: $0) },
             notes: app.formData.loanPurpose.isEmpty ? "General financing requirement" : app.formData.loanPurpose,
-            branch: "Main Branch",
+            branch: app.assignedQueue ?? "Retail Loan Officer Queue",
             cibilScore: app.formData.creditScoreValue > 0 ? app.formData.creditScoreValue : 750,
             sentToManagerDate: sentToManagerDate,
-            managerStatus: managerStatus
+            managerStatus: managerStatus,
+            borrowerDetails: mapToBorrowerDetails(from: app.formData)
         )
     }
     
@@ -962,8 +995,27 @@ final class CentralLoanRepository: ObservableObject {
             uploadedDate: item.uploadDate,
             reviewedDate: item.lastUpdated,
             rejectionReason: nil,
-            fileURL: item.fileName
+            fileURL: item.fileUrl ?? item.fileName
         )
+    }
+
+    private func mapToBorrowerDetails(from formData: BorrowerLoanFormData) -> BorrowerDetails {
+        BorrowerDetails(
+            dob: formattedDate(formData.dateOfBirth),
+            gender: formData.gender.isEmpty ? "Not provided" : formData.gender,
+            pan: "Not provided",
+            email: formData.emailAddress.isEmpty ? "Not provided" : formData.emailAddress,
+            phone: formData.mobileNumber.isEmpty ? "Not provided" : formData.mobileNumber,
+            employer: formData.employerName.isEmpty ? "Not provided" : formData.employerName,
+            monthlyIncome: formData.monthlyIncomeValue > 0 ? CurrencyFormatter.shared.format(formData.monthlyIncomeValue) : "Not provided",
+            employmentStatus: formData.employmentType.isEmpty ? "Not provided" : formData.employmentType
+        )
+    }
+
+    private func formattedDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM yyyy"
+        return formatter.string(from: date)
     }
     
     private func mapToManagerDocument(from item: BorrowerLoanDocumentItem) -> ManagerDocument {

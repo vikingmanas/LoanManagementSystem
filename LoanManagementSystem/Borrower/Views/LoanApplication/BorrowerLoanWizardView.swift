@@ -445,6 +445,9 @@ struct BorrowerLoanWizardView: View {
         .onChange(of: currentStep) { _, newStep in
             viewModel.updateDraftStep(newStep)
         }
+        .onDisappear {
+            persistCurrentDraftImmediately()
+        }
         .alert("Unable to Submit", isPresented: Binding(
             get: { submissionErrorMessage != nil },
             set: { if !$0 { submissionErrorMessage = nil } }
@@ -720,7 +723,26 @@ struct BorrowerLoanWizardView: View {
         currentStep = min(max(viewModel.currentStepIndex, 1), 10)
 
         ensureRequiredDocumentsLoaded()
+        hydrateWizardStateFromFormData()
+    }
 
+    private func ensureRequiredDocumentsLoaded() {
+        guard viewModel.documents.isEmpty else {
+            viewModel.normalizeDuplicateDocumentRequirements()
+            return
+        }
+
+        viewModel.documents = BorrowerLoanDocumentItem.defaultRequirements(
+            for: product,
+            identityDoc: viewModel.formData.selectedIdentityDoc,
+            addressDoc: viewModel.formData.selectedAddressDoc,
+            incomeDoc: viewModel.formData.selectedIncomeDoc
+        )
+        viewModel.normalizeDuplicateDocumentRequirements(autosave: false)
+        viewModel.autosaveDraft()
+    }
+
+    private func hydrateWizardStateFromFormData() {
         if viewModel.formData.requestedAmountValue > 0 {
             desiredAmount = viewModel.formData.requestedAmountValue
         } else {
@@ -731,27 +753,41 @@ struct BorrowerLoanWizardView: View {
             loanTenureMonths = Double(viewModel.formData.preferredTenureMonths)
         }
 
-        if salariedCompany.isEmpty {
-            salariedCompany = viewModel.formData.employerName
+        if !viewModel.formData.employerName.isEmpty {
+            if viewModel.formData.employmentType == "Salaried" {
+                salariedCompany = viewModel.formData.employerName
+            } else {
+                selfEmployedBusinessName = viewModel.formData.employerName
+            }
         }
-        if salariedDesignation.isEmpty {
+        if !viewModel.formData.occupation.isEmpty {
             salariedDesignation = viewModel.formData.occupation
         }
-        if selfEmployedBusinessName.isEmpty {
-            selfEmployedBusinessName = viewModel.formData.employerName
+        if viewModel.formData.workExperienceYears > 0 {
+            selfEmployedYearsInBusiness = viewModel.formData.workExperienceYears
         }
-    }
+        if !viewModel.formData.gstNumber.isEmpty {
+            selfEmployedGSTNumber = viewModel.formData.gstNumber
+        }
+        if !viewModel.formData.existingLoans.isEmpty {
+            existingLoansCount = viewModel.formData.existingLoans
+        }
+        if !viewModel.formData.creditCardObligations.isEmpty {
+            creditCardOutstanding = viewModel.formData.creditCardObligations
+        }
 
-    private func ensureRequiredDocumentsLoaded() {
-        guard viewModel.documents.isEmpty else { return }
-
-        viewModel.documents = BorrowerLoanDocumentItem.defaultRequirements(
-            for: product,
-            identityDoc: viewModel.formData.selectedIdentityDoc,
-            addressDoc: viewModel.formData.selectedAddressDoc,
-            incomeDoc: viewModel.formData.selectedIncomeDoc
-        )
-        viewModel.autosaveDraft()
+        hasCoApplicantToggle = viewModel.formData.hasCoApplicant
+        if viewModel.formData.hasCoApplicant, !viewModel.formData.coApplicantDetails.isEmpty {
+            let details = viewModel.formData.coApplicantDetails
+            if let openParen = details.lastIndex(of: "("),
+               let closeParen = details.lastIndex(of: ")"),
+               openParen < closeParen {
+                coApplicantName = String(details[..<openParen]).trimmingCharacters(in: .whitespacesAndNewlines)
+                coApplicantRelation = String(details[details.index(after: openParen)..<closeParen])
+            } else {
+                coApplicantName = details
+            }
+        }
     }
 
     private func syncWizardFormToViewModel() {
@@ -798,6 +834,14 @@ struct BorrowerLoanWizardView: View {
             viewModel.formData.coApplicantDetails = "\(coApplicantName) (\(coApplicantRelation))"
         }
 
+    }
+
+    private func persistCurrentDraftImmediately() {
+        syncWizardFormToViewModel()
+        viewModel.updateDraftStep(currentStep)
+        viewModel.flushAutosave()
+        isAutosaving = false
+        lastAutosavedTime = Date()
     }
 
     private func triggerAutosave() {
@@ -1723,7 +1767,7 @@ private struct Step6DocumentCenterOverhaulView: View {
                 let loanSpecific = viewModel.documents(for: .loanSpecific)
                 if !loanSpecific.isEmpty {
                     documentSection(
-                        title: "Product Specific Files",
+                        title: "Loan Specific Files",
                         category: .loanSpecific
                     )
                 }

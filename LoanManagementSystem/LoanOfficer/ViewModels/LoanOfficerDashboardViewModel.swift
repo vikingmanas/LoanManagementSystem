@@ -117,7 +117,8 @@ class LoanOfficerDashboardViewModel: ObservableObject {
                     docType: doc.docType,
                     status: doc.status,
                     submittedDate: date,
-                    applicationId: app.applicationId
+                    applicationId: app.applicationId,
+                    fileURL: doc.fileURL
                 ))
             }
         }
@@ -363,4 +364,5 @@ struct DocumentQueueItem: Identifiable, Hashable {
     var status: DocumentStatus
     var submittedDate: Date
     var applicationId: String
+    var fileURL: String?
 }

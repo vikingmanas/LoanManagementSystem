@@ -836,7 +836,7 @@ struct DBLoanApplication: Codable {
             borrowerId: borrowerId,
             product: product,
             formData: formData,
-            documents: documents.isEmpty ? BorrowerLoanDocumentItem.defaultRequirements(for: product) : documents,
+            documents: documents,
             currentStage: BorrowerApplicationStage.from(databaseValue: status),
             stageHistory: stageHistory,
             submittedAt: submittedAt,
@@ -1184,7 +1184,10 @@ extension BorrowerLoanDocumentItem {
             )
         ]
 
-        let loanSpecific = product.loanSpecificDocuments.map {
+        let baseDocumentKeys = Set((identity + address + income).map { canonicalDocumentKey($0.name) })
+        let loanSpecific = product.loanSpecificDocuments.filter {
+            !baseDocumentKeys.contains(canonicalDocumentKey($0))
+        }.map {
             BorrowerLoanDocumentItem(
                 id: UUID(),
                 name: $0,
@@ -1198,6 +1201,35 @@ extension BorrowerLoanDocumentItem {
         }
 
         return identity + address + income + loanSpecific
+    }
+
+    static func canonicalDocumentKey(_ name: String) -> String {
+        let normalized = name.lowercased()
+
+        if normalized.contains("aadhaar") || normalized.contains("aadhar") {
+            return "aadhaar"
+        }
+        if normalized.contains("pan") {
+            return "pan"
+        }
+        if normalized.contains("salary") || normalized.contains("payslip") || normalized.contains("pay slip") {
+            return "salary_slip"
+        }
+        if normalized.contains("bank") && normalized.contains("statement") {
+            return "bank_statement"
+        }
+        if normalized.contains("utility") {
+            return "utility_bill"
+        }
+        if normalized.contains("passport") {
+            return "passport"
+        }
+        if normalized.contains("driving") {
+            return "driving_license"
+        }
+
+        let compact = normalized.filter { $0.isLetter || $0.isNumber }
+        return compact.hasSuffix("s") ? String(compact.dropLast()) : compact
     }
 }
 

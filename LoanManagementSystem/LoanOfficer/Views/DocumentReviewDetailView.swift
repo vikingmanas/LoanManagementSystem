@@ -21,6 +21,14 @@ struct DocumentReviewDetailView: View {
     var loanDetails: LoanApplication? {
         viewModel.applications.first { $0.applicationId == item.applicationId }
     }
+
+    private var reviewedDocument: LoanDocument? {
+        loanDetails?.documents.first { $0.id == item.id }
+    }
+
+    private var documentURLString: String? {
+        reviewedDocument?.fileURL ?? item.fileURL
+    }
     
     var body: some View {
         List {
@@ -126,7 +134,11 @@ struct DocumentReviewDetailView: View {
     private var documentPreviewSection: some View {
         Section {
             VStack(spacing: 0) {
-                DocumentGraphicMockView(docType: item.docType, borrowerName: item.borrowerName)
+                OfficerUploadedDocumentPreview(
+                    docType: item.docType,
+                    borrowerName: item.borrowerName,
+                    fileURLString: documentURLString
+                )
                     .frame(maxWidth: .infinity)
                     .frame(height: 220)
                     .background(Color(.tertiarySystemGroupedBackground))
@@ -154,6 +166,16 @@ struct DocumentReviewDetailView: View {
                 Text(item.status.rawValue)
                     .foregroundStyle(item.status.themeColor)
                     .fontWeight(.semibold)
+            }
+
+            if let documentURLString {
+                LabeledContent("File URL") {
+                    Text(documentURLString)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
             }
         } header: {
             Text("File Details")
@@ -197,6 +219,55 @@ struct DocumentReviewDetailView: View {
         if score >= 750 { return LMSColors.emerald }
         if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return LMSColors.amber }
         return LMSColors.coral
+    }
+}
+
+struct OfficerUploadedDocumentPreview: View {
+    let docType: OfficerDocumentType
+    let borrowerName: String
+    let fileURLString: String?
+
+    var body: some View {
+        if let fileURLString,
+           let url = URL(string: fileURLString),
+           url.scheme?.hasPrefix("http") == true {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .empty:
+                    ProgressView()
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFit()
+                        .padding(8)
+                case .failure:
+                    uploadedFileFallback
+                @unknown default:
+                    uploadedFileFallback
+                }
+            }
+        } else {
+            uploadedFileFallback
+        }
+    }
+
+    private var uploadedFileFallback: some View {
+        VStack(spacing: 12) {
+            Image(systemName: docType.symbol)
+                .font(.system(size: 42, weight: .semibold))
+                .foregroundStyle(docType.iconColor)
+            Text(fileURLString == nil ? "No uploaded file URL available" : "Uploaded file")
+                .font(.subheadline.weight(.semibold))
+            if let fileURLString {
+                Text(fileURLString)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .truncationMode(.middle)
+            }
+        }
+        .padding(20)
     }
 }
 

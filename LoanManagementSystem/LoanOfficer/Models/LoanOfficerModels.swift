@@ -29,6 +29,29 @@ struct OfficerLoanApplication: Identifiable, Hashable {
     var cibilScore: Int?
     var sentToManagerDate: Date?
     var managerStatus: ManagerStatus?
+    var borrowerDetails: BorrowerDetails = .empty
+}
+
+struct BorrowerDetails: Hashable {
+    let dob: String
+    let gender: String
+    let pan: String
+    let email: String
+    let phone: String
+    let employer: String
+    let monthlyIncome: String
+    let employmentStatus: String
+
+    static let empty = BorrowerDetails(
+        dob: "Not provided",
+        gender: "Not provided",
+        pan: "Not provided",
+        email: "Not provided",
+        phone: "Not provided",
+        employer: "Not provided",
+        monthlyIncome: "Not provided",
+        employmentStatus: "Not provided"
+    )
 }
 
 public enum RegistryFilter: String, CaseIterable, Identifiable {
@@ -352,4 +375,3 @@ struct HapticsManager {
         generator.notificationOccurred(type)
     }
 }
-
