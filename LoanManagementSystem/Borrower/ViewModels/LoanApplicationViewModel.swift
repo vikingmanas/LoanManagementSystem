@@ -196,7 +196,7 @@ final class LoanApplicationViewModel: ObservableObject {
     }
     
     var allDocumentsVerified: Bool {
-        !documents.isEmpty && documents.allSatisfy { $0.status == .verified }
+        !documents.isEmpty && documents.allSatisfy { $0.status == .uploaded || $0.status == .verified || $0.status == .underVerification }
     }
     
     var formCompletionRatio: Double {
@@ -233,7 +233,7 @@ final class LoanApplicationViewModel: ObservableObject {
             issues.append("Missing/invalid documents: \(missingDocumentNames.joined(separator: ", ")).")
         }
         if !allDocumentsVerified {
-            issues.append("All required documents must be verified before submission.")
+            issues.append("All required documents must be uploaded before submission.")
         }
         return Array(Set(issues)).sorted()
     }
@@ -674,23 +674,13 @@ final class LoanApplicationViewModel: ObservableObject {
         }
         
         func runBulkVerification() {
+            // Documents stay as .uploaded — actual verification is done by the Loan Officer.
+            // This method only ensures all documents have been uploaded (completeness check).
             for index in documents.indices {
                 guard !documents[index].isLocked else { continue }
-                switch documents[index].status {
-                case .uploaded, .underVerification:
-                    if documents[index].name.lowercased().contains("bank statement"),
-                       formData.monthlyIncomeValue > 0,
-                       formData.monthlyIncomeValue < 20_000 {
-                        documents[index].status = .requiresResubmission
-                    } else if documents[index].name.lowercased().contains("income tax"),
-                              formData.annualIncomeValue < 250_000 {
-                        documents[index].status = .rejected
-                    } else {
-                        documents[index].status = .verified
-                    }
+                if documents[index].status == .pendingUpload {
+                    // Mark as needing attention but don't auto-verify
                     documents[index].lastUpdated = Date()
-                default:
-                    continue
                 }
             }
             autosaveDraft()
@@ -701,6 +691,7 @@ final class LoanApplicationViewModel: ObservableObject {
         }
         
         func verifyAndShowResult() {
+            // Don't auto-verify — just mark completeness check as done
             runBulkVerification()
             verificationComplete = true
             showVerificationResult = true

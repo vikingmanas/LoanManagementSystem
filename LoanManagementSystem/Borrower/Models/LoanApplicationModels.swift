@@ -1184,18 +1184,21 @@ extension BorrowerLoanDocumentItem {
             )
         ]
 
-        let loanSpecific = product.loanSpecificDocuments.map {
-            BorrowerLoanDocumentItem(
-                id: UUID(),
-                name: $0,
-                category: .loanSpecific,
-                status: .pendingUpload,
-                fileName: nil,
-                uploadDate: nil,
-                lastUpdated: nil,
-                isLocked: false
-            )
-        }
+        let baseDocNames = Set([identityDoc, addressDoc, incomeDoc])
+        let loanSpecific = product.loanSpecificDocuments
+            .filter { !baseDocNames.contains($0) }
+            .map {
+                BorrowerLoanDocumentItem(
+                    id: UUID(),
+                    name: $0,
+                    category: .loanSpecific,
+                    status: .pendingUpload,
+                    fileName: nil,
+                    uploadDate: nil,
+                    lastUpdated: nil,
+                    isLocked: false
+                )
+            }
 
         return identity + address + income + loanSpecific
     }
