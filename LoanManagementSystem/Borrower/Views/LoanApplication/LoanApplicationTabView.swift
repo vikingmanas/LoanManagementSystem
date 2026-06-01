@@ -813,8 +813,14 @@ private struct ApplicationCard: View {
                     Text(application.displayIdentifier)
                         .font(.caption.monospaced())
                         .foregroundStyle(LMSColors.textSecondary)
-                    if let submittedAt = application.submittedAt {
-                        Text("Last Update: \(submittedAt.formattedAsDDMMMYYYY())")
+                    Text(application.isDraft ? "Step \(application.draftStepIndex) of 10" : "Last Update: \((application.submittedAt ?? application.updatedAt).formattedAsDDMMMYYYY())")
+                        .font(.system(size: 10))
+                        .foregroundStyle(LMSColors.textTertiary)
+                    if application.isDraft {
+                        Text("\(Int((Double(min(max(application.draftStepIndex, 1), 10)) / 10.0) * 100))% Complete")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(LMSColors.brandNavy)
+                        Text("Updated \(RelativeDateFormatter.shared.relativeString(from: application.updatedAt))")
                             .font(.system(size: 10))
                             .foregroundStyle(LMSColors.textTertiary)
                     }

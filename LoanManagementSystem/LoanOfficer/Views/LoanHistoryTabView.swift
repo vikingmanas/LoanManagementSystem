@@ -76,7 +76,7 @@ struct LoanHistoryTabView: View {
                 }
             }
         }
-        .sheet(item: $activeDetailApp) { app in
+        .navigationDestination(item: $activeDetailApp) { app in
             LoanApplicationReviewDetailView(applicationId: app.applicationId, viewModel: viewModel)
         }
         .alert("Call", isPresented: $showingCallAlert) {

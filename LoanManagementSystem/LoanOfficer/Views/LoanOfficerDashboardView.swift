@@ -153,7 +153,7 @@ private struct LoanOfficerTodayView: View {
         .refreshable {
             await viewModel.fetchDashboardData()
         }
-        .sheet(item: $selectedApplication) { app in
+        .navigationDestination(item: $selectedApplication) { app in
             LoanApplicationReviewDetailView(applicationId: app.applicationId, viewModel: viewModel)
         }
         .alert("Report queued", isPresented: $showingReportConfirmation) {
@@ -528,8 +528,12 @@ private struct OfficerPipelineChart: View {
     let stats: (pending: Int, underReview: Int, sentToManager: Int, completed: Int)
     @State private var animated = false
 
-    private var total: Double {
-        max(Double(stats.pending + stats.underReview + stats.sentToManager + stats.completed), 1)
+    private var totalCount: Int {
+        stats.pending + stats.underReview + stats.sentToManager + stats.completed
+    }
+
+    private var chartTotal: Double {
+        max(Double(totalCount), 1)
     }
 
     var body: some View {
@@ -540,34 +544,34 @@ private struct OfficerPipelineChart: View {
                     .frame(width: 96, height: 96)
 
                 Circle()
-                    .trim(from: 0, to: animated ? Double(stats.pending) / total : 0)
+                    .trim(from: 0, to: animated ? Double(stats.pending) / chartTotal : 0)
                     .stroke(LMSColors.amber, style: StrokeStyle(lineWidth: 11, lineCap: .round))
                     .frame(width: 96, height: 96)
                     .rotationEffect(.degrees(-90))
 
                 Circle()
-                    .trim(from: Double(stats.pending) / total, to: animated ? Double(stats.pending + stats.underReview) / total : Double(stats.pending) / total)
+                    .trim(from: Double(stats.pending) / chartTotal, to: animated ? Double(stats.pending + stats.underReview) / chartTotal : Double(stats.pending) / chartTotal)
                     .stroke(LMSColors.actionBlue, style: StrokeStyle(lineWidth: 11, lineCap: .round))
                     .frame(width: 96, height: 96)
                     .rotationEffect(.degrees(-90))
                     
                 Circle()
-                    .trim(from: Double(stats.pending + stats.underReview) / total, to: animated ? Double(stats.pending + stats.underReview + stats.sentToManager) / total : Double(stats.pending + stats.underReview) / total)
+                    .trim(from: Double(stats.pending + stats.underReview) / chartTotal, to: animated ? Double(stats.pending + stats.underReview + stats.sentToManager) / chartTotal : Double(stats.pending + stats.underReview) / chartTotal)
                     .stroke(Color.purple, style: StrokeStyle(lineWidth: 11, lineCap: .round))
                     .frame(width: 96, height: 96)
                     .rotationEffect(.degrees(-90))
 
                 Circle()
                     .trim(
-                        from: Double(stats.pending + stats.underReview + stats.sentToManager) / total,
-                        to: animated ? 1.0 : Double(stats.pending + stats.underReview + stats.sentToManager) / total
+                        from: Double(stats.pending + stats.underReview + stats.sentToManager) / chartTotal,
+                        to: animated ? Double(totalCount) / chartTotal : Double(stats.pending + stats.underReview + stats.sentToManager) / chartTotal
                     )
                     .stroke(LMSColors.emerald, style: StrokeStyle(lineWidth: 11, lineCap: .round))
                     .frame(width: 96, height: 96)
                     .rotationEffect(.degrees(-90))
 
                 VStack(spacing: 2) {
-                    Text("\(Int(total))")
+                    Text("\(totalCount)")
                         .font(.system(size: 26, weight: .bold, design: .rounded))
                         .foregroundStyle(LMSColors.textPrimary)
                     Text("Total")
@@ -1073,7 +1077,7 @@ private struct OfficerApplicationListSheet: View {
                     Button("Close") { dismiss() }
                 }
             }
-            .sheet(item: $selectedApplication) { application in
+            .navigationDestination(item: $selectedApplication) { application in
                 LoanApplicationReviewDetailView(applicationId: application.applicationId, viewModel: viewModel)
             }
         }
@@ -1118,7 +1122,7 @@ private struct OfficerPushApplicationListView: View {
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $selectedApplication) { application in
+        .navigationDestination(item: $selectedApplication) { application in
             LoanApplicationReviewDetailView(applicationId: application.applicationId, viewModel: viewModel)
         }
     }
@@ -1184,7 +1188,8 @@ struct OfficerApplicationReviewCard: View {
                         docType: doc.docType,
                         status: doc.status,
                         submittedDate: doc.uploadedDate ?? application.submittedDate,
-                        applicationId: application.applicationId
+                        applicationId: application.applicationId,
+                        fileURL: doc.fileURL
                     )
                     
                     NavigationLink {
@@ -1358,4 +1363,3 @@ struct OfficerCalculatorSheet: View {
         }
     }
 }
-

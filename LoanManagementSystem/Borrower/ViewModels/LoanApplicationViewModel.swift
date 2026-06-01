@@ -411,6 +411,57 @@ final class LoanApplicationViewModel: ObservableObject {
         CentralLoanRepository.shared.submitApplication(applications[draftIndex])
         lastDraftSavedAt = Date()
     }
+
+    func flushAutosave() {
+        autosaveTask?.cancel()
+        performAutosave()
+    }
+
+    func normalizeDuplicateDocumentRequirements(autosave: Bool = true) {
+        var normalized: [BorrowerLoanDocumentItem] = []
+        var indexesByKey: [String: Int] = [:]
+
+        for document in documents {
+            let key = BorrowerLoanDocumentItem.canonicalDocumentKey(document.name)
+            if let existingIndex = indexesByKey[key] {
+                if documentPriority(document) >= documentPriority(normalized[existingIndex]) {
+                    normalized[existingIndex] = document
+                }
+            } else {
+                indexesByKey[key] = normalized.count
+                normalized.append(document)
+            }
+        }
+
+        guard normalized != documents else { return }
+        documents = normalized
+        if autosave {
+            autosaveDraft()
+        }
+    }
+
+    private func documentPriority(_ document: BorrowerLoanDocumentItem) -> Int {
+        var priority: Int
+        switch document.status {
+        case .pendingUpload:
+            priority = 0
+        case .rejected:
+            priority = 1
+        case .requiresResubmission:
+            priority = 2
+        case .uploaded:
+            priority = 3
+        case .underVerification:
+            priority = 4
+        case .verified:
+            priority = 5
+        }
+
+        if document.fileUrl != nil || document.fileName != nil {
+            priority += 10
+        }
+        return priority
+    }
     
     func validationMessage(for field: BorrowerLoanFormField) -> String? {
         switch field {

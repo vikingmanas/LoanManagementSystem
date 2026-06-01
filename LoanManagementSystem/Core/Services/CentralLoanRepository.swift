@@ -367,6 +367,18 @@ final class CentralLoanRepository: ObservableObject {
             print("[CentralLoanRepository] Failed to fetch all submitted applications: \(error.localizedDescription)")
         }
     }
+
+    func refreshDocumentsForApplication(id: UUID) async {
+        guard let index = applications.firstIndex(where: { $0.id == id }) else { return }
+
+        do {
+            let dbDocs = try await DatabaseService.shared.fetchDocuments(applicationId: id)
+            applications[index].documents = dbDocs.map { self.mapToDocumentItem(from: $0) }
+            persistState()
+        } catch {
+            print("[CentralLoanRepository] Failed to refresh documents for app \(id): \(error.localizedDescription)")
+        }
+    }
     
     private func resolveDocTypeString(category: BorrowerDocumentCategory, name: String) -> String {
         switch category {
@@ -934,7 +946,12 @@ final class CentralLoanRepository: ObservableObject {
         case .business: type = .business
         case .vehicle: type = .vehicle
         case .education: type = .education
-        default: type = .personal
+        case .agriculture: type = .agriculture
+        case .consumer: type = .consumer
+        case .msmeStartup: type = .msmeStartup
+        case .gold: type = .gold
+        case .loanAgainstProperty: type = .loanAgainstProperty
+        case .other: type = .other
         }
         
         let officerStatus: OfficerApplicationStatus
@@ -964,6 +981,28 @@ final class CentralLoanRepository: ObservableObject {
         
         let sentToManagerDate = app.stageHistory.first(where: { $0.stage == .bankManagerReview })?.timestamp
         let assignedOfficerId = UUID(uuidString: "00000000-0000-0000-0000-000000000002") ?? app.id
+        let formData = app.formData
+        let age = Calendar.current.dateComponents([.year], from: formData.dateOfBirth, to: Date()).year
+        let borrowerDetails = BorrowerDetails(
+            dob: formData.dateOfBirth.formattedAsDDMMMYYYY(),
+            age: age.map { "\($0) years" } ?? "Not provided",
+            gender: nonEmpty(formData.gender),
+            pan: nonEmpty(formData.referenceMobile),
+            email: nonEmpty(formData.emailAddress),
+            phone: nonEmpty(formData.mobileNumber),
+            address: nonEmpty(formData.address),
+            occupation: nonEmpty(formData.occupation),
+            employer: nonEmpty(formData.employerName),
+            annualIncome: formData.annualIncomeValue > 0 ? CurrencyFormatter.shared.format(formData.annualIncomeValue) : "Not provided",
+            monthlyIncome: formData.monthlyIncomeValue > 0 ? CurrencyFormatter.shared.format(formData.monthlyIncomeValue) : "Not provided",
+            employmentStatus: nonEmpty(formData.employmentType),
+            workExperience: formData.workExperienceYears > 0 ? "\(formData.workExperienceYears) years" : "Not provided",
+            existingEMIs: formData.existingEMIsValue > 0 ? CurrencyFormatter.shared.format(formData.existingEMIsValue) : "Not provided",
+            creditCardObligations: formData.creditCardObligationsValue > 0 ? CurrencyFormatter.shared.format(formData.creditCardObligationsValue) : "Not provided",
+            loanPurpose: nonEmpty(formData.loanPurpose),
+            tenure: formData.preferredTenureMonths > 0 ? "\(formData.preferredTenureMonths) months" : "Not provided",
+            repaymentPreference: nonEmpty(formData.repaymentPreference)
+        )
         
         // Debug logging for document URL tracing
         print("[CentralLoanRepository] toOfficerApplication: app \(app.applicationId ?? app.id.uuidString) has \(app.documents.count) documents")
@@ -997,8 +1036,14 @@ final class CentralLoanRepository: ObservableObject {
             branch: "Main Branch",
             cibilScore: app.formData.creditScoreValue > 0 ? app.formData.creditScoreValue : 750,
             sentToManagerDate: sentToManagerDate,
-            managerStatus: managerStatus
+            managerStatus: managerStatus,
+            borrowerDetails: borrowerDetails
         )
+    }
+
+    private func nonEmpty(_ value: String, fallback: String = "Not provided") -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? fallback : trimmed
     }
     
     func toManagerApplicant(from app: BorrowerLoanApplication) -> ManagerApplicant? {
