@@ -8,32 +8,32 @@ final class LoanApplicationViewModel: ObservableObject {
     @Published var selectedApplicationFilter: BorrowerApplicationFilter = .all
     @Published var selectedProductCategory: LoanProductCategoryFilter = .all
     @Published var searchQuery: String = ""
-
+    
     @Published var products: [BorrowerLoanProduct] = BorrowerLoanProduct.sampleProducts
     @Published var applications: [BorrowerLoanApplication] = []
-
+    
     @Published var selectedProductID: UUID?
     @Published var currentDraftID: UUID?
     @Published var currentStepIndex: Int = 1
     @Published var formData: BorrowerLoanFormData = .empty
     @Published var documents: [BorrowerLoanDocumentItem] = []
-
+    
     @Published var selectedUploadSource: BorrowerDocumentUploadSource = .camera
     @Published var activeInfoSheet: BorrowerContextHelpItem?
-
+    
     @Published var lastDraftSavedAt: Date?
     @Published var showSubmissionAlert: Bool = false
     @Published var submissionAlertMessage: String = ""
-
+    
     @Published var verificationComplete: Bool = false
     @Published var showVerificationResult: Bool = false
-
+    
     private var cancellables = Set<AnyCancellable>()
-
+    
     let employmentTypes = ["Salaried", "Self-Employed"]
     let repaymentPreferences = ["EMI Auto-Debit", "UPI Manual Payment", "Net Banking", "Branch Payment"]
     let tenureOptions = [12, 24, 36, 48, 60, 84, 120, 180, 240, 300, 360]
-
+    
     private let contextualInfoMap: [BorrowerContextHelpTopic: BorrowerContextHelpItem] = [
         .interestRate: BorrowerContextHelpItem(
             topic: .interestRate,
@@ -85,7 +85,7 @@ final class LoanApplicationViewModel: ObservableObject {
             recommendation: "Selecting the correct type ensures the app requests the right supporting documents."
         )
     ]
-
+    
     init() {
         CentralLoanRepository.shared.$applications
             .assign(to: &$applications)
@@ -100,14 +100,14 @@ final class LoanApplicationViewModel: ObservableObject {
             self.products = fetchedProducts
         }
     }
-
+    
     var filteredProducts: [BorrowerLoanProduct] {
         var result = products
-
+        
         if let type = selectedProductCategory.productType {
             result = result.filter { $0.type == type }
         }
-
+        
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         if !query.isEmpty {
             result = result.filter { product in
@@ -115,27 +115,27 @@ final class LoanApplicationViewModel: ObservableObject {
                 product.shortDescription.localizedCaseInsensitiveContains(query)
             }
         }
-
+        
         return result
     }
-
+    
     var selectedProduct: BorrowerLoanProduct? {
         guard let selectedProductID else { return nil }
         return products.first(where: { $0.id == selectedProductID })
     }
-
+    
     var draftApplications: [BorrowerLoanApplication] {
         applications
             .filter { $0.currentStage == .draft }
             .sorted { $0.updatedAt > $1.updatedAt }
     }
-
+    
     var submittedApplications: [BorrowerLoanApplication] {
         applications
             .filter { $0.currentStage != .draft }
             .sorted { ($0.submittedAt ?? $0.updatedAt) > ($1.submittedAt ?? $1.updatedAt) }
     }
-
+    
     var filteredSubmittedApplications: [BorrowerLoanApplication] {
         switch selectedApplicationFilter {
         case .all:
@@ -156,7 +156,7 @@ final class LoanApplicationViewModel: ObservableObject {
             return submittedApplications.filter { $0.currentStage == .rejected }
         }
     }
-
+    
     var dashboardMetrics: BorrowerLoanDashboardMetrics {
         let active = applications.filter {
             !$0.isDraft && !$0.currentStage.isTerminal
@@ -175,11 +175,11 @@ final class LoanApplicationViewModel: ObservableObject {
             .map(\.upcomingEMI)
             .reduce(0, +)
         let averageProgress: Double = applications.isEmpty
-            ? 0
-            : applications
-                .map { progressValue(for: $0) }
-                .reduce(0, +) / Double(applications.count)
-
+        ? 0
+        : applications
+            .map { progressValue(for: $0) }
+            .reduce(0, +) / Double(applications.count)
+        
         return BorrowerLoanDashboardMetrics(
             activeApplications: active,
             draftApplications: draft,
@@ -190,15 +190,15 @@ final class LoanApplicationViewModel: ObservableObject {
             averageProgress: averageProgress
         )
     }
-
+    
     var verifiedDocumentsCount: Int {
         documents.filter { $0.status == .verified }.count
     }
-
+    
     var allDocumentsVerified: Bool {
         !documents.isEmpty && documents.allSatisfy { $0.status == .verified }
     }
-
+    
     var formCompletionRatio: Double {
         let checks = [
             !formData.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
@@ -215,17 +215,17 @@ final class LoanApplicationViewModel: ObservableObject {
         let completed = checks.filter { $0 }.count
         return Double(completed) / Double(checks.count)
     }
-
+    
     var formValidationErrors: [String] {
         BorrowerLoanFormField.allCases.compactMap { validationMessage(for: $0) }
     }
-
+    
     var missingDocumentNames: [String] {
         documents
             .filter { $0.status.requiresAction }
             .map(\.name)
     }
-
+    
     var blockingSubmissionIssues: [String] {
         var issues: [String] = []
         issues.append(contentsOf: formValidationErrors)
@@ -237,88 +237,88 @@ final class LoanApplicationViewModel: ObservableObject {
         }
         return Array(Set(issues)).sorted()
     }
-
+    
     var preSubmissionWarnings: [String] {
         var warnings = blockingSubmissionIssues
-
+        
         if formData.creditScoreValue > 0 && formData.creditScoreValue < CentralLoanRepository.shared.globalRules.minCibilScore {
             warnings.append("Credit score appears low. Approval chance may reduce unless liabilities are improved.")
         }
-
+        
         if let product = selectedProduct,
            formData.requestedAmountValue > product.maximumAmount {
             warnings.append("Requested amount exceeds maximum eligible amount for \(product.type.title).")
         }
-
+        
         if formData.monthlyIncomeValue > 0 {
             let liabilityRatio = (formData.existingEMIsValue + formData.creditCardObligationsValue) / formData.monthlyIncomeValue
             if liabilityRatio > (CentralLoanRepository.shared.globalRules.maxDTI / 100.0) {
                 warnings.append("Existing liability ratio is high; consider reducing obligations before submission.")
             }
         }
-
+        
         return warnings
     }
-
+    
     var canSubmitApplication: Bool {
         blockingSubmissionIssues.isEmpty
     }
-
+    
     var eligibilitySummary: [String] {
         var summary: [String] = []
-
+        
         if formData.creditScoreValue > 0 {
             let scoreBand = formData.creditScoreValue >= 750 ? "Strong" : (formData.creditScoreValue >= CentralLoanRepository.shared.globalRules.minCibilScore ? "Moderate" : "Low")
             summary.append("Credit strength: \(scoreBand) (\(formData.creditScoreValue)).")
         }
-
+        
         if formData.monthlyIncomeValue > 0 {
             let obligations = formData.existingEMIsValue + formData.creditCardObligationsValue
             let ratio = obligations / formData.monthlyIncomeValue
             summary.append("Obligation ratio: \(Int(ratio * 100))% of monthly income.")
         }
-
+        
         if let product = selectedProduct {
             let percentage = product.maximumAmount > 0
-                ? Int((formData.requestedAmountValue / product.maximumAmount) * 100)
-                : 0
+            ? Int((formData.requestedAmountValue / product.maximumAmount) * 100)
+            : 0
             summary.append("Requested amount uses \(max(0, percentage))% of product max limit.")
         }
-
+        
         if summary.isEmpty {
             summary.append("Complete form and documents to generate eligibility insights.")
         }
-
+        
         return summary
     }
-
+    
     func product(for id: UUID) -> BorrowerLoanProduct? {
         products.first(where: { $0.id == id })
     }
-
+    
     func application(for id: UUID) -> BorrowerLoanApplication? {
         applications.first(where: { $0.id == id })
     }
-
+    
     func previewDocuments(for product: BorrowerLoanProduct) -> [BorrowerLoanDocumentItem] {
         if let draft = draftApplications.first(where: { $0.product.id == product.id }) {
             return draft.documents
         }
         return BorrowerLoanDocumentItem.defaultRequirements(for: product)
     }
-
+    
     func presentInfo(for topic: BorrowerContextHelpTopic) {
         activeInfoSheet = contextualInfoMap[topic]
     }
-
+    
     func startDraft(for product: BorrowerLoanProduct) {
         selectedProductID = product.id
-
+        
         if let existingDraft = draftApplications.first(where: { $0.product.id == product.id }) {
             resumeDraft(existingDraft)
             return
         }
-
+        
         formData = BorrowerLoanFormData.prefilled(from: BorrowerProfileStore.shared.profile)
         currentStepIndex = 1
         if formData.loanAmountRequested.isEmpty {
@@ -331,7 +331,7 @@ final class LoanApplicationViewModel: ObservableObject {
             addressDoc: formData.selectedAddressDoc,
             incomeDoc: formData.selectedIncomeDoc
         )
-
+        
         let now = Date()
         let draft = BorrowerLoanApplication(
             id: UUID(),
@@ -353,13 +353,13 @@ final class LoanApplicationViewModel: ObservableObject {
             outstandingBalance: 0,
             upcomingEMI: 0
         )
-
+        
         applications.insert(draft, at: 0)
         CentralLoanRepository.shared.submitApplication(draft)
         currentDraftID = draft.id
         lastDraftSavedAt = now
     }
-
+    
     func resumeDraft(_ application: BorrowerLoanApplication) {
         guard application.currentStage == .draft else { return }
         selectedProductID = application.product.id
@@ -369,24 +369,24 @@ final class LoanApplicationViewModel: ObservableObject {
         documents = application.documents
         lastDraftSavedAt = Date()
     }
-
+    
     func updateDraftStep(_ step: Int) {
         let clampedStep = min(max(step, 1), 10)
         currentStepIndex = clampedStep
-
+        
         guard let currentDraftID,
               let draftIndex = applications.firstIndex(where: { $0.id == currentDraftID }) else {
             return
         }
-
+        
         applications[draftIndex].draftStepIndex = clampedStep
         applications[draftIndex].updatedAt = Date()
         CentralLoanRepository.shared.submitApplication(applications[draftIndex])
         lastDraftSavedAt = Date()
     }
-
+    
     private var autosaveTask: Task<Void, Never>?
-
+    
     func autosaveDraft() {
         autosaveTask?.cancel()
         autosaveTask = Task { @MainActor in
@@ -397,13 +397,13 @@ final class LoanApplicationViewModel: ObservableObject {
             } catch {}
         }
     }
-
+    
     private func performAutosave() {
         guard let currentDraftID,
               let draftIndex = applications.firstIndex(where: { $0.id == currentDraftID }) else {
             return
         }
-
+        
         applications[draftIndex].formData = formData
         applications[draftIndex].documents = documents
         applications[draftIndex].draftStepIndex = currentStepIndex
@@ -411,7 +411,7 @@ final class LoanApplicationViewModel: ObservableObject {
         CentralLoanRepository.shared.submitApplication(applications[draftIndex])
         lastDraftSavedAt = Date()
     }
-
+    
     func validationMessage(for field: BorrowerLoanFormField) -> String? {
         switch field {
         case .fullName:
@@ -442,8 +442,8 @@ final class LoanApplicationViewModel: ObservableObject {
         case .annualIncome:
             guard formData.annualIncomeValue > 0 else { return "Annual income must be greater than 0." }
             return formData.annualIncomeValue >= formData.monthlyIncomeValue * 2
-                ? nil
-                : "Annual income appears unusually low compared to monthly income."
+            ? nil
+            : "Annual income appears unusually low compared to monthly income."
         case .loanAmountRequested:
             guard formData.requestedAmountValue > 0 else { return "Requested amount must be greater than 0." }
             if let product = selectedProduct, formData.requestedAmountValue > product.maximumAmount {
@@ -459,28 +459,28 @@ final class LoanApplicationViewModel: ObservableObject {
         case .coApplicantDetails:
             if formData.hasCoApplicant {
                 return formData.coApplicantDetails.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    ? "Co-applicant details are required."
-                    : nil
+                ? "Co-applicant details are required."
+                : nil
             }
             return nil
         case .guarantorDetails:
             if formData.hasGuarantor {
                 return formData.guarantorDetails.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    ? "Guarantor details are required."
-                    : nil
+                ? "Guarantor details are required."
+                : nil
             }
             return nil
         }
     }
-
+    
     func documents(for category: BorrowerDocumentCategory) -> [BorrowerLoanDocumentItem] {
         documents.filter { $0.category == category }
     }
-
+    
     func document(for category: BorrowerDocumentCategory) -> BorrowerLoanDocumentItem? {
         documents.first(where: { $0.category == category })
     }
-
+    
     func selectedDocumentType(for category: BorrowerDocumentCategory) -> String {
         switch category {
         case .identityVerification:
@@ -493,7 +493,7 @@ final class LoanApplicationViewModel: ObservableObject {
             return ""
         }
     }
-
+    
     func availableDocumentTypes(for category: BorrowerDocumentCategory) -> [String] {
         switch category {
         case .identityVerification:
@@ -506,7 +506,7 @@ final class LoanApplicationViewModel: ObservableObject {
             return []
         }
     }
-
+    
     func changeDocumentType(for category: BorrowerDocumentCategory, to newType: String) {
         switch category {
         case .identityVerification:
@@ -530,17 +530,17 @@ final class LoanApplicationViewModel: ObservableObject {
             }
         }
     }
-
+    
     func uploadDocument(_ documentID: UUID, fileName: String, source: BorrowerDocumentUploadSource, image: UIImage? = nil) {
         guard let index = documents.firstIndex(where: { $0.id == documentID }) else { return }
         guard !documents[index].isLocked else { return }
-
+        
         let now = Date()
         documents[index].status = .uploaded
         documents[index].uploadDate = now
         documents[index].lastUpdated = now
         documents[index].fileName = fileName
-
+        
         if let currentDraftID = currentDraftID {
             let data = image?.jpegData(compressionQuality: 0.8) ?? Data("dummy file content for \(fileName)".utf8)
             let bucket = "documents"
@@ -578,15 +578,15 @@ final class LoanApplicationViewModel: ObservableObject {
                 }
             }
         }
-
+        
         autosaveDraft()
     }
-
+    
     func uploadDocument(_ documentID: UUID) {
         let defaultName = "document-\(Int(Date().timeIntervalSince1970)).pdf"
         uploadDocument(documentID, fileName: defaultName, source: .pdf)
     }
-
+    
     private func resolveDocType(category: BorrowerDocumentCategory, name: String) -> String {
         switch category {
         case .identityVerification: return "identity_proof"
@@ -599,7 +599,7 @@ final class LoanApplicationViewModel: ObservableObject {
             return "identity_proof"
         }
     }
-
+    
     func uploadDocumentForApplication(applicationID: UUID, documentID: UUID, fileName: String, source: BorrowerDocumentUploadSource) {
         guard let appIndex = applications.firstIndex(where: { $0.id == applicationID }) else { return }
         guard let docIndex = applications[appIndex].documents.firstIndex(where: { $0.id == documentID }) else { return }
@@ -623,6 +623,13 @@ final class LoanApplicationViewModel: ObservableObject {
                 
                 let publicUrl = try await StorageService.shared.uploadDocument(data: dummyData, bucket: bucket, path: path)
                 
+                await MainActor.run {
+                    if let aIdx = self.applications.firstIndex(where: { $0.id == applicationID }),
+                       let dIdx = self.applications[aIdx].documents.firstIndex(where: { $0.id == documentID }) {
+                        self.applications[aIdx].documents[dIdx].fileUrl = publicUrl.absoluteString
+                    }
+                }
+                
                 let borrowerUUID = app.borrowerId ?? UUID(uuidString: BorrowerProfileStore.shared.profile?.id ?? "") ?? UUID()
                 let docType = resolveDocType(category: app.documents[docIndex].category, name: app.documents[docIndex].name)
                 
@@ -644,323 +651,268 @@ final class LoanApplicationViewModel: ObservableObject {
                 print("❌ [LoanApplicationViewModel] Error uploading document: \(error)")
             }
         }
+    }
         
-        // Auto-verify simulation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
-            guard let self = self else { return }
-            guard let aIndex = self.applications.firstIndex(where: { $0.id == applicationID }) else { return }
-            guard let dIndex = self.applications[aIndex].documents.firstIndex(where: { $0.id == documentID }) else { return }
+        func moveDocumentToVerification(_ documentID: UUID) {
+            guard let index = documents.firstIndex(where: { $0.id == documentID }) else { return }
+            guard !documents[index].isLocked else { return }
+            guard documents[index].status == .uploaded || documents[index].status == .rejected || documents[index].status == .requiresResubmission else {
+                return
+            }
             
-            let verificationTime = Date()
-            self.applications[aIndex].documents[dIndex].status = .verified
-            self.applications[aIndex].documents[dIndex].lastUpdated = verificationTime
+            documents[index].status = .underVerification
+            documents[index].lastUpdated = Date()
+            autosaveDraft()
+        }
+        
+        func markDocument(_ documentID: UUID, status: BorrowerDocumentStatus) {
+            guard let index = documents.firstIndex(where: { $0.id == documentID }) else { return }
+            guard !documents[index].isLocked else { return }
+            documents[index].status = status
+            documents[index].lastUpdated = Date()
+            autosaveDraft()
+        }
+        
+        func runBulkVerification() {
+            for index in documents.indices {
+                guard !documents[index].isLocked else { continue }
+                switch documents[index].status {
+                case .uploaded, .underVerification:
+                    if documents[index].name.lowercased().contains("bank statement"),
+                       formData.monthlyIncomeValue > 0,
+                       formData.monthlyIncomeValue < 20_000 {
+                        documents[index].status = .requiresResubmission
+                    } else if documents[index].name.lowercased().contains("income tax"),
+                              formData.annualIncomeValue < 250_000 {
+                        documents[index].status = .rejected
+                    } else {
+                        documents[index].status = .verified
+                    }
+                    documents[index].lastUpdated = Date()
+                default:
+                    continue
+                }
+            }
+            autosaveDraft()
+        }
+        
+        var rejectedDocuments: [BorrowerLoanDocumentItem] {
+            documents.filter { $0.status == .rejected || $0.status == .requiresResubmission }
+        }
+        
+        func verifyAndShowResult() {
+            runBulkVerification()
+            verificationComplete = true
+            showVerificationResult = true
+        }
+        
+        @discardableResult
+        func submitCurrentApplication() -> BorrowerLoanApplication? {
+            // Cancel any pending autosave task to prevent post-submit race conditions
+            autosaveTask?.cancel()
             
-            let updatedApp = self.applications[aIndex]
+            if formData.monthlyIncomeValue > 0,
+               formData.annualIncomeValue == 0 || formData.annualIncomeValue < formData.monthlyIncomeValue * 2 {
+                formData.annualIncome = String(Int(formData.monthlyIncomeValue * 12))
+            }
             
-            // Log a stage entry to show this document was verified
-            self.applications[aIndex].stageHistory.append(
+            guard canSubmitApplication,
+                  let currentDraftID,
+                  let index = applications.firstIndex(where: { $0.id == currentDraftID }) else {
+                return nil
+            }
+            
+            let now = Date()
+            var draft = applications[index]
+            
+            // Copy latest user input to the draft before status transition
+            draft.formData = formData
+            draft.documents = documents
+            let generatedApplicationID = draft.applicationId ?? generateApplicationID()
+            
+            draft.applicationId = generatedApplicationID
+            draft.currentStage = .submitted
+            draft.submittedAt = now
+            draft.updatedAt = now
+            draft.assignedQueue = "Retail Loan Officer Queue"
+            draft.outstandingBalance = max(0, draft.formData.requestedAmountValue * 0.92)
+            draft.upcomingEMI = max(
+                0,
+                draft.formData.requestedAmountValue / Double(max(1, draft.formData.preferredTenureMonths))
+            )
+            draft.documents = draft.documents.map { item in
+                var updated = item
+                if updated.status == .verified {
+                    updated.isLocked = true
+                }
+                return updated
+            }
+            draft.stageHistory.append(
                 BorrowerStageEntry(
-                    stage: self.applications[aIndex].currentStage,
-                    timestamp: verificationTime,
-                    note: "Document '\(self.applications[aIndex].documents[dIndex].name)' automatically verified."
+                    stage: .submitted,
+                    timestamp: now,
+                    note: "Application submitted and assigned to Loan Officer queue."
                 )
             )
             
-            // Sync status update to database
-            Task {
-                do {
-                    let borrowerUUID = updatedApp.borrowerId ?? UUID(uuidString: BorrowerProfileStore.shared.profile?.id ?? "") ?? UUID()
-                    let docType = self.resolveDocType(category: updatedApp.documents[dIndex].category, name: updatedApp.documents[dIndex].name)
-                    
-                    let dbDoc = DBDocument(
-                        documentId: documentID,
-                        borrowerId: borrowerUUID,
-                        applicationId: applicationID,
-                        docType: docType,
-                        fileUrl: "", // Preserved path
-                        fileName: fileName,
-                        status: "verified",
-                        uploadedAt: updatedApp.documents[dIndex].uploadDate ?? verificationTime,
-                        verifiedBy: UUID(uuidString: "00000000-0000-0000-0000-000000000002") // Simulated system auditor
-                    )
-                    try await DatabaseService.shared.upsertDocument(dbDoc)
-                    print("[LoanApplicationViewModel] Auto-verified document synced to Supabase DB.")
-                } catch {
-                    print("[LoanApplicationViewModel] Error updating verification status: \(error.localizedDescription)")
-                }
+            applications[index] = draft
+            CentralLoanRepository.shared.submitApplication(draft)
+            self.currentDraftID = nil
+            self.showSubmissionAlert = true
+            self.submissionAlertMessage = "Application \(generatedApplicationID) submitted successfully on \(now.formattedAsDDMMMYYYY())."
+            
+            return draft
+        }
+        
+        func advanceStage(for applicationID: UUID) {
+            guard let index = applications.firstIndex(where: { $0.id == applicationID }) else { return }
+            var application = applications[index]
+            guard !application.isDraft else { return }
+            
+            let nextStage: BorrowerApplicationStage?
+            switch application.currentStage {
+            case .submitted:
+                nextStage = .underReview
+            case .underReview:
+                nextStage = .documentVerification
+            case .documentVerification:
+                nextStage = .loanOfficerReview
+            case .loanOfficerReview:
+                nextStage = .bankManagerReview
+            case .bankManagerReview:
+                nextStage = application.formData.creditScoreValue < CentralLoanRepository.shared.globalRules.minCibilScore ? .rejected : .approved
+            case .approved:
+                nextStage = .disbursed
+            case .draft, .rejected, .disbursed:
+                nextStage = nil
             }
             
-            // If all docs are verified, advance stage from Document Verification to Loan Officer Review
-            let allVerified = self.applications[aIndex].documents.allSatisfy { $0.status == .verified }
-            if allVerified && self.applications[aIndex].currentStage == .documentVerification {
-                self.advanceStage(for: applicationID)
-            } else {
-                CentralLoanRepository.shared.submitApplication(self.applications[aIndex])
+            guard let nextStage else { return }
+            application.currentStage = nextStage
+            application.updatedAt = Date()
+            application.stageHistory.append(
+                BorrowerStageEntry(
+                    stage: nextStage,
+                    timestamp: Date(),
+                    note: "Status moved to \(nextStage.rawValue)."
+                )
+            )
+            if nextStage == .disbursed {
+                application.upcomingEMI = max(5000, application.upcomingEMI)
             }
-            self.objectWillChange.send()
+            
+            applications[index] = application
         }
-    }
-
-    func moveDocumentToVerification(_ documentID: UUID) {
-        guard let index = documents.firstIndex(where: { $0.id == documentID }) else { return }
-        guard !documents[index].isLocked else { return }
-        guard documents[index].status == .uploaded || documents[index].status == .rejected || documents[index].status == .requiresResubmission else {
-            return
-        }
-
-        documents[index].status = .underVerification
-        documents[index].lastUpdated = Date()
-        autosaveDraft()
-    }
-
-    func markDocument(_ documentID: UUID, status: BorrowerDocumentStatus) {
-        guard let index = documents.firstIndex(where: { $0.id == documentID }) else { return }
-        guard !documents[index].isLocked else { return }
-        documents[index].status = status
-        documents[index].lastUpdated = Date()
-        autosaveDraft()
-    }
-
-    func runBulkVerification() {
-        for index in documents.indices {
-            guard !documents[index].isLocked else { continue }
-            switch documents[index].status {
-            case .uploaded, .underVerification:
-                if documents[index].name.lowercased().contains("bank statement"),
-                   formData.monthlyIncomeValue > 0,
-                   formData.monthlyIncomeValue < 20_000 {
-                    documents[index].status = .requiresResubmission
-                } else if documents[index].name.lowercased().contains("income tax"),
-                          formData.annualIncomeValue < 250_000 {
-                    documents[index].status = .rejected
-                } else {
-                    documents[index].status = .verified
-                }
-                documents[index].lastUpdated = Date()
-            default:
-                continue
-            }
-        }
-        autosaveDraft()
-    }
-
-    var rejectedDocuments: [BorrowerLoanDocumentItem] {
-        documents.filter { $0.status == .rejected || $0.status == .requiresResubmission }
-    }
-
-    func verifyAndShowResult() {
-        runBulkVerification()
-        verificationComplete = true
-        showVerificationResult = true
-    }
-
-    @discardableResult
-    func submitCurrentApplication() -> BorrowerLoanApplication? {
-        // Cancel any pending autosave task to prevent post-submit race conditions
-        autosaveTask?.cancel()
-
-        if formData.monthlyIncomeValue > 0,
-           formData.annualIncomeValue == 0 || formData.annualIncomeValue < formData.monthlyIncomeValue * 2 {
-            formData.annualIncome = String(Int(formData.monthlyIncomeValue * 12))
-        }
-
-        guard canSubmitApplication,
-              let currentDraftID,
-              let index = applications.firstIndex(where: { $0.id == currentDraftID }) else {
-            return nil
-        }
-
-        let now = Date()
-        var draft = applications[index]
         
-        // Copy latest user input to the draft before status transition
-        draft.formData = formData
-        draft.documents = documents
-        let generatedApplicationID = draft.applicationId ?? generateApplicationID()
-
-        draft.applicationId = generatedApplicationID
-        draft.currentStage = .submitted
-        draft.submittedAt = now
-        draft.updatedAt = now
-        draft.assignedQueue = "Retail Loan Officer Queue"
-        draft.outstandingBalance = max(0, draft.formData.requestedAmountValue * 0.92)
-        draft.upcomingEMI = max(
-            0,
-            draft.formData.requestedAmountValue / Double(max(1, draft.formData.preferredTenureMonths))
-        )
-        draft.documents = draft.documents.map { item in
-            var updated = item
-            if updated.status == .verified {
-                updated.isLocked = true
-            }
-            return updated
-        }
-        draft.stageHistory.append(
-            BorrowerStageEntry(
-                stage: .submitted,
-                timestamp: now,
-                note: "Application submitted and assigned to Loan Officer queue."
+        func rejectApplication(_ applicationID: UUID) {
+            guard let index = applications.firstIndex(where: { $0.id == applicationID }) else { return }
+            guard applications[index].currentStage != .disbursed else { return }
+            applications[index].currentStage = .rejected
+            applications[index].updatedAt = Date()
+            applications[index].stageHistory.append(
+                BorrowerStageEntry(
+                    stage: .rejected,
+                    timestamp: Date(),
+                    note: "Application rejected after policy review."
+                )
             )
-        )
-
-        applications[index] = draft
-        CentralLoanRepository.shared.submitApplication(draft)
-        self.currentDraftID = nil
-        self.showSubmissionAlert = true
-        self.submissionAlertMessage = "Application \(generatedApplicationID) submitted successfully on \(now.formattedAsDDMMMYYYY())."
-
-        return draft
-    }
-
-    func advanceStage(for applicationID: UUID) {
-        guard let index = applications.firstIndex(where: { $0.id == applicationID }) else { return }
-        var application = applications[index]
-        guard !application.isDraft else { return }
-
-        let nextStage: BorrowerApplicationStage?
-        switch application.currentStage {
-        case .submitted:
-            nextStage = .underReview
-        case .underReview:
-            nextStage = .documentVerification
-        case .documentVerification:
-            nextStage = .loanOfficerReview
-        case .loanOfficerReview:
-            nextStage = .bankManagerReview
-        case .bankManagerReview:
-            nextStage = application.formData.creditScoreValue < CentralLoanRepository.shared.globalRules.minCibilScore ? .rejected : .approved
-        case .approved:
-            nextStage = .disbursed
-        case .draft, .rejected, .disbursed:
-            nextStage = nil
         }
-
-        guard let nextStage else { return }
-        application.currentStage = nextStage
-        application.updatedAt = Date()
-        application.stageHistory.append(
-            BorrowerStageEntry(
-                stage: nextStage,
-                timestamp: Date(),
-                note: "Status moved to \(nextStage.rawValue)."
-            )
-        )
-        if nextStage == .disbursed {
-            application.upcomingEMI = max(5000, application.upcomingEMI)
-        }
-
-        applications[index] = application
-    }
-
-    func rejectApplication(_ applicationID: UUID) {
-        guard let index = applications.firstIndex(where: { $0.id == applicationID }) else { return }
-        guard applications[index].currentStage != .disbursed else { return }
-        applications[index].currentStage = .rejected
-        applications[index].updatedAt = Date()
-        applications[index].stageHistory.append(
-            BorrowerStageEntry(
-                stage: .rejected,
-                timestamp: Date(),
-                note: "Application rejected after policy review."
-            )
-        )
-    }
-
-    func timelineStages(for application: BorrowerLoanApplication) -> [BorrowerApplicationStage] {
-        if application.currentStage == .rejected || application.stageHistory.contains(where: { $0.stage == .rejected }) {
-            return BorrowerApplicationStage.rejectionFlow
-        }
-        return BorrowerApplicationStage.approvalFlow
-    }
-
-    func stageTimestamp(for stage: BorrowerApplicationStage, application: BorrowerLoanApplication) -> Date? {
-        application.stageHistory
-            .last(where: { $0.stage == stage })?
-            .timestamp
-    }
-
-    func progressValue(for application: BorrowerLoanApplication) -> Double {
-        let stages = timelineStages(for: application)
-        guard let stageIndex = stages.firstIndex(of: application.currentStage), !stages.isEmpty else {
-            return 0
-        }
-        return Double(stageIndex + 1) / Double(stages.count)
-    }
-
-    func refreshDashboard() async {
-        do {
-            try await Task.sleep(nanoseconds: 700_000_000)
-        } catch {}
-
-        if let candidate = applications.first(where: { !$0.isDraft && !$0.currentStage.isTerminal }) {
-            advanceStage(for: candidate.id)
-        }
-    }
-
-    private func generateApplicationID() -> String {
-        let year = Calendar.current.component(.year, from: Date())
-        let random = Int.random(in: 1000...9999)
-        return "APP-\(year)-\(random)"
-    }
-
-    private func seedInitialApplications() {
-        // Clear all mock data
-    }
-
-    func setBorrowerAuthContext(email: String, displayName: String) {
-        if formData.emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            formData.emailAddress = email
-        }
-        if formData.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            formData.fullName = displayName
-        }
-    }
-
-    func prefillEmptyFieldsFromProfile() {
-        guard let profile = BorrowerProfileStore.shared.profile else { return }
         
-        if formData.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            formData.fullName = profile.fullName
+        func timelineStages(for application: BorrowerLoanApplication) -> [BorrowerApplicationStage] {
+            if application.currentStage == .rejected || application.stageHistory.contains(where: { $0.stage == .rejected }) {
+                return BorrowerApplicationStage.rejectionFlow
+            }
+            return BorrowerApplicationStage.approvalFlow
         }
-        if formData.emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            formData.emailAddress = profile.email
+        
+        func stageTimestamp(for stage: BorrowerApplicationStage, application: BorrowerLoanApplication) -> Date? {
+            application.stageHistory
+                .last(where: { $0.stage == stage })?
+                .timestamp
         }
-        if formData.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            formData.mobileNumber = profile.mobileNumber
+        
+        func progressValue(for application: BorrowerLoanApplication) -> Double {
+            let stages = timelineStages(for: application)
+            guard let stageIndex = stages.firstIndex(of: application.currentStage), !stages.isEmpty else {
+                return 0
+            }
+            return Double(stageIndex + 1) / Double(stages.count)
         }
-        if formData.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let addr = profile.currentAddress
-            let fullAddr = [addr.streetAddress, addr.city, addr.state, addr.zipCode]
-                .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-                .joined(separator: ", ")
-            formData.address = fullAddr
+        
+        func refreshDashboard() async {
+            do {
+                try await Task.sleep(nanoseconds: 700_000_000)
+            } catch {}
+            
+            if let candidate = applications.first(where: { !$0.isDraft && !$0.currentStage.isTerminal }) {
+                advanceStage(for: candidate.id)
+            }
         }
-        if formData.employerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            formData.employerName = profile.employment.companyName
+        
+        private func generateApplicationID() -> String {
+            let year = Calendar.current.component(.year, from: Date())
+            let random = Int.random(in: 1000...9999)
+            return "APP-\(year)-\(random)"
         }
-        if formData.occupation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            formData.occupation = profile.employment.designation
+        
+        private func seedInitialApplications() {
+            // Clear all mock data
         }
-        if formData.monthlyIncome.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || formData.monthlyIncomeValue == 0 {
-            formData.monthlyIncome = String(Int(profile.income.monthlyIncome))
+        
+        func setBorrowerAuthContext(email: String, displayName: String) {
+            if formData.emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                formData.emailAddress = email
+            }
+            if formData.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                formData.fullName = displayName
+            }
         }
-        if formData.annualIncome.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || formData.annualIncomeValue == 0 {
-            formData.annualIncome = String(Int(profile.income.annualIncome))
+        
+        func prefillEmptyFieldsFromProfile() {
+            guard let profile = BorrowerProfileStore.shared.profile else { return }
+            
+            if formData.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                formData.fullName = profile.fullName
+            }
+            if formData.emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                formData.emailAddress = profile.email
+            }
+            if formData.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                formData.mobileNumber = profile.mobileNumber
+            }
+            if formData.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let addr = profile.currentAddress
+                let fullAddr = [addr.streetAddress, addr.city, addr.state, addr.zipCode]
+                    .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                    .joined(separator: ", ")
+                formData.address = fullAddr
+            }
+            if formData.employerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                formData.employerName = profile.employment.companyName
+            }
+            if formData.occupation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                formData.occupation = profile.employment.designation
+            }
+            if formData.monthlyIncome.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || formData.monthlyIncomeValue == 0 {
+                formData.monthlyIncome = String(Int(profile.income.monthlyIncome))
+            }
+            if formData.annualIncome.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || formData.annualIncomeValue == 0 {
+                formData.annualIncome = String(Int(profile.income.annualIncome))
+            }
+            if formData.employmentType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                formData.employmentType = profile.employment.employmentType
+            }
         }
-        if formData.employmentType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            formData.employmentType = profile.employment.employmentType
+        
+        func deleteDraft(applicationID: UUID) -> Bool {
+            guard let index = applications.firstIndex(where: { $0.id == applicationID }) else { return false }
+            let app = applications[index]
+            guard app.isDraft else { return false }
+            applications.remove(at: index)
+            CentralLoanRepository.shared.deleteApplication(id: applicationID)
+            if currentDraftID == applicationID {
+                currentDraftID = nil
+            }
+            return true
         }
     }
-
-    func deleteDraft(applicationID: UUID) -> Bool {
-        guard let index = applications.firstIndex(where: { $0.id == applicationID }) else { return false }
-        let app = applications[index]
-        guard app.isDraft else { return false }
-        applications.remove(at: index)
-        CentralLoanRepository.shared.deleteApplication(id: applicationID)
-        if currentDraftID == applicationID {
-            currentDraftID = nil
-        }
-        return true
-    }
-}
