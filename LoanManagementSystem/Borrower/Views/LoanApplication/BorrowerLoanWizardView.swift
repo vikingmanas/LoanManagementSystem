@@ -2357,7 +2357,11 @@ private struct Step7SignaturePhotoView: View {
                             .foregroundStyle(LMSColors.emerald)
                     } else {
                         Button("Start") {
+#if targetEnvironment(simulator)
+                            liveVerificationCompleted = true
+#else
                             onStartLiveVerification()
+#endif
                         }
                         .font(LMSFont.caption.weight(.bold))
                         .foregroundStyle(.white)

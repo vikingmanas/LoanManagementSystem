@@ -187,7 +187,7 @@ struct ContentView: View {
             
             LinearGradient(
                 colors: [
-                    Color.brandNavy,
+                    LMSColors.brandNavy,
                     Color(hex: "#2E3B84")
                 ],
                 startPoint: .topLeading,

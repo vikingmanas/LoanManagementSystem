@@ -160,7 +160,4 @@ struct LoanOfficerDetailedAnalyticsSheet: View {
     }
 }
 
-#Preview {
-    LoanOfficerDetailedAnalyticsSheet(viewModel: PreviewSupport.loanOfficerViewModel)
-}
 

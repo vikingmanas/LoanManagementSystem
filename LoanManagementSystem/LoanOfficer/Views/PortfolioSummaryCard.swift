@@ -144,8 +144,4 @@ struct PortfolioSummaryCard: View {
     }
 }
 
-#Preview {
-    PortfolioSummaryCard(viewModel: PreviewSupport.loanOfficerViewModel, onViewAllPressed: {})
-        .padding()
-}
 

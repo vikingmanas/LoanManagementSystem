@@ -76,7 +76,4 @@ struct PortfolioMetricsSheet: View {
     }
 }
 
-#Preview {
-    PortfolioMetricsSheet(viewModel: PreviewSupport.loanOfficerViewModel)
-}
 

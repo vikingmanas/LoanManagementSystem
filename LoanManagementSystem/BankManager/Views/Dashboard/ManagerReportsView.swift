@@ -622,10 +622,3 @@ struct ManagerAuditLogSheet: View {
     }
 }
 
-#Preview {
-    ScrollView {
-        ManagerReportsView(viewModel: PreviewSupport.managerViewModel)
-    }
-    .padding()
-    .previewManagerEnvironment()
-}

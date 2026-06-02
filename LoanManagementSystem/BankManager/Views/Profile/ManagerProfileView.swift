@@ -223,7 +223,3 @@ private struct ManagerStatBox: View {
     }
 }
 
-#Preview {
-    ManagerProfileView(viewModel: PreviewSupport.managerViewModel)
-        .previewManagerEnvironment()
-}

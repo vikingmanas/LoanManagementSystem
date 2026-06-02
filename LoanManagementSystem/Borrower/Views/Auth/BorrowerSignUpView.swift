@@ -1,12 +1,6 @@
 import SwiftUI
 
 struct BorrowerSignUpView: View {
-    var body: some View {
-        MockSignUpView()
-    }
-}
-
-struct MockSignUpView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
@@ -282,8 +276,3 @@ private struct TermsSection: View {
         .environmentObject(AuthManager())
 }
 
-#Preview("MockSignUpView") {
-    MockSignUpView()
-        .environmentObject(AppStateManager())
-        .environmentObject(AuthManager())
-}

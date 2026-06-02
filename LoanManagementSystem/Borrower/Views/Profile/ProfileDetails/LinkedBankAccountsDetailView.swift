@@ -215,8 +215,3 @@ struct LinkedBankAccountsDetailView: View {
     }
 }
 
-#Preview {
-    NavigationStack {
-        LinkedBankAccountsDetailView(viewModel: PreviewSupport.borrowerProfileViewModel)
-    }
-}
