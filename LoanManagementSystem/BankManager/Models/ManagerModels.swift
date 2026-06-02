@@ -102,6 +102,9 @@ struct ManagerApplicant: Identifiable, Hashable {
     var riskLevel: ManagerRiskLevel
     var assignedOfficer: String
     var assignedOfficerId: UUID
+    var isAssignedToOfficer: Bool {
+        assignedOfficerId != id
+    }
     var submissionDate: Date
     var documents: [ManagerDocument]
     var officerRemarks: String
@@ -110,6 +113,30 @@ struct ManagerApplicant: Identifiable, Hashable {
     var tenure: Int
     var interestRate: Double
     var branchName: String
+    var escalatedAt: Date?
+}
+
+struct ManagerOfficerEscalation: Identifiable, Hashable {
+    let id: UUID
+    var applicationId: String
+    var borrowerName: String
+    var loanType: ManagerLoanType
+    var requestedAmount: Double
+    var escalatedAt: Date
+    var reason: String
+    var riskLevel: ManagerRiskLevel
+}
+
+struct ManagerOfficerPerformanceSummary: Identifiable, Hashable {
+    let id = UUID()
+    var officer: ManagerOfficer
+    var escalations: [ManagerOfficerEscalation]
+    var managerRating: Double?
+    var suggestedRating: Double
+
+    var officerEscalationCount: Int {
+        escalations.count
+    }
 }
 
 
@@ -156,6 +183,7 @@ struct ManagerOfficer: Identifiable, Hashable {
     var performance: Double
     var loansProcessedYTD: Int
     var approvalRate: Double
+    var managerRating: Double?
 
     var initials: String {
         let parts = name.components(separatedBy: " ")

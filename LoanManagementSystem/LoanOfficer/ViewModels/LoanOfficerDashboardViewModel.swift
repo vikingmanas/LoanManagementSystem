@@ -270,8 +270,8 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         }
     }
 
-    private func refreshFromRepository() {
-        applications = CentralLoanRepository.shared.applications.compactMap { borrowerApplication in
+    func refreshFromRepository() {
+        applications = CentralLoanRepository.shared.applications.compactMap { borrowerApplication -> OfficerLoanApplication? in
             guard borrowerApplication.currentStage != .draft else { return nil }
             if let officerUserId = officerProfile?.id {
                 guard borrowerApplication.assignedOfficer?.userId == officerUserId else { return nil }
@@ -378,6 +378,20 @@ class LoanOfficerDashboardViewModel: ObservableObject {
                 description: "Application verified & forwarded to Manager for final approval by \(officerName)."
             )
         }
+    }
+    
+    func escalateApplication(applicationId: String, reason: String) -> Bool {
+        if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }) {
+            let app = applications[idx]
+            CentralLoanRepository.shared.escalateApplication(id: app.id, managerName: officerProfile?.fullName ?? "Loan Officer")
+            refreshFromRepository()
+            return true
+        }
+        return false
+    }
+    
+    var escalatableApplications: [OfficerLoanApplication] {
+        applications.filter { $0.status == .underReview || $0.status == .documentsPending || $0.status == .documentsRejected || $0.status == .pending }
     }
     
     func logActivity(borrowerName: String, applicationId: String, loanType: String, eventType: ActivityEventType, description: String) {

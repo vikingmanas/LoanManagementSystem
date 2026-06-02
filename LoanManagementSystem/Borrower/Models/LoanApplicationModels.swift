@@ -1016,25 +1016,6 @@ struct BorrowerStageEntry: Codable, Identifiable, Hashable {
     }
 }
 
-struct AssignedLoanOfficer: Codable, Identifiable, Hashable {
-    let officerId: UUID
-    let userId: UUID
-    var fullName: String
-    var employeeCode: String
-    var branchId: UUID
-    var branchName: String
-    var designation: String
-    var lastAssignedAt: Date?
-    var activeWorkload: Int
-
-    var id: UUID { officerId }
-
-    var initials: String {
-        let parts = fullName.split(separator: " ")
-        let letters = parts.prefix(2).compactMap(\.first).map(String.init).joined()
-        return letters.isEmpty ? "LO" : letters.uppercased()
-    }
-}
 
 struct BorrowerLoanApplication: Identifiable, Hashable {
     let id: UUID

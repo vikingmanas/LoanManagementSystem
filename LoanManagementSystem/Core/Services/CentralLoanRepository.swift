@@ -963,6 +963,72 @@ final class CentralLoanRepository: ObservableObject {
         }
     }
     
+    func escalateApplication(id: UUID, managerName: String) {
+        guard let index = applicationIndex(for: id) else { return }
+        var app = applications[index]
+        app.currentStage = .bankManagerReview
+        app.updatedAt = Date()
+        let note = "Escalated for manager review by \(managerName)"
+        app.stageHistory.append(
+            BorrowerStageEntry(
+                stage: .bankManagerReview,
+                timestamp: Date(),
+                note: note
+            )
+        )
+        applications[index] = app
+        persistState()
+        syncApplicationToSupabase(app)
+        
+        Task {
+            let adminIds = await NotificationService.shared.fetchUserIds(byRole: "super_admin")
+            await NotificationService.shared.insertNotifications(
+                userIds: adminIds,
+                title: "Application Escalated by Manager",
+                message: "Application \(app.displayIdentifier) has been escalated by \(managerName)."
+            )
+        }
+    }
+    
+    func syncOfficerDirectory() async {
+        // Implementation for syncing officer directory if needed
+    }
+    
+    func applyOfficerDirectory(from staff: [StaffMember]) {
+        // Implementation for applying officer directory from staff members if needed
+    }
+    
+    func isLoanUnassigned(_ app: OfficerLoanApplication) -> Bool {
+        return isLoanUnassigned(applicationId: app.id)
+    }
+    
+    func isLoanUnassigned(applicationId: UUID) -> Bool {
+        guard let index = applicationIndex(for: applicationId) else { return false }
+        let borrowerApp = applications[index]
+        return borrowerApp.assignedOfficerId == nil && borrowerApp.assignedOfficer == nil
+    }
+    
+    func assignOfficer(userId: UUID, name: String, toApplicationId: UUID) {
+        guard let index = applicationIndex(for: toApplicationId) else { return }
+        var app = applications[index]
+        app.assignedOfficerId = userId
+        app.assignedOfficer = AssignedLoanOfficer(
+            officerId: userId,
+            userId: userId,
+            fullName: name,
+            employeeCode: "",
+            branchId: UUID(),
+            branchName: "",
+            designation: "Loan Officer",
+            lastAssignedAt: Date(),
+            activeWorkload: 0
+        )
+        app.updatedAt = Date()
+        applications[index] = app
+        persistState()
+        syncApplicationToSupabase(app)
+    }
+    
     // MARK: - Private Helpers
 
     private func applicationIndex(for id: UUID) -> Int? {

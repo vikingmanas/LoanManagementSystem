@@ -59,8 +59,7 @@ struct LoanApplicationReviewDetailView: View {
     private func claimApplicationIfNeeded(_ app: LoanApplication) {
         guard let officerId = viewModel.officerProfile?.id,
               let officerName = viewModel.officerProfile?.fullName,
-              let source = CentralLoanRepository.shared.applications.first(where: { $0.id == app.id }),
-              CentralLoanRepository.shared.isLoanUnassigned(source) else { return }
+              CentralLoanRepository.shared.isLoanUnassigned(applicationId: app.id) else { return }
         CentralLoanRepository.shared.assignOfficer(userId: officerId, name: officerName, toApplicationId: app.id)
         viewModel.refreshFromRepository()
     }

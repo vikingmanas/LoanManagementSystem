@@ -318,7 +318,18 @@ final class ManagerDashboardViewModel: ObservableObject {
 
     func reassignApplicant(_ id: UUID, to officerId: UUID) {
         guard let officer = officers.first(where: { $0.id == officerId }) else { return }
-        CentralLoanRepository.shared.reassignApplication(id: id, newOfficerId: officerId, newOfficerName: officer.name)
+        let newOfficer = AssignedLoanOfficer(
+            officerId: officerId,
+            userId: officerId,
+            fullName: officer.name,
+            employeeCode: "EMP-\(officerId.uuidString.prefix(4))",
+            branchId: UUID(),
+            branchName: "Main Branch",
+            designation: officer.role,
+            lastAssignedAt: Date(),
+            activeWorkload: officer.activeCases
+        )
+        CentralLoanRepository.shared.reassignApplication(id: id, to: newOfficer)
         appendAudit(action: "Reassigned \(applicationLabel(for: id)) to \(officer.name)", severity: .info)
         HapticsManager.triggerImpact(style: .medium)
     }
@@ -585,10 +596,10 @@ final class ManagerDashboardViewModel: ObservableObject {
                 activeCases: assignedCases,
                 maxCapacity: 15,
                 rating: storedRating ?? autoRating,
-                managerRating: storedRating,
                 performance: processed == 0 ? 0 : min(1, approvalRate / 100),
                 loansProcessedYTD: processed,
-                approvalRate: approvalRate
+                approvalRate: approvalRate,
+                managerRating: storedRating
             )
         }
 
@@ -667,10 +678,10 @@ final class ManagerDashboardViewModel: ObservableObject {
                 activeCases: apps.filter { $0.status == .sentToManager || $0.status == .needsClarification }.count,
                 maxCapacity: 15,
                 rating: storedRating ?? autoRating,
-                managerRating: storedRating,
                 performance: apps.isEmpty ? 0 : min(1, approvalRate / 100),
-                loansProcessedYTD: apps.count,
-                approvalRate: approvalRate
+                loansProcessedYTD: completed,
+                approvalRate: approvalRate,
+                managerRating: storedRating
             )
         }
         .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }

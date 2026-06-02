@@ -179,33 +179,8 @@ struct ManagerBranchTabView: View {
                         .font(.footnote)
                         .foregroundStyle(LMSColors.textSecondary)
                 } else {
-                    ForEach(viewModel.officerPerformanceSummaries.prefix(5)) { summary in
-                        let assignedCount = viewModel.applicants(for: summary.officer).count
-                        let disbursedAmount = snapshot.officerRows.first(where: { $0.officer.id == summary.officer.id })?.disbursedAmount ?? 0
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(summary.officer.name)
-                                    .font(.subheadline.weight(.semibold))
-                                Spacer()
-                                HStack(spacing: 3) {
-                                    Image(systemName: "star.fill")
-                                        .font(.caption2)
-                                        .foregroundStyle(LMSColors.amber)
-                                    Text(String(format: "%.1f", summary.displayRating))
-                                        .font(.caption.weight(.bold))
-                                }
-                            }
-                            HStack {
-                                Text("\(assignedCount) assigned")
-                                Text("·")
-                                Text("\(summary.officerEscalationCount) escalated")
-                                Text("·")
-                                Text(CurrencyFormatter.shared.format(disbursedAmount))
-                            }
-                            .font(.caption)
-                            .foregroundStyle(LMSColors.textSecondary)
-                        }
-                        .padding(.vertical, 2)
+                    ForEach(Array(viewModel.officerPerformanceSummaries.prefix(5))) { summary in
+                        officerPerformanceRow(summary: summary)
                     }
 
                     if !viewModel.unassignedApplicants.isEmpty {
@@ -348,6 +323,36 @@ struct ManagerBranchTabView: View {
                 .foregroundStyle(LMSColors.textPrimary)
                 .multilineTextAlignment(.trailing)
         }
+    }
+
+    private func officerPerformanceRow(summary: ManagerOfficerPerformanceSummary) -> some View {
+        let assignedCount = viewModel.applicants(for: summary.officer).count
+        let disbursedAmount = snapshot.officerRows.first(where: { $0.officer.id == summary.officer.id })?.disbursedAmount ?? 0.0
+
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(summary.officer.name)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                HStack(spacing: 3) {
+                    Image(systemName: "star.fill")
+                        .font(.caption2)
+                        .foregroundStyle(LMSColors.amber)
+                    Text(String(format: "%.1f", summary.officer.rating))
+                        .font(.caption.weight(.bold))
+                }
+            }
+            HStack {
+                Text("\(assignedCount) assigned")
+                Text("·")
+                Text("\(summary.officerEscalationCount) escalated")
+                Text("·")
+                Text(CurrencyFormatter.shared.format(disbursedAmount))
+            }
+            .font(.caption)
+            .foregroundStyle(LMSColors.textSecondary)
+        }
+        .padding(.vertical, 2)
     }
 }
 
