@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ResetPasswordDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var authManager: AuthManager
     @State private var currentPassword = ""
     @State private var newPassword = ""
     @State private var confirmPassword = ""
@@ -33,11 +34,16 @@ struct ResetPasswordDetailView: View {
                 } label: {
                     HStack {
                         Spacer()
-                        Text("Change Password")
-                            .fontWeight(.semibold)
+                        if authManager.isLoading {
+                            ProgressView()
+                        } else {
+                            Text("Change Password")
+                                .fontWeight(.semibold)
+                        }
                         Spacer()
                     }
                 }
+                .disabled(authManager.isLoading)
             }
         }
         .navigationTitle("Password")
@@ -78,15 +84,25 @@ struct ResetPasswordDetailView: View {
             return
         }
         
-        alertTitle = "Success"
-        alertMessage = "Your password has been changed securely."
-        isSuccess = true
-        showAlert = true
+        Task {
+            let success = await authManager.updatePassword(newPassword: newPassword)
+            if success {
+                alertTitle = "Success"
+                alertMessage = "Your password has been changed securely."
+                isSuccess = true
+            } else {
+                alertTitle = "Error"
+                alertMessage = authManager.errorMessage ?? "Failed to change password."
+                isSuccess = false
+            }
+            showAlert = true
+        }
     }
 }
 
 #Preview {
     NavigationStack {
         ResetPasswordDetailView()
+            .environmentObject(AuthManager())
     }
 }

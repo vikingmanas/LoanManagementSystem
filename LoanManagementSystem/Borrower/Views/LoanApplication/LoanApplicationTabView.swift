@@ -1,93 +1,99 @@
 import SwiftUI
+import UIKit
 
-// MARK: - Navigation Route
-private enum LoanApplicationRoute: Hashable {
-    case overview(BorrowerLoanProduct)
-    case combinedApplication
-    case verificationResult
-    case tracking(BorrowerLoanApplication)
-}
+// MARK: - Loans Tab (Marketplace only — no applications here)
 
-// MARK: - Main Tab View
 struct LoanApplicationTabView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     @EnvironmentObject private var authManager: AuthManager
+    @EnvironmentObject private var tabRouter: BorrowerTabRouter
     @State private var navigationPath = NavigationPath()
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            VStack(spacing: 0) {
-                Picker("Loan Hub", selection: $viewModel.selectedSegment) {
-                    ForEach(LoanHubSegment.allCases) { segment in
-                        Text(segment.rawValue).tag(segment)
-                    }
+            LoansMarketplaceView(
+                viewModel: viewModel,
+                onProductDetail: { product in
+                    navigationPath.append(LoanApplicationRoute.productDetail(product))
+                },
+                onApply: { product in
+                    viewModel.startDraft(for: product)
+                    navigationPath.append(LoanApplicationRoute.applicationWizard(product))
+                },
+                onSchemeDetail: { scheme in
+                    navigationPath.append(LoanApplicationRoute.governmentSchemeDetail(scheme))
                 }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-
-                Group {
-                    switch viewModel.selectedSegment {
-                    case .discover:
-                        ScrollView {
-                            LoanDiscoveryContent(viewModel: viewModel) { product in
-                                viewModel.startDraft(for: product)
-                                navigationPath.append(LoanApplicationRoute.overview(product))
-                            }
-                            .padding(.bottom, 32)
-                        }
-                    case .applications:
-                        BorrowerApplicationsContent(viewModel: viewModel) { application in
-                            navigationPath.append(LoanApplicationRoute.tracking(application))
-                        }
-                    }
-                }
-            }
+            )
             .background(LMSColors.background)
             .navigationTitle("Loans")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        ForEach(LoanProductCategoryFilter.allCases) { category in
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    viewModel.selectedProductCategory = category
+                                }
+                            } label: {
+                                if viewModel.selectedProductCategory == category {
+                                    Label(category.rawValue, systemImage: "checkmark")
+                                } else {
+                                    Text(category.rawValue)
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.system(size: 18, weight: .semibold))
+                    }
+                    .accessibilityLabel("Filter loan products")
+                }
+            }
             .task(id: authManager.userEmail) {
                 viewModel.setBorrowerAuthContext(
-                    email: authManager.userEmail,
+                    email: authManager.userEmail ?? "",
                     displayName: authManager.userDisplayName
                 )
             }
             .navigationDestination(for: LoanApplicationRoute.self) { route in
                 switch route {
-                case .overview(let product):
+                case .productDetail(let product):
+                    LoanProductDetailView(product: product) {
+                        viewModel.startDraft(for: product)
+                        navigationPath.append(LoanApplicationRoute.applicationWizard(product))
+                    }
+                case .applicationWizard(let product):
                     BorrowerLoanWizardView(viewModel: viewModel, product: product) {
                         navigationPath = NavigationPath()
-                        viewModel.selectedSegment = .applications
+                        tabRouter.select(.applications)
                     }
                     .environmentObject(authManager)
-                case .combinedApplication:
-                    EmptyView()
-                case .verificationResult:
-                    EmptyView()
                 case .tracking(let application):
                     LoanApplicationTrackingScreen(
                         viewModel: viewModel,
                         application: application,
                         onResume: {
                             viewModel.resumeDraft(application)
-                            navigationPath.append(LoanApplicationRoute.overview(application.product))
+                            navigationPath.append(LoanApplicationRoute.applicationWizard(application.product))
                         },
                         onDelete: {
-                            if viewModel.deleteDraft(applicationID: application.id) {
-                                if !navigationPath.isEmpty {
-                                    navigationPath.removeLast()
-                                }
+                            if viewModel.deleteDraft(applicationID: application.id),
+                               !navigationPath.isEmpty {
+                                navigationPath.removeLast()
                             }
                         }
                     )
+                case .governmentSchemeDetail(let scheme):
+                    GovernmentSchemeDetailView(scheme: scheme)
                 }
             }
         }
     }
 }
 
-// MARK: - Discovery Content
+// MARK: - Legacy discovery (kept for reference — superseded by LoansMarketplaceView)
+#if false
 private struct LoanDiscoveryContent: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let onSelectProduct: (BorrowerLoanProduct) -> Void
@@ -668,7 +674,6 @@ private struct DocumentVerificationResultView: View {
         .sheet(item: $activeUploadDocument) { document in
             DocumentUploadSheet(documentName: document.name) { fileName, source in
                 viewModel.uploadDocument(document.id, fileName: fileName, source: source)
-                viewModel.runBulkVerification()
             }
         }
     }
@@ -808,8 +813,14 @@ private struct ApplicationCard: View {
                     Text(application.displayIdentifier)
                         .font(.caption.monospaced())
                         .foregroundStyle(LMSColors.textSecondary)
-                    if let submittedAt = application.submittedAt {
-                        Text("Last Update: \(submittedAt.formattedAsDDMMMYYYY())")
+                    Text(application.isDraft ? "Step \(application.draftStepIndex) of 10" : "Last Update: \((application.submittedAt ?? application.updatedAt).formattedAsDDMMMYYYY())")
+                        .font(.system(size: 10))
+                        .foregroundStyle(LMSColors.textTertiary)
+                    if application.isDraft {
+                        Text("\(Int((Double(min(max(application.draftStepIndex, 1), 10)) / 10.0) * 100))% Complete")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(LMSColors.brandNavy)
+                        Text("Updated \(RelativeDateFormatter.shared.relativeString(from: application.updatedAt))")
                             .font(.system(size: 10))
                             .foregroundStyle(LMSColors.textTertiary)
                     }
@@ -831,100 +842,129 @@ private struct ApplicationCard: View {
     }
 }
 
+#endif
+
+// MARK: - Product Category Extension
+extension BorrowerLoanProductType {
+    var tintColor: Color {
+        switch self {
+        case .personal: return LMSColors.actionBlue
+        case .home: return LMSColors.brandNavy
+        case .education: return LMSColors.teal
+        case .business: return Color(hex: "7C3AED")
+        case .vehicle: return LMSColors.emeraldDark
+        case .agriculture: return Color(hex: "16A34A")
+        case .consumer: return Color(hex: "6366F1")
+        case .msmeStartup: return Color(hex: "4F46E5")
+        case .gold: return LMSColors.amber
+        case .loanAgainstProperty: return LMSColors.brandNavyLight
+        case .other: return LMSColors.textSecondary
+        }
+    }
+}
+
 // MARK: - Loan Application Tracking Screen
-private struct LoanApplicationTrackingScreen: View {
+struct LoanApplicationTrackingScreen: View {
+    @EnvironmentObject private var authManager: AuthManager
     @ObservedObject var viewModel: LoanApplicationViewModel
     let application: BorrowerLoanApplication
     let onResume: () -> Void
     let onDelete: () -> Void
 
     @State private var showDeleteConfirmation = false
+    @State private var resubmittingDocument: BorrowerLoanDocumentItem? = nil
+    @State private var showOfficerChat = false
+    @State private var showSanctionShareSheet = false
+    @State private var sanctionShareItems: [Any] = []
+    @State private var exportError: String?
+
+    private var currentApplication: BorrowerLoanApplication {
+        viewModel.applications.first(where: { $0.id == application.id }) ?? application
+    }
 
     var body: some View {
-        List {
-            Section {
-                VStack(spacing: 20) {
-                    HStack(spacing: 20) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(LMSColors.brandNavy.opacity(0.1))
-                                .frame(width: 64, height: 64)
-                            Image(systemName: application.product.type.iconName)
-                                .font(.title)
-                                .foregroundStyle(LMSColors.brandNavy)
+        let app = currentApplication
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: LMSSpacing.sectionGap) {
+                
+                // Task 1: Premium Header Card
+                TrackingHeaderCard(
+                    application: app,
+                    progress: viewModel.progressValue(for: app),
+                    onResume: onResume
+                )
+                
+                // Task 2: Interactive Timeline Stepper
+                TimelineStepperCard(
+                    viewModel: viewModel,
+                    application: app
+                )
+
+                AssignedLoanOfficerCard(
+                    application: app,
+                    branches: viewModel.branchesList.map(\.name),
+                    onMessage: { showOfficerChat = true },
+                    onBranchSelected: { branch in
+                        var updated = app
+                        updated.formData.preferredBranch = branch
+                        updated.updatedAt = Date()
+                        CentralLoanRepository.shared.updateApplication(updated)
+                        Task {
+                            await CentralLoanRepository.shared.assignOfficerIfNeeded(applicationId: updated.id)
                         }
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(application.product.type.title)
-                                .font(.headline)
-                            Text(application.displayIdentifier)
-                                .font(.caption.monospaced())
-                                .foregroundStyle(LMSColors.textSecondary)
-                        }
-                        Spacer()
                     }
-                    
-                    VStack(spacing: 8) {
-                        ProgressView(value: viewModel.progressValue(for: application))
-                            .tint(application.currentStage.tintColor)
-                        
+                )
+                
+                // Task 4: Documents Section with Resubmission Action Sheet
+                SubmittedDocumentsCard(
+                    application: app,
+                    onResubmit: { doc in
+                        resubmittingDocument = doc
+                    }
+                )
+
+                if app.currentStage == .approved || app.currentStage == .disbursed {
+                    SanctionLetterCard {
+                        exportSanctionLetter(for: app)
+                    }
+                }
+                
+                // Task 3: Collapsible Info Sections
+                SubmittedInfoViewerCard(
+                    application: app
+                )
+                
+                // If it is draft, show standard delete option in page body too
+                if app.isDraft {
+                    Button(role: .destructive, action: {
+                        showDeleteConfirmation = true
+                    }) {
                         HStack {
-                            Text("Current Progress")
-                                .font(.caption2)
-                                .foregroundStyle(LMSColors.textSecondary)
-                            Spacer()
-                            Text(application.currentStage.rawValue)
-                                .font(.caption2.bold())
-                                .foregroundStyle(application.currentStage.tintColor)
+                            Image(systemName: "trash")
+                            Text("Delete Draft")
                         }
+                        .font(LMSFont.footnote.weight(.semibold))
+                        .foregroundColor(LMSColors.coral)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity)
+                        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.md))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: LMSRadius.md)
+                                .stroke(LMSColors.coral.opacity(0.2), lineWidth: 0.5)
+                        )
                     }
-
-                    if application.isDraft {
-                        Button(action: onResume) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "arrow.uturn.forward.circle.fill")
-                                Text("Resume Application")
-                                    .fontWeight(.semibold)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(LMSColors.brandNavy)
-                    }
+                    .buttonStyle(LMSPressableStyle())
+                    .padding(.top, 4)
                 }
-                .padding(.vertical, 12)
             }
-
-            Section {
-                let stages = viewModel.timelineStages(for: application)
-                ForEach(stages, id: \.self) { stage in
-                    TimelineRow(
-                        stage: stage.rawValue,
-                        date: viewModel.stageTimestamp(for: stage, application: application),
-                        isCompleted: isStageCompleted(stage, current: application.currentStage, stages: stages),
-                        isCurrent: stage == application.currentStage
-                    )
-                }
-            } header: {
-                Text("Status Timeline")
-            }
-
-            Section {
-                LabeledContent("Requested Amount", value: application.formData.requestedAmountValue.formattedAsINR())
-                LabeledContent("Tenure", value: "\(application.formData.preferredTenureMonths) months")
-                if let submittedAt = application.submittedAt {
-                    LabeledContent("Submitted On", value: submittedAt.formattedAsDDMMMYYYY())
-                }
-                LabeledContent("Processing Fee", value: application.product.processingFees)
-            } header: {
-                Text("Application Details")
-            }
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
+            .padding(.vertical, LMSSpacing.screenHorizontal)
         }
-        .navigationTitle("Tracking")
+        .background(LMSColors.background)
+        .navigationTitle("Application Tracking")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if application.isDraft {
+            if app.isDraft {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(role: .destructive) {
                         showDeleteConfirmation = true
@@ -932,54 +972,998 @@ private struct LoanApplicationTrackingScreen: View {
                         Image(systemName: "trash")
                     }
                 }
+            } else {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showOfficerChat = true
+                    } label: {
+                        Image(systemName: "message.fill")
+                    }
+                    .disabled(app.assignedOfficer == nil && app.assignedOfficerId == nil)
+                    .accessibilityLabel("Message loan officer")
+                }
             }
         }
         .alert("Delete Draft?", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive, action: onDelete)
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This will permanently delete draft \(application.displayIdentifier). You cannot undo this action.")
+            Text("This will permanently delete draft \(app.displayIdentifier). You cannot undo this action.")
+        }
+        .sheet(item: $resubmittingDocument) { document in
+            DocumentUploadSheet(documentName: document.name) { fileName, source in
+                viewModel.uploadDocumentForApplication(
+                    applicationID: app.id,
+                    documentID: document.id,
+                    fileName: fileName,
+                    source: source
+                )
+            }
+        }
+        .sheet(isPresented: $showOfficerChat) {
+            NavigationStack {
+                BorrowerOfficerChatView(
+                    application: app,
+                    borrowerUserId: UUID(uuidString: authManager.currentUser?.uid ?? "") ?? app.borrowerId
+                )
+            }
+        }
+        .sheet(isPresented: $showSanctionShareSheet) {
+            BorrowerActivityShareSheet(activityItems: sanctionShareItems)
+        }
+        .task(id: app.assignedOfficerId) {
+            guard !app.isDraft,
+                  app.assignedOfficer == nil,
+                  app.assignedOfficerId == nil,
+                  !app.formData.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return
+            }
+            await CentralLoanRepository.shared.assignOfficerIfNeeded(applicationId: app.id)
+        }
+        .alert("Export Failed", isPresented: Binding(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(exportError ?? "")
         }
     }
 
+    private func exportSanctionLetter(for application: BorrowerLoanApplication) {
+        do {
+            let url = try SanctionLetterService.generateSanctionLetter(for: application)
+            HapticsManager.triggerImpact(style: .medium)
+            sanctionShareItems = [url]
+            showSanctionShareSheet = true
+        } catch {
+            exportError = error.localizedDescription
+        }
+    }
+}
+
+private struct SanctionLetterCard: View {
+    let onExport: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 14) {
+            Image(systemName: "doc.richtext.fill")
+                .font(.title2)
+                .foregroundStyle(LMSColors.emerald)
+                .frame(width: 42, height: 42)
+                .background(LMSColors.emerald.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Sanction Letter")
+                    .font(LMSFont.subheadline.weight(.bold))
+                    .foregroundStyle(LMSColors.textPrimary)
+                Text("Download the approved loan sanction document.")
+                    .font(LMSFont.caption)
+                    .foregroundStyle(LMSColors.textSecondary)
+            }
+
+            Spacer()
+
+            Button(action: onExport) {
+                Label("Export", systemImage: "square.and.arrow.up")
+                    .font(LMSFont.caption.weight(.bold))
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(LMSColors.brandNavy)
+        }
+        .padding(16)
+        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(LMSColors.emerald.opacity(0.18), lineWidth: 0.8)
+        )
+    }
+}
+
+private struct BorrowerActivityShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+private struct BorrowerOfficerChatView: View {
+    let application: BorrowerLoanApplication
+    let borrowerUserId: UUID?
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var messages: [DBMessage] = []
+    @State private var messageText = ""
+    @State private var officerUserId: UUID?
+    @State private var isLoading = true
+    @State private var isSending = false
+    @State private var errorMessage: String?
+
+    private var canSend: Bool {
+        borrowerUserId != nil &&
+        officerUserId != nil &&
+        !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !isSending
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if isLoading {
+                ProgressView("Loading conversation...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let errorMessage {
+                ContentUnavailableView(
+                    "Messaging unavailable",
+                    systemImage: "message.badge",
+                    description: Text(errorMessage)
+                )
+            } else {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 10) {
+                            ForEach(messages) { message in
+                                BorrowerMessageBubble(
+                                    message: message,
+                                    isOutgoing: message.senderId == borrowerUserId
+                                )
+                                .id(message.id)
+                            }
+
+                            if messages.isEmpty {
+                                ContentUnavailableView(
+                                    "No messages yet",
+                                    systemImage: "message",
+                                    description: Text("Start a conversation about documents, verification, or application status.")
+                                )
+                                .padding(.top, 80)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                    }
+                    .onChange(of: messages.count) { _, _ in
+                        if let last = messages.last?.id {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo(last, anchor: .bottom)
+                            }
+                        }
+                    }
+                }
+
+                Divider()
+
+                HStack(alignment: .bottom, spacing: 10) {
+                    TextField("Message loan officer", text: $messageText, axis: .vertical)
+                        .lineLimit(1...4)
+                        .textFieldStyle(.plain)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                    Button {
+                        Task { await sendMessage() }
+                    } label: {
+                        Image(systemName: "paperplane.fill")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 42, height: 42)
+                            .background(canSend ? LMSColors.brandNavy : LMSColors.textTertiary, in: Circle())
+                    }
+                    .disabled(!canSend)
+                    .accessibilityLabel("Send message")
+                }
+                .padding(12)
+                .background(LMSColors.background)
+            }
+        }
+        .background(LMSColors.background)
+        .navigationTitle(application.displayIdentifier)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Done") { dismiss() }
+            }
+        }
+        .task {
+            await loadConversation()
+        }
+    }
+
+    private func loadConversation() async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            guard borrowerUserId != nil else {
+                errorMessage = "Sign in again to message your loan officer."
+                isLoading = false
+                return
+            }
+
+            if let assignedUserId = application.assignedOfficer?.userId {
+                officerUserId = assignedUserId
+            } else if application.assignedOfficerId != nil {
+                officerUserId = try await DatabaseService.shared.fetchAssignedLoanOfficerUserId(applicationId: application.id)
+            } else {
+                officerUserId = nil
+            }
+            guard officerUserId != nil else {
+                errorMessage = "No loan officer is available for this application yet."
+                isLoading = false
+                return
+            }
+
+            messages = try await DatabaseService.shared.fetchMessagesForApplication(applicationId: application.id)
+            isLoading = false
+        } catch {
+            errorMessage = "Could not load messages. Please try again."
+            isLoading = false
+        }
+    }
+
+    private func sendMessage() async {
+        guard let borrowerUserId,
+              let officerUserId else { return }
+
+        let trimmed = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        isSending = true
+        messageText = ""
+        let outgoing = DBMessage(
+            messageId: UUID(),
+            senderId: borrowerUserId,
+            receiverId: officerUserId,
+            applicationId: application.id,
+            content: trimmed,
+            sentAt: Date(),
+            isRead: false
+        )
+        messages.append(outgoing)
+
+        do {
+            try await DatabaseService.shared.sendMessage(outgoing)
+            try? await DatabaseService.shared.createNotification(
+                userId: officerUserId,
+                title: "New borrower message",
+                message: "\(application.displayIdentifier): \(trimmed)"
+            )
+        } catch {
+            messages.removeAll { $0.id == outgoing.id }
+            messageText = trimmed
+            errorMessage = "Message could not be sent. Please try again."
+        }
+        isSending = false
+    }
+}
+
+private struct BorrowerMessageBubble: View {
+    let message: DBMessage
+    let isOutgoing: Bool
+
+    var body: some View {
+        HStack {
+            if isOutgoing { Spacer(minLength: 44) }
+
+            VStack(alignment: isOutgoing ? .trailing : .leading, spacing: 4) {
+                Text(message.content)
+                    .font(LMSFont.callout)
+                    .foregroundStyle(isOutgoing ? .white : LMSColors.textPrimary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(
+                        isOutgoing ? LMSColors.brandNavy : LMSColors.surface,
+                        in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    )
+
+                Text(message.sentAt, style: .time)
+                    .font(LMSFont.caption2)
+                    .foregroundStyle(LMSColors.textTertiary)
+                    .padding(.horizontal, 4)
+            }
+
+            if !isOutgoing { Spacer(minLength: 44) }
+        }
+    }
+}
+
+// MARK: - Task 1 Components (Header Card)
+private struct TrackingHeaderCard: View {
+    let application: BorrowerLoanApplication
+    let progress: Double
+    let onResume: () -> Void
+    
+    var body: some View {
+        VStack(spacing: LMSSpacing.lg) {
+            // Icon + Title + Status
+            HStack(alignment: .top, spacing: LMSSpacing.md) {
+                // Category Tinted Icon
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(application.product.type.tintColor.opacity(0.12))
+                        .frame(width: 52, height: 52)
+                    
+                    Image(systemName: application.product.type.iconName)
+                        .font(.title3)
+                        .foregroundStyle(application.product.type.tintColor)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: LMSSpacing.sm) {
+                        Text(application.product.type.title)
+                            .font(LMSFont.headline.weight(.bold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                        
+                        Text(application.product.type.rawValue.uppercased())
+                            .font(.system(size: 8, weight: .black))
+                            .foregroundStyle(LMSColors.brandNavy)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(LMSColors.brandNavy.opacity(0.08), in: Capsule())
+                    }
+                    
+                    Text(application.displayIdentifier)
+                        .font(LMSFont.caption.monospaced())
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+                
+                Spacer()
+                
+                // Large Badge Status
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(application.currentStage.tintColor)
+                        .frame(width: 6, height: 6)
+                    
+                    Text(application.currentStage.rawValue)
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(application.currentStage.tintColor)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(application.currentStage.tintColor.opacity(0.12), in: Capsule())
+            }
+            
+            Divider().background(LMSColors.separatorLight)
+            
+            // Grid details
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("SUBMITTED ON")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(LMSColors.textTertiary)
+                    
+                    Text(application.submittedAt?.formattedAsDDMMMYYYY() ?? "Draft")
+                        .font(LMSFont.footnote.weight(.semibold))
+                        .foregroundStyle(LMSColors.textPrimary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("CURRENT QUEUE")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(LMSColors.textTertiary)
+                    
+                    Text(application.assignedQueue ?? "Unsubmitted Draft")
+                        .font(LMSFont.footnote.weight(.semibold))
+                        .foregroundStyle(LMSColors.textPrimary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            
+            VStack(alignment: .leading, spacing: LMSSpacing.xs) {
+                HStack {
+                    Text("Processing Progress")
+                        .font(LMSFont.caption2)
+                        .foregroundStyle(LMSColors.textSecondary)
+                    Spacer()
+                    Text("\(Int(progress * 100))%")
+                        .font(LMSFont.caption2.weight(.bold))
+                        .foregroundStyle(LMSColors.brandNavy)
+                }
+                
+                ProgressView(value: progress)
+                    .tint(LMSColors.brandNavy)
+            }
+            .padding(.top, 4)
+            
+            if application.isDraft {
+                Button(action: onResume) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.uturn.forward.circle.fill")
+                        Text("Resume Application")
+                            .fontWeight(.semibold)
+                    }
+                    .font(LMSFont.button)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(LMSColors.brandNavy, in: RoundedRectangle(cornerRadius: LMSRadius.md))
+                    .foregroundStyle(.white)
+                }
+                .buttonStyle(LMSPressableStyle())
+                .padding(.top, 4)
+            }
+        }
+        .padding(LMSSpacing.lg)
+        .lmsCardElevated()
+    }
+}
+
+private struct AssignedLoanOfficerCard: View {
+    let application: BorrowerLoanApplication
+    let branches: [String]
+    let onMessage: () -> Void
+    let onBranchSelected: (String) -> Void
+
+    private var hasBranch: Bool {
+        !application.formData.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Assigned Loan Officer")
+                    .font(LMSFont.title3)
+                    .foregroundStyle(LMSColors.textPrimary)
+
+                Spacer()
+
+                Image(systemName: application.assignedOfficer == nil ? "person.badge.clock" : "person.badge.shield.checkmark")
+                    .font(.title3)
+                    .foregroundStyle(application.assignedOfficer == nil ? LMSColors.amber : LMSColors.emerald)
+            }
+
+            if let officer = application.assignedOfficer {
+                HStack(alignment: .center, spacing: 14) {
+                    Text(officer.initials)
+                        .font(LMSFont.headline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 52, height: 52)
+                        .background(LMSColors.brandNavy, in: Circle())
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(officer.fullName)
+                            .font(LMSFont.headline.weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+
+                        Text(officer.designation.isEmpty ? "Loan Officer" : officer.designation)
+                            .font(LMSFont.subheadline)
+                            .foregroundStyle(LMSColors.textSecondary)
+
+                        Text(officer.branchName)
+                            .font(LMSFont.footnote)
+                            .foregroundStyle(LMSColors.textTertiary)
+                    }
+
+                    Spacer()
+                }
+
+                Divider().background(LMSColors.separatorLight)
+
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Employee ID")
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.textTertiary)
+                        Text(officer.employeeCode)
+                            .font(LMSFont.callout.weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                    }
+
+                    Spacer()
+
+                    Button(action: onMessage) {
+                        Label("Message Officer", systemImage: "message.fill")
+                            .font(LMSFont.footnote.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(LMSColors.brandNavy, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 12) {
+                        ProgressView()
+                            .controlSize(.small)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(hasBranch ? "Assignment in progress" : "Select application branch")
+                                .font(LMSFont.callout.weight(.semibold))
+                                .foregroundStyle(LMSColors.textPrimary)
+                            Text(hasBranch ? "We are selecting the least-loaded active officer from your branch." : "Choose the branch that should handle this application.")
+                                .font(LMSFont.footnote)
+                                .foregroundStyle(LMSColors.textSecondary)
+                        }
+                    }
+
+                    if hasBranch {
+                        Label(application.formData.preferredBranch, systemImage: "building.columns.fill")
+                            .font(LMSFont.footnote.weight(.semibold))
+                            .foregroundStyle(LMSColors.brandNavy)
+                    } else {
+                        Menu {
+                            let actualBranches = branches.isEmpty ? BorrowerLoanFormData.branchOptions : branches
+                            ForEach(actualBranches, id: \.self) { branch in
+                                Button(branch) {
+                                    onBranchSelected(branch)
+                                }
+                            }
+                        } label: {
+                            HStack {
+                                Label("Choose Branch", systemImage: "building.columns.fill")
+                                Spacer()
+                                Image(systemName: "chevron.down")
+                                    .font(LMSFont.caption.weight(.bold))
+                            }
+                            .font(LMSFont.callout.weight(.semibold))
+                            .foregroundStyle(LMSColors.brandNavy)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .background(LMSColors.brandNavy.opacity(0.08), in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        .padding(LMSSpacing.lg)
+        .lmsCard()
+    }
+}
+
+// MARK: - Task 2 Components (Timeline Stepper)
+private struct TimelineStepperCard: View {
+    @ObservedObject var viewModel: LoanApplicationViewModel
+    let application: BorrowerLoanApplication
+    
+    @State private var expandedStages: Set<BorrowerApplicationStage> = []
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: LMSSpacing.lg) {
+            Text("Status Timeline")
+                .font(LMSFont.title3)
+                .foregroundStyle(LMSColors.textPrimary)
+            
+            let stages = viewModel.timelineStages(for: application)
+            
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(0..<stages.count, id: \.self) { index in
+                    let stage = stages[index]
+                    let isCompleted = isStageCompleted(stage, current: application.currentStage, stages: stages)
+                    let isCurrent = stage == application.currentStage
+                    let date = viewModel.stageTimestamp(for: stage, application: application)
+                    
+                    TimelineStepRow(
+                        stage: stage,
+                        date: date,
+                        isCompleted: isCompleted,
+                        isCurrent: isCurrent,
+                        isLast: index == stages.count - 1,
+                        isExpanded: expandedStages.contains(stage),
+                        note: application.stageHistory.last(where: { $0.stage == stage })?.note,
+                        onTap: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                if expandedStages.contains(stage) {
+                                    expandedStages.remove(stage)
+                                } else {
+                                    expandedStages.insert(stage)
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+        }
+        .padding(LMSSpacing.lg)
+        .lmsCard()
+    }
+    
     private func isStageCompleted(_ stage: BorrowerApplicationStage, current: BorrowerApplicationStage, stages: [BorrowerApplicationStage]) -> Bool {
+        if current == .disbursed { return true }
         guard let currentIndex = stages.firstIndex(of: current),
               let stageIndex = stages.firstIndex(of: stage) else { return false }
         return stageIndex < currentIndex
     }
 }
 
-private struct TimelineRow: View {
-    let stage: String
+private struct TimelineStepRow: View {
+    let stage: BorrowerApplicationStage
     let date: Date?
     let isCompleted: Bool
     let isCurrent: Bool
-
+    let isLast: Bool
+    let isExpanded: Bool
+    let note: String?
+    let onTap: () -> Void
+    
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
+        HStack(alignment: .top, spacing: LMSSpacing.lg) {
+            // Icon and vertical connector
             VStack(spacing: 0) {
-                Circle()
-                    .fill(isCompleted ? LMSColors.emerald : (isCurrent ? LMSColors.brandNavy : Color(.systemGray4)))
-                    .frame(width: 10, height: 10)
-                Rectangle()
-                    .fill(Color(.systemGray4).opacity(0.5))
-                    .frame(width: 1.5, height: 28)
-            }
-            .padding(.top, 4)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(stage)
-                    .font(.system(size: 14, weight: isCurrent ? .bold : .regular))
-                    .foregroundStyle(isCurrent ? .primary : .secondary)
-                if let date = date {
-                    Text(date.formattedAsDDMMMYYYY())
-                        .font(.system(size: 11))
-                        .foregroundStyle(LMSColors.textTertiary)
+                ZStack {
+                    if isCompleted || (isCurrent && stage == .approved) {
+                        Circle()
+                            .fill(LMSColors.emerald)
+                            .frame(width: 24, height: 24)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.white)
+                    } else if isCurrent {
+                        ZStack {
+                            Circle()
+                                .stroke(LMSColors.brandNavy.opacity(0.2), lineWidth: 3)
+                                .frame(width: 24, height: 24)
+                            Circle()
+                                .fill(LMSColors.brandNavy)
+                                .frame(width: 12, height: 12)
+                        }
+                    } else {
+                        Circle()
+                            .stroke(LMSColors.separator, lineWidth: 2)
+                            .fill(LMSColors.surface)
+                            .frame(width: 24, height: 24)
+                    }
+                }
+                
+                if !isLast {
+                    Rectangle()
+                        .fill(isCompleted ? LMSColors.emerald.opacity(0.5) : LMSColors.separatorLight)
+                        .frame(width: 2, height: isExpanded ? 70 : 36)
                 }
             }
-            Spacer()
+            
+            // Content
+            VStack(alignment: .leading, spacing: LMSSpacing.xs) {
+                Button(action: onTap) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(stage.rawValue)
+                                .font(LMSFont.footnote.weight(isCurrent ? .bold : .semibold))
+                                .foregroundStyle(isCurrent && stage != .approved ? LMSColors.brandNavy : (isCompleted || (isCurrent && stage == .approved) ? LMSColors.textPrimary : LMSColors.textSecondary))
+                            
+                            if let date = date {
+                                Text(date.formattedAsDDMMMYYYY())
+                                    .font(LMSFont.caption2)
+                                    .foregroundStyle(LMSColors.textTertiary)
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        if note != nil {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(LMSColors.textTertiary)
+                                .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                
+                if isExpanded, let note = note {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(note)
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.textSecondary)
+                            .padding(8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(LMSColors.background, in: RoundedRectangle(cornerRadius: LMSRadius.sm))
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                    .padding(.top, 2)
+                }
+            }
+            .padding(.bottom, isLast ? 0 : 12)
         }
-        .listRowSeparator(.hidden)
+    }
+}
+
+// MARK: - Task 3 Components (Submitted Info Viewer)
+private struct SubmittedInfoViewerCard: View {
+    let application: BorrowerLoanApplication
+    
+    @State private var isPersonalExpanded = false
+    @State private var isFinancialExpanded = false
+    @State private var isRequirementsExpanded = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            Text("Submitted Information")
+                .font(LMSFont.title3)
+                .foregroundStyle(LMSColors.textPrimary)
+            
+            VStack(spacing: LMSSpacing.sm) {
+                // Personal Section
+                CollapsibleSection(
+                    title: "Personal Details",
+                    icon: "person.crop.circle.fill",
+                    isExpanded: $isPersonalExpanded
+                ) {
+                    VStack(spacing: LMSSpacing.sm) {
+                        InfoRow(label: "Full Name", value: application.formData.fullName)
+                        InfoRow(label: "Date of Birth", value: application.formData.dateOfBirth.formattedAsDDMMMYYYY())
+                        InfoRow(label: "Gender", value: application.formData.gender.isEmpty ? "Not Specified" : application.formData.gender)
+                        InfoRow(label: "Mobile Number", value: application.formData.mobileNumber)
+                        InfoRow(label: "Email Address", value: application.formData.emailAddress)
+                        InfoRow(label: "Address", value: application.formData.address)
+                    }
+                    .padding(.top, 8)
+                }
+                
+                Divider().background(LMSColors.separatorLight)
+                
+                // Professional/Financial Section
+                CollapsibleSection(
+                    title: "Employment & Income",
+                    icon: "briefcase.fill",
+                    isExpanded: $isFinancialExpanded
+                ) {
+                    VStack(spacing: LMSSpacing.sm) {
+                        InfoRow(label: "Employment Type", value: application.formData.employmentType)
+                        InfoRow(label: "Occupation", value: application.formData.occupation)
+                        InfoRow(label: "Employer Name", value: application.formData.employerName)
+                        InfoRow(label: "Work Experience", value: "\(application.formData.workExperienceYears) Years")
+                        if !application.formData.gstNumber.isEmpty {
+                            InfoRow(label: "GST Number", value: application.formData.gstNumber)
+                        }
+                        InfoRow(label: "Monthly Income", value: application.formData.monthlyIncomeValue.formattedAsINR())
+                        InfoRow(label: "Annual Income", value: application.formData.annualIncomeValue.formattedAsINR())
+                        if !application.formData.existingEMIs.isEmpty {
+                            InfoRow(label: "Existing EMIs", value: application.formData.existingEMIsValue.formattedAsINR())
+                        }
+                        if !application.formData.creditScore.isEmpty {
+                            InfoRow(label: "Credit Score", value: application.formData.creditScore)
+                        }
+                    }
+                    .padding(.top, 8)
+                }
+                
+                Divider().background(LMSColors.separatorLight)
+                
+                // Loan Requirements Section
+                CollapsibleSection(
+                    title: "Loan Requirements",
+                    icon: "indianrupeesign.circle.fill",
+                    isExpanded: $isRequirementsExpanded
+                ) {
+                    VStack(spacing: LMSSpacing.sm) {
+                        InfoRow(label: "Requested Amount", value: application.formData.requestedAmountValue.formattedAsINR())
+                        InfoRow(label: "Preferred Tenure", value: "\(application.formData.preferredTenureMonths) months")
+                        InfoRow(label: "Loan Purpose", value: application.formData.loanPurpose)
+                        InfoRow(label: "Repayment Preference", value: application.formData.repaymentPreference)
+                        if application.formData.hasCoApplicant {
+                            InfoRow(label: "Co-Applicant Details", value: application.formData.coApplicantDetails)
+                        }
+                        if application.formData.hasGuarantor {
+                            InfoRow(label: "Guarantor Details", value: application.formData.guarantorDetails)
+                        }
+                    }
+                    .padding(.top, 8)
+                }
+            }
+        }
+        .padding(LMSSpacing.lg)
+        .lmsCard()
+    }
+}
+
+private struct CollapsibleSection<Content: View>: View {
+    let title: String
+    let icon: String
+    @Binding var isExpanded: Bool
+    @ViewBuilder let content: () -> Content
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack(spacing: LMSSpacing.md) {
+                    Image(systemName: icon)
+                        .font(.system(size: 16))
+                        .foregroundStyle(LMSColors.brandNavy)
+                        .frame(width: 28, height: 28)
+                        .background(LMSColors.brandNavy.opacity(0.08), in: RoundedRectangle(cornerRadius: LMSRadius.sm))
+                    
+                    Text(title)
+                        .font(LMSFont.footnote.weight(.semibold))
+                        .foregroundStyle(LMSColors.textPrimary)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+            }
+            .buttonStyle(.plain)
+            
+            if isExpanded {
+                content()
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+}
+
+private struct InfoRow: View {
+    let label: String
+    let value: String
+    
+    var body: some View {
+        HStack(alignment: .top) {
+            Text(label)
+                .font(LMSFont.footnote)
+                .foregroundStyle(LMSColors.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            Text(value)
+                .font(LMSFont.footnote.weight(.medium))
+                .foregroundStyle(LMSColors.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .multilineTextAlignment(.trailing)
+        }
+    }
+}
+
+// MARK: - Task 4 Components (Documents Section)
+private struct SubmittedDocumentsCard: View {
+    let application: BorrowerLoanApplication
+    let onResubmit: (BorrowerLoanDocumentItem) -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            Text("Documents Status")
+                .font(LMSFont.title3)
+                .foregroundStyle(LMSColors.textPrimary)
+            
+            VStack(spacing: LMSSpacing.md) {
+                ForEach(application.documents) { doc in
+                    TrackingDocumentStatusRow(doc: doc, onResubmit: { onResubmit(doc) })
+                    if doc.id != application.documents.last?.id {
+                        Divider().background(LMSColors.separatorLight)
+                    }
+                }
+            }
+        }
+        .padding(LMSSpacing.lg)
+        .lmsCard()
+    }
+}
+
+private struct TrackingDocumentStatusRow: View {
+    let doc: BorrowerLoanDocumentItem
+    let onResubmit: () -> Void
+    
+    @State private var showPreviewAlert = false
+    
+    var body: some View {
+        HStack(alignment: .center, spacing: LMSSpacing.md) {
+            // Icon
+            ZStack {
+                RoundedRectangle(cornerRadius: LMSRadius.sm)
+                    .fill(doc.status.tintColor.opacity(0.08))
+                    .frame(width: 40, height: 40)
+                
+                Image(systemName: iconName(for: doc))
+                    .font(.system(size: 18))
+                    .foregroundStyle(doc.status.tintColor)
+            }
+            
+            // Text
+            VStack(alignment: .leading, spacing: 2) {
+                Text(doc.name)
+                    .font(LMSFont.footnote.weight(.semibold))
+                    .foregroundStyle(LMSColors.textPrimary)
+                
+                HStack(spacing: 6) {
+                    Text(doc.category.rawValue)
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(LMSColors.background, in: Capsule())
+                    
+                    if let uploadDate = doc.uploadDate {
+                        Text("•  \(uploadDate.formattedAsDDMMMYYYY())")
+                            .font(.system(size: 9))
+                            .foregroundStyle(LMSColors.textTertiary)
+                    }
+                }
+            }
+            
+            Spacer()
+            
+            // Status and actions
+            VStack(alignment: .trailing, spacing: LMSSpacing.xs) {
+                HStack(spacing: LMSSpacing.xs) {
+                    Circle()
+                        .fill(doc.status.tintColor)
+                        .frame(width: 6, height: 6)
+                    
+                    Text(doc.status.rawValue)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(doc.status.tintColor)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(doc.status.tintColor.opacity(0.1), in: Capsule())
+                
+                if doc.status == .rejected || doc.status == .requiresResubmission {
+                    Button(action: onResubmit) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.triangle.2.circlepath.doc.on.clipboard")
+                                .font(.system(size: 10))
+                            Text("Resubmit")
+                                .font(.system(size: 10, weight: .bold))
+                        }
+                        .foregroundStyle(LMSColors.brandNavy)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(LMSColors.surfaceElevated, in: RoundedRectangle(cornerRadius: LMSRadius.sm))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: LMSRadius.sm)
+                                .stroke(LMSColors.brandNavy.opacity(0.2), lineWidth: 0.5)
+                        )
+                    }
+                    .buttonStyle(LMSPressableStyle())
+                } else if doc.status != .pendingUpload {
+                    Button(action: { showPreviewAlert = true }) {
+                        Text("View File")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(LMSColors.actionBlue)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .alert("File Preview", isPresented: $showPreviewAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Simulated viewing for \(doc.fileName ?? "uploaded file").\nStatus: \(doc.status.rawValue)\nCategory: \(doc.category.rawValue)")
+        }
+    }
+    
+    private func iconName(for doc: BorrowerLoanDocumentItem) -> String {
+        if doc.name.lowercased().contains("passport") {
+            return "globe"
+        } else if doc.name.lowercased().contains("bill") || doc.name.lowercased().contains("rent") {
+            return "doc.plaintext.fill"
+        } else if doc.name.lowercased().contains("salary") || doc.name.lowercased().contains("statement") {
+            return "banknote.fill"
+        } else if doc.name.lowercased().contains("signature") {
+            return "signature"
+        }
+        return doc.status.iconName
     }
 }
 

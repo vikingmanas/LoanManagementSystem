@@ -33,6 +33,9 @@ struct UnifiedProfileEditContentView: View {
     @State private var nomineeName: String = ""
     @State private var nomineeRelationship: String = ""
     
+    private let genders = ["Male", "Female", "Other", "Prefer not to say"]
+    private let maritalStatuses = ["Single", "Married", "Divorced", "Widowed"]
+    private let nationalities = ["Indian", "Non-Resident Indian (NRI)", "Other"]
     private let relationships = ["Spouse", "Mother", "Father", "Brother", "Sister", "Child"]
     private let branches = [
         "Mumbai Main Branch",
@@ -59,8 +62,26 @@ struct UnifiedProfileEditContentView: View {
                 } else {
                     TextField("Full Name", text: $fullName)
                     DatePicker("Date of Birth", selection: $dateOfBirth, displayedComponents: .date)
-                    TextField("Aadhaar Number", text: $aadhaarNumber).keyboardType(.numberPad)
-                    TextField("PAN Number", text: $panNumber).autocapitalization(.allCharacters)
+                    TextField("Aadhaar Number", text: $aadhaarNumber)
+                        .keyboardType(.numberPad)
+                        .onChange(of: aadhaarNumber) { _, newValue in
+                            let filtered = newValue.filter { "0123456789".contains($0) }
+                            if filtered.count > 12 {
+                                aadhaarNumber = String(filtered.prefix(12))
+                            } else {
+                                aadhaarNumber = filtered
+                            }
+                        }
+                    TextField("PAN Number", text: $panNumber)
+                        .autocapitalization(.allCharacters)
+                        .onChange(of: panNumber) { _, newValue in
+                            let uppercased = newValue.uppercased()
+                            if uppercased.count > 10 {
+                                panNumber = String(uppercased.prefix(10))
+                            } else {
+                                panNumber = uppercased
+                            }
+                        }
                 }
             } header: {
                 Text("Identity Details")
@@ -72,17 +93,44 @@ struct UnifiedProfileEditContentView: View {
             
             // Personal Section
             Section {
-                TextField("Gender", text: $gender)
-                TextField("Marital Status", text: $maritalStatus)
-                TextField("Nationality", text: $nationality)
+                Picker("Gender", selection: $gender) {
+                    Text("Select Gender").tag("")
+                    ForEach(genders, id: \.self) { Text($0).tag($0) }
+                }
+                Picker("Marital Status", selection: $maritalStatus) {
+                    Text("Select Status").tag("")
+                    ForEach(maritalStatuses, id: \.self) { Text($0).tag($0) }
+                }
+                Picker("Nationality", selection: $nationality) {
+                    Text("Select Nationality").tag("")
+                    ForEach(nationalities, id: \.self) { Text($0).tag($0) }
+                }
             } header: {
                 Text("Personal Info")
             }
             
             // Contact Section
             Section {
-                TextField("Mobile Number", text: $mobileNumber).keyboardType(.phonePad)
-                TextField("Alternate Mobile", text: $alternateNumber).keyboardType(.phonePad)
+                TextField("Mobile Number", text: $mobileNumber)
+                    .keyboardType(.phonePad)
+                    .onChange(of: mobileNumber) { _, newValue in
+                        let filtered = newValue.filter { "0123456789".contains($0) }
+                        if filtered.count > 10 {
+                            mobileNumber = String(filtered.prefix(10))
+                        } else {
+                            mobileNumber = filtered
+                        }
+                    }
+                TextField("Alternate Mobile", text: $alternateNumber)
+                    .keyboardType(.phonePad)
+                    .onChange(of: alternateNumber) { _, newValue in
+                        let filtered = newValue.filter { "0123456789".contains($0) }
+                        if filtered.count > 10 {
+                            alternateNumber = String(filtered.prefix(10))
+                        } else {
+                            alternateNumber = filtered
+                        }
+                    }
                 TextField("Email Address", text: $email).keyboardType(.emailAddress).textInputAutocapitalization(.never)
             } header: {
                 Text("Contact Details")
@@ -178,8 +226,14 @@ struct UnifiedProfileEditContentView: View {
     }
     
     private func saveChanges() {
-        guard var updatedProfile = BorrowerProfileStore.shared.profile ?? viewModel.profile else { return }
-
+        guard var updatedProfile = viewModel.profile else { return }
+        
+        // Build a single comprehensive profile update from ALL form fields at once.
+        // Previously, 5 separate update calls each read the stale viewModel.profile
+        // (due to Combine's .receive(on: .main) delay), causing each call to overwrite
+        // the previous one's changes.
+        
+        // Personal Info
         updatedProfile.fullName = fullName
         updatedProfile.gender = gender
         updatedProfile.maritalStatus = maritalStatus
@@ -187,7 +241,8 @@ struct UnifiedProfileEditContentView: View {
         updatedProfile.dateOfBirth = dateOfBirth
         updatedProfile.aadhaarNumber = aadhaarNumber
         updatedProfile.panNumber = panNumber
-
+        
+        // Contact
         if updatedProfile.mobileNumber != mobileNumber {
             updatedProfile.mobileNumber = mobileNumber
             updatedProfile.isPhoneVerified = false
@@ -197,7 +252,8 @@ struct UnifiedProfileEditContentView: View {
             updatedProfile.isEmailVerified = false
         }
         updatedProfile.alternateNumber = alternateNumber.isEmpty ? nil : alternateNumber
-
+        
+        // Address
         let newAddress = AddressInfo(
             streetAddress: streetAddress,
             city: city,
@@ -208,7 +264,8 @@ struct UnifiedProfileEditContentView: View {
         )
         updatedProfile.currentAddress = newAddress
         updatedProfile.permanentAddress = isSameAsCurrent ? newAddress : updatedProfile.permanentAddress
-
+        
+        // Employment & Income
         updatedProfile.employment = EmploymentInfo(
             employmentType: employmentType,
             companyName: companyName,
@@ -216,15 +273,16 @@ struct UnifiedProfileEditContentView: View {
             workExperienceYears: updatedProfile.employment.workExperienceYears,
             employerAddress: updatedProfile.employment.employerAddress
         )
-        let income = Double(monthlyIncome) ?? 0
+        let incomeValue = Double(monthlyIncome) ?? 0
         updatedProfile.income = IncomeInfo(
-            monthlyIncome: income,
-            annualIncome: income * 12.0,
+            monthlyIncome: incomeValue,
+            annualIncome: incomeValue * 12.0,
             existingEMIs: updatedProfile.income.existingEMIs,
             creditScore: updatedProfile.income.creditScore,
             incomeSource: updatedProfile.income.incomeSource
         )
-
+        
+        // Additional Info
         updatedProfile.occupation = occupation
         updatedProfile.hasExistingBankAccount = hasExistingBankAccount
         updatedProfile.existingCustomerId = existingCustomerId.isEmpty ? nil : existingCustomerId
@@ -233,7 +291,8 @@ struct UnifiedProfileEditContentView: View {
         updatedProfile.emergencyContactNumber = emergencyContactNumber
         updatedProfile.nomineeName = nomineeName
         updatedProfile.nomineeRelationship = nomineeRelationship
-
+        
+        // Single save — all fields preserved
         BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
 }

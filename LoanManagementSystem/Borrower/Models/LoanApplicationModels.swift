@@ -1,18 +1,38 @@
 import SwiftUI
 
-enum LoanHubSegment: String, CaseIterable, Identifiable {
-    case discover = "Discover"
-    case applications = "My Applications"
+enum LoanProductCategoryFilter: String, CaseIterable, Identifiable {
+    case all = "All"
+    case personal = "Personal"
+    case home = "Home"
+    case agriculture = "Agriculture"
+    case lap = "LAP"
+    case consumer = "Consumer"
+    case msme = "MSME"
 
     var id: String { rawValue }
+
+    var productType: BorrowerLoanProductType? {
+        switch self {
+        case .all: return nil
+        case .personal: return .personal
+        case .home: return .home
+        case .agriculture: return .agriculture
+        case .lap: return .loanAgainstProperty
+        case .consumer: return .consumer
+        case .msme: return .msmeStartup
+        }
+    }
 }
 
-enum BorrowerLoanProductType: String, CaseIterable, Identifiable, Hashable {
+enum BorrowerLoanProductType: String, Codable, CaseIterable, Identifiable, Hashable {
     case personal
     case home
     case education
     case business
     case vehicle
+    case agriculture
+    case consumer
+    case msmeStartup
     case gold
     case loanAgainstProperty
     case other
@@ -26,9 +46,12 @@ enum BorrowerLoanProductType: String, CaseIterable, Identifiable, Hashable {
         case .education: return "Education Loan"
         case .business: return "Business Loan"
         case .vehicle: return "Vehicle Loan"
+        case .agriculture: return "Agriculture Loan"
+        case .consumer: return "Credit Card / Consumer Loan"
+        case .msmeStartup: return "MSME / Startup Loan"
         case .gold: return "Gold Loan"
         case .loanAgainstProperty: return "Loan Against Property"
-        case .other: return "Other Loan Products"
+        case .other: return "Special Assistance Loan"
         }
     }
 
@@ -39,24 +62,53 @@ enum BorrowerLoanProductType: String, CaseIterable, Identifiable, Hashable {
         case .education: return "graduationcap.fill"
         case .business: return "briefcase.fill"
         case .vehicle: return "car.fill"
+        case .agriculture: return "leaf.fill"
+        case .consumer: return "creditcard.fill"
+        case .msmeStartup: return "chart.line.uptrend.xyaxis"
         case .gold: return "seal.fill"
         case .loanAgainstProperty: return "building.columns.fill"
-        case .other: return "rectangle.stack.badge.plus"
+        case .other: return "sparkles"
         }
     }
 }
 
-struct BorrowerLoanFAQ: Identifiable, Hashable {
-    let id = UUID()
+struct BorrowerLoanFAQ: Codable, Identifiable, Hashable {
+    let id: UUID
     var question: String
     var answer: String
+    
+    init(id: UUID = UUID(), question: String, answer: String) {
+        self.id = id
+        self.question = question
+        self.answer = answer
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case question
+        case answer
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        self.question = try container.decode(String.self, forKey: .question)
+        self.answer = try container.decode(String.self, forKey: .answer)
+    }
 }
 
-struct BorrowerLoanProduct: Identifiable, Hashable {
+struct BorrowerLoanProduct: Codable, Identifiable, Hashable {
     let id: UUID
+    var name: String
     var type: BorrowerLoanProductType
-    var shortDescription: String
+    var minAmount: Double
     var maximumAmount: Double
+    var minTenureMonths: Int
+    var maxTenureMonths: Int
+    var baseInterestRate: Double
+    var processingFeePct: Double
+    
+    var shortDescription: String
     var interestRateRange: String
     var estimatedProcessingTime: String
     var eligibilitySnapshot: String
@@ -69,9 +121,160 @@ struct BorrowerLoanProduct: Identifiable, Hashable {
     var processingFees: String
     var faqs: [BorrowerLoanFAQ]
     var loanSpecificDocuments: [String]
+    
+    // Custom Memberwise Initializer for Backwards Compatibility
+    init(
+        id: UUID,
+        type: BorrowerLoanProductType,
+        shortDescription: String,
+        maximumAmount: Double,
+        interestRateRange: String,
+        estimatedProcessingTime: String,
+        eligibilitySnapshot: String,
+        purpose: String,
+        benefits: [String],
+        eligibilityCriteria: [String],
+        minimumRequirements: [String],
+        interestInformation: String,
+        repaymentOverview: String,
+        processingFees: String,
+        faqs: [BorrowerLoanFAQ],
+        loanSpecificDocuments: [String]
+    ) {
+        self.id = id
+        self.name = type.title
+        self.type = type
+        self.minAmount = 0
+        self.maximumAmount = maximumAmount
+        self.minTenureMonths = 12
+        self.maxTenureMonths = 360
+        self.baseInterestRate = 0
+        self.processingFeePct = 0
+        
+        self.shortDescription = shortDescription
+        self.interestRateRange = interestRateRange
+        self.estimatedProcessingTime = estimatedProcessingTime
+        self.eligibilitySnapshot = eligibilitySnapshot
+        self.purpose = purpose
+        self.benefits = benefits
+        self.eligibilityCriteria = eligibilityCriteria
+        self.minimumRequirements = minimumRequirements
+        self.interestInformation = interestInformation
+        self.repaymentOverview = repaymentOverview
+        self.processingFees = processingFees
+        self.faqs = faqs
+        self.loanSpecificDocuments = loanSpecificDocuments
+    }
+    
+    // Custom Codable Mapping for Supabase Flat & JSONB Columns
+    enum CodingKeys: String, CodingKey {
+        case id = "productId"
+        case name
+        case type = "loanType"
+        case minAmount
+        case maximumAmount = "maxAmount"
+        case minTenureMonths
+        case maxTenureMonths
+        case baseInterestRate
+        case processingFeePct
+        case richDetails
+    }
+    
+    enum RichDetailsKeys: String, CodingKey {
+        case shortDescription
+        case interestRateRange
+        case estimatedProcessingTime
+        case eligibilitySnapshot
+        case purpose
+        case benefits
+        case eligibilityCriteria
+        case minimumRequirements
+        case interestInformation
+        case repaymentOverview
+        case processingFees
+        case faqs
+        case loanSpecificDocuments
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        self.id = try container.decode(UUID.self, forKey: .id)
+        self.name = try container.decode(String.self, forKey: .name)
+        
+        let rawType = try container.decode(String.self, forKey: .type)
+        self.type = BorrowerLoanProductType(rawValue: rawType) ?? .other
+        
+        self.minAmount = try container.decode(Double.self, forKey: .minAmount)
+        self.maximumAmount = try container.decode(Double.self, forKey: .maximumAmount)
+        self.minTenureMonths = try container.decode(Int.self, forKey: .minTenureMonths)
+        self.maxTenureMonths = try container.decode(Int.self, forKey: .maxTenureMonths)
+        self.baseInterestRate = try container.decode(Double.self, forKey: .baseInterestRate)
+        self.processingFeePct = try container.decode(Double.self, forKey: .processingFeePct)
+        
+        if container.contains(.richDetails) {
+            let richContainer = try container.nestedContainer(keyedBy: RichDetailsKeys.self, forKey: .richDetails)
+            self.shortDescription = try richContainer.decodeIfPresent(String.self, forKey: .shortDescription) ?? ""
+            self.interestRateRange = try richContainer.decodeIfPresent(String.self, forKey: .interestRateRange) ?? ""
+            self.estimatedProcessingTime = try richContainer.decodeIfPresent(String.self, forKey: .estimatedProcessingTime) ?? ""
+            self.eligibilitySnapshot = try richContainer.decodeIfPresent(String.self, forKey: .eligibilitySnapshot) ?? ""
+            self.purpose = try richContainer.decodeIfPresent(String.self, forKey: .purpose) ?? ""
+            self.benefits = try richContainer.decodeIfPresent([String].self, forKey: .benefits) ?? []
+            self.eligibilityCriteria = try richContainer.decodeIfPresent([String].self, forKey: .eligibilityCriteria) ?? []
+            self.minimumRequirements = try richContainer.decodeIfPresent([String].self, forKey: .minimumRequirements) ?? []
+            self.interestInformation = try richContainer.decodeIfPresent(String.self, forKey: .interestInformation) ?? ""
+            self.repaymentOverview = try richContainer.decodeIfPresent(String.self, forKey: .repaymentOverview) ?? ""
+            self.processingFees = try richContainer.decodeIfPresent(String.self, forKey: .processingFees) ?? ""
+            self.faqs = try richContainer.decodeIfPresent([BorrowerLoanFAQ].self, forKey: .faqs) ?? []
+            self.loanSpecificDocuments = try richContainer.decodeIfPresent([String].self, forKey: .loanSpecificDocuments) ?? []
+        } else {
+            self.shortDescription = ""
+            self.interestRateRange = ""
+            self.estimatedProcessingTime = ""
+            self.eligibilitySnapshot = ""
+            self.purpose = ""
+            self.benefits = []
+            self.eligibilityCriteria = []
+            self.minimumRequirements = []
+            self.interestInformation = ""
+            self.repaymentOverview = ""
+            self.processingFees = ""
+            self.faqs = []
+            self.loanSpecificDocuments = []
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(type.rawValue, forKey: .type)
+        try container.encode(minAmount, forKey: .minAmount)
+        try container.encode(maximumAmount, forKey: .maximumAmount)
+        try container.encode(minTenureMonths, forKey: .minTenureMonths)
+        try container.encode(maxTenureMonths, forKey: .maxTenureMonths)
+        try container.encode(baseInterestRate, forKey: .baseInterestRate)
+        try container.encode(processingFeePct, forKey: .processingFeePct)
+        
+        var richContainer = container.nestedContainer(keyedBy: RichDetailsKeys.self, forKey: .richDetails)
+        try richContainer.encode(shortDescription, forKey: .shortDescription)
+        try richContainer.encode(interestRateRange, forKey: .interestRateRange)
+        try richContainer.encode(estimatedProcessingTime, forKey: .estimatedProcessingTime)
+        try richContainer.encode(eligibilitySnapshot, forKey: .eligibilitySnapshot)
+        try richContainer.encode(purpose, forKey: .purpose)
+        try richContainer.encode(benefits, forKey: .benefits)
+        try richContainer.encode(eligibilityCriteria, forKey: .eligibilityCriteria)
+        try richContainer.encode(minimumRequirements, forKey: .minimumRequirements)
+        try richContainer.encode(interestInformation, forKey: .interestInformation)
+        try richContainer.encode(repaymentOverview, forKey: .repaymentOverview)
+        try richContainer.encode(processingFees, forKey: .processingFees)
+        try richContainer.encode(faqs, forKey: .faqs)
+        try richContainer.encode(loanSpecificDocuments, forKey: .loanSpecificDocuments)
+    }
 }
 
-enum BorrowerDocumentCategory: String, CaseIterable, Identifiable, Hashable {
+enum BorrowerDocumentCategory: String, Codable, CaseIterable, Identifiable, Hashable {
     case identityVerification = "Identity Verification"
     case addressVerification = "Address Verification"
     case incomeVerification = "Income Verification"
@@ -80,7 +283,7 @@ enum BorrowerDocumentCategory: String, CaseIterable, Identifiable, Hashable {
     var id: String { rawValue }
 }
 
-enum BorrowerDocumentStatus: String, CaseIterable, Hashable {
+enum BorrowerDocumentStatus: String, Codable, CaseIterable, Hashable {
     case pendingUpload = "Pending Upload"
     case uploaded = "Uploaded"
     case underVerification = "Under Verification"
@@ -149,13 +352,17 @@ enum BorrowerDocumentStatus: String, CaseIterable, Hashable {
     }
 }
 
-enum BorrowerDocumentUploadSource: String, CaseIterable, Identifiable, Hashable {
-    case camera = "Camera Upload"
-    case gallery = "Gallery Upload"
+enum BorrowerDocumentUploadSource: String, Identifiable, Hashable {
+    case camera = "Take Photo"
+    case gallery = "Choose from Gallery"
     case pdf = "PDF Upload"
     case dragAndDrop = "Drag & Drop"
 
     var id: String { rawValue }
+
+    static var mobileSources: [BorrowerDocumentUploadSource] {
+        [.camera, .gallery, .pdf]
+    }
 
     var iconName: String {
         switch self {
@@ -165,9 +372,18 @@ enum BorrowerDocumentUploadSource: String, CaseIterable, Identifiable, Hashable 
         case .dragAndDrop: return "arrow.down.doc.fill"
         }
     }
+
+    var sourceDescription: String {
+        switch self {
+        case .camera: return "Choose document using camera"
+        case .gallery: return "Upload JPG, PNG, or HEIC from Photos"
+        case .pdf: return "Upload a PDF document from Files"
+        case .dragAndDrop: return "Drag and drop is unavailable on mobile"
+        }
+    }
 }
 
-struct BorrowerLoanDocumentItem: Identifiable, Hashable {
+struct BorrowerLoanDocumentItem: Codable, Identifiable, Hashable {
     let id: UUID
     var name: String
     var category: BorrowerDocumentCategory
@@ -179,13 +395,14 @@ struct BorrowerLoanDocumentItem: Identifiable, Hashable {
     var isLocked: Bool
 }
 
-struct BorrowerLoanFormData: Equatable, Hashable {
+struct BorrowerLoanFormData: Codable, Equatable, Hashable {
     var fullName: String
     var dateOfBirth: Date
     var gender: String
     var mobileNumber: String
     var emailAddress: String
     var address: String
+    var preferredBranch: String
 
     var occupation: String
     var employmentType: String
@@ -215,6 +432,98 @@ struct BorrowerLoanFormData: Equatable, Hashable {
     var selectedAddressDoc: String
     var selectedIncomeDoc: String
 
+    // Draft-only persistence fields that are collected across wizard steps.
+    var draftStepIndex: Int
+    var bankName: String
+    var bankAccountNumber: String
+    var bankIFSCCode: String
+    var bankRegisteredMobile: String
+    var monthlySalaryDeposited: String
+    var employmentJoiningDate: Date?
+    var creditCardLimit: String
+    var savingsInvestments: String
+    var coApplicantMobile: String
+    var coApplicantPAN: String
+    var coApplicantAadhaar: String
+    var coApplicantIncome: String
+    var autoDebitConsent: Bool
+    var nomineeName: String
+    var nomineeRelation: String
+    var nomineeMobile: String
+    var referenceName: String
+    var referenceMobile: String
+    var emergencyContactName: String
+    var emergencyContactMobile: String
+    var signatureImageData: String
+    var signatureVerificationStatus: String
+    var liveVerificationCompleted: Bool
+    var liveVerificationReference: String
+    var selfieVerificationStatus: String
+    var acceptedTerms: Bool
+    var acceptedBureauConsent: Bool
+    var acceptedDebitConsent: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case fullName
+        case dateOfBirth
+        case gender
+        case mobileNumber
+        case emailAddress
+        case address
+        case preferredBranch
+        case occupation
+        case employmentType
+        case employerName
+        case workExperienceYears
+        case monthlyIncome
+        case annualIncome
+        case existingLoans
+        case existingEMIs = "existingEmIs"
+        case creditCardObligations
+        case creditScore
+        case loanAmountRequested
+        case loanPurpose
+        case repaymentPreference
+        case preferredTenureMonths
+        case hasCoApplicant
+        case coApplicantDetails
+        case hasGuarantor
+        case guarantorDetails
+        case gstNumber
+        case selectedIdentityDoc
+        case selectedAddressDoc
+        case selectedIncomeDoc
+        case draftStepIndex
+        case bankName
+        case bankAccountNumber
+        case bankIFSCCode
+        case bankRegisteredMobile
+        case monthlySalaryDeposited
+        case employmentJoiningDate
+        case creditCardLimit
+        case savingsInvestments
+        case coApplicantMobile
+        case coApplicantPAN
+        case coApplicantAadhaar
+        case coApplicantIncome
+        case autoDebitConsent
+        case nomineeName
+        case nomineeRelation
+        case nomineeMobile
+        case referenceName
+        case referenceMobile
+        case emergencyContactName
+        case emergencyContactMobile
+        case signatureImageData
+        case signatureVerificationStatus
+        case liveVerificationCompleted
+        case liveVerificationReference
+        case selfieVerificationStatus
+        case acceptedTerms
+        case acceptedBureauConsent
+        case acceptedDebitConsent
+    }
+
     var monthlyIncomeValue: Double { monthlyIncome.numericValue }
     var annualIncomeValue: Double { annualIncome.numericValue }
     var existingLoansValue: Double { existingLoans.numericValue }
@@ -230,6 +539,7 @@ struct BorrowerLoanFormData: Equatable, Hashable {
         mobileNumber: String,
         emailAddress: String,
         address: String,
+        preferredBranch: String = "",
         occupation: String,
         employmentType: String,
         employerName: String,
@@ -251,7 +561,36 @@ struct BorrowerLoanFormData: Equatable, Hashable {
         gstNumber: String = "",
         selectedIdentityDoc: String = "Aadhaar Card",
         selectedAddressDoc: String = "Utility Bill",
-        selectedIncomeDoc: String = "Salary Slips"
+        selectedIncomeDoc: String = "Salary Slips",
+        draftStepIndex: Int = 1,
+        bankName: String = "",
+        bankAccountNumber: String = "",
+        bankIFSCCode: String = "",
+        bankRegisteredMobile: String = "",
+        monthlySalaryDeposited: String = "",
+        employmentJoiningDate: Date? = nil,
+        creditCardLimit: String = "",
+        savingsInvestments: String = "",
+        coApplicantMobile: String = "",
+        coApplicantPAN: String = "",
+        coApplicantAadhaar: String = "",
+        coApplicantIncome: String = "",
+        autoDebitConsent: Bool = false,
+        nomineeName: String = "",
+        nomineeRelation: String = "",
+        nomineeMobile: String = "",
+        referenceName: String = "",
+        referenceMobile: String = "",
+        emergencyContactName: String = "",
+        emergencyContactMobile: String = "",
+        signatureImageData: String = "",
+        signatureVerificationStatus: String = "",
+        liveVerificationCompleted: Bool = false,
+        liveVerificationReference: String = "",
+        selfieVerificationStatus: String = "",
+        acceptedTerms: Bool = false,
+        acceptedBureauConsent: Bool = false,
+        acceptedDebitConsent: Bool = false
     ) {
         self.fullName = fullName
         self.dateOfBirth = dateOfBirth
@@ -259,6 +598,7 @@ struct BorrowerLoanFormData: Equatable, Hashable {
         self.mobileNumber = mobileNumber
         self.emailAddress = emailAddress
         self.address = address
+        self.preferredBranch = preferredBranch
         self.occupation = occupation
         self.employmentType = employmentType
         self.employerName = employerName
@@ -281,6 +621,99 @@ struct BorrowerLoanFormData: Equatable, Hashable {
         self.selectedIdentityDoc = selectedIdentityDoc
         self.selectedAddressDoc = selectedAddressDoc
         self.selectedIncomeDoc = selectedIncomeDoc
+        self.draftStepIndex = min(max(draftStepIndex, 1), 10)
+        self.bankName = bankName
+        self.bankAccountNumber = bankAccountNumber
+        self.bankIFSCCode = bankIFSCCode
+        self.bankRegisteredMobile = bankRegisteredMobile
+        self.monthlySalaryDeposited = monthlySalaryDeposited
+        self.employmentJoiningDate = employmentJoiningDate
+        self.creditCardLimit = creditCardLimit
+        self.savingsInvestments = savingsInvestments
+        self.coApplicantMobile = coApplicantMobile
+        self.coApplicantPAN = coApplicantPAN
+        self.coApplicantAadhaar = coApplicantAadhaar
+        self.coApplicantIncome = coApplicantIncome
+        self.autoDebitConsent = autoDebitConsent
+        self.nomineeName = nomineeName
+        self.nomineeRelation = nomineeRelation
+        self.nomineeMobile = nomineeMobile
+        self.referenceName = referenceName
+        self.referenceMobile = referenceMobile
+        self.emergencyContactName = emergencyContactName
+        self.emergencyContactMobile = emergencyContactMobile
+        self.signatureImageData = signatureImageData
+        self.signatureVerificationStatus = signatureVerificationStatus
+        self.liveVerificationCompleted = liveVerificationCompleted
+        self.liveVerificationReference = liveVerificationReference
+        self.selfieVerificationStatus = selfieVerificationStatus
+        self.acceptedTerms = acceptedTerms
+        self.acceptedBureauConsent = acceptedBureauConsent
+        self.acceptedDebitConsent = acceptedDebitConsent
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            fullName: try container.decodeIfPresent(String.self, forKey: .fullName) ?? "",
+            dateOfBirth: try container.decodeIfPresent(Date.self, forKey: .dateOfBirth) ?? Self.empty.dateOfBirth,
+            gender: try container.decodeIfPresent(String.self, forKey: .gender) ?? "",
+            mobileNumber: try container.decodeIfPresent(String.self, forKey: .mobileNumber) ?? "",
+            emailAddress: try container.decodeIfPresent(String.self, forKey: .emailAddress) ?? "",
+            address: try container.decodeIfPresent(String.self, forKey: .address) ?? "",
+            preferredBranch: try container.decodeIfPresent(String.self, forKey: .preferredBranch) ?? "",
+            occupation: try container.decodeIfPresent(String.self, forKey: .occupation) ?? "",
+            employmentType: try container.decodeIfPresent(String.self, forKey: .employmentType) ?? "Salaried",
+            employerName: try container.decodeIfPresent(String.self, forKey: .employerName) ?? "",
+            workExperienceYears: try container.decodeIfPresent(Int.self, forKey: .workExperienceYears) ?? 0,
+            monthlyIncome: try container.decodeIfPresent(String.self, forKey: .monthlyIncome) ?? "",
+            annualIncome: try container.decodeIfPresent(String.self, forKey: .annualIncome) ?? "",
+            existingLoans: try container.decodeIfPresent(String.self, forKey: .existingLoans) ?? "",
+            existingEMIs: try container.decodeIfPresent(String.self, forKey: .existingEMIs) ?? "",
+            creditCardObligations: try container.decodeIfPresent(String.self, forKey: .creditCardObligations) ?? "",
+            creditScore: try container.decodeIfPresent(String.self, forKey: .creditScore) ?? "",
+            loanAmountRequested: try container.decodeIfPresent(String.self, forKey: .loanAmountRequested) ?? "",
+            loanPurpose: try container.decodeIfPresent(String.self, forKey: .loanPurpose) ?? "",
+            repaymentPreference: try container.decodeIfPresent(String.self, forKey: .repaymentPreference) ?? "EMI Auto-Debit",
+            preferredTenureMonths: try container.decodeIfPresent(Int.self, forKey: .preferredTenureMonths) ?? 60,
+            hasCoApplicant: try container.decodeIfPresent(Bool.self, forKey: .hasCoApplicant) ?? false,
+            coApplicantDetails: try container.decodeIfPresent(String.self, forKey: .coApplicantDetails) ?? "",
+            hasGuarantor: try container.decodeIfPresent(Bool.self, forKey: .hasGuarantor) ?? false,
+            guarantorDetails: try container.decodeIfPresent(String.self, forKey: .guarantorDetails) ?? "",
+            gstNumber: try container.decodeIfPresent(String.self, forKey: .gstNumber) ?? "",
+            selectedIdentityDoc: try container.decodeIfPresent(String.self, forKey: .selectedIdentityDoc) ?? "Aadhaar Card",
+            selectedAddressDoc: try container.decodeIfPresent(String.self, forKey: .selectedAddressDoc) ?? "Utility Bill",
+            selectedIncomeDoc: try container.decodeIfPresent(String.self, forKey: .selectedIncomeDoc) ?? "Salary Slips",
+            draftStepIndex: try container.decodeIfPresent(Int.self, forKey: .draftStepIndex) ?? 1,
+            bankName: try container.decodeIfPresent(String.self, forKey: .bankName) ?? "",
+            bankAccountNumber: try container.decodeIfPresent(String.self, forKey: .bankAccountNumber) ?? "",
+            bankIFSCCode: try container.decodeIfPresent(String.self, forKey: .bankIFSCCode) ?? "",
+            bankRegisteredMobile: try container.decodeIfPresent(String.self, forKey: .bankRegisteredMobile) ?? "",
+            monthlySalaryDeposited: try container.decodeIfPresent(String.self, forKey: .monthlySalaryDeposited) ?? "",
+            employmentJoiningDate: try container.decodeIfPresent(Date.self, forKey: .employmentJoiningDate),
+            creditCardLimit: try container.decodeIfPresent(String.self, forKey: .creditCardLimit) ?? "",
+            savingsInvestments: try container.decodeIfPresent(String.self, forKey: .savingsInvestments) ?? "",
+            coApplicantMobile: try container.decodeIfPresent(String.self, forKey: .coApplicantMobile) ?? "",
+            coApplicantPAN: try container.decodeIfPresent(String.self, forKey: .coApplicantPAN) ?? "",
+            coApplicantAadhaar: try container.decodeIfPresent(String.self, forKey: .coApplicantAadhaar) ?? "",
+            coApplicantIncome: try container.decodeIfPresent(String.self, forKey: .coApplicantIncome) ?? "",
+            autoDebitConsent: try container.decodeIfPresent(Bool.self, forKey: .autoDebitConsent) ?? false,
+            nomineeName: try container.decodeIfPresent(String.self, forKey: .nomineeName) ?? "",
+            nomineeRelation: try container.decodeIfPresent(String.self, forKey: .nomineeRelation) ?? "",
+            nomineeMobile: try container.decodeIfPresent(String.self, forKey: .nomineeMobile) ?? "",
+            referenceName: try container.decodeIfPresent(String.self, forKey: .referenceName) ?? "",
+            referenceMobile: try container.decodeIfPresent(String.self, forKey: .referenceMobile) ?? "",
+            emergencyContactName: try container.decodeIfPresent(String.self, forKey: .emergencyContactName) ?? "",
+            emergencyContactMobile: try container.decodeIfPresent(String.self, forKey: .emergencyContactMobile) ?? "",
+            signatureImageData: try container.decodeIfPresent(String.self, forKey: .signatureImageData) ?? "",
+            signatureVerificationStatus: try container.decodeIfPresent(String.self, forKey: .signatureVerificationStatus) ?? "",
+            liveVerificationCompleted: try container.decodeIfPresent(Bool.self, forKey: .liveVerificationCompleted) ?? false,
+            liveVerificationReference: try container.decodeIfPresent(String.self, forKey: .liveVerificationReference) ?? "",
+            selfieVerificationStatus: try container.decodeIfPresent(String.self, forKey: .selfieVerificationStatus) ?? "",
+            acceptedTerms: try container.decodeIfPresent(Bool.self, forKey: .acceptedTerms) ?? false,
+            acceptedBureauConsent: try container.decodeIfPresent(Bool.self, forKey: .acceptedBureauConsent) ?? false,
+            acceptedDebitConsent: try container.decodeIfPresent(Bool.self, forKey: .acceptedDebitConsent) ?? false
+        )
     }
 
     static let empty = BorrowerLoanFormData(
@@ -290,6 +723,7 @@ struct BorrowerLoanFormData: Equatable, Hashable {
         mobileNumber: "",
         emailAddress: "",
         address: "",
+        preferredBranch: "",
         occupation: "",
         employmentType: "Salaried",
         employerName: "",
@@ -318,6 +752,11 @@ struct BorrowerLoanFormData: Equatable, Hashable {
         .empty.mergedWithProfile(profile)
     }
 
+    static let branchOptions = [
+        "Headquarters Branch",
+        "Mysuru"
+    ]
+
     static func formattedAddress(from address: AddressInfo) -> String {
         var components: [String] = []
         if !address.streetAddress.isEmpty { components.append(address.streetAddress) }
@@ -325,6 +764,31 @@ struct BorrowerLoanFormData: Equatable, Hashable {
         if !address.state.isEmpty { components.append(address.state) }
         if !address.zipCode.isEmpty { components.append(address.zipCode) }
         return components.joined(separator: ", ")
+    }
+
+    static func isMockValue(_ value: String) -> Bool {
+        let normalized = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        guard !normalized.isEmpty else { return false }
+        let mockValues: Set<String> = [
+            "sample",
+            "sample user",
+            "test",
+            "test user",
+            "demo",
+            "demo user",
+            "john doe",
+            "jane doe",
+            "default applicant",
+            "mock applicant",
+            "abc123",
+            "9999999999"
+        ]
+        return mockValues.contains(normalized)
+            || normalized.contains("placeholder")
+            || normalized.contains("dummy")
+            || normalized.contains("mock applicant")
     }
 
     func isPlaceholderDateOfBirth() -> Bool {
@@ -352,11 +816,14 @@ struct BorrowerLoanFormData: Equatable, Hashable {
             return authEmail?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
         }()
 
-        if result.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !resolvedName.isEmpty {
+        if result.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           !resolvedName.isEmpty,
+           !Self.isMockValue(resolvedName) {
             result.fullName = resolvedName
         }
         if result.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-           let profile, !profile.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+           let profile, !profile.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           !Self.isMockValue(profile.mobileNumber) {
             result.mobileNumber = profile.mobileNumber
         }
         if result.emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !resolvedEmail.isEmpty {
@@ -368,6 +835,11 @@ struct BorrowerLoanFormData: Equatable, Hashable {
             if !formatted.isEmpty {
                 result.address = formatted
             }
+        }
+        if result.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let profile,
+           !profile.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            result.preferredBranch = profile.preferredBranch
         }
         if result.isPlaceholderDateOfBirth(), let profile {
             result.dateOfBirth = profile.dateOfBirth
@@ -422,6 +894,7 @@ enum BorrowerLoanFormField: String, CaseIterable, Hashable {
     case mobileNumber
     case emailAddress
     case address
+    case preferredBranch
     case occupation
     case employerName
     case monthlyIncome
@@ -432,7 +905,7 @@ enum BorrowerLoanFormField: String, CaseIterable, Hashable {
     case guarantorDetails
 }
 
-enum BorrowerApplicationStage: String, CaseIterable, Identifiable, Hashable {
+enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hashable {
     case draft = "Draft"
     case submitted = "Submitted"
     case underReview = "Under Review"
@@ -442,8 +915,40 @@ enum BorrowerApplicationStage: String, CaseIterable, Identifiable, Hashable {
     case approved = "Approved"
     case rejected = "Rejected"
     case disbursed = "Disbursed"
+    case escalated = "Escalated"
 
     var id: String { rawValue }
+
+    var databaseValue: String {
+        switch self {
+        case .draft: return "draft"
+        case .submitted: return "submitted"
+        case .underReview: return "under_review"
+        case .documentVerification: return "document_verification"
+        case .loanOfficerReview: return "officer_review"
+        case .bankManagerReview: return "manager_review"
+        case .approved: return "approved"
+        case .rejected: return "rejected"
+        case .disbursed: return "disbursed"
+        case .escalated: return "escalated"
+        }
+    }
+    
+    static func from(databaseValue: String) -> BorrowerApplicationStage {
+        switch databaseValue.lowercased() {
+        case "draft": return .draft
+        case "submitted": return .submitted
+        case "under_review", "under review": return .underReview
+        case "document_verification", "document verification": return .documentVerification
+        case "officer_review", "loan officer review", "loan_officer_review": return .loanOfficerReview
+        case "manager_review", "bank manager review", "bank_manager_review": return .bankManagerReview
+        case "approved": return .approved
+        case "rejected": return .rejected
+        case "disbursed": return .disbursed
+        case "escalated": return .escalated
+        default: return .draft
+        }
+    }
 
     var iconName: String {
         switch self {
@@ -456,6 +961,7 @@ enum BorrowerApplicationStage: String, CaseIterable, Identifiable, Hashable {
         case .approved: return "checkmark.circle.fill"
         case .rejected: return "xmark.circle.fill"
         case .disbursed: return "indianrupeesign.circle.fill"
+        case .escalated: return "arrow.up.forward.circle.fill"
         }
     }
 
@@ -465,6 +971,8 @@ enum BorrowerApplicationStage: String, CaseIterable, Identifiable, Hashable {
             return Color(.secondaryLabel)
         case .submitted, .underReview, .documentVerification, .loanOfficerReview, .bankManagerReview:
             return Color.brandNavy
+        case .escalated:
+            return Color.purple
         case .approved, .disbursed:
             return Color.brandEmerald
         case .rejected:
@@ -485,24 +993,51 @@ enum BorrowerApplicationStage: String, CaseIterable, Identifiable, Hashable {
     }
 }
 
-struct BorrowerStageEntry: Identifiable, Hashable {
-    let id = UUID()
+struct BorrowerStageEntry: Codable, Identifiable, Hashable {
+    let id: UUID
     var stage: BorrowerApplicationStage
     var timestamp: Date
     var note: String
+    
+    init(id: UUID = UUID(), stage: BorrowerApplicationStage, timestamp: Date, note: String) {
+        self.id = id
+        self.stage = stage
+        self.timestamp = timestamp
+        self.note = note
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case stage
+        case timestamp
+        case note
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        self.stage = try container.decode(BorrowerApplicationStage.self, forKey: .stage)
+        self.timestamp = try container.decode(Date.self, forKey: .timestamp)
+        self.note = try container.decode(String.self, forKey: .note)
+    }
 }
+
 
 struct BorrowerLoanApplication: Identifiable, Hashable {
     let id: UUID
     var applicationId: String?
+    var borrowerId: UUID?
     var product: BorrowerLoanProduct
     var formData: BorrowerLoanFormData
     var documents: [BorrowerLoanDocumentItem]
     var currentStage: BorrowerApplicationStage
     var stageHistory: [BorrowerStageEntry]
+    var draftStepIndex: Int = 1
     var submittedAt: Date?
     var updatedAt: Date
     var assignedQueue: String?
+    var assignedOfficerId: UUID?
+    var assignedOfficer: AssignedLoanOfficer?
     var outstandingBalance: Double
     var upcomingEMI: Double
 
@@ -515,9 +1050,66 @@ struct BorrowerLoanApplication: Identifiable, Hashable {
     }
 }
 
+struct DBLoanApplication: Codable {
+    let applicationId: UUID
+    let borrowerId: UUID
+    let officerId: UUID?
+    let productId: UUID
+    let amountRequested: Double
+    let tenureMonths: Int
+    let purpose: String
+    let status: String
+    let formData: BorrowerLoanFormData
+    let stageHistory: [BorrowerStageEntry]
+    let submittedAt: Date?
+    let updatedAt: Date
+    
+    func toBorrowerApplication(product: BorrowerLoanProduct, documents: [BorrowerLoanDocumentItem] = []) -> BorrowerLoanApplication {
+        return BorrowerLoanApplication(
+            id: applicationId,
+            applicationId: "APP-\(applicationId.uuidString.prefix(6).uppercased())",
+            borrowerId: borrowerId,
+            product: product,
+            formData: formData,
+            documents: documents,
+            currentStage: BorrowerApplicationStage.from(databaseValue: status),
+            stageHistory: stageHistory,
+            draftStepIndex: min(max(formData.draftStepIndex, 1), 10),
+            submittedAt: submittedAt,
+            updatedAt: updatedAt,
+            assignedQueue: status == "draft" ? nil : "Loan Officer Assignment Pending",
+            assignedOfficerId: officerId,
+            assignedOfficer: nil,
+            outstandingBalance: max(0, amountRequested * 0.92),
+            upcomingEMI: max(0, amountRequested / Double(max(1, tenureMonths)))
+        )
+    }
+    
+    static func from(borrowerApplication app: BorrowerLoanApplication, borrowerId: UUID) -> DBLoanApplication {
+        var formData = app.formData
+        formData.draftStepIndex = min(max(app.draftStepIndex, 1), 10)
+
+        return DBLoanApplication(
+            applicationId: app.id,
+            borrowerId: borrowerId,
+            officerId: app.assignedOfficer?.officerId ?? app.assignedOfficerId,
+            productId: app.product.id,
+            amountRequested: app.formData.requestedAmountValue,
+            tenureMonths: app.formData.preferredTenureMonths,
+            purpose: app.formData.loanPurpose,
+            status: app.currentStage.databaseValue,
+            formData: formData,
+            stageHistory: app.stageHistory,
+            submittedAt: app.submittedAt,
+            updatedAt: app.updatedAt
+        )
+    }
+}
+
 enum BorrowerApplicationFilter: String, CaseIterable, Identifiable {
     case all = "All"
-    case active = "Active"
+    case draft = "Draft"
+    case underReview = "Under Review"
     case approved = "Approved"
     case rejected = "Rejected"
 
@@ -557,6 +1149,18 @@ struct BorrowerLoanDashboardMetrics {
 }
 
 extension BorrowerLoanProduct {
+    /// Representative minimum EMI at base rate for display on marketplace cards.
+    var emiStartingFrom: Double {
+        let principal = minAmount > 0 ? minAmount : max(maximumAmount * 0.25, 100_000)
+        let months = max(maxTenureMonths, 12)
+        let annualRate = baseInterestRate > 0 ? baseInterestRate / 100 : 0.105
+        let monthlyRate = annualRate / 12
+        guard monthlyRate > 0 else { return principal / Double(months) }
+        let factor = pow(1 + monthlyRate, Double(months))
+        let emi = (principal * monthlyRate * factor) / (factor - 1)
+        return emi.isNaN || emi.isInfinite ? principal / Double(months) : emi
+    }
+
     static let sampleProducts: [BorrowerLoanProduct] = [
         BorrowerLoanProduct(
             id: UUID(uuidString: "a1d6518c-14d0-4f5b-85c4-3670f4a6ef01") ?? UUID(),
@@ -664,6 +1268,27 @@ extension BorrowerLoanProduct {
             loanSpecificDocuments: ["Vehicle Quotation", "Dealer Invoice"]
         ),
         BorrowerLoanProduct(
+            id: UUID(uuidString: "6b40d7e6-06dd-4ac8-8f93-ef9eb17a9d45") ?? UUID(),
+            type: .agriculture,
+            shortDescription: "Seasonal credit for cultivation, irrigation, equipment, seeds, and fertilizers.",
+            maximumAmount: 5_000_000,
+            interestRateRange: "7.00% - 11.50%",
+            estimatedProcessingTime: "2-5 working days",
+            eligibilitySnapshot: "Farmers, tenant cultivators, and agri-allied workers with land or activity proof.",
+            purpose: "Fund crop cultivation, farm machinery, irrigation systems, and agri inputs.",
+            benefits: ["Special schemes for farmers", "Government subsidies may apply", "Flexible seasonal repayment", "Lower interest support"],
+            eligibilityCriteria: ["Indian resident farmer", "Land/activity proof", "Crop or agri-use declaration"],
+            minimumRequirements: ["KYC", "Land records or tenancy proof", "Agri activity estimate"],
+            interestInformation: "Eligible farmer profiles may receive subsidy-linked or priority-sector pricing support.",
+            repaymentOverview: "Repayment can align with crop cycles, harvest income, or seasonal cash flows.",
+            processingFees: "Concessional processing may apply under eligible agriculture schemes.",
+            faqs: [
+                BorrowerLoanFAQ(question: "Can I use this for farm equipment?", answer: "Yes, equipment, irrigation, seeds, fertilizers, and crop cultivation are supported."),
+                BorrowerLoanFAQ(question: "Are subsidies guaranteed?", answer: "Subsidies depend on scheme eligibility, documentation, and current government guidelines.")
+            ],
+            loanSpecificDocuments: ["Land Record / Khasra", "Crop Declaration", "Equipment Quotation"]
+        ),
+        BorrowerLoanProduct(
             id: UUID(uuidString: "be84595d-7608-4fb9-9fef-53072cb85f06") ?? UUID(),
             type: .gold,
             shortDescription: "Instant secured credit against household gold ornaments.",
@@ -687,16 +1312,16 @@ extension BorrowerLoanProduct {
         BorrowerLoanProduct(
             id: UUID(uuidString: "7e95a540-c4da-4c52-aa62-bf847cb53a47") ?? UUID(),
             type: .loanAgainstProperty,
-            shortDescription: "Leverage existing property value for high-ticket financing.",
-            maximumAmount: 20_000_000,
-            interestRateRange: "10.00% - 13.75%",
+            shortDescription: "High-ticket secured funding by pledging residential or commercial property.",
+            maximumAmount: 50_000_000,
+            interestRateRange: "9.25% - 13.75%",
             estimatedProcessingTime: "6-12 working days",
             eligibilitySnapshot: "Clear property title and stable documented income profile.",
             purpose: "Business expansion, education, medical, or other large requirements.",
-            benefits: ["Higher loan eligibility", "Longer tenure", "Competitive secured lending rates"],
+            benefits: ["Property pledged as collateral", "Lower rate than personal loans", "Higher loan eligibility", "Long repayment tenure"],
             eligibilityCriteria: ["Self-owned property", "Stable income and repayment ability", "Legal and technical clearance"],
             minimumRequirements: ["Property ownership documents", "Income proof", "Bank statements"],
-            interestInformation: "Final rates depend on LTV, profile quality, and documentation strength.",
+            interestInformation: "Final rates depend on LTV, profile quality, property type, and documentation strength.",
             repaymentOverview: "Tenure up to 180 months with structured repayment schedules.",
             processingFees: "0.75% - 1.5% plus legal/technical valuation charges.",
             faqs: [
@@ -706,25 +1331,46 @@ extension BorrowerLoanProduct {
             loanSpecificDocuments: ["Property Ownership Records", "Encumbrance Certificate", "Latest Tax Receipts"]
         ),
         BorrowerLoanProduct(
-            id: UUID(uuidString: "2d22a0bc-18ab-4f47-bfd0-7c5bdd8f3b18") ?? UUID(),
-            type: .other,
-            shortDescription: "Explore additional bank-supported products tailored to profile and need.",
-            maximumAmount: 5_000_000,
-            interestRateRange: "Custom",
-            estimatedProcessingTime: "Depends on product",
-            eligibilitySnapshot: "Eligibility differs by selected product variant and purpose.",
-            purpose: "Access specialized lending products not covered in standard categories.",
-            benefits: ["Customized product fit", "Advisory support", "Multi-purpose options"],
-            eligibilityCriteria: ["Profile-specific underwriting", "Document support by variant"],
-            minimumRequirements: ["KYC and income proof", "Product-specific declarations"],
-            interestInformation: "Interest and terms are personalized by product structure.",
-            repaymentOverview: "Repayment options vary by chosen loan product.",
-            processingFees: "Product-specific and disclosed before final submission.",
+            id: UUID(uuidString: "c676d131-e109-4515-a47b-756ef073b436") ?? UUID(),
+            type: .consumer,
+            shortDescription: "Instant small-ticket finance for electronics, appliances, shopping, and card EMIs.",
+            maximumAmount: 1_000_000,
+            interestRateRange: "12.00% - 24.00%",
+            estimatedProcessingTime: "Instant - 24 hours",
+            eligibilitySnapshot: "Existing card/banking relationship or verified salaried/self-employed profile.",
+            purpose: "Convert consumer purchases into manageable EMIs with minimal documentation.",
+            benefits: ["Small-ticket financing", "Instant approvals", "Minimal documentation", "EMI conversion support"],
+            eligibilityCriteria: ["Age 21-60 years", "Valid KYC", "Stable repayment behavior"],
+            minimumRequirements: ["KYC", "Income or card relationship proof", "Purchase invoice where applicable"],
+            interestInformation: "Pricing depends on card relationship, tenure, merchant offer, and profile quality.",
+            repaymentOverview: "Short tenures from 3 to 36 months with auto-debit or card statement repayment.",
+            processingFees: "Merchant/card-linked fees may apply and are shown before confirmation.",
             faqs: [
-                BorrowerLoanFAQ(question: "How do I pick the right loan?", answer: "Use the loan overview and eligibility guidance to compare options."),
-                BorrowerLoanFAQ(question: "Can a relationship manager assist?", answer: "Yes, once submitted, your request is assigned to an officer queue.")
+                BorrowerLoanFAQ(question: "Can I convert purchases to EMI?", answer: "Eligible card and consumer purchases can be converted into EMI plans."),
+                BorrowerLoanFAQ(question: "Is documentation required?", answer: "Most eligible customers need only basic KYC and purchase details.")
             ],
-            loanSpecificDocuments: ["Product-Specific Supporting Documents"]
+            loanSpecificDocuments: ["Purchase Invoice", "Card Statement"]
+        ),
+        BorrowerLoanProduct(
+            id: UUID(uuidString: "f09cf57c-9858-4869-85fd-b9de6c76466f") ?? UUID(),
+            type: .msmeStartup,
+            shortDescription: "Growth capital for small businesses, startups, working capital, and expansion.",
+            maximumAmount: 20_000_000,
+            interestRateRange: "10.75% - 18.00%",
+            estimatedProcessingTime: "3-9 working days",
+            eligibilitySnapshot: "Registered MSME/startup with business verification, cash-flow records, or projected revenue.",
+            purpose: "Support startup funding, working capital, equipment, inventory, and business expansion.",
+            benefits: ["Government schemes possible", "Startup assistance", "Flexible repayment plans", "Working capital options"],
+            eligibilityCriteria: ["Business registration", "Banking/GST activity", "Promoter KYC and credit profile"],
+            minimumRequirements: ["Udyam/GST or registration proof", "Bank statements", "Business plan or financials"],
+            interestInformation: "Rates depend on turnover, vintage, collateral support, scheme eligibility, and cash-flow assessment.",
+            repaymentOverview: "Term loan and overdraft-style structures available based on business need.",
+            processingFees: "Scheme-linked concessions may apply for eligible MSME or startup profiles.",
+            faqs: [
+                BorrowerLoanFAQ(question: "Can new startups apply?", answer: "Yes, with promoter KYC, business plan, and eligibility under startup/MSME programs."),
+                BorrowerLoanFAQ(question: "Are government schemes available?", answer: "Eligible applicants may be mapped to MSME, Mudra-style, or startup assistance programs.")
+            ],
+            loanSpecificDocuments: ["Business Registration", "GST / Udyam Certificate", "Bank Statements", "Business Plan"]
         )
     ]
 }
@@ -779,20 +1425,56 @@ extension BorrowerLoanDocumentItem {
             )
         ]
 
-        let loanSpecific = product.loanSpecificDocuments.map {
-            BorrowerLoanDocumentItem(
-                id: UUID(),
-                name: $0,
-                category: .loanSpecific,
-                status: .pendingUpload,
-                fileName: nil,
-                uploadDate: nil,
-                lastUpdated: nil,
-                isLocked: false
-            )
-        }
+        let baseDocKeys = Set([
+            canonicalDocumentKey(identityDoc),
+            canonicalDocumentKey(addressDoc),
+            canonicalDocumentKey(incomeDoc)
+        ])
+        let loanSpecific = product.loanSpecificDocuments
+            .filter { !baseDocKeys.contains(canonicalDocumentKey($0)) }
+            .map {
+                BorrowerLoanDocumentItem(
+                    id: UUID(),
+                    name: $0,
+                    category: .loanSpecific,
+                    status: .pendingUpload,
+                    fileName: nil,
+                    uploadDate: nil,
+                    lastUpdated: nil,
+                    isLocked: false
+                )
+            }
 
         return identity + address + income + loanSpecific
+    }
+
+    static func canonicalDocumentKey(_ name: String) -> String {
+        let normalized = name.lowercased()
+
+        if normalized.contains("aadhaar") || normalized.contains("aadhar") {
+            return "aadhaar"
+        }
+        if normalized.contains("pan") {
+            return "pan"
+        }
+        if normalized.contains("salary") || normalized.contains("payslip") || normalized.contains("pay slip") {
+            return "salary_slip"
+        }
+        if normalized.contains("bank") && normalized.contains("statement") {
+            return "bank_statement"
+        }
+        if normalized.contains("utility") {
+            return "utility_bill"
+        }
+        if normalized.contains("passport") {
+            return "passport"
+        }
+        if normalized.contains("driving") {
+            return "driving_license"
+        }
+
+        let compact = normalized.filter { $0.isLetter || $0.isNumber }
+        return compact.hasSuffix("s") ? String(compact.dropLast()) : compact
     }
 }
 
@@ -802,4 +1484,3 @@ private extension String {
         return Double(filtered) ?? 0
     }
 }
-

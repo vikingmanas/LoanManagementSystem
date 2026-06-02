@@ -28,10 +28,11 @@ struct OnboardingQuestionnaireView: View {
     @State private var emergencyContactAlternateNumber = ""
     @State private var emergencyContactAddress = ""
     @State private var existingCustomerId = ""
-    @State private var preferredBranch = "Main Branch"
+    @State private var preferredBranch = "Headquarters Branch"
     @State private var showInsightCard = false
     @State private var linkedAccountsList: [LinkedBankAccount] = []
     @State private var isShowingAddAccountForm = false
+    @State private var branchesList: [BranchInfo] = []
     
     // Loading & validation state
     @State private var isLoading = false
@@ -112,6 +113,7 @@ struct OnboardingQuestionnaireView: View {
             }
             .onAppear {
                 prepopulateFieldsIfPossible()
+                loadBranches()
             }
             .onChange(of: profileStore.profile) {
                 prepopulateFieldsIfPossible()
@@ -226,7 +228,7 @@ struct OnboardingQuestionnaireView: View {
                             .font(.headline)
                             .foregroundStyle(.primary)
                         
-                        Text("Please link at least one bank account to calculate eligibility and setup auto-debit.")
+                        Text("You can link a bank account now or finish setup and add one later from your profile.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -254,7 +256,8 @@ struct OnboardingQuestionnaireView: View {
                     }
                     
                     Picker("Select Branch", selection: $preferredBranch) {
-                        ForEach(branches, id: \.self) {
+                        let actualBranches = branchesList.isEmpty ? branches : branchesList.map(\.name)
+                        ForEach(actualBranches, id: \.self) {
                             Text($0)
                         }
                     }
@@ -402,14 +405,9 @@ struct OnboardingQuestionnaireView: View {
             }
             
         case 1:
-            if linkedAccountsList.isEmpty {
-                showError("Please link at least one bank account to proceed.")
-                return
-            }
-            
             isLoading = true
             Task {
-                let success = await saveFinancialDetailsAndComplete()
+                _ = await saveFinancialDetailsAndComplete()
                 await MainActor.run {
                     isLoading = false
                 }
@@ -448,7 +446,7 @@ struct OnboardingQuestionnaireView: View {
         showValidationError = false
         
         do {
-            let fetchedAccounts: [LinkedBankAccount]? = try? await SupabaseManager.shared.client
+            let fetchedAccounts: [LinkedBankAccount]? = try await SupabaseManager.shared.client
                 .from("bank_accounts")
                 .select()
                 .eq("customer_id", value: trimmedId)
@@ -496,7 +494,7 @@ struct OnboardingQuestionnaireView: View {
     private func saveProfessionalDetails() async -> Bool {
         let email = authManager.userEmail ?? ""
         let name = authManager.userDisplayName
-        var currentProfile = await profileStore.ensureProfile(email: email, name: name)
+        var currentProfile = profileStore.ensureProfile(email: email, name: name)
         
         currentProfile.occupation = occupation
         currentProfile.employment = EmploymentInfo(
@@ -533,7 +531,7 @@ struct OnboardingQuestionnaireView: View {
         
         let email = authManager.userEmail ?? user.email ?? ""
         let name = authManager.userDisplayName
-        var currentProfile = await profileStore.ensureProfile(email: email, name: name)
+        var currentProfile = profileStore.ensureProfile(email: email, name: name)
         
         currentProfile.occupation = occupation
         currentProfile.employment = EmploymentInfo(
@@ -579,7 +577,7 @@ struct OnboardingQuestionnaireView: View {
         
         do {
             try await DatabaseService.shared.updateProfile(currentProfile)
-            try? await SupabaseManager.shared.client
+            try await SupabaseManager.shared.client
                 .from("users")
                 .update(["full_name": name, "mobile_number": currentProfile.mobileNumber])
                 .eq("id", value: user.id)
@@ -608,7 +606,7 @@ struct OnboardingQuestionnaireView: View {
             let email = authManager.userEmail ?? user.email ?? ""
             let name = authManager.userDisplayName
             
-            var currentProfile = await profileStore.ensureProfile(email: email, name: name)
+            var currentProfile = profileStore.ensureProfile(email: email, name: name)
             currentProfile.id = user.id.uuidString
             currentProfile.isOnboardingCompleted = true
             
@@ -623,6 +621,22 @@ struct OnboardingQuestionnaireView: View {
                 await MainActor.run {
                     isLoading = false
                 }
+            }
+        }
+    }
+
+    private func loadBranches() {
+        Task {
+            do {
+                let fetched = try await DatabaseService.shared.fetchBranches()
+                await MainActor.run {
+                    self.branchesList = fetched
+                    if let first = fetched.first {
+                        self.preferredBranch = first.name
+                    }
+                }
+            } catch {
+                print("Error loading branches in onboarding questionnaire: \(error)")
             }
         }
     }

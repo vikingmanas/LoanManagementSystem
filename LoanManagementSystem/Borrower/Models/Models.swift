@@ -117,8 +117,90 @@ public enum TransactionType: String, CaseIterable, Identifiable, Hashable, Senda
     case credit = "Credit"
     case penalty = "Penalty"
     case refund = "Refund"
+    case failedDebit = "Failed Debit"
 
     public var id: String { self.rawValue }
+
+    public var isDebit: Bool {
+        switch self {
+        case .emiPayment, .penalty, .failedDebit:
+            return true
+        case .credit, .refund:
+            return false
+        }
+    }
+}
+
+public enum ForeclosureRequestStatus: String, CaseIterable, Identifiable, Hashable, Sendable {
+    case submitted = "Submitted"
+    case officerReview = "Under Loan Officer Review"
+    case recommended = "Recommended"
+    case managerApproval = "Under Manager Approval"
+    case approved = "Approved"
+    case awaitingPayment = "Awaiting Payment"
+    case closed = "Closed"
+    case rejected = "Rejected"
+
+    public var id: String { rawValue }
+
+    public var isPaymentReady: Bool {
+        self == .awaitingPayment || self == .approved
+    }
+}
+
+public struct ForeclosureRequest: Identifiable, Hashable, Sendable {
+    public let id: UUID
+    public var requestID: String
+    public var loanID: UUID
+    public var loanType: String
+    public var loanAccountNumber: String
+    public var outstandingPrincipal: Double
+    public var accruedInterest: Double
+    public var foreclosureCharges: Double
+    public var gst: Double
+    public var totalPayable: Double
+    public var status: ForeclosureRequestStatus
+    public var submittedAt: Date
+    public var updatedAt: Date
+    public var officerRecommendation: String?
+    public var managerDecision: String?
+    public var paymentReference: String?
+
+    public init(
+        id: UUID = UUID(),
+        requestID: String,
+        loanID: UUID,
+        loanType: String,
+        loanAccountNumber: String,
+        outstandingPrincipal: Double,
+        accruedInterest: Double,
+        foreclosureCharges: Double,
+        gst: Double,
+        totalPayable: Double,
+        status: ForeclosureRequestStatus = .submitted,
+        submittedAt: Date = Date(),
+        updatedAt: Date = Date(),
+        officerRecommendation: String? = nil,
+        managerDecision: String? = nil,
+        paymentReference: String? = nil
+    ) {
+        self.id = id
+        self.requestID = requestID
+        self.loanID = loanID
+        self.loanType = loanType
+        self.loanAccountNumber = loanAccountNumber
+        self.outstandingPrincipal = outstandingPrincipal
+        self.accruedInterest = accruedInterest
+        self.foreclosureCharges = foreclosureCharges
+        self.gst = gst
+        self.totalPayable = totalPayable
+        self.status = status
+        self.submittedAt = submittedAt
+        self.updatedAt = updatedAt
+        self.officerRecommendation = officerRecommendation
+        self.managerDecision = managerDecision
+        self.paymentReference = paymentReference
+    }
 }
 
 public struct GovernmentScheme: Identifiable, Hashable, Sendable {
@@ -148,3 +230,24 @@ public enum SchemeCategory: String, CaseIterable, Identifiable, Hashable, Sendab
     public var id: String { self.rawValue }
 }
 
+public struct DBTransaction: Codable, Sendable {
+    public let id: UUID
+    public var title: String
+    public var date: Date
+    public var amount: Double
+    public var type: String
+    public var referenceNo: String
+    public var bankAccountId: UUID?
+    public var borrowerId: UUID
+
+    public init(id: UUID = UUID(), title: String, date: Date = Date(), amount: Double, type: String, referenceNo: String, bankAccountId: UUID? = nil, borrowerId: UUID) {
+        self.id = id
+        self.title = title
+        self.date = date
+        self.amount = amount
+        self.type = type
+        self.referenceNo = referenceNo
+        self.bankAccountId = bankAccountId
+        self.borrowerId = borrowerId
+    }
+}

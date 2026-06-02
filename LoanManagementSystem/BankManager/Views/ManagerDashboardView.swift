@@ -3,10 +3,10 @@ import SwiftUI
 struct ManagerDashboardView: View {
     @EnvironmentObject private var authManager: AuthManager
     @StateObject private var viewModel = ManagerDashboardViewModel()
+    @StateObject private var notificationViewModel = NotificationViewModel()
 
     @State private var selectedTab: ManagerWorkspaceTab = .dashboard
     @State private var showProfileSheet = false
-    @State private var showNotificationSheet = false
     @State private var showSearchSheet = false
     @State private var selectedApplicant: ManagerApplicant?
 
@@ -18,7 +18,8 @@ struct ManagerDashboardView: View {
                     selectedTab: $selectedTab,
                     onSelectApplicant: { selectedApplicant = $0 }
                 )
-                .navigationTitle("Dashboard")
+                .navigationTitle("\(viewModel.branchOverview.name)")
+                .navigationBarTitleDisplayMode(.large)
                 .toolbar { dashboardToolbar }
             }
             .tabItem { Label("Dashboard", systemImage: "square.grid.2x2") }
@@ -30,24 +31,25 @@ struct ManagerDashboardView: View {
                     onSelectApplicant: { selectedApplicant = $0 }
                 )
                 .navigationTitle("Applicants")
-                .toolbar { applicantsToolbar }
             }
             .tabItem { Label("Applicants", systemImage: "person.2") }
             .badge(viewModel.pendingApplicants.count > 0 ? viewModel.pendingApplicants.count : 0)
             .tag(ManagerWorkspaceTab.applicants)
 
             NavigationStack {
-                ManagerCommunicationTabView(viewModel: viewModel)
-                    .navigationTitle("Messages")
-                    .toolbar { dashboardToolbar }
+                ManagerBranchTabView(viewModel: viewModel)
             }
-            .tabItem { Label("Messages", systemImage: "message") }
-            .badge(viewModel.unreadChatCount > 0 ? viewModel.unreadChatCount : 0)
-            .tag(ManagerWorkspaceTab.messages)
+            .tabItem { Label("Branch", systemImage: "building.2") }
+            .tag(ManagerWorkspaceTab.branch)
         }
         .tint(LMSColors.brandNavy)
         .task {
             await viewModel.fetchDashboardData(authManager: authManager)
+            // Configure notification VM with current user ID
+            if let userId = authManager.currentUser?.uid,
+               let uuid = UUID(uuidString: userId) {
+                notificationViewModel.configure(userId: uuid)
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SwitchToApplicantsTab"))) { _ in
             selectedTab = .applicants
@@ -61,9 +63,6 @@ struct ManagerDashboardView: View {
         }
         .sheet(isPresented: $showProfileSheet) {
             ManagerProfileView(viewModel: viewModel)
-        }
-        .sheet(isPresented: $showNotificationSheet) {
-            ManagerNotificationsView(viewModel: viewModel)
         }
         .sheet(isPresented: $showSearchSheet) {
             ManagerSearchSheet(viewModel: viewModel) { applicant in
@@ -86,17 +85,6 @@ struct ManagerDashboardView: View {
         }
     }
 
-    @ToolbarContentBuilder
-    private var applicantsToolbar: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
-            HStack(spacing: LMSSpacing.sm) {
-                searchButton
-                notificationButton
-                profileButton
-            }
-        }
-    }
-
     private var searchButton: some View {
         Button(action: { showSearchSheet = true }) {
             Image(systemName: "magnifyingglass")
@@ -105,8 +93,10 @@ struct ManagerDashboardView: View {
     }
 
     private var notificationButton: some View {
-        Button(action: { showNotificationSheet = true }) {
-            Image(systemName: viewModel.unreadNotificationCount > 0 ? "bell.badge" : "bell")
+        NavigationLink {
+            NotificationsListView(viewModel: notificationViewModel, isPushed: true)
+        } label: {
+            Image(systemName: notificationViewModel.unreadCount > 0 ? "bell.badge" : "bell")
         }
         .accessibilityLabel("Notifications")
     }
@@ -126,7 +116,7 @@ struct ManagerDashboardView: View {
 enum ManagerWorkspaceTab: Int, Hashable {
     case dashboard = 0
     case applicants = 1
-    case messages = 2
+    case branch = 2
 }
 
 private struct ManagerSearchSheet: View {

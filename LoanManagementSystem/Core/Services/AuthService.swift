@@ -60,6 +60,19 @@ final class AuthService {
         let session = try await client.auth.signIn(email: cleanEmail, password: password)
         return session
     }
+
+    /// Sends a Supabase-managed email OTP/magic-link token for an existing borrower account.
+    func sendEmailOTP(email: String) async throws {
+        let cleanEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        try await client.auth.signInWithOTP(email: cleanEmail, shouldCreateUser: false)
+    }
+
+    /// Verifies a Supabase-managed email OTP and returns the authenticated session response.
+    func verifyEmailOTP(email: String, token: String) async throws -> AuthResponse {
+        let cleanEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let cleanToken = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        return try await client.auth.verifyOTP(email: cleanEmail, token: cleanToken, type: .email)
+    }
     
     /// Checks whether an email is already registered in the 'users' table.
     func isEmailRegistered(_ email: String) async -> Bool {
@@ -91,11 +104,16 @@ final class AuthService {
             throw AuthServiceError.emailAlreadyRegistered
         }
         
-        // 2. Sign up the user with Supabase Auth
+        // 2. Sign up the user with Supabase Auth (passing all potential metadata keys to prevent trigger errors)
         let authResponse = try await client.auth.signUp(
             email: cleanEmail,
             password: password,
-            data: ["display_name": .string(name)]
+            data: [
+                "display_name": .string(name),
+                "full_name": .string(name),
+                "phone": .string(phone),
+                "mobile_number": .string(phone)
+            ]
         )
         
         let user = authResponse.user
@@ -132,7 +150,7 @@ final class AuthService {
         let record = SupabaseUserInsert(id: uid, email: email, role: role, full_name: name, mobile_number: phone, created_at: Date())
         try await client
             .from("users")
-            .insert(record)
+            .upsert(record)
             .execute()
     }
     
@@ -154,5 +172,10 @@ final class AuthService {
     /// Signs out the current authenticated session.
     func signOut() async throws {
         try await client.auth.signOut()
+    }
+    
+    /// Updates the password for the currently signed-in user.
+    func updatePassword(newPassword: String) async throws {
+        _ = try await client.auth.update(user: UserAttributes(password: newPassword))
     }
 }

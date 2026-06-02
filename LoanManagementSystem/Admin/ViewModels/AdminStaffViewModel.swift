@@ -29,6 +29,20 @@ final class AdminStaffViewModel: ObservableObject {
             return matchesSearch && matchesRole && matchesStatus
         }
     }
+    
+    var filteredBranches: [BranchInfo] {
+        if searchText.isEmpty {
+            return branches
+        }
+        return branches.filter {
+            $0.name.localizedCaseInsensitiveContains(searchText) ||
+            $0.code.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+    
+    func staff(for branchId: UUID) -> [StaffMember] {
+        return staffMembers.filter { $0.branchId == branchId }
+    }
 
 
     func loadData() async {
@@ -119,6 +133,22 @@ final class AdminStaffViewModel: ObservableObject {
 
             async let staffTask = service.fetchStaffMembers()
             self.staffMembers = try await staffTask
+            isLoading = false
+            return true
+        } catch {
+            self.errorMessage = error.localizedDescription
+            isLoading = false
+            return false
+        }
+    }
+
+    func createBranch(name: String, code: String, region: String, address: String) async -> Bool {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            try await service.createBranch(name: name, code: code, region: region, address: address)
+            self.branches = try await service.fetchBranches()
             isLoading = false
             return true
         } catch {

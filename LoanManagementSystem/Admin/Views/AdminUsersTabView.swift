@@ -3,93 +3,59 @@ import SwiftUI
 struct AdminUsersTabView: View {
     @ObservedObject var viewModel: AdminStaffViewModel
     @State private var isShowingAddSheet = false
-    @State private var selectedMemberForDetail: StaffMember? = nil
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-
-                VStack(spacing: LMSSpacing.md) {
-
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundStyle(LMSColors.textSecondary)
-                        TextField("Search name, email, employee code...", text: $viewModel.searchText)
-                            .font(LMSFont.body)
-                            .textFieldStyle(.plain)
-                            .disableAutocapitalization()
-                        if !viewModel.searchText.isEmpty {
-                            Button(action: { viewModel.searchText = "" }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(LMSColors.textSecondary)
-                            }
+            Group {
+                if viewModel.isLoading && viewModel.branches.isEmpty {
+                    VStack {
+                        Spacer()
+                        ProgressView("Loading directory...")
+                            .font(LMSFont.footnote)
+                        Spacer()
+                    }
+                } else if viewModel.filteredBranches.isEmpty {
+                    VStack {
+                        Spacer()
+                        VStack(spacing: LMSSpacing.md) {
+                            Image(systemName: "building.2.crop.circle.badge.xmark")
+                                .font(.system(size: 48))
+                                .foregroundStyle(LMSColors.textTertiary)
+                            Text(viewModel.searchText.isEmpty ? "No branches available" : "No branches match your search")
+                                .font(LMSFont.headline)
+                                .foregroundStyle(LMSColors.textPrimary)
+                            Text(viewModel.searchText.isEmpty ? "Branches will appear here once added." : "Check spelling or adjust your search.")
+                                .font(LMSFont.subheadline)
+                                .foregroundStyle(LMSColors.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 40)
                         }
+                        Spacer()
                     }
-                    .padding(LMSSpacing.md)
-                    .background(LMSColors.surfaceTertiary, in: RoundedRectangle(cornerRadius: LMSRadius.md))
-                    .padding(.horizontal, LMSSpacing.screenHorizontal)
-
-
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: LMSSpacing.sm) {
-                            AdminFilterChip(
-                                title: "All Roles",
-                                isSelected: viewModel.selectedRoleFilter == nil,
-                                action: { viewModel.selectedRoleFilter = nil }
-                            )
-
-                            AdminFilterChip(
-                                title: "Loan Officer",
-                                isSelected: viewModel.selectedRoleFilter == .loanOfficer,
-                                action: { viewModel.selectedRoleFilter = .loanOfficer }
-                            )
-
-                            AdminFilterChip(
-                                title: "Bank Manager",
-                                isSelected: viewModel.selectedRoleFilter == .bankManager,
-                                action: { viewModel.selectedRoleFilter = .bankManager }
-                            )
-                        }
-                        .padding(.horizontal, LMSSpacing.screenHorizontal)
-                    }
-                }
-                .padding(.vertical, LMSSpacing.md)
-                .background(LMSColors.surface)
-
-
-                if viewModel.isLoading && viewModel.staffMembers.isEmpty {
-                    Spacer()
-                    ProgressView("Loading staff directory...")
-                        .font(LMSFont.footnote)
-                    Spacer()
-                } else if viewModel.filteredStaffMembers.isEmpty {
-                    Spacer()
-                    VStack(spacing: LMSSpacing.md) {
-                        Image(systemName: "person.2.slash.fill")
-                            .font(.system(size: 48))
-                            .foregroundStyle(LMSColors.textTertiary)
-                        Text(viewModel.searchText.isEmpty ? "No staff members registered" : "No results match your search")
-                            .font(LMSFont.headline)
-                            .foregroundStyle(LMSColors.textPrimary)
-                        Text(viewModel.searchText.isEmpty ? "Tap the '+' icon to add a staff account." : "Check spelling or adjust your filters.")
-                            .font(LMSFont.subheadline)
-                            .foregroundStyle(LMSColors.textSecondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
-                    }
-                    Spacer()
                 } else {
                     List {
-                        ForEach(viewModel.filteredStaffMembers) { member in
-                            StaffMemberRow(member: member)
+                        Section {
+                            ForEach(viewModel.filteredBranches) { branch in
+                                ZStack(alignment: .leading) {
+                                    AdminBranchCard(branch: branch, staffCount: viewModel.staff(for: branch.branchId).count)
+                                    
+                                    NavigationLink(destination: AdminBranchStaffView(branch: branch, viewModel: viewModel)) {
+                                        EmptyView()
+                                    }
+                                    .opacity(0)
+                                }
                                 .listRowInsets(EdgeInsets())
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
-                                .onTapGesture {
-                                    selectedMemberForDetail = member
-                                }
                                 .padding(.horizontal, LMSSpacing.screenHorizontal)
                                 .padding(.vertical, LMSSpacing.xs)
+                            }
+                        } header: {
+                            Text("\(viewModel.filteredBranches.count) Branches")
+                                .font(LMSFont.subheadline.weight(.semibold))
+                                .foregroundStyle(LMSColors.textSecondary)
+                                .textCase(nil)
+                                .padding(.leading, 4)
                         }
                     }
                     .listStyle(.plain)
@@ -98,25 +64,45 @@ struct AdminUsersTabView: View {
                     }
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .navigationTitle("Staff Directory")
+            .searchable(text: $viewModel.searchText, prompt: "Search staff...")
+            .disableAutocorrection(true)
             .lmsScreenBackground()
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: {
-                        isShowingAddSheet = true
-                    }) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(LMSColors.brandNavy)
+                    HStack(spacing: 8) {
+                        Menu {
+                            Section("Role") {
+                                Button("All Roles") { viewModel.selectedRoleFilter = nil }
+                                Button("Loan Officer") { viewModel.selectedRoleFilter = .loanOfficer }
+                                Button("Bank Manager") { viewModel.selectedRoleFilter = .bankManager }
+                            }
+                            Section("Status") {
+                                Button("All Status") { viewModel.selectedStatusFilter = nil }
+                                ForEach(StaffStatus.allCases) { status in
+                                    Button(status.displayName) { viewModel.selectedStatusFilter = status }
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "line.3.horizontal.decrease.circle")
+                                .font(.title3)
+                                .foregroundStyle(LMSColors.brandNavy)
+                                .symbolVariant((viewModel.selectedRoleFilter != nil || viewModel.selectedStatusFilter != nil) ? .fill : .none)
+                        }
+
+                        Button(action: {
+                            isShowingAddSheet = true
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(LMSColors.brandNavy)
+                        }
                     }
-                    .buttonStyle(LMSPressableStyle())
                 }
             }
             .sheet(isPresented: $isShowingAddSheet) {
                 AdminAddUserSheet(viewModel: viewModel)
-            }
-            .sheet(item: $selectedMemberForDetail) { member in
-                AdminUserDetailSheet(viewModel: viewModel, member: member)
             }
             .task {
                 await viewModel.loadData()
@@ -126,42 +112,23 @@ struct AdminUsersTabView: View {
 }
 
 
-private struct AdminFilterChip: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
 
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(LMSFont.footnote.weight(.semibold))
-                .padding(.horizontal, LMSSpacing.md)
-                .padding(.vertical, 8)
-                .background(
-                    isSelected ? LMSColors.brandNavy : LMSColors.surfaceTertiary,
-                    in: Capsule()
-                )
-                .foregroundStyle(isSelected ? .white : LMSColors.textSecondary)
-                .overlay(
-                    Capsule()
-                        .stroke(isSelected ? Color.clear : LMSColors.separatorLight, lineWidth: 1)
-                )
-        }
-        .buttonStyle(LMSPressableStyle())
-    }
-}
 
-private struct StaffMemberRow: View {
+struct StaffMemberRow: View {
     let member: StaffMember
 
     var body: some View {
         HStack(spacing: LMSSpacing.md) {
-
-            Text(member.initials)
-                .font(LMSFont.headline)
-                .foregroundStyle(.white)
-                .frame(width: 46, height: 46)
-                .background(member.role.themeColor, in: Circle())
+            ZStack {
+                Circle()
+                    .fill(member.role.themeColor)
+                
+                Text(member.initials)
+                    .font(LMSFont.headline)
+                    .foregroundStyle(.white)
+            }
+            .frame(width: 46, height: 46)
+            .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: LMSSpacing.xs) {
@@ -193,13 +160,16 @@ private struct StaffMemberRow: View {
                         .foregroundStyle(LMSColors.textTertiary)
 
                     Text(member.role.displayName)
-                        .font(LMSFont.caption.weight(.medium))
+                        .font(LMSFont.caption2.weight(.bold))
                         .foregroundStyle(member.role.themeColor)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(member.role.themeColor.opacity(0.1), in: Capsule())
                 }
             }
         }
-        .padding(LMSSpacing.md)
-        .lmsInsetGroupedCard()
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 
     private func statusStyle(_ status: StaffStatus) -> LMSStatusPill.Style {
@@ -221,3 +191,50 @@ private struct StaffMemberRow: View {
     }
 }
 
+struct AdminBranchCard: View {
+    let branch: BranchInfo
+    let staffCount: Int
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                RoundedRectangle(cornerRadius: LMSRadius.md)
+                    .fill(LMSColors.brandNavy.opacity(0.1))
+                    .frame(width: 48, height: 48)
+                Image(systemName: "building.2.fill")
+                    .font(.title3)
+                    .foregroundStyle(LMSColors.brandNavy)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(branch.name)
+                    .font(LMSFont.callout.weight(.semibold))
+                    .foregroundStyle(LMSColors.textPrimary)
+                
+                HStack(spacing: 8) {
+                    Label(branch.code, systemImage: "number.square")
+                        .font(LMSFont.caption)
+                        .foregroundStyle(LMSColors.textSecondary)
+                    Text("•")
+                        .foregroundStyle(LMSColors.textTertiary)
+                    Text(branch.region)
+                        .font(LMSFont.caption)
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+            }
+            
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 4) {
+                Text("\(staffCount)")
+                    .font(LMSFont.headline)
+                    .foregroundStyle(LMSColors.textPrimary)
+                Text(staffCount == 1 ? "Member" : "Members")
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(LMSColors.textSecondary)
+            }
+        }
+        .padding(16)
+        .lmsInsetGroupedCard()
+    }
+}

@@ -1,10 +1,12 @@
 import SwiftUI
+import Combine
 
 struct ChatsFeedTabView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @State private var searchText = ""
     @State private var showUnreadOnly = false
     @State private var showingCompose = false
+    private let refreshTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     private var conversations: [OfficerConversation] {
         OfficerConversation.make(from: viewModel.activityFeed)
@@ -88,8 +90,13 @@ struct ChatsFeedTabView: View {
                 }
             }
             .refreshable { await viewModel.fetchDashboardData() }
+            .onReceive(refreshTimer) { _ in
+                Task {
+                    await viewModel.fetchDashboardData()
+                }
+            }
             .sheet(isPresented: $showingCompose) {
-                OfficerComposeMessageSheet(applications: viewModel.applications)
+                OfficerComposeMessageSheet(viewModel: viewModel)
             }
         }
     }
@@ -193,6 +200,7 @@ private struct OfficerMessageThreadView: View {
     @State private var messageText = ""
     @State private var messages: [OfficerThreadMessage]
     @FocusState private var isComposerFocused: Bool
+    private let refreshTimer = Timer.publish(every: 4, on: .main, in: .common).autoconnect()
 
     init(conversation: OfficerConversation, viewModel: LoanOfficerDashboardViewModel) {
         self.conversation = conversation
@@ -237,31 +245,83 @@ private struct OfficerMessageThreadView: View {
         }
         .onAppear {
             conversation.items.forEach { viewModel.markActivityRead($0.id) }
+            Task {
+                await loadMessages()
+            }
+        }
+        .onReceive(refreshTimer) { _ in
+            Task {
+                await loadMessages()
+            }
         }
         .toolbar(.hidden, for: .tabBar)
+    }
+
+    private func loadMessages() async {
+        guard let app = CentralLoanRepository.shared.applications.first(where: { $0.applicationId == conversation.applicationId || $0.displayIdentifier == conversation.applicationId }) else { return }
+        let appId = app.id
+        do {
+            let dbMsgs = try await DatabaseService.shared.fetchMessagesForApplication(applicationId: appId)
+            if !dbMsgs.isEmpty {
+                self.messages = dbMsgs.map { dbMsg in
+                    let isOfficerSender = dbMsg.senderId == viewModel.officerProfile?.id
+                    return OfficerThreadMessage(
+                        id: dbMsg.messageId,
+                        sender: isOfficerSender ? .officer : .borrower,
+                        text: dbMsg.content,
+                        timestamp: dbMsg.sentAt
+                    )
+                }
+                if let officerId = viewModel.officerProfile?.id {
+                    let unreadIncoming = dbMsgs
+                        .filter { $0.receiverId == officerId && !$0.isRead }
+                        .map(\.messageId)
+                    try? await DatabaseService.shared.markMessagesRead(messageIds: unreadIncoming)
+                }
+            } else {
+                self.messages = []
+            }
+        } catch {
+            print("Failed to fetch messages: \(error)")
+        }
     }
 
     private func sendMessage() {
         let trimmed = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-
-        messages.append(OfficerThreadMessage(sender: .officer, text: trimmed, timestamp: Date()))
         messageText = ""
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-            messages.append(OfficerThreadMessage(sender: .borrower, text: autoReply(for: trimmed), timestamp: Date()))
-        }
-    }
+        guard let app = CentralLoanRepository.shared.applications.first(where: { $0.applicationId == conversation.applicationId || $0.displayIdentifier == conversation.applicationId }) else { return }
+        let officerId = viewModel.officerProfile?.id ?? UUID()
+        let borrowerId = app.borrowerId ?? app.id
+        let appId = app.id
 
-    private func autoReply(for text: String) -> String {
-        let lower = text.lowercased()
-        if lower.contains("document") || lower.contains("upload") {
-            return "I will upload the corrected document from my borrower portal today."
+        let officerMsgId = UUID()
+        let officerMsg = OfficerThreadMessage(id: officerMsgId, sender: .officer, text: trimmed, timestamp: Date())
+        messages.append(officerMsg)
+
+        Task {
+            let dbMsg = DBMessage(
+                messageId: officerMsgId,
+                senderId: officerId,
+                receiverId: borrowerId,
+                applicationId: appId,
+                content: trimmed,
+                sentAt: Date(),
+                isRead: false
+            )
+            do {
+                try await DatabaseService.shared.sendMessage(dbMsg)
+                try? await DatabaseService.shared.createNotification(
+                    userId: borrowerId,
+                    title: "New message from your loan officer",
+                    message: trimmed
+                )
+                await viewModel.fetchDashboardData()
+            } catch {
+                print("Failed to send officer message to DB: \(error)")
+            }
         }
-        if lower.contains("income") || lower.contains("salary") {
-            return "I can share the latest salary proof and bank statement."
-        }
-        return "Thank you. I will follow the instructions and update you here."
     }
 }
 
@@ -345,10 +405,17 @@ private struct OfficerMessageBubble: View {
 private struct OfficerThreadMessage: Identifiable, Hashable {
     enum Sender { case officer, borrower }
 
-    let id = UUID()
+    let id: UUID
     let sender: Sender
     let text: String
     let timestamp: Date
+
+    init(id: UUID = UUID(), sender: Sender, text: String, timestamp: Date) {
+        self.id = id
+        self.sender = sender
+        self.text = text
+        self.timestamp = timestamp
+    }
 
     static func seed(from conversation: OfficerConversation) -> [OfficerThreadMessage] {
         var seeded: [OfficerThreadMessage] = [
@@ -368,10 +435,16 @@ private struct OfficerThreadMessage: Identifiable, Hashable {
 }
 
 private struct OfficerComposeMessageSheet: View {
-    let applications: [OfficerLoanApplication]
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var selectedApplicationId = ""
     @State private var message = ""
+
+    private var activeApps: [OfficerLoanApplication] {
+        CentralLoanRepository.shared.applications.compactMap { app -> OfficerLoanApplication? in
+            CentralLoanRepository.shared.toOfficerApplication(from: app)
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -379,7 +452,7 @@ private struct OfficerComposeMessageSheet: View {
                 Section("Borrower") {
                     Picker("Application", selection: $selectedApplicationId) {
                         Text("Select").tag("")
-                        ForEach(applications) { app in
+                        ForEach(activeApps) { app in
                             Text("\(app.borrowerName) · \(app.applicationId)").tag(app.applicationId)
                         }
                     }
@@ -397,9 +470,47 @@ private struct OfficerComposeMessageSheet: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Send") { dismiss() }
-                        .disabled(selectedApplicationId.isEmpty || message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("Send") {
+                        sendMessage()
+                        dismiss()
+                    }
+                    .disabled(selectedApplicationId.isEmpty || message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
+            }
+        }
+    }
+
+    private func sendMessage() {
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard let app = activeApps.first(where: { $0.applicationId == selectedApplicationId }) else { return }
+        let officerId = viewModel.officerProfile?.id ?? UUID()
+        let borrowerId = app.borrowerId
+        let appId = app.id
+        
+        let messageId = UUID()
+        
+        Task {
+            let dbMsg = DBMessage(
+                messageId: messageId,
+                senderId: officerId,
+                receiverId: borrowerId,
+                applicationId: appId,
+                content: trimmed,
+                sentAt: Date(),
+                isRead: false
+            )
+            do {
+                try await DatabaseService.shared.sendMessage(dbMsg)
+                try? await DatabaseService.shared.createNotification(
+                    userId: borrowerId,
+                    title: "New message from your loan officer",
+                    message: trimmed
+                )
+                print("Message composed and sent successfully.")
+                await viewModel.fetchDashboardData()
+            } catch {
+                print("Failed to send composed message to DB: \(error)")
             }
         }
     }

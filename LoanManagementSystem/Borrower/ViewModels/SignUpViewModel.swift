@@ -5,12 +5,28 @@ import Combine
 class SignUpViewModel: ObservableObject {
     @Published var fullName: String = ""
     @Published var email: String = ""
-    @Published var phone: String = ""
+    @Published var phone: String = "" {
+        didSet {
+            let filtered = phone.filter { "0123456789".contains($0) }
+            let newPhone = filtered.count > 10 ? String(filtered.prefix(10)) : filtered
+            if phone != newPhone {
+                phone = newPhone
+            }
+        }
+    }
     @Published var password: String = ""
     @Published var confirmPassword: String = ""
 
     @Published var referralCode: String = ""
-    @Published var alternatePhone: String = ""
+    @Published var alternatePhone: String = "" {
+        didSet {
+            let filtered = alternatePhone.filter { "0123456789".contains($0) }
+            let newPhone = filtered.count > 10 ? String(filtered.prefix(10)) : filtered
+            if alternatePhone != newPhone {
+                alternatePhone = newPhone
+            }
+        }
+    }
 
     @Published var acceptedTerms: Bool = false
     @Published var acceptedPrivacy: Bool = false

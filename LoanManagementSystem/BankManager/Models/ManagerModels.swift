@@ -109,6 +109,12 @@ struct ManagerApplicant: Identifiable, Hashable {
     var verificationProgress: Double
     var tenure: Int
     var interestRate: Double
+    var branchName: String
+    var escalatedAt: Date? = nil
+
+    var isAssignedToOfficer: Bool {
+        assignedOfficerId != id && !assignedOfficer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 }
 
 
@@ -152,6 +158,7 @@ struct ManagerOfficer: Identifiable, Hashable {
     var activeCases: Int
     var maxCapacity: Int
     var rating: Double
+    var managerRating: Double? = nil
     var performance: Double
     var loansProcessedYTD: Int
     var approvalRate: Double
@@ -173,6 +180,28 @@ struct ManagerOfficer: Identifiable, Hashable {
         if capacityPercentage > 0.60 { return LMSColors.amber }
         return LMSColors.emerald
     }
+}
+
+struct ManagerOfficerEscalation: Identifiable, Hashable {
+    let id: UUID
+    var applicationId: String
+    var borrowerName: String
+    var loanType: ManagerLoanType
+    var requestedAmount: Double
+    var escalatedAt: Date
+    var reason: String
+    var riskLevel: ManagerRiskLevel
+}
+
+struct ManagerOfficerPerformanceSummary: Identifiable, Hashable {
+    var officer: ManagerOfficer
+    var escalations: [ManagerOfficerEscalation]
+    var managerRating: Double?
+    var suggestedRating: Double
+
+    var id: UUID { officer.id }
+    var officerEscalationCount: Int { escalations.count }
+    var displayRating: Double { managerRating ?? suggestedRating }
 }
 
 struct ManagerStaffProfile: Hashable {
@@ -214,38 +243,6 @@ struct ManagerStaffProfile: Hashable {
 }
 
 
-struct ManagerKPI: Identifiable, Hashable {
-    let id = UUID()
-    var title: String
-    var value: String
-    var subtitle: String
-    var icon: String
-    var tint: Color
-    var trend: KPITrend
-    var trendValue: String
-    var progress: Double
-
-    enum KPITrend: String, Hashable {
-        case up, down, neutral
-
-        var icon: String {
-            switch self {
-            case .up:      return "arrow.up.right"
-            case .down:    return "arrow.down.right"
-            case .neutral: return "minus"
-            }
-        }
-
-        var color: Color {
-            switch self {
-            case .up:      return LMSColors.emerald
-            case .down:    return LMSColors.coral
-            case .neutral: return LMSColors.textSecondary
-            }
-        }
-    }
-}
-
 
 struct ManagerNotificationItem: Identifiable, Hashable {
     let id: UUID
@@ -282,6 +279,7 @@ struct ManagerNotificationItem: Identifiable, Hashable {
 
 struct ManagerChatConversation: Identifiable, Hashable {
     let id: UUID
+    var officerUserId: UUID
     var officerName: String
     var officerInitials: String
     var officerRole: String

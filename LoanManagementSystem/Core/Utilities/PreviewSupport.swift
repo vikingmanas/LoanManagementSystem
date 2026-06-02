@@ -71,7 +71,8 @@ enum PreviewSupport {
             docType: doc.docType,
             status: doc.status,
             submittedDate: doc.uploadedDate ?? Date(),
-            applicationId: app.applicationId
+            applicationId: app.applicationId,
+            fileURL: doc.fileURL
         )
     }
 
@@ -85,7 +86,6 @@ enum PreviewSupport {
         let vm = ManagerDashboardViewModel()
         vm.applicants = ManagerMockData.applicants
         vm.officers = ManagerMockData.officers
-        vm.kpis = ManagerMockData.kpis
         vm.notifications = ManagerMockData.notifications
         vm.conversations = ManagerMockData.conversations
         vm.branchOverview = ManagerMockData.branchOverview
@@ -184,4 +184,3 @@ extension View {
             .environmentObject(PreviewSupport.authManager)
     }
 }
-

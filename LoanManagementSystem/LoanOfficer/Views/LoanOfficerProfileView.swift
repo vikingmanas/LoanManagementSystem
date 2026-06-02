@@ -5,6 +5,9 @@ struct LoanOfficerProfileView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
     
+    @AppStorage("biometricEnabled") private var biometricEnabled = true
+    @StateObject private var localSecurity = LocalSecurityService.shared
+    
     var body: some View {
         NavigationStack {
             List {
@@ -21,21 +24,21 @@ struct LoanOfficerProfileView: View {
                                 .frame(width: 80, height: 80)
                                 .shadow(color: LMSColors.actionBlue.opacity(0.2), radius: 8, x: 0, y: 4)
                             
-                            Text("AK")
+                            Text(authManager.currentStaffProfile?.initials ?? "AK")
                                 .font(.system(size: 32, weight: .bold, design: .rounded))
                                 .foregroundStyle(.white)
                         }
                         
                         VStack(spacing: 4) {
-                            Text("Arjun Kashyap")
+                            Text(authManager.currentStaffProfile?.fullName ?? "Arjun Kashyap")
                                 .font(.title3.bold())
                                 .foregroundStyle(LMSColors.textPrimary)
                             
-                            Text("Senior Loan Officer")
+                            Text(authManager.currentStaffProfile?.designation ?? "Senior Loan Officer")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(LMSColors.actionBlue)
                             
-                            Text("Bengaluru Central Branch (ID: BR-492)")
+                            Text(authManager.currentStaffProfile?.branchName ?? "Bengaluru Central Branch (ID: BR-492)")
                                 .font(.caption)
                                 .foregroundStyle(LMSColors.textSecondary)
                         }
@@ -46,16 +49,23 @@ struct LoanOfficerProfileView: View {
                 
                 // 2. EMPLOYEE DETAILS SECTION
                 Section("Employee Information") {
-                    LabeledContent("Employee ID", value: "EMP-2024-9021")
+                    LabeledContent("Employee ID", value: authManager.currentStaffProfile?.employeeCode ?? "EMP-2024-9021")
                     LabeledContent("Department", value: "Retail Lending Operations")
-                    LabeledContent("Role Level", value: "L3 Administrator")
-                    LabeledContent("Date of Joining", value: "15 Mar 2021")
+                    LabeledContent("Role Level", value: authManager.currentStaffProfile?.designation ?? "L3 Administrator")
+                    
+                    let dateStr: String = {
+                        if let date = authManager.currentStaffProfile?.createdAt {
+                            return RelativeDateFormatter.shared.absoluteString(from: date)
+                        }
+                        return "15 Mar 2021"
+                    }()
+                    LabeledContent("Date of Joining", value: dateStr)
                 }
                 
                 // 3. CONTACT DETAILS SECTION
                 Section("Contact Information") {
-                    LabeledContent("Official Email", value: "arjun.kashyap@astrabank.com")
-                    LabeledContent("Work Phone", value: "+91 80 4991 2099")
+                    LabeledContent("Official Email", value: authManager.currentStaffProfile?.email ?? "arjun.kashyap@astrabank.com")
+                    LabeledContent("Work Phone", value: authManager.currentStaffProfile?.phoneNumber ?? "+91 80 4991 2099")
                 }
                 
                 // 4. PERFORMANCE STATS SECTION
@@ -112,28 +122,13 @@ struct LoanOfficerProfileView: View {
                         }
                     }
                 }
+
+
                 
-                // 5. ROLE CONFIGURATION & ACTIONS (SWITCH TO BORROWER)
+                // 5. SYSTEM SETTINGS
                 Section("System Settings") {
-                    Button {
-                        HapticsManager.triggerImpact(style: .heavy)
-                        NotificationCenter.default.post(name: NSNotification.Name("SwitchRoleToBorrower"), object: nil)
-                        dismiss()
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "arrow.left.arrow.right.circle.fill")
-                                .font(.title2)
-                                .foregroundStyle(LMSColors.actionBlue)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Switch to Borrower Mode")
-                                    .font(.body.weight(.medium))
-                                    .foregroundStyle(LMSColors.textPrimary)
-                                Text("Access simulation client interface")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(.vertical, 4)
+                    Toggle(isOn: $biometricEnabled) {
+                        Label("\(localSecurity.biometricTypeName) Login", systemImage: "faceid")
                     }
                 }
                 

@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import Supabase
 
 enum HistorySortOrder: String, CaseIterable {
     case newest = "Newest"
@@ -17,26 +18,21 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     typealias DocumentType = OfficerDocumentType
     @Published var applications: [LoanApplication] = []
     @Published var activityFeed: [ActivityFeedItem] = []
+    @Published var applicationMessages: [UUID: [DBMessage]] = [:]
+    @Published var officerProfile: StaffMember? = nil
     @Published var isLoading: Bool = true
     @Published var hasError: Bool = false
     @Published var selectedTab: Int = 0              // 0=Dashboard, 1=History
     
     private var cancellables = Set<AnyCancellable>()
+    private var isFetchingDashboardData = false
     
     init() {
-        CentralLoanRepository.shared.$applications
-            .map { apps in
-                apps.compactMap { CentralLoanRepository.shared.toOfficerApplication(from: $0) }
-            }
-            .sink { [weak self] mappedApps in
-                guard let self = self else { return }
-                self.applications = mappedApps
-            }
-            .store(in: &cancellables)
+        refreshFromRepository()
     }
     
     // Tab 2 History Filter parameters
-    @Published var historyFilter: ApplicationStatus? = nil
+    @Published var historyFilter: RegistryFilter = .all
     @Published var historyLoanTypeFilter: LoanType? = nil
     @Published var historySortOrder: HistorySortOrder = .newest
     @Published var historySearchQuery: String = ""
@@ -80,14 +76,17 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
     
     var closedThisMonthValue: Double {
-        // Mock closed value: disbursed or approved within last 30 days
-        applications
-            .filter { ($0.status == .disbursed || $0.status == .approved) }
-            .reduce(0) { $0 + $1.requestedAmount * 0.4 } // Simulating monthly fraction
+        let monthStart = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
+        return applications
+            .filter { ($0.status == .disbursed || $0.status == .approved) && $0.submittedDate >= monthStart }
+            .reduce(0) { $0 + $1.requestedAmount }
     }
     
     var closedThisMonthCount: Int {
-        applications.filter { $0.status == .disbursed || $0.status == .approved }.count
+        let monthStart = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
+        return applications.filter {
+            ($0.status == .disbursed || $0.status == .approved) && $0.submittedDate >= monthStart
+        }.count
     }
     
     var sentToManagerApps: [LoanApplication] {
@@ -107,14 +106,16 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         var items: [DocumentQueueItem] = []
         for app in applications {
             for doc in app.documents {
-                guard let uploadedDate = doc.uploadedDate else { continue }
+                // Use application's submittedDate as a fallback for pending uploads so they appear in the "Missing" filter
+                let date = doc.uploadedDate ?? app.submittedDate
                 items.append(DocumentQueueItem(
                     id: doc.id,
                     borrowerName: app.borrowerName,
                     docType: doc.docType,
                     status: doc.status,
-                    submittedDate: uploadedDate,
-                    applicationId: app.applicationId
+                    submittedDate: date,
+                    applicationId: app.applicationId,
+                    fileURL: doc.fileURL
                 ))
             }
         }
@@ -153,9 +154,20 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     var filteredApplications: [LoanApplication] {
         var list = applications
         
-        // 1. Filter by Status
-        if let filter = historyFilter {
-            list = list.filter { $0.status == filter }
+        // 1. Filter by Status (Registry Category)
+        list = list.filter { app in
+            switch historyFilter {
+            case .all:
+                return true
+            case .newCases:
+                return [.pending, .applied].contains(app.status)
+            case .underCheck:
+                return [.underReview, .verificationCompleted, .documentsPending, .documentsRejected, .onHold].contains(app.status)
+            case .approvalQueue:
+                return [.sentToManager, .finalApprovalPending].contains(app.status) || app.sentToManagerDate != nil
+            case .completed:
+                return [.approved, .disbursed, .rejected].contains(app.status)
+            }
         }
         
         // 2. Filter by Loan Type
@@ -196,15 +208,59 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     
     // MARK: - Fetch Data
     func fetchDashboardData() async {
+        guard !isFetchingDashboardData else { return }
+        isFetchingDashboardData = true
         isLoading = true
         hasError = false
+        defer { isFetchingDashboardData = false }
         
-        // Simulate 0.8s network delay
         do {
-            try await Task.sleep(nanoseconds: 800_000_000)
+            if let user = try? await SupabaseManager.shared.client.auth.session.user {
+                if let profile = try? await DatabaseService.shared.fetchLoanOfficerProfile(userId: user.id) {
+                    self.officerProfile = profile
+                }
+            }
+            
+            // Fetch all submitted applications from Supabase for the officer view
+            await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
+            refreshFromRepository()
+            await loadAssignedApplicationMessages()
+            
+            // Simulate brief loading delay for UI
+            try await Task.sleep(nanoseconds: 400_000_000)
             
             // Starts empty to remove mock feed items
             self.activityFeed = []
+            
+            if let officerId = self.officerProfile?.id {
+                if let dbMessages = try? await DatabaseService.shared.fetchMessages(for: officerId) {
+                    var newActivityItems: [ActivityFeedItem] = []
+                    let repoApps = CentralLoanRepository.shared.applications
+                    for msg in dbMessages {
+                        let matchedApp = repoApps.first(where: { $0.id == msg.applicationId })
+                        let borrowerName = matchedApp?.formData.fullName.isEmpty == false ? matchedApp!.formData.fullName : "Borrower"
+                        let appDisplayId = matchedApp?.applicationId ?? matchedApp?.displayIdentifier ?? "APP-\(msg.applicationId?.uuidString.prefix(6).uppercased() ?? "UNKNOWN")"
+                        let loanType = matchedApp?.product.type.title ?? "Loan Clarification"
+                        
+                        let isRead = msg.receiverId == officerId ? msg.isRead : true
+                        
+                        let feedItem = ActivityFeedItem(
+                            id: msg.messageId,
+                            borrowerName: borrowerName,
+                            applicationId: appDisplayId,
+                            loanType: loanType,
+                            eventType: .queryRaised,
+                            eventDescription: msg.content,
+                            timestamp: msg.sentAt,
+                            isRead: isRead,
+                            requiresAction: !isRead,
+                            actionType: .replyQuery
+                        )
+                        newActivityItems.append(feedItem)
+                    }
+                    self.activityFeed = newActivityItems.sorted { $0.timestamp > $1.timestamp }
+                }
+            }
             
             updateUnreadCount()
             isLoading = false
@@ -212,6 +268,67 @@ class LoanOfficerDashboardViewModel: ObservableObject {
             self.hasError = true
             self.isLoading = false
         }
+    }
+
+    func refreshFromRepository() {
+        guard let officerProfile else {
+            // Keep the queue safe and empty until the profile is successfully loaded from the DB
+            self.applications = []
+            return
+        }
+        
+        let officerUserId = officerProfile.id
+        applications = CentralLoanRepository.shared.applications.compactMap { borrowerApplication in
+            guard borrowerApplication.currentStage != .draft else { return nil }
+            guard CentralLoanRepository.shared.isVisibleToOfficer(borrowerApplication, userId: officerUserId) else { return nil }
+            return CentralLoanRepository.shared.toOfficerApplication(from: borrowerApplication)
+        }
+    }
+
+    var escalatableApplications: [LoanApplication] {
+        applications.filter { app in
+            app.status != .approved &&
+            app.status != .rejected &&
+            app.status != .disbursed &&
+            app.status != .escalated
+        }
+    }
+
+    @discardableResult
+    func escalateApplication(applicationId: String, reason: String) -> Bool {
+        guard let uuid = UUID(uuidString: applicationId), let officerProfile = officerProfile else { return false }
+        let officerName = officerProfile.fullName
+        let didEscalate = CentralLoanRepository.shared.escalateApplicationByOfficer(
+            id: uuid,
+            officerId: officerProfile.id,
+            officerName: officerName,
+            reason: reason
+        )
+        if didEscalate {
+            refreshFromRepository()
+            if let app = applications.first(where: { $0.applicationId == applicationId }) {
+                logActivity(
+                    borrowerName: app.borrowerName,
+                    applicationId: applicationId,
+                    loanType: app.loanType.rawValue,
+                    eventType: .queryRaised,
+                    description: "Escalated to Branch Manager: \(reason)"
+                )
+            }
+        }
+        return didEscalate
+    }
+
+    func loadAssignedApplicationMessages() async {
+        var nextMessages: [UUID: [DBMessage]] = [:]
+        for app in applications {
+            do {
+                nextMessages[app.id] = try await DatabaseService.shared.fetchMessagesForApplication(applicationId: app.id)
+            } catch {
+                nextMessages[app.id] = []
+            }
+        }
+        applicationMessages = nextMessages
     }
     
     func updateUnreadCount() {
@@ -245,18 +362,26 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     
     func updateDocumentStatus(applicationId: String, docId: UUID, newStatus: DocumentStatus, rejectionReason: String? = nil) {
         CentralLoanRepository.shared.updateDocumentStatus(applicationId: applicationId, docId: docId, status: newStatus, reason: rejectionReason)
+        refreshFromRepository()
         
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }),
            let doc = applications[idx].documents.first(where: { $0.id == docId }) {
             let docName = doc.docType.rawValue
+            let officerName = officerProfile?.fullName ?? "Officer Arjun"
             logActivity(
                 borrowerName: applications[idx].borrowerName,
                 applicationId: applicationId,
                 loanType: applications[idx].loanType.rawValue,
                 eventType: newStatus == .verified ? .consentGiven : .queryRaised,
-                description: newStatus == .verified ? "\(docName) verified successfully by Officer Arjun." : "\(docName) rejected: \(rejectionReason ?? "Incorrect format.")"
+                description: newStatus == .verified ? "\(docName) verified successfully by \(officerName)." : "\(docName) rejected: \(rejectionReason ?? "Incorrect format.")"
             )
         }
+    }
+
+    func refreshDocuments(for applicationId: String) async {
+        guard let app = applications.first(where: { $0.applicationId == applicationId }) else { return }
+        await CentralLoanRepository.shared.refreshDocumentsForApplication(id: app.id)
+        refreshFromRepository()
     }
     
     func updateApplicationStatus(applicationId: String, newStatus: ApplicationStatus) {
@@ -275,17 +400,26 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
     
     func sendForFinalApproval(applicationId: String) {
-        CentralLoanRepository.shared.sendForFinalApproval(applicationId: applicationId)
+        guard let app = applications.first(where: { $0.applicationId == applicationId }),
+              !app.documents.isEmpty,
+              app.documents.allSatisfy({ $0.status == .verified }) else {
+            return
+        }
+        let officerName = officerProfile?.fullName ?? "Officer Arjun"
+        CentralLoanRepository.shared.sendForFinalApproval(applicationId: applicationId, officerName: officerName)
+        refreshFromRepository()
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }) {
             logActivity(
                 borrowerName: applications[idx].borrowerName,
                 applicationId: applicationId,
                 loanType: applications[idx].loanType.rawValue,
                 eventType: .consentGiven,
-                description: "Application verified & forwarded to Manager for final approval."
+                description: "Application verified & forwarded to Manager for final approval by \(officerName)."
             )
         }
     }
+
+
     
     func logActivity(borrowerName: String, applicationId: String, loanType: String, eventType: ActivityEventType, description: String) {
         let newFeed = ActivityFeedItem(
@@ -336,4 +470,5 @@ struct DocumentQueueItem: Identifiable, Hashable {
     var status: DocumentStatus
     var submittedDate: Date
     var applicationId: String
+    var fileURL: String?
 }

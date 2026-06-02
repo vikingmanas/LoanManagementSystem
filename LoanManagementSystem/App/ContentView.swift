@@ -17,6 +17,10 @@ struct ContentView: View {
     // Splash control
     @State private var showSplash = true
 
+    // Biometrics State
+    @AppStorage("biometricEnabled") private var biometricEnabled = false
+    @State private var isAppUnlocked = false
+
     var body: some View {
         ZStack {
 
@@ -41,8 +45,12 @@ struct ContentView: View {
 
                     // MARK: - Authenticated Flow
                     if isCurrentRoleAuthenticated {
-
-                        switch appState.selectedRole {
+                        
+                        if biometricEnabled && !isAppUnlocked {
+                            AppLockView(isUnlocked: $isAppUnlocked)
+                                .transition(.opacity)
+                        } else {
+                            switch appState.selectedRole {
                         case .customer:
                             if appState.requiresBorrowerOnboarding && profileStore.profile?.isOnboardingCompleted != true {
                                 OnboardingQuestionnaireView()
@@ -86,6 +94,7 @@ struct ContentView: View {
                                     removal: .move(edge: .leading).combined(with: .opacity)
                                 ))
                         }
+                        }
 
                     } else {
 
@@ -128,8 +137,7 @@ struct ContentView: View {
             value: authManager.isAuthStateResolved
         )
         .onAppear {
-            authManager.configure()
-            syncBorrowerProfileIfNeeded()
+            authManager.configure(appState: appState)
 
             // MARK: - Splash Delay
             // Skip the splash delay inside SwiftUI Previews for instant canvas rendering.
@@ -142,16 +150,22 @@ struct ContentView: View {
                 }
             }
         }
+        .onChange(of: authManager.isAuthenticated) {
+            syncBorrowerProfileIfNeeded()
+        }
         .onChange(of: authManager.userEmail) {
             syncBorrowerProfileIfNeeded()
         }
     }
 
     private var isCurrentRoleAuthenticated: Bool {
+        // Block dashboard routing while user is in the password reset flow
+        guard !authManager.isResettingPassword else { return false }
+        
         if appState.selectedRole == .customer {
             return authManager.isAuthenticated
         }
-        return appState.isAuthenticated
+        return authManager.isAuthenticated && appState.isAuthenticated
     }
 
     private func syncBorrowerProfileIfNeeded() {

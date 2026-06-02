@@ -2,22 +2,22 @@ import Foundation
 import Combine
 import Supabase
 
-struct UserAccount: Codable {
-    var email: String
-    var passwordHash: String
-    var customerId: String
-    var fullName: String
-    var mobile: String
-    var isOnboardingCompleted: Bool
-    var profile: BorrowerProfile?
+public struct UserAccount: Codable {
+    public var email: String
+    public var passwordHash: String
+    public var customerId: String
+    public var fullName: String
+    public var mobile: String
+    public var isOnboardingCompleted: Bool
+    public var profile: BorrowerProfile?
 }
 
 @MainActor
-class BorrowerProfileStore: ObservableObject {
-    static let shared = BorrowerProfileStore()
+public class BorrowerProfileStore: ObservableObject {
+    public static let shared = BorrowerProfileStore()
 
-    @Published var profile: BorrowerProfile?
-    @Published var accounts: [UserAccount] = []
+    @Published public var profile: BorrowerProfile?
+    @Published public var accounts: [UserAccount] = []
     @Published var currentEmail: String?
 
     private init() {
@@ -104,6 +104,18 @@ class BorrowerProfileStore: ObservableObject {
         self.currentEmail = cleanedEmail
 
         Task {
+            if let currentUser = AuthManager.shared.currentUser,
+               currentUser.email?.lowercased() == cleanedEmail {
+                await fetchProfileFromSupabase(
+                    uid: currentUser.uid,
+                    email: cleanedEmail,
+                    name: name,
+                    phone: phone,
+                    alternatePhone: alternatePhone
+                )
+                return
+            }
+
             if let session = try? await SupabaseManager.shared.client.auth.session {
                 let user = session.user
                 if user.email?.lowercased() == cleanedEmail {
@@ -131,8 +143,23 @@ class BorrowerProfileStore: ObservableObject {
 
     func fetchProfileFromSupabase(uid: String, email: String, name: String? = nil, phone: String? = nil, alternatePhone: String? = nil) async {
         do {
+            var resolvedUid = uid
+            if UUID(uuidString: uid) == nil {
+                let cleaned = uid.filter { $0.isHexDigit || $0.isNumber }
+                let padded = (cleaned + "00000000000000000000000000000000").prefix(32)
+                let part1 = padded.prefix(8)
+                let part2 = padded.dropFirst(8).prefix(4)
+                let part3 = padded.dropFirst(12).prefix(4)
+                let part4 = padded.dropFirst(16).prefix(4)
+                let part5 = padded.dropFirst(20).prefix(12)
+                resolvedUid = "\(part1)-\(part2)-\(part3)-\(part4)-\(part5)"
+            }
+            
             if let decodedProfile = try await DatabaseService.shared.fetchProfile(userId: uid) {
                 self.profile = decodedProfile
+                if let borrowerId = UUID(uuidString: resolvedUid) {
+                    await CentralLoanRepository.shared.fetchApplicationsFromSupabase(borrowerId: borrowerId)
+                }
             } else {
 
 
@@ -147,6 +174,9 @@ class BorrowerProfileStore: ObservableObject {
                 newProfile.id = uid
                 self.profile = newProfile
                 try? await DatabaseService.shared.updateProfile(newProfile)
+                if let borrowerId = UUID(uuidString: resolvedUid) {
+                    await CentralLoanRepository.shared.fetchApplicationsFromSupabase(borrowerId: borrowerId)
+                }
             }
             self.currentEmail = email
         } catch {
@@ -302,22 +332,13 @@ class BorrowerProfileStore: ObservableObject {
     }
 
     private func persistBorrowerProfile(_ borrowerProfile: BorrowerProfile, email normalizedEmail: String) {
-        // If the currently loaded/visible profile belongs to this borrower, update it immediately
-        // so UI (@Published `profile`) reflects the newly provisioned OD account.
-        if profile?.email.lowercased() == normalizedEmail || profile?.id == borrowerProfile.id {
+        if profile?.email.lowercased() == normalizedEmail {
             updateProfile(borrowerProfile)
             return
         }
 
         if let index = accounts.firstIndex(where: { $0.email.lowercased() == normalizedEmail }) {
             accounts[index].profile = borrowerProfile
-            accounts[index].isOnboardingCompleted = borrowerProfile.isOnboardingCompleted
-
-            // If this is the "current" account for the logged-in user, also update
-            // the published profile so screens update without waiting for a refetch.
-            if currentEmail?.lowercased() == normalizedEmail {
-                self.profile = borrowerProfile
-            }
         }
     }
 
@@ -345,17 +366,17 @@ class BorrowerProfileStore: ObservableObject {
                     var profileWithUid = updatedProfile
                     profileWithUid.id = user.id.uuidString
                     try await DatabaseService.shared.updateProfile(profileWithUid)
-                    print("[BorrowerProfileStore] Profile synchronization completed successfully.")
+                    print("[BorrowerProfileStore] Profile synchronization completed successfully. ✅")
                 } else {
-                    if let index = accounts.firstIndex(where: {
-                        $0.email.lowercased() == updatedProfile.email.lowercased()
-                    }) {
+                    print("[BorrowerProfileStore] No active Supabase session — saving locally only.")
+                    if let index = accounts.firstIndex(where: { $0.email == updatedProfile.email }) {
                         accounts[index].profile = updatedProfile
                         accounts[index].isOnboardingCompleted = updatedProfile.isOnboardingCompleted
                     }
                 }
             } catch {
-                print("Error updating profile in Supabase: \(error.localizedDescription)")
+                print("[BorrowerProfileStore] ❌ ERROR syncing profile to Supabase: \(error)")
+                print("[BorrowerProfileStore] ❌ Localized: \(error.localizedDescription)")
             }
         }
     }
@@ -389,7 +410,7 @@ class BorrowerProfileStore: ObservableObject {
             currentAddress: AddressInfo(streetAddress: "", city: "", state: "", zipCode: "", country: "India", isSameAsCurrent: true),
             permanentAddress: AddressInfo(streetAddress: "", city: "", state: "", zipCode: "", country: "India", isSameAsCurrent: true),
             employment: EmploymentInfo(employmentType: "", companyName: "", designation: "", workExperienceYears: 0, employerAddress: ""),
-            income: IncomeInfo(monthlyIncome: 0, annualIncome: 0, existingEMIs: 0, creditScore: 700, incomeSource: ""),
+            income: IncomeInfo(monthlyIncome: 0, annualIncome: 0, existingEMIs: 0, creditScore: 0, incomeSource: ""),
             bankDetails: BankDetails(bankName: "", accountHolderName: "", accountNumber: "", ifscCode: "", upiID: nil, isVerified: false),
             kycVerification: KYCVerification(aadhaarStatus: .pending, panStatus: .pending, addressProofStatus: .pending, selfieStatus: .pending, aadhaarFileName: nil, panFileName: nil, addressProofFileName: nil),
             loanOverview: LoanOverview(activeLoans: 0, loanHistoryCount: 0, nextEmiDueDate: nil, remainingBalance: 0.0, currentLoanStatus: "Pending Onboarding"),
@@ -431,4 +452,3 @@ extension Decodable {
         return try? JSONDecoder().decode(Self.self, from: data)
     }
 }
-

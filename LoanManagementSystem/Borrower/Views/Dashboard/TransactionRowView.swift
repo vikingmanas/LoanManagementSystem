@@ -62,6 +62,7 @@ public struct TransactionRowView: View {
         case .credit: return "plus.circle"
         case .penalty: return "exclamationmark.circle"
         case .refund: return "arrow.uturn.left.circle"
+        case .failedDebit: return "exclamationmark.circle.fill"
         }
     }
 
@@ -71,6 +72,7 @@ public struct TransactionRowView: View {
         case .credit: return LMSColors.emerald
         case .penalty: return LMSColors.coral
         case .refund: return LMSColors.actionBlue
+        case .failedDebit: return LMSColors.amber
         }
     }
 
@@ -80,7 +82,7 @@ public struct TransactionRowView: View {
 
     private var isDebit: Bool {
         switch transaction.type {
-        case .emiPayment, .penalty:
+        case .emiPayment, .penalty, .failedDebit:
             return true
         case .credit, .refund:
             return false
@@ -138,4 +140,3 @@ public struct TransactionRowSkeleton: View {
     TransactionRowSkeleton()
         .padding()
 }
-

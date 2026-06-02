@@ -27,6 +27,7 @@ struct AuthSessionUser: Codable {
 /// Centralized authentication service wrapping Supabase Auth.
 @MainActor
 final class AuthManager: ObservableObject {
+    static let shared = AuthManager()
 
     // MARK: - Published State
 
@@ -35,6 +36,9 @@ final class AuthManager: ObservableObject {
 
     /// The currently signed-in user, if any.
     @Published var currentUser: AuthSessionUser? = nil
+
+    /// The detailed profile for the currently signed-in staff member, if any.
+    @Published var currentStaffProfile: StaffMember? = nil
 
     /// Controls the loading overlay in auth views.
     @Published var isLoading: Bool = false
@@ -45,22 +49,72 @@ final class AuthManager: ObservableObject {
     /// Indicates the auth state listener has resolved at least once.
     @Published var isAuthStateResolved: Bool = false
 
+    /// True while the user is in the password-reset OTP flow.
+    /// When true, ContentView should NOT route to the dashboard.
+    @Published var isResettingPassword: Bool = false
+
     // MARK: - Init
 
     init() {}
 
     /// Restores the Supabase session on app launch if one exists.
-    func configure() {
-        // Reset auth state synchronously and immediately to guarantee a clean, unauthenticated onboarding flow
-        // and prevent the splash screen from hanging or waiting for network-dependent sign-out tasks.
-        self.currentUser = nil
-        self.isAuthenticated = false
-        self.isAuthStateResolved = true
-        
-        // Execute the server-side sign-out asynchronously in the background.
+    func configure(appState: AppStateManager? = nil) {
         Task {
             let client = SupabaseManager.shared.client
-            try? await client.auth.signOut()
+            do {
+                let session = try await client.auth.session
+                let user = session.user
+                
+                // Fetch role to determine user type
+                let role = try? await AuthService.shared.fetchUserRole(uid: user.id)
+                
+                self.currentUser = AuthSessionUser(
+                    uid: user.id.uuidString,
+                    email: user.email,
+                    displayName: user.userMetadata["display_name"]?.description ?? "User"
+                )
+                Task {
+                    await PushNotificationService.shared.registerCurrentDeviceTokenIfPossible()
+                }
+                
+                if role == "loan_officer" {
+                    if let officerProfile = try? await DatabaseService.shared.fetchLoanOfficerProfile(userId: user.id) {
+                        self.currentStaffProfile = officerProfile
+                    }
+                }
+                
+                self.isAuthenticated = true
+                self.isAuthStateResolved = true
+                
+                if let appState = appState {
+                    if let role = role {
+                        switch role {
+                        case "admin": appState.selectedRole = .admin
+                        case "manager", "loan_manager": appState.selectedRole = .bankManager
+                        case "loan_officer": appState.selectedRole = .loanOfficer
+                        default: appState.selectedRole = .customer
+                        }
+                    } else {
+                        appState.selectedRole = .customer
+                    }
+                    if appState.selectedRole != .customer {
+                        appState.login()
+                    }
+                }
+                
+                print("[AuthManager] Session restored for user: \(user.email ?? "unknown"), role: \(role ?? "borrower")")
+                
+                // Fetch borrower's applications from Supabase on session restore
+                if role == "borrower" || role == nil {
+                    await CentralLoanRepository.shared.fetchApplicationsFromSupabase(borrowerId: user.id)
+                }
+            } catch {
+                // No valid session exists — user needs to log in
+                self.currentUser = nil
+                self.isAuthenticated = false
+                self.isAuthStateResolved = true
+                print("[AuthManager] No existing session found. User must sign in.")
+            }
         }
     }
 
@@ -84,6 +138,23 @@ final class AuthManager: ObservableObject {
                 email: email,
                 displayName: "Test Staff"
             )
+            if role == "loan_officer" {
+                self.currentStaffProfile = StaffMember(
+                    id: UUID(),
+                    email: email,
+                    role: .loanOfficer,
+                    fullName: "Arjun Kashyap (Test)",
+                    phoneNumber: "+91 80 4991 2099",
+                    status: .active,
+                    createdBy: nil,
+                    createdAt: Date(),
+                    employeeCode: "EMP-2024-9021",
+                    branchId: UUID(),
+                    branchName: "Bengaluru Central Branch (ID: BR-492)",
+                    designation: "Senior Loan Officer",
+                    region: nil
+                )
+            }
             self.isAuthenticated = true
             self.isLoading = false
             return (true, role)
@@ -97,14 +168,87 @@ final class AuthManager: ObservableObject {
             // Fetch role from users database table
             let role = try await AuthService.shared.fetchUserRole(uid: user.id)
             
+            if role == "loan_officer" {
+                if let officerProfile = try? await DatabaseService.shared.fetchLoanOfficerProfile(userId: user.id) {
+                    self.currentStaffProfile = officerProfile
+                }
+            }
+            
             self.currentUser = AuthSessionUser(
                 uid: user.id.uuidString,
                 email: user.email,
                 displayName: user.userMetadata["display_name"]?.description ?? "User"
             )
+            Task {
+                await PushNotificationService.shared.registerCurrentDeviceTokenIfPossible()
+            }
             self.isAuthenticated = true
             self.isLoading = false
             
+            // Fetch borrower's applications from Supabase after login
+            if role == "borrower" {
+                Task {
+                    await CentralLoanRepository.shared.fetchApplicationsFromSupabase(borrowerId: user.id)
+                }
+            }
+            
+            return (true, role)
+        } catch {
+            self.errorMessage = mapSupabaseError(error)
+            self.isLoading = false
+            return (false, nil)
+        }
+    }
+
+    @discardableResult
+    func sendEmailOTP(email: String) async -> Bool {
+        clearError()
+        isLoading = true
+
+        do {
+            try await AuthService.shared.sendEmailOTP(email: email)
+            isLoading = false
+            return true
+        } catch {
+            self.errorMessage = mapSupabaseError(error)
+            isLoading = false
+            return false
+        }
+    }
+
+    @discardableResult
+    func verifyEmailOTP(email: String, token: String) async -> (success: Bool, role: String?) {
+        clearError()
+        isLoading = true
+
+        do {
+            let response = try await AuthService.shared.verifyEmailOTP(email: email, token: token)
+            let user = response.user
+            let role = try await AuthService.shared.fetchUserRole(uid: user.id)
+
+            if role == "loan_officer" {
+                if let officerProfile = try? await DatabaseService.shared.fetchLoanOfficerProfile(userId: user.id) {
+                    self.currentStaffProfile = officerProfile
+                }
+            }
+
+            self.currentUser = AuthSessionUser(
+                uid: user.id.uuidString,
+                email: user.email,
+                displayName: user.userMetadata["display_name"]?.description ?? "User"
+            )
+            Task {
+                await PushNotificationService.shared.registerCurrentDeviceTokenIfPossible()
+            }
+            self.isAuthenticated = true
+            self.isLoading = false
+
+            if role == "borrower" {
+                Task {
+                    await CentralLoanRepository.shared.fetchApplicationsFromSupabase(borrowerId: user.id)
+                }
+            }
+
             return (true, role)
         } catch {
             self.errorMessage = mapSupabaseError(error)
@@ -128,6 +272,9 @@ final class AuthManager: ObservableObject {
                     email: user.email,
                     displayName: name
                 )
+                Task {
+                    await PushNotificationService.shared.registerCurrentDeviceTokenIfPossible()
+                }
                 self.isAuthenticated = true
             } else {
                 // Sign up succeeded but session is nil because email confirmation is enabled
@@ -144,14 +291,20 @@ final class AuthManager: ObservableObject {
         }
     }
 
-    // MARK: - Sign Out
-    /// Signs out the current user and resets state.
     func signOut() {
+        self.currentUser = nil
+        self.currentStaffProfile = nil
+        self.isAuthenticated = false
+        BorrowerProfileStore.shared.signOut()
+        CentralLoanRepository.shared.clearState()
         Task {
+            await PushNotificationService.shared.deactivateCurrentDeviceToken()
             try? await AuthService.shared.signOut()
             self.currentUser = nil
+            self.currentStaffProfile = nil
             self.isAuthenticated = false
             BorrowerProfileStore.shared.signOut()
+            CentralLoanRepository.shared.clearState()
         }
     }
 
@@ -164,6 +317,56 @@ final class AuthManager: ObservableObject {
 
         do {
             try await SupabaseManager.shared.client.auth.resetPasswordForEmail(email)
+            self.isLoading = false
+            return true
+        } catch {
+            self.errorMessage = mapSupabaseError(error)
+            self.isLoading = false
+            return false
+        }
+    }
+
+    // MARK: - Verify Recovery OTP
+    /// Verifies the 6-digit password recovery code.
+    /// NOTE: Does NOT set isAuthenticated to avoid routing to dashboard.
+    /// Instead sets isResettingPassword so the UI stays on the reset flow.
+    @discardableResult
+    func verifyRecoveryOTP(email: String, token: String) async -> Bool {
+        clearError()
+        isLoading = true
+
+        do {
+            try await SupabaseManager.shared.client.auth.verifyOTP(
+                email: email,
+                token: token,
+                type: .recovery
+            )
+            
+            // Keep session alive for the password update call,
+            // but do NOT set isAuthenticated or currentUser.
+            self.isResettingPassword = true
+            self.isLoading = false
+            return true
+        } catch {
+            self.errorMessage = mapSupabaseError(error)
+            self.isLoading = false
+            return false
+        }
+    }
+    
+    // MARK: - Update Password
+    /// Updates the password for the currently signed-in user.
+    /// After success, signs the user out so they can log in fresh with the new password.
+    @discardableResult
+    func updatePassword(newPassword: String) async -> Bool {
+        clearError()
+        isLoading = true
+
+        do {
+            try await AuthService.shared.updatePassword(newPassword: newPassword)
+            // Sign out after password update so user logs in fresh
+            signOut()
+            self.isResettingPassword = false
             self.isLoading = false
             return true
         } catch {
@@ -224,6 +427,9 @@ final class AuthManager: ObservableObject {
         if errDesc.localizedCaseInsensitiveContains("invalid login credentials") ||
            errDesc.localizedCaseInsensitiveContains("invalid credentials") {
             return "Incorrect email or password. Please try again."
+        } else if errDesc.localizedCaseInsensitiveContains("email address") && errDesc.localizedCaseInsensitiveContains("is invalid") {
+            // Supabase returns this when the email is not found in auth.users (even if it's in public.users)
+            return "You are not registered."
         } else if errDesc.localizedCaseInsensitiveContains("email already in use") ||
                   errDesc.localizedCaseInsensitiveContains("user already exists") ||
                   errDesc.localizedCaseInsensitiveContains("already registered") {

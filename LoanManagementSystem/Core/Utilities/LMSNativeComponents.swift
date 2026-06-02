@@ -4,8 +4,16 @@ public enum LMSAppearance {
     public static func configure() {
         let nav = UINavigationBarAppearance()
         nav.configureWithDefaultBackground()
-        nav.backgroundColor = UIColor.secondarySystemGroupedBackground
-        nav.shadowColor = UIColor.separator.withAlphaComponent(0.35)
+        nav.backgroundColor = UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor(red: 18/255, green: 19/255, blue: 23/255, alpha: 0.92)
+                : UIColor.secondarySystemGroupedBackground
+        }
+        nav.shadowColor = UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor.white.withAlphaComponent(0.08)
+                : UIColor.separator.withAlphaComponent(0.35)
+        }
         nav.titleTextAttributes = [
             .foregroundColor: UIColor.label,
             .font: UIFont.systemFont(ofSize: 17, weight: .semibold)
@@ -26,9 +34,17 @@ public enum LMSAppearance {
         }
 
         let tab = UITabBarAppearance()
-        tab.configureWithOpaqueBackground()
-        tab.backgroundColor = UIColor.secondarySystemGroupedBackground
-        tab.shadowColor = UIColor.black.withAlphaComponent(0.06)
+        tab.configureWithDefaultBackground()
+        tab.backgroundColor = UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor(red: 24/255, green: 25/255, blue: 30/255, alpha: 0.92)
+                : UIColor.secondarySystemGroupedBackground
+        }
+        tab.shadowColor = UIColor { tc in
+            tc.userInterfaceStyle == .dark
+                ? UIColor.white.withAlphaComponent(0.10)
+                : UIColor.black.withAlphaComponent(0.06)
+        }
         tab.stackedLayoutAppearance.normal.iconColor = UIColor.tertiaryLabel
         tab.stackedLayoutAppearance.normal.titleTextAttributes = [
             .foregroundColor: UIColor.tertiaryLabel,
@@ -68,10 +84,26 @@ extension View {
     }
 
     public func lmsInsetGroupedCard() -> some View {
-        background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+        modifier(LMSInsetGroupedCardModifier(radius: LMSRadius.lg))
+    }
+}
+
+public struct LMSInsetGroupedCardModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    var radius: CGFloat
+
+    public func body(content: Content) -> some View {
+        content
+            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
-                    .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .stroke(colorScheme == .dark ? LMSColors.elevatedStroke : LMSColors.separatorLight, lineWidth: colorScheme == .dark ? 1 : 0.5)
+            )
+            .shadow(
+                color: colorScheme == .dark ? LMSColors.darkGlow : .black.opacity(0.025),
+                radius: colorScheme == .dark ? 12 : 4,
+                x: 0,
+                y: colorScheme == .dark ? 6 : 2
             )
     }
 }
@@ -330,51 +362,7 @@ public struct LMSNotification: Identifiable, Hashable {
     }
 }
 
-public enum LMSMockNotifications {
-    public static let sample: [LMSNotification] = [
-        LMSNotification(
-            title: "EMI Reminder",
-            body: "Your home loan EMI of ₹42,500 is due on 5 Jun. Ensure sufficient balance in SBI ••7890.",
-            timestamp: MockData.makeDate(year: 2025, month: 5, day: 22, hour: 9, minute: 15),
-            icon: "calendar.badge.clock",
-            tint: LMSColors.amber
-        ),
-        LMSNotification(
-            title: "Payment Received",
-            body: "EMI of ₹18,200 was debited successfully from HDFC ••3421 for Personal Loan.",
-            timestamp: MockData.makeDate(year: 2025, month: 5, day: 20, hour: 14, minute: 2),
-            icon: "checkmark.circle.fill",
-            tint: LMSColors.emerald,
-            isUnread: false
-        ),
-        LMSNotification(
-            title: "KYC Update",
-            body: "Upload your latest address proof to complete profile verification.",
-            timestamp: MockData.makeDate(year: 2025, month: 5, day: 18, hour: 11, minute: 0),
-            icon: "doc.badge.plus",
-            tint: LMSColors.actionBlue
-        ),
-        LMSNotification(
-            title: "Scheme Eligible",
-            body: "You may qualify for PMAY subsidy on your home loan. Tap to explore benefits.",
-            timestamp: MockData.makeDate(year: 2025, month: 5, day: 15, hour: 16, minute: 45),
-            icon: "sparkles",
-            tint: LMSColors.teal,
-            isUnread: false
-        ),
-        LMSNotification(
-            title: "Low Balance Alert",
-            body: "SBI ••7890 balance is below the recommended amount for your upcoming EMI.",
-            timestamp: MockData.makeDate(year: 2025, month: 5, day: 14, hour: 8, minute: 30),
-            icon: "exclamationmark.triangle.fill",
-            tint: LMSColors.coral
-        )
-    ]
 
-    public static var unreadCount: Int {
-        sample.filter(\.isUnread).count
-    }
-}
 
 public struct LMSNotificationRow: View {
     let notification: LMSNotification
@@ -426,4 +414,3 @@ public struct LMSNotificationRow: View {
         .contentShape(Rectangle())
     }
 }
-
