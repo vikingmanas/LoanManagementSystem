@@ -258,9 +258,10 @@ private struct OfficerMessageThreadView: View {
     }
 
     private func loadMessages() async {
-        guard let app = viewModel.applications.first(where: { $0.applicationId == conversation.applicationId }) else { return }
+        guard let app = CentralLoanRepository.shared.applications.first(where: { $0.applicationId == conversation.applicationId || $0.displayIdentifier == conversation.applicationId }) else { return }
+        let appId = app.id
         do {
-            let dbMsgs = try await DatabaseService.shared.fetchMessagesForApplication(applicationId: app.id)
+            let dbMsgs = try await DatabaseService.shared.fetchMessagesForApplication(applicationId: appId)
             if !dbMsgs.isEmpty {
                 self.messages = dbMsgs.map { dbMsg in
                     let isOfficerSender = dbMsg.senderId == viewModel.officerProfile?.id
@@ -290,9 +291,9 @@ private struct OfficerMessageThreadView: View {
         guard !trimmed.isEmpty else { return }
         messageText = ""
 
-        guard let app = viewModel.applications.first(where: { $0.applicationId == conversation.applicationId }) else { return }
+        guard let app = CentralLoanRepository.shared.applications.first(where: { $0.applicationId == conversation.applicationId || $0.displayIdentifier == conversation.applicationId }) else { return }
         let officerId = viewModel.officerProfile?.id ?? UUID()
-        let borrowerId = app.borrowerId
+        let borrowerId = app.borrowerId ?? app.id
         let appId = app.id
 
         let officerMsgId = UUID()
@@ -439,13 +440,19 @@ private struct OfficerComposeMessageSheet: View {
     @State private var selectedApplicationId = ""
     @State private var message = ""
 
+    private var activeApps: [OfficerLoanApplication] {
+        CentralLoanRepository.shared.applications.compactMap { app -> OfficerLoanApplication? in
+            CentralLoanRepository.shared.toOfficerApplication(from: app)
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
                 Section("Borrower") {
                     Picker("Application", selection: $selectedApplicationId) {
                         Text("Select").tag("")
-                        ForEach(viewModel.applications) { app in
+                        ForEach(activeApps) { app in
                             Text("\(app.borrowerName) · \(app.applicationId)").tag(app.applicationId)
                         }
                     }
@@ -476,7 +483,7 @@ private struct OfficerComposeMessageSheet: View {
     private func sendMessage() {
         let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        guard let app = viewModel.applications.first(where: { $0.applicationId == selectedApplicationId }) else { return }
+        guard let app = activeApps.first(where: { $0.applicationId == selectedApplicationId }) else { return }
         let officerId = viewModel.officerProfile?.id ?? UUID()
         let borrowerId = app.borrowerId
         let appId = app.id

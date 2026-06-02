@@ -1835,7 +1835,7 @@ private struct Step3PersonalInfoOverhaulView: View {
                 WizardPickerRow(
                     label: "Application Branch",
                     selection: $viewModel.formData.preferredBranch,
-                    options: [""] + BorrowerLoanFormData.branchOptions
+                    options: [""] + (viewModel.branchesList.isEmpty ? BorrowerLoanFormData.branchOptions : viewModel.branchesList.map(\.name))
                 ) { option in
                     option.isEmpty ? "Select Branch" : option
                 }

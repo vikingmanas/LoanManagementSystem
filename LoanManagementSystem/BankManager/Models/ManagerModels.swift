@@ -109,6 +109,7 @@ struct ManagerApplicant: Identifiable, Hashable {
     var verificationProgress: Double
     var tenure: Int
     var interestRate: Double
+    var branchName: String
 }
 
 

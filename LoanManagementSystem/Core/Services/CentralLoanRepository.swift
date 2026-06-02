@@ -718,8 +718,9 @@ final class CentralLoanRepository: ObservableObject {
                     message: "Your loan application \(appNumber) has been forwarded to the Branch Manager for final approval."
                 )
             }
-            // Notify all managers
-            let managerIds = await NotificationService.shared.fetchUserIds(byRole: "manager")
+            // Notify manager of the specific branch
+            let branchName = self.borrowerBranchName(for: app)
+            let managerIds = await NotificationService.shared.fetchManagerIds(forBranchName: branchName)
             await NotificationService.shared.insertNotifications(
                 userIds: managerIds,
                 title: "New Application for Approval",
@@ -1169,7 +1170,8 @@ final class CentralLoanRepository: ObservableObject {
             managerRemarks: app.stageHistory.last(where: { $0.stage == .approved })?.note ?? "",
             verificationProgress: app.documents.isEmpty ? 0 : Double(app.documents.filter { $0.status == .verified }.count) / Double(app.documents.count),
             tenure: app.formData.preferredTenureMonths,
-            interestRate: 10.5
+            interestRate: 10.5,
+            branchName: self.borrowerBranchName(for: app)
         )
     }
     

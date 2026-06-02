@@ -753,12 +753,8 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
     }
 
     static let branchOptions = [
-        "Mumbai Main Branch",
-        "Andheri Tech Park Branch",
-        "Mindspace Malad Branch",
-        "Bandra Kurla Complex Branch",
-        "Delhi Connaught Place Branch",
-        "Bengaluru Whitefield Branch"
+        "Headquarters Branch",
+        "Mysuru"
     ]
 
     static func formattedAddress(from address: AddressInfo) -> String {

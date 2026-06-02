@@ -235,11 +235,12 @@ class LoanOfficerDashboardViewModel: ObservableObject {
             if let officerId = self.officerProfile?.id {
                 if let dbMessages = try? await DatabaseService.shared.fetchMessages(for: officerId) {
                     var newActivityItems: [ActivityFeedItem] = []
+                    let repoApps = CentralLoanRepository.shared.applications
                     for msg in dbMessages {
-                        let matchedApp = self.applications.first(where: { $0.id == msg.applicationId })
-                        let borrowerName = matchedApp?.borrowerName ?? "Borrower"
-                        let appDisplayId = matchedApp?.applicationId ?? "APP-\(msg.applicationId?.uuidString.prefix(6).uppercased() ?? "UNKNOWN")"
-                        let loanType = matchedApp?.loanType.rawValue ?? "Loan Clarification"
+                        let matchedApp = repoApps.first(where: { $0.id == msg.applicationId })
+                        let borrowerName = matchedApp?.formData.fullName.isEmpty == false ? matchedApp!.formData.fullName : "Borrower"
+                        let appDisplayId = matchedApp?.applicationId ?? matchedApp?.displayIdentifier ?? "APP-\(msg.applicationId?.uuidString.prefix(6).uppercased() ?? "UNKNOWN")"
+                        let loanType = matchedApp?.product.type.title ?? "Loan Clarification"
                         
                         let isRead = msg.receiverId == officerId ? msg.isRead : true
                         

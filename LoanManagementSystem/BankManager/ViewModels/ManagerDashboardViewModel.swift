@@ -41,6 +41,7 @@ final class ManagerDashboardViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var currentManagerUserId: UUID?
     private var databaseMessages: [DBMessage] = []
+    private var allApplicants: [ManagerApplicant] = []
 
     enum ApplicantSortOrder: String, CaseIterable {
         case dateDesc = "Newest First"
@@ -63,10 +64,23 @@ final class ManagerDashboardViewModel: ObservableObject {
             }
             .sink { [weak self] mappedApplicants in
                 guard let self else { return }
-                self.applicants = mappedApplicants
-                self.rebuildDerivedDashboardState()
+                self.allApplicants = mappedApplicants
+                self.filterApplicantsByManagerBranch()
             }
             .store(in: &cancellables)
+    }
+
+    func filterApplicantsByManagerBranch() {
+        let managerBranch = managerProfile.branchName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        if managerBranch.isEmpty || managerBranch == "assigned branch" {
+            self.applicants = allApplicants
+        } else {
+            self.applicants = allApplicants.filter { applicant in
+                let applicantBranch = applicant.branchName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                return applicantBranch == managerBranch || applicantBranch.contains(managerBranch) || managerBranch.contains(applicantBranch)
+            }
+        }
+        self.rebuildDerivedDashboardState()
     }
 
     var unreadNotificationCount: Int {
@@ -486,7 +500,7 @@ final class ManagerDashboardViewModel: ObservableObject {
             )
         }
 
-        rebuildDerivedDashboardState(keepStaff: true)
+        self.filterApplicantsByManagerBranch()
     }
 
     private func loadMessageThreads() async {
