@@ -37,14 +37,7 @@ struct UnifiedProfileEditContentView: View {
     private let maritalStatuses = ["Single", "Married", "Divorced", "Widowed"]
     private let nationalities = ["Indian", "Non-Resident Indian (NRI)", "Other"]
     private let relationships = ["Spouse", "Mother", "Father", "Brother", "Sister", "Child"]
-    private let branches = [
-        "Mumbai Main Branch",
-        "Andheri Tech Park Branch",
-        "Mindspace Malad Branch",
-        "Bandra Kurla Complex Branch",
-        "Delhi Connaught Place Branch",
-        "Bengaluru Whitefield Branch"
-    ]
+    private let branches: [String] = []
     
     var isKYCVerified: Bool {
         viewModel.profile?.isKYCVerified ?? false

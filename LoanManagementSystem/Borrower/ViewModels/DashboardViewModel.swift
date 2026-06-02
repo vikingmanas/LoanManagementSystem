@@ -25,9 +25,6 @@ public final class DashboardViewModel: ObservableObject {
     // Notification support
     public let notificationViewModel = NotificationViewModel()
     
-    // Quick demonstration toggle state (e.g. to mock low balance vs normal)
-    @Published public var forceLowBalanceMockState: Bool = false
-
     private var cancellables = Set<AnyCancellable>()
     
     public init() {
@@ -178,23 +175,11 @@ public final class DashboardViewModel: ObservableObject {
     }
     
     public func isLowBalance(_ account: BankAccount) -> Bool {
-        if account.id == MockData.uuid3 { // Axis Bank
-            return account.availableBalance < 9200.0
-        }
-        if account.id == MockData.uuid1 { // SBI
-            return forceLowBalanceMockState ? true : account.availableBalance < (account.minBalance ?? 5000.0)
-        }
-        return false
+        account.availableBalance < (account.minBalance ?? 0)
     }
     
     public func balanceDeficit(for account: BankAccount) -> Double {
-        if account.id == MockData.uuid3 { // Axis Bank
-            return max(0, 9200.0 - account.availableBalance)
-        }
-        if account.id == MockData.uuid1 { // SBI
-            return max(0, 18500.0 - account.availableBalance)
-        }
-        return 0
+        max(0, (account.minBalance ?? 0) - account.availableBalance)
     }
     
     public func fetchDashboardData() async {
@@ -271,7 +256,7 @@ public final class DashboardViewModel: ObservableObject {
         }
         .sorted { $0.dueDate < $1.dueDate }
         
-        self.schemes = MockData.sampleSchemes
+        self.schemes = []
 
         // Fetch actual transactions from Supabase if borrower profile is available
         var dbTransactionsList: [Transaction] = []
@@ -725,20 +710,6 @@ public final class DashboardViewModel: ObservableObject {
         }
     }
     
-    public func toggleBalanceMockMode() {
-        let feedback = UIImpactFeedbackGenerator(style: .rigid)
-        feedback.impactOccurred()
-        
-        forceLowBalanceMockState.toggle()
-        
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-            if forceLowBalanceMockState {
-                bankAccount.availableBalance = 12300.0
-            } else {
-                bankAccount.availableBalance = 42300.0
-            }
-        }
-    }
 }
 
 private extension Array where Element == Transaction {

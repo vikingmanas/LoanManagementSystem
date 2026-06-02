@@ -28,21 +28,6 @@ enum PreviewSupport {
 
     static var dashboardViewModel: DashboardViewModel {
         let vm = DashboardViewModel()
-        vm.loanAccounts = [MockData.home, MockData.business, MockData.car]
-        let sbiAcc = BankAccount(
-            id: MockData.uuid1,
-            accountNumber: "XXXXXX7890",
-            bankName: "State Bank of India",
-            accountType: .savings,
-            availableBalance: 42300.0,
-            minBalance: 5000.0,
-            linkedLoanIds: [MockData.loanId1]
-        )
-        vm.bankAccounts = [sbiAcc]
-        vm.bankAccount = sbiAcc
-        vm.pendingEMIs = MockData.samplePendingEMIs
-        vm.transactions = MockData.sampleTransactions
-        vm.schemes = MockData.sampleSchemes
         vm.isLoading = false
         return vm
     }
@@ -55,40 +40,42 @@ enum PreviewSupport {
 
     static var loanOfficerViewModel: LoanOfficerDashboardViewModel {
         let vm = LoanOfficerDashboardViewModel()
-        vm.applications = LoanOfficerMockData.createApplications()
-        vm.activityFeed = LoanOfficerMockData.createActivityFeed()
         vm.isLoading = false
         vm.updateUnreadCount()
         return vm
     }
 
     static var sampleDocumentQueueItem: DocumentQueueItem {
-        let app = LoanOfficerMockData.createApplications()[0]
-        let doc = app.documents.first(where: { $0.status == .reUploaded }) ?? app.documents[0]
-        return DocumentQueueItem(
-            id: doc.id,
-            borrowerName: app.borrowerName,
-            docType: doc.docType,
-            status: doc.status,
-            submittedDate: doc.uploadedDate ?? Date(),
-            applicationId: app.applicationId,
-            fileURL: doc.fileURL
+        DocumentQueueItem(
+            id: UUID(),
+            borrowerName: "",
+            docType: .aadhaar,
+            status: .uploaded,
+            submittedDate: Date(),
+            applicationId: "",
+            fileURL: nil
         )
     }
 
     static var sampleActivityFeedItem: ActivityFeedItem {
-        LoanOfficerMockData.createActivityFeed()[0]
+        ActivityFeedItem(
+            id: UUID(),
+            borrowerName: "",
+            applicationId: "",
+            loanType: "",
+            eventType: .applicationSubmitted,
+            eventDescription: "",
+            timestamp: Date(),
+            isRead: true,
+            requiresAction: false,
+            actionType: nil
+        )
     }
 
 
 
     static var managerViewModel: ManagerDashboardViewModel {
         let vm = ManagerDashboardViewModel()
-        vm.applicants = ManagerMockData.applicants
-        vm.officers = ManagerMockData.officers
-        vm.notifications = ManagerMockData.notifications
-        vm.conversations = ManagerMockData.conversations
-        vm.branchOverview = ManagerMockData.branchOverview
         vm.isLoading = false
         return vm
     }
@@ -97,60 +84,39 @@ enum PreviewSupport {
 
     static var adminStaffViewModel: AdminStaffViewModel {
         let vm = AdminStaffViewModel()
-        let branchId1 = UUID()
-        let branchId2 = UUID()
-        vm.branches = [
-            BranchInfo(branchId: branchId1, name: "HQ Branch", code: "HQ01", region: "National"),
-            BranchInfo(branchId: branchId2, name: "Metro Branch", code: "MB02", region: "Delhi")
-        ]
-        vm.staffMembers = [
-            StaffMember(
-                id: UUID(),
-                email: "officer1@lms.com",
-                role: .loanOfficer,
-                fullName: "Arjun Mehta",
-                phoneNumber: "+91 98765 43210",
-                status: .active,
-                createdBy: UUID(),
-                createdAt: Date(),
-                employeeCode: "EMP001",
-                branchId: branchId1,
-                branchName: "HQ Branch",
-                designation: "Senior Loan Underwriter",
-                region: nil
-            ),
-            StaffMember(
-                id: UUID(),
-                email: "manager1@lms.com",
-                role: .bankManager,
-                fullName: "Raman Shastri",
-                phoneNumber: "+91 98765 12345",
-                status: .active,
-                createdBy: UUID(),
-                createdAt: Date(),
-                employeeCode: "EMP002",
-                branchId: branchId2,
-                branchName: "Metro Branch",
-                designation: nil,
-                region: "North India"
-            )
-        ]
         return vm
     }
 
     static var sampleManagerApplicant: ManagerApplicant {
-        ManagerMockData.applicants[0]
-    }
-
-    static var sampleBorrowerProfile: BorrowerProfile {
-        BorrowerProfileStore.shared.ensureProfile(
-            email: "rahul.sharma@example.com",
-            name: "Rahul Sharma"
+        ManagerApplicant(
+            id: UUID(),
+            applicationId: "",
+            borrowerName: "",
+            borrowerInitials: "",
+            loanType: .personal,
+            requestedAmount: 0,
+            cibilScore: 0,
+            status: .sentToManager,
+            riskLevel: .low,
+            assignedOfficer: "",
+            assignedOfficerId: UUID(),
+            submissionDate: Date(),
+            documents: [],
+            officerRemarks: "",
+            managerRemarks: "",
+            verificationProgress: 0,
+            tenure: 0,
+            interestRate: 0,
+            branchName: ""
         )
     }
 
+    static var sampleBorrowerProfile: BorrowerProfile {
+        BorrowerProfile.empty()
+    }
+
     static var sampleLoanApplicationId: String {
-        LoanOfficerMockData.createApplications().first?.applicationId ?? "APP-2024-0892"
+        ""
     }
 
     static var borrowerTabRouter: BorrowerTabRouter { BorrowerTabRouter() }

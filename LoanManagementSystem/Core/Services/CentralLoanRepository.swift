@@ -3,11 +3,6 @@ import Combine
 import SwiftUI
 import Supabase
 
-private enum ManagerOfficerAssignment {
-    static let unassignedOfficerId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
-    static let unassignedOfficerName = "Unassigned"
-}
-
 struct LoanDisbursementEvent: Identifiable, Hashable {
     let id: UUID
     var applicationId: UUID
@@ -361,9 +356,10 @@ final class CentralLoanRepository: ObservableObject {
             
             var mappedApps: [BorrowerLoanApplication] = []
             for dbApp in dbApps {
-                let product = products.first(where: { $0.id == dbApp.productId })
-                    ?? BorrowerLoanProduct.sampleProducts.first(where: { $0.id == dbApp.productId })
-                    ?? BorrowerLoanProduct.sampleProducts[0]
+                guard let product = products.first(where: { $0.id == dbApp.productId }) else {
+                    print("[CentralLoanRepository] Skipping application \(dbApp.applicationId): product \(dbApp.productId) was not found in live catalog.")
+                    continue
+                }
                 
                 var docs: [BorrowerLoanDocumentItem] = []
                 do {
@@ -437,9 +433,10 @@ final class CentralLoanRepository: ObservableObject {
             
             var mappedApps: [BorrowerLoanApplication] = []
             for dbApp in dbApps {
-                let product = products.first(where: { $0.id == dbApp.productId })
-                    ?? BorrowerLoanProduct.sampleProducts.first(where: { $0.id == dbApp.productId })
-                    ?? BorrowerLoanProduct.sampleProducts[0]
+                guard let product = products.first(where: { $0.id == dbApp.productId }) else {
+                    print("[CentralLoanRepository] Skipping application \(dbApp.applicationId): product \(dbApp.productId) was not found in live catalog.")
+                    continue
+                }
                 
                 var docs: [BorrowerLoanDocumentItem] = []
                 do {
@@ -1233,7 +1230,7 @@ final class CentralLoanRepository: ObservableObject {
                 }
             },
             notes: app.formData.loanPurpose.isEmpty ? "General financing requirement" : app.formData.loanPurpose,
-            branch: "Main Branch",
+            branch: app.formData.preferredBranch,
             cibilScore: app.formData.creditScoreValue > 0 ? app.formData.creditScoreValue : 750,
             sentToManagerDate: sentToManagerDate,
             managerStatus: managerStatus,
@@ -1310,7 +1307,7 @@ final class CentralLoanRepository: ObservableObject {
             verificationProgress: app.documents.isEmpty ? 0 : Double(app.documents.filter { $0.status == .verified }.count) / Double(app.documents.count),
             tenure: app.formData.preferredTenureMonths,
             interestRate: 10.5,
-            branchName: app.formData.preferredBranch.isEmpty ? "Main Branch" : app.formData.preferredBranch,
+            branchName: app.formData.preferredBranch,
             escalatedAt: app.stageHistory.last(where: { $0.stage == .escalated })?.timestamp
         )
     }
@@ -1486,7 +1483,7 @@ final class CentralLoanRepository: ObservableObject {
             return accountBranch
         }
 
-        return "Main Branch"
+        return ""
     }
 
     func clearState() {

@@ -1835,7 +1835,7 @@ private struct Step3PersonalInfoOverhaulView: View {
                 WizardPickerRow(
                     label: "Application Branch",
                     selection: $viewModel.formData.preferredBranch,
-                    options: [""] + (viewModel.branchesList.isEmpty ? BorrowerLoanFormData.branchOptions : viewModel.branchesList.map(\.name))
+                    options: [""] + viewModel.branchesList.map(\.name)
                 ) { option in
                     option.isEmpty ? "Select Branch" : option
                 }
@@ -3054,12 +3054,5 @@ private extension CGImagePropertyOrientation {
 
 // MARK: - Preview Support
 #Preview("Loan Wizard") {
-    let viewModel = PreviewSupport.loanApplicationViewModel
-    let product = BorrowerLoanProduct.sampleProducts.first(where: { $0.type == .personal }) ?? BorrowerLoanProduct.sampleProducts[0]
-    viewModel.startDraft(for: product)
-
-    return NavigationStack {
-        BorrowerLoanWizardView(viewModel: viewModel, product: product) {}
-    }
-    .previewBorrowerEnvironment()
+    EmptyView()
 }

@@ -9,7 +9,7 @@ final class LoanApplicationViewModel: ObservableObject {
     @Published var selectedProductCategory: LoanProductCategoryFilter = .all
     @Published var searchQuery: String = ""
     
-    @Published var products: [BorrowerLoanProduct] = BorrowerLoanProduct.sampleProducts
+    @Published var products: [BorrowerLoanProduct] = []
     @Published var applications: [BorrowerLoanApplication] = []
     
     @Published var selectedProductID: UUID?

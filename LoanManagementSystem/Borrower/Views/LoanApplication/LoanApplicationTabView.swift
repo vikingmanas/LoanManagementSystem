@@ -1508,8 +1508,7 @@ private struct AssignedLoanOfficerCard: View {
                             .foregroundStyle(LMSColors.brandNavy)
                     } else {
                         Menu {
-                            let actualBranches = branches.isEmpty ? BorrowerLoanFormData.branchOptions : branches
-                            ForEach(actualBranches, id: \.self) { branch in
+                            ForEach(branches, id: \.self) { branch in
                                 Button(branch) {
                                     onBranchSelected(branch)
                                 }

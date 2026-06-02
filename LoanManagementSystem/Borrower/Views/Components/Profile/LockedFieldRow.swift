@@ -54,10 +54,5 @@ struct LockedFieldRow: View {
 }
 
 #Preview {
-    Form {
-        LockedFieldRow(label: "Full Name", value: "Rahul Sharma") {
-            print("Request change tapped")
-        }
-    }
+    EmptyView()
 }
-

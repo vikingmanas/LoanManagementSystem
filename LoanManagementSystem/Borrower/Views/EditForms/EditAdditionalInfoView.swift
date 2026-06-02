@@ -13,14 +13,7 @@ struct EditAdditionalInfoView: View {
     @State private var nomineeName: String
     @State private var nomineeRelationship: String
     private let relationships = ["Spouse", "Mother", "Father", "Brother", "Sister", "Child"]
-    private let branches = [
-        "Mumbai Main Branch",
-        "Andheri Tech Park Branch",
-        "Mindspace Malad Branch",
-        "Bandra Kurla Complex Branch",
-        "Delhi Connaught Place Branch",
-        "Bengaluru Whitefield Branch"
-    ]
+    private let branches: [String] = []
 
     @State private var showAlert = false
     @State private var alertMessage = ""
@@ -33,7 +26,7 @@ struct EditAdditionalInfoView: View {
         _occupation = State(initialValue: p?.occupation ?? "")
         _hasExistingBankAccount = State(initialValue: p?.hasExistingBankAccount ?? false)
         _existingCustomerId = State(initialValue: p?.existingCustomerId ?? "")
-        _preferredBranch = State(initialValue: p?.preferredBranch ?? "Mumbai Main Branch")
+        _preferredBranch = State(initialValue: p?.preferredBranch ?? "")
         _emergencyContactName = State(initialValue: p?.emergencyContactName ?? "")
         _emergencyContactNumber = State(initialValue: p?.emergencyContactNumber ?? "")
         _nomineeName = State(initialValue: p?.nomineeName ?? "")
@@ -195,4 +188,3 @@ struct EditAdditionalInfoView: View {
 #Preview {
     EditAdditionalInfoView(viewModel: BorrowerProfileViewModel())
 }
-

@@ -96,7 +96,7 @@ struct StaffLoginView: View {
 
                         VStack(alignment: .leading, spacing: 20) {
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("Employee ID")
+                                Text("Staff Email")
                                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                                     .foregroundColor(Color.AppTheme.textSecondary)
 
@@ -120,16 +120,6 @@ struct StaffLoginView: View {
                                     isError: !passwordError.isEmpty,
                                     errorMessage: passwordError
                                 )
-                            }
-
-                            HStack(alignment: .top, spacing: 8) {
-                                Image(systemName: "info.circle")
-                                    .foregroundColor(.secondary)
-                                    .font(.footnote)
-
-                                Text("Staff IDs correspond to branch assignments (e.g. Loan Officer starts with 'LO', Bank Manager with 'BM', Admin with 'AD').")
-                                    .font(LMSFont.caption)
-                                    .foregroundColor(Color.AppTheme.textSecondary)
                             }
 
                             Button {
@@ -167,12 +157,7 @@ struct StaffLoginView: View {
 
 
     private var employeeIDPlaceholder: String {
-        switch appState.selectedRole {
-        case .loanOfficer: return "e.g., LO1234"
-        case .bankManager: return "e.g., BM1234"
-        case .admin: return "e.g., admin@lms.com or ADMIN"
-        default: return "Branch Employee ID"
-        }
+        "Staff email address"
     }
 
 
@@ -186,7 +171,7 @@ struct StaffLoginView: View {
 
 
         if cleanedID.isEmpty {
-            employeeIDError = "Employee ID or Email cannot be empty"
+            employeeIDError = "Staff email cannot be empty"
             return
         }
 
@@ -196,33 +181,11 @@ struct StaffLoginView: View {
         }
 
 
-        let emailToAuthenticate: String
-        if cleanedID.contains("@") {
-            emailToAuthenticate = cleanedID.lowercased()
-        } else {
-
-            let upperID = cleanedID.uppercased()
-            switch appState.selectedRole {
-            case .loanOfficer:
-                if !upperID.hasPrefix("LO") {
-                    employeeIDError = "Loan Officer Employee ID must start with 'LO'"
-                    return
-                }
-            case .bankManager:
-                if !upperID.hasPrefix("BM") {
-                    employeeIDError = "Bank Manager Employee ID must start with 'BM'"
-                    return
-                }
-            case .admin:
-                if !upperID.hasPrefix("AD") {
-                    employeeIDError = "Admin Employee ID must start with 'AD'"
-                    return
-                }
-            default:
-                break
-            }
-            emailToAuthenticate = "\(upperID.lowercased())@lms.com"
+        guard cleanedID.contains("@") else {
+            employeeIDError = "Enter the staff email address created by the admin."
+            return
         }
+        let emailToAuthenticate = cleanedID.lowercased()
 
         isLoading = true
 
@@ -262,4 +225,3 @@ struct StaffLoginView: View {
         .environmentObject(PreviewSupport.appState(showRoleSelection: true))
         .environmentObject(PreviewSupport.authManager)
 }
-
