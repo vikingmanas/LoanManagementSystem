@@ -4,6 +4,9 @@ import SwiftUI
 struct ManagerSettingsView: View {
     @Environment(\.dismiss) var dismiss
     @AppStorage("isDarkMode") private var isDarkMode = false
+    @State private var settingsAlertTitle = ""
+    @State private var settingsAlertMessage = ""
+    @State private var showSettingsAlert = false
 
     @AppStorage("managerHomeLoanLimit") private var homeLoanLimit = "5.0"
     @AppStorage("managerPersonalLoanLimit") private var personalLoanLimit = "1.0"
@@ -83,6 +86,24 @@ struct ManagerSettingsView: View {
             }
 
             Section {
+                NavigationLink {
+                    ManagerLoanProductConfigurationView()
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Loan Product Pricing")
+                            .font(.body.weight(.semibold))
+                        Text("Interest rates and processing fees per product")
+                            .font(.caption)
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+                }
+            } header: {
+                Label("Loan Product Configuration", systemImage: "doc.text.fill")
+            } footer: {
+                Text("Configure base interest rate and processing fee for each loan product at your branch.")
+            }
+
+            Section {
                 Toggle(isOn: $biometricEnabled) {
                     Label("\(localSecurity.biometricTypeName) Login", systemImage: "faceid")
                 }
@@ -129,8 +150,7 @@ struct ManagerSettingsView: View {
 
             Section {
                 Button(action: {
-                    HapticsManager.triggerNotification(type: .success)
-                    dismiss()
+                    Task { await saveBranchSettings() }
                 }) {
                     HStack {
                         Spacer()
@@ -145,6 +165,37 @@ struct ManagerSettingsView: View {
         }
         .navigationTitle("Branch Settings")
         .navigationBarTitleDisplayMode(.inline)
+        .alert(settingsAlertTitle, isPresented: $showSettingsAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(settingsAlertMessage)
+        }
+    }
+
+    private func saveBranchSettings() async {
+        let rules = GlobalLoanRules(
+            minCibilScore: Int(minCIBILScore) ?? CentralLoanRepository.shared.globalRules.minCibilScore,
+            maxDTI: Double(maxDebtToIncome) ?? CentralLoanRepository.shared.globalRules.maxDTI,
+            maxLTV: CentralLoanRepository.shared.globalRules.maxLTV
+        )
+
+        do {
+            try await AdminDashboardService.shared.updateGlobalRules(rules)
+            CentralLoanRepository.shared.globalRules = rules
+            if let encoded = try? JSONEncoder().encode(rules) {
+                UserDefaults.standard.set(encoded, forKey: "GlobalLoanRules")
+            }
+            HapticsManager.triggerNotification(type: .success)
+            settingsAlertTitle = "Settings Saved"
+            settingsAlertMessage = "Branch limits and risk thresholds were updated."
+            showSettingsAlert = true
+            dismiss()
+        } catch {
+            HapticsManager.triggerNotification(type: .error)
+            settingsAlertTitle = "Save Failed"
+            settingsAlertMessage = "Could not sync risk thresholds. Loan product pricing is saved separately under Loan Product Configuration."
+            showSettingsAlert = true
+        }
     }
 }
 

@@ -144,6 +144,7 @@ final class AdminStaffService {
                 let branchName = branchesMap[officer.branchId]
                 let member = StaffMember(
                     id: user.id,
+                    loanOfficerRecordId: officer.officerId,
                     email: user.email,
                     role: .loanOfficer,
                     fullName: user.fullName,
@@ -162,6 +163,7 @@ final class AdminStaffService {
                 let branchName = branchesMap[manager.branchId]
                 let member = StaffMember(
                     id: user.id,
+                    loanOfficerRecordId: nil,
                     email: user.email,
                     role: .bankManager,
                     fullName: user.fullName,

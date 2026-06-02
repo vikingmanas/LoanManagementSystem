@@ -825,7 +825,7 @@ final class LoanApplicationViewModel: ObservableObject {
                 nextStage = application.formData.creditScoreValue < CentralLoanRepository.shared.globalRules.minCibilScore ? .rejected : .approved
             case .approved:
                 nextStage = .disbursed
-            case .draft, .rejected, .disbursed:
+            case .draft, .escalated, .rejected, .disbursed:
                 nextStage = nil
             }
             

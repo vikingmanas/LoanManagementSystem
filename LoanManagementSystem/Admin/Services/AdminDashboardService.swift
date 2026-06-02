@@ -321,6 +321,8 @@ final class AdminDashboardService {
         
         var rich = existingRich ?? DBRichDetails()
         rich.loanSpecificDocuments = product.requiredDocuments
+        rich.interestRateRange = String(format: "%.2f%% p.a.", product.minRate)
+        rich.processingFees = String(format: "%.2f%% of loan amount", product.processingFee)
         
         let dbProd = DBAdminLoanProduct(
             productId: product.id,

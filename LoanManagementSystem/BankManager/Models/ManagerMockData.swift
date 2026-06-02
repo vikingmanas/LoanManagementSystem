@@ -193,11 +193,12 @@ enum ManagerMockData {
             assignedOfficerId: UUID(uuidString: "A0000001-0000-0000-0000-000000000002")!,
             submissionDate: Date().addingTimeInterval(-86400 * 7),
             documents: sampleDocumentsMixed,
-            officerRemarks: "High-risk business loan. GST filings inconsistent with declared turnover. Potential fraud indicators detected. Escalated for admin review.",
+            officerRemarks: LoanEscalationNote.officer(name: "Priya Menon", reason: "GST filings inconsistent with declared turnover. Potential fraud indicators detected."),
             managerRemarks: "Escalated to Admin for fraud investigation.",
             verificationProgress: 0.40,
             tenure: 48,
-            interestRate: 15.00
+            interestRate: 15.00,
+            escalatedAt: Date().addingTimeInterval(-86400 * 2)
         ),
         ManagerApplicant(
             id: UUID(uuidString: "B0000001-0000-0000-0000-000000000008")!,

@@ -120,6 +120,19 @@ struct ManagerApplicantDetailView: View {
                     DocumentsSection(documents: applicant.documents)
 
 
+                    if !applicant.isAssignedToOfficer {
+                        HStack(spacing: LMSSpacing.sm) {
+                            Image(systemName: "person.crop.circle.badge.exclamationmark")
+                                .foregroundStyle(LMSColors.amber)
+                            Text("This loan is not assigned to a loan officer yet. Reassign it so branch performance and ratings stay accurate.")
+                                .font(.footnote)
+                                .foregroundStyle(LMSColors.textSecondary)
+                        }
+                        .padding(LMSSpacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(LMSColors.amber.opacity(0.10), in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+                    }
+
                     OfficerRecommendationCard(
                         officerName: applicant.assignedOfficer,
                         remarks: applicant.officerRemarks
