@@ -1582,6 +1582,7 @@ private struct TimelineStepperCard: View {
     }
     
     private func isStageCompleted(_ stage: BorrowerApplicationStage, current: BorrowerApplicationStage, stages: [BorrowerApplicationStage]) -> Bool {
+        if current == .disbursed { return true }
         guard let currentIndex = stages.firstIndex(of: current),
               let stageIndex = stages.firstIndex(of: stage) else { return false }
         return stageIndex < currentIndex
@@ -1603,7 +1604,7 @@ private struct TimelineStepRow: View {
             // Icon and vertical connector
             VStack(spacing: 0) {
                 ZStack {
-                    if isCompleted {
+                    if isCompleted || (isCurrent && stage == .approved) {
                         Circle()
                             .fill(LMSColors.emerald)
                             .frame(width: 24, height: 24)
@@ -1641,7 +1642,7 @@ private struct TimelineStepRow: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(stage.rawValue)
                                 .font(LMSFont.footnote.weight(isCurrent ? .bold : .semibold))
-                                .foregroundStyle(isCurrent ? LMSColors.brandNavy : (isCompleted ? LMSColors.textPrimary : LMSColors.textSecondary))
+                                .foregroundStyle(isCurrent && stage != .approved ? LMSColors.brandNavy : (isCompleted || (isCurrent && stage == .approved) ? LMSColors.textPrimary : LMSColors.textSecondary))
                             
                             if let date = date {
                                 Text(date.formattedAsDDMMMYYYY())
