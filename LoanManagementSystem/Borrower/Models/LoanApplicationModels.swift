@@ -307,13 +307,13 @@ enum BorrowerDocumentStatus: String, Codable, CaseIterable, Hashable {
         case .pendingUpload:
             return Color(.secondaryLabel)
         case .uploaded:
-            return Color.brandNavy
+            return LMSColors.brandNavy
         case .underVerification:
             return .orange
         case .verified:
-            return Color.brandEmerald
+            return LMSColors.emerald
         case .rejected:
-            return Color.brandCoral
+            return LMSColors.coral
         case .requiresResubmission:
             return .orange
         }
@@ -967,13 +967,13 @@ enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hash
         case .draft:
             return Color(.secondaryLabel)
         case .submitted, .underReview, .documentVerification, .loanOfficerReview, .bankManagerReview:
-            return Color.brandNavy
+            return LMSColors.brandNavy
         case .escalated:
             return Color.purple
         case .approved, .disbursed:
-            return Color.brandEmerald
+            return LMSColors.emerald
         case .rejected:
-            return Color.brandCoral
+            return LMSColors.coral
         }
     }
 
@@ -1158,7 +1158,26 @@ extension BorrowerLoanProduct {
         return emi.isNaN || emi.isInfinite ? principal / Double(months) : emi
     }
 
-    static let sampleProducts: [BorrowerLoanProduct] = []
+    static let sampleProducts: [BorrowerLoanProduct] = [
+        BorrowerLoanProduct(
+            id: UUID(),
+            type: .personal,
+            shortDescription: "Product Details Unavailable",
+            maximumAmount: 0,
+            interestRateRange: "Unknown",
+            estimatedProcessingTime: "Unknown",
+            eligibilitySnapshot: "Unknown",
+            purpose: "Unknown",
+            benefits: [],
+            eligibilityCriteria: [],
+            minimumRequirements: [],
+            interestInformation: "",
+            repaymentOverview: "",
+            processingFees: "",
+            faqs: [],
+            loanSpecificDocuments: []
+        )
+    ]
 }
 
 extension BorrowerLoanDocumentItem {

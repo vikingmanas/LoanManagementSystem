@@ -220,8 +220,3 @@ struct StaffLoginView: View {
     }
 }
 
-#Preview {
-    StaffLoginView()
-        .environmentObject(PreviewSupport.appState(showRoleSelection: true))
-        .environmentObject(PreviewSupport.authManager)
-}

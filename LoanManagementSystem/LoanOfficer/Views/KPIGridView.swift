@@ -148,11 +148,3 @@ struct KPICard: View {
     }
 }
 
-#Preview {
-    KPIGridView(
-        viewModel: PreviewSupport.loanOfficerViewModel,
-        onCardSelected: { _ in }
-    )
-    .padding()
-    .previewLoanOfficerEnvironment()
-}

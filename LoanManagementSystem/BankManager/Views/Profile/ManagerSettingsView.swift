@@ -221,10 +221,3 @@ private struct PermissionRow: View {
     }
 }
 
-#Preview {
-    NavigationStack {
-        ManagerSettingsView()
-    }
-    .previewManagerEnvironment()
-}
-

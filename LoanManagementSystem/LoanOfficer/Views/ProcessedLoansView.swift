@@ -149,12 +149,4 @@ struct ProcessedLoanRow: View {
     }
 }
 
-#Preview {
-    ProcessedLoansView(
-        viewModel: PreviewSupport.loanOfficerViewModel,
-        onRespondTapped: { _ in }
-    )
-    .padding()
-    .previewLoanOfficerEnvironment()
-}
 
