@@ -2,87 +2,22 @@ import SwiftUI
 
 struct LoanHistoryTabView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
-    @State private var selectedFilter: RegistryFilter = .all
-    @State private var sortOrder: HistorySortOrder = .newest
     @State private var activeDetailApp: OfficerLoanApplication?
     @State private var showingCallAlert = false
     @State private var showingFlagAlert = false
     @State private var alertMessage = ""
 
-    private var filteredApplications: [OfficerLoanApplication] {
-        var list = viewModel.filteredApplications
-
-        switch selectedFilter {
-        case .all:
-            break
-        case .newCases:
-            list = list.filter { [.pending, .applied].contains($0.status) }
-        case .underCheck:
-            list = list.filter { [.underReview, .verificationCompleted, .documentsPending, .documentsRejected, .onHold].contains($0.status) }
-        case .approvalQueue:
-            list = list.filter { [.sentToManager, .finalApprovalPending].contains($0.status) || $0.sentToManagerDate != nil }
-        case .completed:
-            list = list.filter { [.approved, .disbursed, .rejected].contains($0.status) }
-        }
-
-        switch sortOrder {
-        case .newest:
-            list.sort { $0.submittedDate > $1.submittedDate }
-        case .oldest:
-            list.sort { $0.submittedDate < $1.submittedDate }
-        case .amountAsc:
-            list.sort { $0.requestedAmount < $1.requestedAmount }
-        case .amountDesc:
-            list.sort { $0.requestedAmount > $1.requestedAmount }
-        }
-
-        return list
-    }
-
     var body: some View {
         List {
-            // Style: Perfectly Native Segmented, Function: Scrollable (No Truncation)
             Section {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 0) {
-                        ForEach(RegistryFilter.allCases) { filter in
-                            Button {
-                                withAnimation(.snappy(duration: 0.2)) {
-                                    selectedFilter = filter
-                                }
-                            } label: {
-                                Text(filter.title)
-                                    .font(.subheadline.weight(.medium))
-                                    .padding(.vertical, 7)
-                                    .padding(.horizontal, 16)
-                                    .background {
-                                        if selectedFilter == filter {
-                                            RoundedRectangle(cornerRadius: 6.5, style: .continuous)
-                                                .fill(Color(.systemBackground))
-                                                .shadow(color: .black.opacity(0.1), radius: 1.5, x: 0, y: 1)
-                                        }
-                                    }
-                                    .foregroundStyle(selectedFilter == filter ? Color(.label) : Color(.secondaryLabel))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(2)
-                    .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 8.5, style: .continuous))
-                }
-            }
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 10, leading: 0, bottom: 10, trailing: 0))
-
-            Section {
-                if filteredApplications.isEmpty {
+                if viewModel.filteredApplications.isEmpty {
                     ContentUnavailableView(
-                        "No \(selectedFilter.title) Applications",
+                        "No \(viewModel.historyFilter.title) Applications",
                         systemImage: "tray.full",
                         description: Text("No records found matching this status.")
                     )
                 } else {
-                    ForEach(filteredApplications) { app in
+                    ForEach(viewModel.filteredApplications) { app in
                         Button {
                             activeDetailApp = app
                         } label: {
@@ -109,7 +44,7 @@ struct LoanHistoryTabView: View {
                     }
                 }
             } header: {
-                Text("\(filteredApplications.count) Total Applications")
+                Text("\(viewModel.filteredApplications.count) Total Applications")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .textCase(nil)
@@ -119,7 +54,29 @@ struct LoanHistoryTabView: View {
         .navigationTitle("Registry")
         .searchable(text: $viewModel.historySearchQuery, placement: .navigationBarDrawer(displayMode: .always), prompt: "Borrower, ID, branch")
         .refreshable { await viewModel.fetchDashboardData() }
-        .sheet(item: $activeDetailApp) { app in
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Menu {
+                    Picker("Filter by Status", selection: $viewModel.historyFilter) {
+                        ForEach(RegistryFilter.allCases) { filter in
+                            Label(filter.title, systemImage: icon(for: filter))
+                                .tag(filter)
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    Picker("Sort Order", selection: $viewModel.historySortOrder) {
+                        ForEach(HistorySortOrder.allCases, id: \.self) { order in
+                            Text(order.rawValue).tag(order)
+                        }
+                    }
+                } label: {
+                    Label("Filter", systemImage: viewModel.historyFilter == .all ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                }
+            }
+        }
+        .navigationDestination(item: $activeDetailApp) { app in
             LoanApplicationReviewDetailView(applicationId: app.applicationId, viewModel: viewModel)
         }
         .alert("Call", isPresented: $showingCallAlert) {
@@ -132,15 +89,15 @@ struct LoanHistoryTabView: View {
         } message: {
             Text(alertMessage)
         }
-        .onAppear {
-            syncFilterFromViewModel()
-        }
-        .onChange(of: viewModel.historyFilter) { _, _ in syncFilterFromViewModel() }
     }
 
-    private func syncFilterFromViewModel() {
-        if let filter = viewModel.historyFilter {
-            selectedFilter = filter
+    private func icon(for filter: RegistryFilter) -> String {
+        switch filter {
+        case .all: return "tray.2"
+        case .newCases: return "sparkles"
+        case .underCheck: return "clock"
+        case .approvalQueue: return "checkmark.seal"
+        case .completed: return "checkmark.circle"
         }
     }
 }

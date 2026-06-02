@@ -162,7 +162,7 @@ struct LoanPortfolioSummaryCard: View {
                     )
                     portfolioMetric(
                         title: "EMI Amount",
-                        value: viewModel.nextEMI.map { $0.amount.formattedAsINR() } ?? "—"
+                        value: viewModel.nextDueAmount > 0 ? viewModel.nextDueAmount.formattedAsINR() : "—"
                     )
                 }
 
@@ -340,6 +340,7 @@ struct UpcomingPaymentSection: View {
     @ObservedObject var viewModel: DashboardViewModel
     var onPayNow: () -> Void
     var onViewAll: () -> Void
+    var onSchedule: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
@@ -360,10 +361,10 @@ struct UpcomingPaymentSection: View {
                     VStack(alignment: .leading, spacing: LMSSpacing.lg) {
                         HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: LMSSpacing.xs) {
-                                Text(nextEMI.status == .overdue ? "Overdue" : "Due Soon")
+                                Text(viewModel.nextDueStatus == .overdue ? "Overdue" : "Due Soon")
                                     .font(LMSFont.caption.weight(.bold))
-                                    .foregroundStyle(nextEMI.status == .overdue ? LMSColors.coral : LMSColors.amber)
-                                Text(nextEMI.amount.formattedAsINR())
+                                    .foregroundStyle(viewModel.nextDueStatus == .overdue ? LMSColors.coral : LMSColors.amber)
+                                Text(viewModel.nextDueAmount.formattedAsINR())
                                     .font(.system(.title, design: .rounded).weight(.bold))
                                     .foregroundStyle(LMSColors.textPrimary)
                                     .monospacedDigit()
@@ -379,7 +380,7 @@ struct UpcomingPaymentSection: View {
                             }
                         }
 
-                        Label(nextEMI.loanType, systemImage: "doc.text.fill")
+                        Label(viewModel.nextDueLoanLabel, systemImage: "doc.text.fill")
                             .font(LMSFont.footnote)
                             .foregroundStyle(LMSColors.textSecondary)
 
@@ -391,11 +392,17 @@ struct UpcomingPaymentSection: View {
 
                         DashboardFilledButton(
                             title: "Pay Now",
-                            tint: nextEMI.status == .overdue ? LMSColors.coral : LMSColors.brandNavy,
+                            tint: viewModel.nextDueStatus == .overdue ? LMSColors.coral : LMSColors.brandNavy,
                             action: onPayNow
                         )
                     }
+                    .contentShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
+                    .onTapGesture {
+                        onSchedule()
+                    }
                 }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint("Opens repayment schedule")
             } else {
                 DashboardSectionCard {
                     DashboardEmptyState(
@@ -425,6 +432,8 @@ struct DashboardQuickActionsSection: View {
         [
             DashboardQuickAction(title: "Pay EMI", subtitle: "Due payments", icon: "indianrupeesign", tint: LMSColors.emerald, action: onPayEMI),
             DashboardQuickAction(title: "Top Up", subtitle: "Add funds", icon: "plus.circle.fill", tint: LMSColors.coral, action: onTopUp),
+            DashboardQuickAction(title: "Calculator", subtitle: "Plan EMI", icon: "function", tint: LMSColors.brandNavy, action: onCalculator),
+            DashboardQuickAction(title: "Apply Loan", subtitle: "New request", icon: "doc.badge.plus", tint: LMSColors.teal, action: onApplyLoan),
             DashboardQuickAction(title: "Statements", subtitle: "Download", icon: "doc.text.fill", tint: LMSColors.actionBlue, action: onStatement),
             DashboardQuickAction(title: "Support", subtitle: "Get help", icon: "headphones", tint: LMSColors.amber, action: onSupport),
             DashboardQuickAction(title: "Foreclosure", subtitle: "Close your loan early", icon: "lock.open.fill", tint: Color.orange, action: onForeclosure)

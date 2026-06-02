@@ -43,7 +43,7 @@ struct ManagerApplicantsTabView: View {
             .background(LMSColors.background)
             .searchable(text: $viewModel.applicantSearchQuery, prompt: "Search by name, ID, or officer…")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .topBarTrailing) {
                     filterToolbarMenu
                 }
             }

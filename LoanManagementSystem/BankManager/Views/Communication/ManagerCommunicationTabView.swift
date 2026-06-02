@@ -40,26 +40,12 @@ struct ManagerCommunicationTabView: View {
                             ConversationRow(conversation: conversation)
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                // Add delete logic if available in viewModel
-                            } label: {
-                                Label("Delete", systemImage: "trash.fill")
-                            }
-                            
                             Button {
                                 viewModel.markConversationRead(conversation.id)
                             } label: {
                                 Label("Read", systemImage: "envelope.open.fill")
                             }
                             .tint(.blue)
-                        }
-                        .swipeActions(edge: .leading) {
-                            Button {
-                                // Toggle pin logic if available
-                            } label: {
-                                Label(conversation.isPinned ? "Unpin" : "Pin", systemImage: conversation.isPinned ? "pin.slash.fill" : "pin.fill")
-                            }
-                            .tint(.orange)
                         }
                     }
                 }
@@ -199,6 +185,7 @@ private struct ManagerChatDetailView: View {
         }
         .navigationTitle(conversation.officerName)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 VStack {

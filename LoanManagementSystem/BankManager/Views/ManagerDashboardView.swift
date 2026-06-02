@@ -7,7 +7,6 @@ struct ManagerDashboardView: View {
 
     @State private var selectedTab: ManagerWorkspaceTab = .dashboard
     @State private var showProfileSheet = false
-    @State private var showNotificationSheet = false
     @State private var showSearchSheet = false
     @State private var selectedApplicant: ManagerApplicant?
 
@@ -32,24 +31,16 @@ struct ManagerDashboardView: View {
                     onSelectApplicant: { selectedApplicant = $0 }
                 )
                 .navigationTitle("Applicants")
-                .toolbar { applicantsToolbar }
             }
             .tabItem { Label("Applicants", systemImage: "person.2") }
             .badge(viewModel.pendingApplicants.count > 0 ? viewModel.pendingApplicants.count : 0)
             .tag(ManagerWorkspaceTab.applicants)
 
-            LoanReviewDashboardView()
-            .tabItem { Label("Reviews", systemImage: "doc.text.magnifyingglass") }
-            .tag(ManagerWorkspaceTab.reviews)
-            
             NavigationStack {
-                ManagerCommunicationTabView(viewModel: viewModel)
-                    .navigationTitle("Messages")
-                    .toolbar { messagesToolbar }
+                ManagerBranchTabView(viewModel: viewModel)
             }
-            .tabItem { Label("Messages", systemImage: "message") }
-            .badge(viewModel.unreadChatCount > 0 ? viewModel.unreadChatCount : 0)
-            .tag(ManagerWorkspaceTab.messages)
+            .tabItem { Label("Branch", systemImage: "building.2") }
+            .tag(ManagerWorkspaceTab.branch)
         }
         .tint(LMSColors.brandNavy)
         .task {
@@ -73,9 +64,6 @@ struct ManagerDashboardView: View {
         .sheet(isPresented: $showProfileSheet) {
             ManagerProfileView(viewModel: viewModel)
         }
-        .sheet(isPresented: $showNotificationSheet) {
-            NotificationsListView(viewModel: notificationViewModel)
-        }
         .sheet(isPresented: $showSearchSheet) {
             ManagerSearchSheet(viewModel: viewModel) { applicant in
                 showSearchSheet = false
@@ -97,20 +85,6 @@ struct ManagerDashboardView: View {
         }
     }
 
-    @ToolbarContentBuilder
-    private var applicantsToolbar: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
-            notificationButton
-        }
-    }
-
-    @ToolbarContentBuilder
-    private var messagesToolbar: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
-            notificationButton
-        }
-    }
-
     private var searchButton: some View {
         Button(action: { showSearchSheet = true }) {
             Image(systemName: "magnifyingglass")
@@ -119,7 +93,9 @@ struct ManagerDashboardView: View {
     }
 
     private var notificationButton: some View {
-        Button(action: { showNotificationSheet = true }) {
+        NavigationLink {
+            NotificationsListView(viewModel: notificationViewModel, isPushed: true)
+        } label: {
             Image(systemName: notificationViewModel.unreadCount > 0 ? "bell.badge" : "bell")
         }
         .accessibilityLabel("Notifications")
@@ -140,8 +116,7 @@ struct ManagerDashboardView: View {
 enum ManagerWorkspaceTab: Int, Hashable {
     case dashboard = 0
     case applicants = 1
-    case reviews = 2
-    case messages = 3
+    case branch = 2
 }
 
 private struct ManagerSearchSheet: View {

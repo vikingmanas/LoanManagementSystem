@@ -8,10 +8,9 @@ class SignUpViewModel: ObservableObject {
     @Published var phone: String = "" {
         didSet {
             let filtered = phone.filter { "0123456789".contains($0) }
-            if filtered.count > 10 {
-                phone = String(filtered.prefix(10))
-            } else {
-                phone = filtered
+            let newPhone = filtered.count > 10 ? String(filtered.prefix(10)) : filtered
+            if phone != newPhone {
+                phone = newPhone
             }
         }
     }
@@ -22,10 +21,9 @@ class SignUpViewModel: ObservableObject {
     @Published var alternatePhone: String = "" {
         didSet {
             let filtered = alternatePhone.filter { "0123456789".contains($0) }
-            if filtered.count > 10 {
-                alternatePhone = String(filtered.prefix(10))
-            } else {
-                alternatePhone = filtered
+            let newPhone = filtered.count > 10 ? String(filtered.prefix(10)) : filtered
+            if alternatePhone != newPhone {
+                alternatePhone = newPhone
             }
         }
     }

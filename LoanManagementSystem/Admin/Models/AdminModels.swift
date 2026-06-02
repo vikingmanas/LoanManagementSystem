@@ -41,20 +41,15 @@ enum AuditLogType: String, Codable, CaseIterable {
     
     var icon: String {
         switch self {
-        case .userAction: return "person.crop.circle.badge.plus"
-        case .documentAction: return "doc.text.magnifyingglass"
-        case .loanAction: return "banknote"
-        case .systemAction: return "gearshape.2"
+        case .userAction: return "person.badge.plus"
+        case .documentAction: return "doc.text"
+        case .loanAction: return "checkmark.circle"
+        case .systemAction: return "server.rack"
         }
     }
     
     var color: Color {
-        switch self {
-        case .userAction: return LMSColors.actionBlue
-        case .documentAction: return LMSColors.emerald
-        case .loanAction: return LMSColors.amber
-        case .systemAction: return LMSColors.brandNavy
-        }
+        return LMSColors.textPrimary
     }
 }
 
@@ -68,6 +63,22 @@ struct AuditLogEntry: Identifiable, Codable, Hashable {
     let timestamp: Date
     let details: String
     let type: AuditLogType
+    
+    var displayIcon: String {
+        if type == .loanAction {
+            if action.lowercased().contains("disburs") {
+                return "indianrupeesign.circle"
+            }
+            if action.lowercased().contains("approv") {
+                return "checkmark.circle"
+            }
+        }
+        return type.icon
+    }
+    
+    var displayColor: Color {
+        return LMSColors.textPrimary
+    }
 }
 
 // MARK: - Admin Communication Center
@@ -127,64 +138,6 @@ enum AdminIssueStatus: String, CaseIterable, Identifiable, Hashable {
         case .archived: return LMSColors.textSecondary
         }
     }
-}
-
-struct AdminIssueReply: Identifiable, Hashable {
-    let id = UUID()
-    let author: String
-    let message: String
-    let timestamp: Date
-}
-
-struct AdminCommunicationIssue: Identifiable, Hashable {
-    let id: UUID
-    var issueId: String
-    var title: String
-    var branchName: String
-    var raisedBy: String
-    var category: AdminIssueCategory
-    var priority: AdminIssuePriority
-    var createdDate: Date
-    var status: AdminIssueStatus
-    var issue: String
-    var assignedTo: String?
-    var supportingDocuments: [String]
-    var replies: [AdminIssueReply]
-    var createdBy: String
-    var responseDate: Date?
-    var resolvedDate: Date?
-    var lastUpdatedBy: String
-}
-
-enum AdminBroadcastRecipient: String, CaseIterable, Identifiable, Hashable {
-    case allBranchManagers = "All Branch Managers"
-    case selectedBranchManagers = "Selected Branch Managers"
-    case allLoanOfficers = "All Loan Officers"
-    case selectedLoanOfficers = "Selected Loan Officers"
-    case entireOrganization = "Entire Organization"
-
-    var id: String { rawValue }
-}
-
-enum AdminAnnouncementType: String, CaseIterable, Identifiable, Hashable {
-    case operationalUpdate = "Operational Update"
-    case policyChange = "Policy Change"
-    case interestRateChange = "Interest Rate Change"
-    case holidayNotification = "Holiday Notification"
-    case systemMaintenance = "System Maintenance"
-    case trainingAnnouncement = "Training Announcement"
-    case complianceAlert = "Compliance Alert"
-
-    var id: String { rawValue }
-}
-
-struct AdminBroadcastMessage: Identifiable, Hashable {
-    let id = UUID()
-    var subject: String
-    var message: String
-    var recipients: AdminBroadcastRecipient
-    var type: AdminAnnouncementType
-    var createdDate: Date
 }
 
 // MARK: - Loan Products

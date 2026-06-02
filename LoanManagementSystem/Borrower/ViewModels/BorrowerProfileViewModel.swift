@@ -173,7 +173,7 @@ class BorrowerProfileViewModel: ObservableObject {
             bankName: bank,
             accountNumber: account,
             ifscCode: ifsc,
-            balance: 0,
+            balance: 1_000_000,
             branch: branch,
             customerId: customerId
         )
@@ -189,7 +189,7 @@ class BorrowerProfileViewModel: ObservableObject {
                 accountNumber: account,
                 ifscCode: ifsc,
                 upiID: nil,
-                isVerified: false
+                isVerified: true
             )
         }
 

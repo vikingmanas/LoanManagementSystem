@@ -6,7 +6,6 @@ struct LoanOfficerDashboardView: View {
     @StateObject private var viewModel = LoanOfficerDashboardViewModel()
     @StateObject private var notificationViewModel = NotificationViewModel()
     @State private var selectedTab: OfficerWorkspaceTab = .dashboard
-    @State private var showingNotifications = false
     @State private var showingProfile = false
 
     private var appsRequiringReviewCount: Int {
@@ -21,7 +20,7 @@ struct LoanOfficerDashboardView: View {
                 LoanOfficerTodayView(
                     viewModel: viewModel,
                     selectedTab: $selectedTab,
-                    onNotifications: { showingNotifications = true },
+                    notificationViewModel: notificationViewModel,
                     onProfile: { showingProfile = true }
                 )
             }
@@ -55,9 +54,6 @@ struct LoanOfficerDashboardView: View {
                 notificationViewModel.configure(userId: uuid)
             }
         }
-        .sheet(isPresented: $showingNotifications) {
-            NotificationsListView(viewModel: notificationViewModel)
-        }
         .sheet(isPresented: $showingProfile) {
             LoanOfficerProfileView()
         }
@@ -77,7 +73,7 @@ private struct LoanOfficerTodayView: View {
     @EnvironmentObject var authManager: AuthManager
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Binding var selectedTab: OfficerWorkspaceTab
-    var onNotifications: () -> Void
+    @ObservedObject var notificationViewModel: NotificationViewModel
     var onProfile: () -> Void
 
     @State private var selectedMetricStatus: OfficerApplicationStatus?
@@ -137,8 +133,10 @@ private struct LoanOfficerTodayView: View {
         .navigationTitle("Dashboard")
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Button(action: onNotifications) {
-                    Image(systemName: "bell.badge")
+                NavigationLink {
+                    NotificationsListView(viewModel: notificationViewModel, isPushed: true)
+                } label: {
+                    Image(systemName: notificationViewModel.unreadCount > 0 ? "bell.badge" : "bell")
                 }
                 .accessibilityLabel("Notifications")
 
@@ -155,7 +153,7 @@ private struct LoanOfficerTodayView: View {
         .refreshable {
             await viewModel.fetchDashboardData()
         }
-        .sheet(item: $selectedApplication) { app in
+        .navigationDestination(item: $selectedApplication) { app in
             LoanApplicationReviewDetailView(applicationId: app.applicationId, viewModel: viewModel)
         }
         .alert("Report queued", isPresented: $showingReportConfirmation) {
@@ -164,7 +162,7 @@ private struct LoanOfficerTodayView: View {
             Text("The monthly branch performance report is being prepared.")
         }
         .sheet(isPresented: $showingEscalationSheet) {
-            OfficerEscalationSheet()
+            OfficerEscalationSheet(viewModel: viewModel)
         }
         .sheet(isPresented: $showingCalculator) {
             OfficerCalculatorSheet()
@@ -530,8 +528,12 @@ private struct OfficerPipelineChart: View {
     let stats: (pending: Int, underReview: Int, sentToManager: Int, completed: Int)
     @State private var animated = false
 
-    private var total: Double {
-        max(Double(stats.pending + stats.underReview + stats.sentToManager + stats.completed), 1)
+    private var totalCount: Int {
+        stats.pending + stats.underReview + stats.sentToManager + stats.completed
+    }
+
+    private var chartTotal: Double {
+        max(Double(totalCount), 1)
     }
 
     var body: some View {
@@ -542,34 +544,34 @@ private struct OfficerPipelineChart: View {
                     .frame(width: 96, height: 96)
 
                 Circle()
-                    .trim(from: 0, to: animated ? Double(stats.pending) / total : 0)
+                    .trim(from: 0, to: animated ? Double(stats.pending) / chartTotal : 0)
                     .stroke(LMSColors.amber, style: StrokeStyle(lineWidth: 11, lineCap: .round))
                     .frame(width: 96, height: 96)
                     .rotationEffect(.degrees(-90))
 
                 Circle()
-                    .trim(from: Double(stats.pending) / total, to: animated ? Double(stats.pending + stats.underReview) / total : Double(stats.pending) / total)
+                    .trim(from: Double(stats.pending) / chartTotal, to: animated ? Double(stats.pending + stats.underReview) / chartTotal : Double(stats.pending) / chartTotal)
                     .stroke(LMSColors.actionBlue, style: StrokeStyle(lineWidth: 11, lineCap: .round))
                     .frame(width: 96, height: 96)
                     .rotationEffect(.degrees(-90))
                     
                 Circle()
-                    .trim(from: Double(stats.pending + stats.underReview) / total, to: animated ? Double(stats.pending + stats.underReview + stats.sentToManager) / total : Double(stats.pending + stats.underReview) / total)
+                    .trim(from: Double(stats.pending + stats.underReview) / chartTotal, to: animated ? Double(stats.pending + stats.underReview + stats.sentToManager) / chartTotal : Double(stats.pending + stats.underReview) / chartTotal)
                     .stroke(Color.purple, style: StrokeStyle(lineWidth: 11, lineCap: .round))
                     .frame(width: 96, height: 96)
                     .rotationEffect(.degrees(-90))
 
                 Circle()
                     .trim(
-                        from: Double(stats.pending + stats.underReview + stats.sentToManager) / total,
-                        to: animated ? 1.0 : Double(stats.pending + stats.underReview + stats.sentToManager) / total
+                        from: Double(stats.pending + stats.underReview + stats.sentToManager) / chartTotal,
+                        to: animated ? Double(totalCount) / chartTotal : Double(stats.pending + stats.underReview + stats.sentToManager) / chartTotal
                     )
                     .stroke(LMSColors.emerald, style: StrokeStyle(lineWidth: 11, lineCap: .round))
                     .frame(width: 96, height: 96)
                     .rotationEffect(.degrees(-90))
 
                 VStack(spacing: 2) {
-                    Text("\(Int(total))")
+                    Text("\(totalCount)")
                         .font(.system(size: 26, weight: .bold, design: .rounded))
                         .foregroundStyle(LMSColors.textPrimary)
                     Text("Total")
@@ -730,13 +732,34 @@ private struct LoanOfficerReviewQueueView: View {
 // MARK: - Escalation Sheet
 
 private struct OfficerEscalationSheet: View {
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var reason = ""
     @State private var priority = "Normal"
+    @State private var selectedApplicationId: String = ""
+    @State private var errorMessage: String?
+
+    private var escalatableApplications: [OfficerLoanApplication] {
+        viewModel.escalatableApplications
+    }
 
     var body: some View {
         NavigationStack {
             Form {
+                Section("Application") {
+                    if escalatableApplications.isEmpty {
+                        Text("No active applications available to escalate.")
+                            .foregroundStyle(LMSColors.textSecondary)
+                    } else {
+                        Picker("Select Loan", selection: $selectedApplicationId) {
+                            Text("Choose application").tag("")
+                            ForEach(escalatableApplications) { app in
+                                Text("\(app.applicationId) · \(app.borrowerName)").tag(app.applicationId)
+                            }
+                        }
+                    }
+                }
+
                 Section("Priority") {
                     Picker("Priority", selection: $priority) {
                         Text("Normal").tag("Normal")
@@ -747,8 +770,14 @@ private struct OfficerEscalationSheet: View {
                 }
 
                 Section("Reason") {
-                    TextField("Describe the blocker", text: $reason, axis: .vertical)
+                    TextField("Describe why this case needs manager review", text: $reason, axis: .vertical)
                         .lineLimit(3...6)
+                }
+
+                Section {
+                    Text("The branch manager will see this escalation under Officer Performance with your name and the loan details.")
+                        .font(.footnote)
+                        .foregroundStyle(LMSColors.textSecondary)
                 }
             }
             .navigationTitle("Escalate Case")
@@ -758,11 +787,41 @@ private struct OfficerEscalationSheet: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Send") { dismiss() }
-                        .disabled(reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("Send") { submitEscalation() }
+                        .disabled(!canSubmit)
+                }
+            }
+            .alert("Escalation Failed", isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(errorMessage ?? "")
+            }
+            .onAppear {
+                if selectedApplicationId.isEmpty {
+                    selectedApplicationId = escalatableApplications.first?.applicationId ?? ""
                 }
             }
         }
+    }
+
+    private var canSubmit: Bool {
+        !selectedApplicationId.isEmpty
+            && !reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !escalatableApplications.isEmpty
+    }
+
+    private func submitEscalation() {
+        let trimmedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        let composedReason = "[\(priority)] \(trimmedReason)"
+        guard viewModel.escalateApplication(applicationId: selectedApplicationId, reason: composedReason) else {
+            errorMessage = "Could not escalate this application. It may already be closed or escalated."
+            return
+        }
+        HapticsManager.triggerNotification(type: .success)
+        dismiss()
     }
 }
 
@@ -1075,7 +1134,7 @@ private struct OfficerApplicationListSheet: View {
                     Button("Close") { dismiss() }
                 }
             }
-            .sheet(item: $selectedApplication) { application in
+            .navigationDestination(item: $selectedApplication) { application in
                 LoanApplicationReviewDetailView(applicationId: application.applicationId, viewModel: viewModel)
             }
         }
@@ -1120,7 +1179,7 @@ private struct OfficerPushApplicationListView: View {
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $selectedApplication) { application in
+        .navigationDestination(item: $selectedApplication) { application in
             LoanApplicationReviewDetailView(applicationId: application.applicationId, viewModel: viewModel)
         }
     }
@@ -1136,38 +1195,43 @@ struct OfficerApplicationReviewCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Header: Borrower Avatar, Name, Loan details, status
-            HStack(spacing: 12) {
-                OfficerAvatar(name: application.borrowerName, tint: application.loanType.themeColor)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(application.borrowerName)
-                        .font(.system(.body, design: .rounded).weight(.semibold))
-                        .foregroundStyle(LMSColors.textPrimary)
+            NavigationLink {
+                LoanApplicationReviewDetailView(applicationId: application.applicationId, viewModel: viewModel)
+            } label: {
+                HStack(spacing: 12) {
+                    OfficerAvatar(name: application.borrowerName, tint: application.loanType.themeColor)
                     
-                    Text("\(application.loanType.rawValue) · \(CurrencyFormatter.shared.format(application.requestedAmount))")
-                        .font(.system(.caption, design: .rounded).weight(.medium))
-                        .foregroundStyle(LMSColors.textSecondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(application.borrowerName)
+                            .font(.system(.body, design: .rounded).weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                        
+                        Text("\(application.loanType.rawValue) · \(CurrencyFormatter.shared.format(application.requestedAmount))")
+                            .font(.system(.caption, design: .rounded).weight(.medium))
+                            .foregroundStyle(LMSColors.textSecondary)
+                        
+                        Text("App ID: \(application.applicationId)")
+                            .font(.system(.caption2, design: .rounded).monospaced())
+                            .foregroundStyle(LMSColors.textTertiary)
+                    }
                     
-                    Text("App ID: \(application.applicationId)")
-                        .font(.system(.caption2, design: .rounded).monospaced())
-                        .foregroundStyle(LMSColors.textTertiary)
-                }
-                
-                Spacer()
-                
-                // Document progress indicator
-                VStack(alignment: .trailing, spacing: 4) {
-                    let total = application.documents.count
-                    let verified = application.documents.filter { $0.status == .verified }.count
-                    Text("\(verified)/\(total) Verified")
-                        .font(.system(.caption2, design: .rounded).bold())
-                        .foregroundStyle(verified == total ? LMSColors.emerald : LMSColors.actionBlue)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background((verified == total ? LMSColors.emerald : LMSColors.actionBlue).opacity(0.1))
-                        .clipShape(Capsule())
+                    Spacer()
+                    
+                    // Document progress indicator
+                    VStack(alignment: .trailing, spacing: 4) {
+                        let total = application.documents.count
+                        let verified = application.documents.filter { $0.status == .verified }.count
+                        Text("\(verified)/\(total) Verified")
+                            .font(.system(.caption2, design: .rounded).bold())
+                            .foregroundStyle(verified == total ? LMSColors.emerald : LMSColors.actionBlue)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background((verified == total ? LMSColors.emerald : LMSColors.actionBlue).opacity(0.1))
+                            .clipShape(Capsule())
+                    }
                 }
             }
+            .buttonStyle(.plain)
             
             Divider()
                 .padding(.vertical, 4)
@@ -1181,7 +1245,8 @@ struct OfficerApplicationReviewCard: View {
                         docType: doc.docType,
                         status: doc.status,
                         submittedDate: doc.uploadedDate ?? application.submittedDate,
-                        applicationId: application.applicationId
+                        applicationId: application.applicationId,
+                        fileURL: doc.fileURL
                     )
                     
                     NavigationLink {
@@ -1216,7 +1281,7 @@ struct OfficerApplicationReviewCard: View {
                             Spacer()
                             
                             // Status tag
-                            Text(statusText(doc.status))
+                            Text(doc.status.rawValue)
                                 .font(.system(size: 10, weight: .bold, design: .rounded))
                                 .foregroundStyle(doc.status == .pending ? LMSColors.amber : .white)
                                 .padding(.horizontal, 8)
@@ -1243,16 +1308,7 @@ struct OfficerApplicationReviewCard: View {
         .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
     }
     
-    private func statusText(_ status: OfficerDocumentStatus) -> String {
-        switch status {
-        case .pending: return "Missing"
-        case .uploaded: return "New Upload"
-        case .underReview: return "In Review"
-        case .verified: return "Verified ✓"
-        case .rejectFlag: return "Re-upload Req."
-        case .reUploaded: return "Re-Uploaded"
-        }
-    }
+
 }
 
 // MARK: - Calculator Sheet
@@ -1364,4 +1420,3 @@ struct OfficerCalculatorSheet: View {
         }
     }
 }
-

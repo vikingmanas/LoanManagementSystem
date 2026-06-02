@@ -192,8 +192,7 @@ final class AdminDashboardService {
             return $0.status == "active"
         }.count
         
-        // System Health
-        let serverUptime = 99.98 + (sin(now.timeIntervalSince1970 / 10000.0) * 0.01) // Simulate dynamic uptime
+        let serverUptime = dbApps.isEmpty && dbUsers.isEmpty && dbLogs.isEmpty ? 0.0 : 100.0
         let lastBackupTime = dbLogs.first?.ts ?? Calendar.current.date(byAdding: .hour, value: -2, to: now) ?? now
         
         return DashboardData(
@@ -321,6 +320,8 @@ final class AdminDashboardService {
         
         var rich = existingRich ?? DBRichDetails()
         rich.loanSpecificDocuments = product.requiredDocuments
+        rich.interestRateRange = String(format: "%.2f%% p.a.", product.minRate)
+        rich.processingFees = String(format: "%.2f%% of loan amount", product.processingFee)
         
         let dbProd = DBAdminLoanProduct(
             productId: product.id,
