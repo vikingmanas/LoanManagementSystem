@@ -19,9 +19,22 @@
 		187149762FB5885F00D6F966 /* LoanManagementSystem.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LoanManagementSystem.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		48495C182FCE96D1005E9382 /* Exceptions for "LoanManagementSystem" folder in "LoanManagementSystem" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 187149752FB5885F00D6F966 /* LoanManagementSystem */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		187149782FB5885F00D6F966 /* LoanManagementSystem */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				48495C182FCE96D1005E9382 /* Exceptions for "LoanManagementSystem" folder in "LoanManagementSystem" target */,
+			);
 			path = LoanManagementSystem;
 			sourceTree = "<group>";
 		};
@@ -278,6 +291,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LoanManagementSystem/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "LoanManagementSystem needs camera access to capture and verify your KYC documents.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "LoanManagementSystem needs photo library access so you can upload and verify document images.";
 				INFOPLIST_KEY_SUPABASE_KEY = "sb_publishable_C8TSNkIM4-1f4zJuPTeqYA_bTEGFtFe";
@@ -327,6 +341,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LoanManagementSystem/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "LoanManagementSystem needs camera access to capture and verify your KYC documents.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "LoanManagementSystem needs photo library access so you can upload and verify document images.";
 				INFOPLIST_KEY_SUPABASE_KEY = "sb_publishable_C8TSNkIM4-1f4zJuPTeqYA_bTEGFtFe";
