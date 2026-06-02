@@ -39,7 +39,14 @@ public struct EMITrackerView: View {
                 VStack(spacing: 16) {
                     // 1. Upcoming EMI Hero Card
                     if let nextEMI = viewModel.nextEMI {
-                        UpcomingEMICard(nextEMI: nextEMI, balance: viewModel.bankAccount.availableBalance, onPayTap: onPayTap)
+                        UpcomingEMICard(
+                            nextEMI: nextEMI,
+                            amountDue: viewModel.nextDueAmount,
+                            loanLabel: viewModel.nextDueLoanLabel,
+                            status: viewModel.nextDueStatus,
+                            balance: viewModel.bankAccount.availableBalance,
+                            onPayTap: onPayTap
+                        )
                     } else {
                         AllCaughtUpCard()
                     }
@@ -86,10 +93,13 @@ public struct EMITrackerView: View {
 
 struct UpcomingEMICard: View {
     let nextEMI: EMIRecord
+    let amountDue: Double
+    let loanLabel: String
+    let status: DashboardEMIStatus
     let balance: Double
     let onPayTap: () -> Void
     
-    private var isOverdue: Bool { nextEMI.status == .overdue }
+    private var isOverdue: Bool { status == .overdue }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -99,7 +109,7 @@ struct UpcomingEMICard: View {
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundStyle(isOverdue ? LMSColors.coral : LMSColors.brandNavy)
                     
-                    Text(nextEMI.amount.formattedAsINR())
+                    Text(amountDue.formattedAsINR())
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundStyle(LMSColors.textPrimary)
                 }
@@ -128,7 +138,7 @@ struct UpcomingEMICard: View {
                     Text("LOAN TYPE")
                         .font(.system(size: 9, weight: .bold, design: .rounded))
                         .foregroundStyle(LMSColors.textSecondary)
-                    Text(nextEMI.loanType)
+                    Text(loanLabel)
                         .font(.system(.subheadline, design: .rounded).bold())
                         .foregroundStyle(LMSColors.textPrimary)
                 }
@@ -137,7 +147,7 @@ struct UpcomingEMICard: View {
             }
             .padding(.bottom, 20)
             
-            let isSufficient = balance >= nextEMI.amount
+            let isSufficient = balance >= amountDue
             
             Button {
                 onPayTap()
