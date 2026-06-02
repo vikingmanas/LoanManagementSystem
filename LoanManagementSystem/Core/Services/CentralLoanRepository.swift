@@ -51,6 +51,7 @@ final class CentralLoanRepository: ObservableObject {
     private var officerRecordIdByUserId: [UUID: UUID] = [:]
     private var officerUserIdByRecordId: [UUID: UUID] = [:]
     private var officerNameByUserId: [UUID: String] = [:]
+    private var officerBranchNameByUserId: [UUID: String] = [:]
     
     private init() {
         loadPersistedState()
@@ -93,9 +94,13 @@ final class CentralLoanRepository: ObservableObject {
         officerRecordIdByUserId.removeAll()
         officerUserIdByRecordId.removeAll()
         officerNameByUserId.removeAll()
+        officerBranchNameByUserId.removeAll()
 
         for member in staff where member.role == .loanOfficer {
             officerNameByUserId[member.id] = member.fullName
+            if let branch = member.branchName {
+                officerBranchNameByUserId[member.id] = branch
+            }
             if let recordId = member.loanOfficerRecordId {
                 officerRecordIdByUserId[member.id] = recordId
                 officerUserIdByRecordId[recordId] = member.id
@@ -123,7 +128,7 @@ final class CentralLoanRepository: ObservableObject {
 
     func isVisibleToOfficer(_ app: BorrowerLoanApplication, userId: UUID) -> Bool {
         guard app.currentStage != .draft else { return false }
-        if isLoanUnassigned(app) { return true }
+        // Officer can only see applications explicitly assigned to them
         return resolvedOfficerUserId(for: app) == userId
     }
 
