@@ -13,7 +13,7 @@ struct EditAdditionalInfoView: View {
     @State private var nomineeName: String
     @State private var nomineeRelationship: String
     private let relationships = ["Spouse", "Mother", "Father", "Brother", "Sister", "Child"]
-    private let branches: [String] = []
+    @State private var branchesList: [BranchInfo] = []
 
     @State private var showAlert = false
     @State private var alertMessage = ""
@@ -103,8 +103,11 @@ struct EditAdditionalInfoView: View {
                     }
 
                     Picker("Preferred Home Branch", selection: $preferredBranch) {
-                        ForEach(branches, id: \.self) { branch in
-                            Text(branch).tag(branch)
+                        if branchesList.isEmpty {
+                            Text("No branches available").tag("")
+                        }
+                        ForEach(branchesList, id: \.id) { branch in
+                            Text(branch.name).tag(branch.name)
                         }
                     }
                     .font(Font.AppTheme.body)
@@ -113,6 +116,7 @@ struct EditAdditionalInfoView: View {
             }
             .navigationTitle("Edit Preferences & Refs")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear { loadBranches() }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
@@ -183,8 +187,25 @@ struct EditAdditionalInfoView: View {
         alertMessage = message
         showAlert = true
     }
+
+    private func loadBranches() {
+        Task {
+            do {
+                let fetched = try await DatabaseService.shared.fetchBranches()
+                await MainActor.run {
+                    self.branchesList = fetched
+                    if preferredBranch.isEmpty, let first = fetched.first {
+                        self.preferredBranch = first.name
+                    }
+                }
+            } catch {
+                print("Error loading branches in EditAdditionalInfoView: \(error)")
+            }
+        }
+    }
 }
 
 #Preview {
     EditAdditionalInfoView(viewModel: BorrowerProfileViewModel())
 }
+

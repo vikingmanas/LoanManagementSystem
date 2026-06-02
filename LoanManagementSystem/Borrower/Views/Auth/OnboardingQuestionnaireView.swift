@@ -28,7 +28,7 @@ struct OnboardingQuestionnaireView: View {
     @State private var emergencyContactAlternateNumber = ""
     @State private var emergencyContactAddress = ""
     @State private var existingCustomerId = ""
-    @State private var preferredBranch = ""
+    @State private var preferredBranch = "Headquarters Branch"
     @State private var showInsightCard = false
     @State private var linkedAccountsList: [LinkedBankAccount] = []
     @State private var isShowingAddAccountForm = false
@@ -42,6 +42,7 @@ struct OnboardingQuestionnaireView: View {
     // Lists of Options
     private let employmentTypes = ["Salaried", "Self-Employed", "Business Owner"]
     private let relationships = ["Spouse", "Parent", "Sibling", "Friend", "Relative", "Other"]
+
     
     var body: some View {
         NavigationStack {
@@ -255,8 +256,11 @@ struct OnboardingQuestionnaireView: View {
                     }
                     
                     Picker("Select Branch", selection: $preferredBranch) {
-                        ForEach(branchesList.map(\.name), id: \.self) {
-                            Text($0)
+                        if branchesList.isEmpty {
+                            Text("No branches available").tag("")
+                        }
+                        ForEach(branchesList, id: \.id) { branch in
+                            Text(branch.name).tag(branch.name)
                         }
                     }
                     

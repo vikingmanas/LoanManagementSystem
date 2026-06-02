@@ -1508,6 +1508,9 @@ private struct AssignedLoanOfficerCard: View {
                             .foregroundStyle(LMSColors.brandNavy)
                     } else {
                         Menu {
+                            if branches.isEmpty {
+                                Text("No branches available").tag("")
+                            }
                             ForEach(branches, id: \.self) { branch in
                                 Button(branch) {
                                     onBranchSelected(branch)

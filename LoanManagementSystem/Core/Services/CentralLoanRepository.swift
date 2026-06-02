@@ -356,10 +356,9 @@ final class CentralLoanRepository: ObservableObject {
             
             var mappedApps: [BorrowerLoanApplication] = []
             for dbApp in dbApps {
-                guard let product = products.first(where: { $0.id == dbApp.productId }) else {
-                    print("[CentralLoanRepository] Skipping application \(dbApp.applicationId): product \(dbApp.productId) was not found in live catalog.")
-                    continue
-                }
+                let product = products.first(where: { $0.id == dbApp.productId })
+                    ?? BorrowerLoanProduct.sampleProducts.first(where: { $0.id == dbApp.productId })
+                    ?? BorrowerLoanProduct.sampleProducts[0]
                 
                 var docs: [BorrowerLoanDocumentItem] = []
                 do {
@@ -433,10 +432,9 @@ final class CentralLoanRepository: ObservableObject {
             
             var mappedApps: [BorrowerLoanApplication] = []
             for dbApp in dbApps {
-                guard let product = products.first(where: { $0.id == dbApp.productId }) else {
-                    print("[CentralLoanRepository] Skipping application \(dbApp.applicationId): product \(dbApp.productId) was not found in live catalog.")
-                    continue
-                }
+                let product = products.first(where: { $0.id == dbApp.productId })
+                    ?? BorrowerLoanProduct.sampleProducts.first(where: { $0.id == dbApp.productId })
+                    ?? BorrowerLoanProduct.sampleProducts[0]
                 
                 var docs: [BorrowerLoanDocumentItem] = []
                 do {
@@ -1230,7 +1228,7 @@ final class CentralLoanRepository: ObservableObject {
                 }
             },
             notes: app.formData.loanPurpose.isEmpty ? "General financing requirement" : app.formData.loanPurpose,
-            branch: app.formData.preferredBranch,
+            branch: "",
             cibilScore: app.formData.creditScoreValue > 0 ? app.formData.creditScoreValue : 750,
             sentToManagerDate: sentToManagerDate,
             managerStatus: managerStatus,

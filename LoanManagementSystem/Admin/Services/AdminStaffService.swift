@@ -72,11 +72,12 @@ final class AdminStaffService {
 
 
     func fetchBranches() async throws -> [BranchInfo] {
-        try await client
+        let branches: [BranchInfo] = try await client
             .from("branches")
             .select()
             .execute()
             .value
+        return branches
     }
 
 
@@ -327,3 +328,4 @@ final class AdminStaffService {
             .execute()
     }
 }
+
