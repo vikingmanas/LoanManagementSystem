@@ -160,7 +160,12 @@ final class CentralLoanRepository: ObservableObject {
     }
 
     func isLoanUnassigned(_ app: BorrowerLoanApplication) -> Bool {
-        app.assignedOfficer == nil && app.assignedOfficerId == nil
+        return app.assignedOfficerId == nil && app.assignedOfficer == nil
+    }
+
+    func isLoanUnassigned(applicationId: UUID) -> Bool {
+        guard let app = applications.first(where: { $0.id == applicationId }) else { return false }
+        return isLoanUnassigned(app)
     }
 
     func assignOfficer(userId: UUID, name: String, toApplicationId applicationId: UUID) {
@@ -1126,6 +1131,7 @@ final class CentralLoanRepository: ObservableObject {
         case .approved: officerStatus = .approved
         case .rejected: officerStatus = .rejected
         case .disbursed: officerStatus = .disbursed
+        case .escalated: officerStatus = .escalated
         }
         
         let managerStatus: ManagerStatus?

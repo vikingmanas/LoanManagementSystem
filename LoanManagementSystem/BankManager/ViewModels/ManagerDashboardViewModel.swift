@@ -596,10 +596,10 @@ final class ManagerDashboardViewModel: ObservableObject {
                 activeCases: assignedCases,
                 maxCapacity: 15,
                 rating: storedRating ?? autoRating,
+                managerRating: storedRating,
                 performance: processed == 0 ? 0 : min(1, approvalRate / 100),
                 loansProcessedYTD: processed,
-                approvalRate: approvalRate,
-                managerRating: storedRating
+                approvalRate: approvalRate
             )
         }
 
@@ -678,10 +678,10 @@ final class ManagerDashboardViewModel: ObservableObject {
                 activeCases: apps.filter { $0.status == .sentToManager || $0.status == .needsClarification }.count,
                 maxCapacity: 15,
                 rating: storedRating ?? autoRating,
+                managerRating: storedRating,
                 performance: apps.isEmpty ? 0 : min(1, approvalRate / 100),
                 loansProcessedYTD: completed,
-                approvalRate: approvalRate,
-                managerRating: storedRating
+                approvalRate: approvalRate
             )
         }
         .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
