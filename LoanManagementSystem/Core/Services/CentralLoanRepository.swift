@@ -958,7 +958,7 @@ final class CentralLoanRepository: ObservableObject {
             id: app.id,
             applicationId: app.applicationId ?? "APP-2026-\(app.id.uuidString.prefix(4))",
             borrowerName: app.formData.fullName.isEmpty ? "Borrower" : app.formData.fullName,
-            borrowerId: app.id,
+            borrowerId: app.borrowerId ?? app.id,
             loanType: type,
             requestedAmount: app.formData.requestedAmountValue,
             status: officerStatus,

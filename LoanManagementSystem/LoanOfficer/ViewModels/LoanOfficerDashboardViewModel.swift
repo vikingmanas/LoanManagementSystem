@@ -227,6 +227,35 @@ class LoanOfficerDashboardViewModel: ObservableObject {
             // Starts empty to remove mock feed items
             self.activityFeed = []
             
+            if let officerId = self.officerProfile?.id {
+                if let dbMessages = try? await DatabaseService.shared.fetchMessages(for: officerId) {
+                    var newActivityItems: [ActivityFeedItem] = []
+                    for msg in dbMessages {
+                        let matchedApp = self.applications.first(where: { $0.id == msg.applicationId })
+                        let borrowerName = matchedApp?.borrowerName ?? "Borrower"
+                        let appDisplayId = matchedApp?.applicationId ?? "APP-\(msg.applicationId?.uuidString.prefix(6).uppercased() ?? "UNKNOWN")"
+                        let loanType = matchedApp?.loanType.rawValue ?? "Loan Clarification"
+                        
+                        let isRead = msg.receiverId == officerId ? msg.isRead : true
+                        
+                        let feedItem = ActivityFeedItem(
+                            id: msg.messageId,
+                            borrowerName: borrowerName,
+                            applicationId: appDisplayId,
+                            loanType: loanType,
+                            eventType: .queryRaised,
+                            eventDescription: msg.content,
+                            timestamp: msg.sentAt,
+                            isRead: isRead,
+                            requiresAction: !isRead,
+                            actionType: .replyQuery
+                        )
+                        newActivityItems.append(feedItem)
+                    }
+                    self.activityFeed = newActivityItems.sorted { $0.timestamp > $1.timestamp }
+                }
+            }
+            
             updateUnreadCount()
             isLoading = false
         } catch {
