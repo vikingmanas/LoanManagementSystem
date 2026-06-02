@@ -915,6 +915,7 @@ enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hash
     case approved = "Approved"
     case rejected = "Rejected"
     case disbursed = "Disbursed"
+    case escalated = "Escalated"
 
     var id: String { rawValue }
 
@@ -929,6 +930,7 @@ enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hash
         case .approved: return "approved"
         case .rejected: return "rejected"
         case .disbursed: return "disbursed"
+        case .escalated: return "escalated"
         }
     }
     
@@ -943,6 +945,7 @@ enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hash
         case "approved": return .approved
         case "rejected": return .rejected
         case "disbursed": return .disbursed
+        case "escalated": return .escalated
         default: return .draft
         }
     }
@@ -958,6 +961,7 @@ enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hash
         case .approved: return "checkmark.circle.fill"
         case .rejected: return "xmark.circle.fill"
         case .disbursed: return "indianrupeesign.circle.fill"
+        case .escalated: return "arrow.up.forward.circle.fill"
         }
     }
 
@@ -967,6 +971,8 @@ enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hash
             return Color(.secondaryLabel)
         case .submitted, .underReview, .documentVerification, .loanOfficerReview, .bankManagerReview:
             return Color.brandNavy
+        case .escalated:
+            return Color.purple
         case .approved, .disbursed:
             return Color.brandEmerald
         case .rejected:

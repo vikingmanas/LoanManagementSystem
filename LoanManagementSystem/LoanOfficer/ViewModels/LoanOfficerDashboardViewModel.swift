@@ -271,7 +271,7 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
 
     func refreshFromRepository() {
-        applications = CentralLoanRepository.shared.applications.compactMap { borrowerApplication -> OfficerLoanApplication? in
+        applications = CentralLoanRepository.shared.applications.compactMap { borrowerApplication in
             guard borrowerApplication.currentStage != .draft else { return nil }
             if let officerUserId = officerProfile?.id {
                 guard borrowerApplication.assignedOfficer?.userId == officerUserId else { return nil }
@@ -379,19 +379,34 @@ class LoanOfficerDashboardViewModel: ObservableObject {
             )
         }
     }
-    
-    func escalateApplication(applicationId: String, reason: String) -> Bool {
-        if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }) {
-            let app = applications[idx]
-            CentralLoanRepository.shared.escalateApplication(id: app.id, managerName: officerProfile?.fullName ?? "Loan Officer")
-            refreshFromRepository()
-            return true
+
+    var escalatableApplications: [LoanApplication] {
+        applications.filter { app in
+            ![.approved, .rejected, .disbursed, .escalated].contains(app.status)
         }
-        return false
     }
-    
-    var escalatableApplications: [OfficerLoanApplication] {
-        applications.filter { $0.status == .underReview || $0.status == .documentsPending || $0.status == .documentsRejected || $0.status == .pending }
+
+    @discardableResult
+    func escalateApplication(applicationId: String, reason: String) -> Bool {
+        guard let app = applications.first(where: { $0.applicationId == applicationId }),
+              let officerId = officerProfile?.id else { return false }
+        let officerName = officerProfile?.fullName ?? "Loan Officer"
+        let didEscalate = CentralLoanRepository.shared.escalateApplicationByOfficer(
+            id: app.id,
+            officerId: officerId,
+            officerName: officerName,
+            reason: reason
+        )
+        guard didEscalate else { return false }
+        refreshFromRepository()
+        logActivity(
+            borrowerName: app.borrowerName,
+            applicationId: applicationId,
+            loanType: app.loanType.rawValue,
+            eventType: .queryRaised,
+            description: "Escalated to branch manager by \(officerName): \(reason)"
+        )
+        return true
     }
     
     func logActivity(borrowerName: String, applicationId: String, loanType: String, eventType: ActivityEventType, description: String) {

@@ -90,6 +90,12 @@ enum ManagerLoanType: String, CaseIterable, Codable, Hashable {
 }
 
 
+enum ManagerOfficerAssignment {
+    static let unassignedOfficerId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+    static let unassignedOfficerName = "Unassigned"
+}
+
+
 struct ManagerApplicant: Identifiable, Hashable {
     let id: UUID
     var applicationId: String
@@ -102,9 +108,6 @@ struct ManagerApplicant: Identifiable, Hashable {
     var riskLevel: ManagerRiskLevel
     var assignedOfficer: String
     var assignedOfficerId: UUID
-    var isAssignedToOfficer: Bool {
-        assignedOfficerId != id
-    }
     var submissionDate: Date
     var documents: [ManagerDocument]
     var officerRemarks: String
@@ -113,29 +116,11 @@ struct ManagerApplicant: Identifiable, Hashable {
     var tenure: Int
     var interestRate: Double
     var branchName: String
-    var escalatedAt: Date?
-}
+    var escalatedAt: Date? = nil
 
-struct ManagerOfficerEscalation: Identifiable, Hashable {
-    let id: UUID
-    var applicationId: String
-    var borrowerName: String
-    var loanType: ManagerLoanType
-    var requestedAmount: Double
-    var escalatedAt: Date
-    var reason: String
-    var riskLevel: ManagerRiskLevel
-}
-
-struct ManagerOfficerPerformanceSummary: Identifiable, Hashable {
-    let id = UUID()
-    var officer: ManagerOfficer
-    var escalations: [ManagerOfficerEscalation]
-    var managerRating: Double?
-    var suggestedRating: Double
-
-    var officerEscalationCount: Int {
-        escalations.count
+    var isAssignedToOfficer: Bool {
+        assignedOfficerId != ManagerOfficerAssignment.unassignedOfficerId
+            && assignedOfficer != ManagerOfficerAssignment.unassignedOfficerName
     }
 }
 
@@ -173,6 +158,31 @@ enum ManagerDocStatus: String, CaseIterable, Codable, Hashable {
 }
 
 
+struct ManagerOfficerEscalation: Identifiable, Hashable {
+    let id: UUID
+    var applicationId: String
+    var borrowerName: String
+    var loanType: ManagerLoanType
+    var requestedAmount: Double
+    var escalatedAt: Date
+    var reason: String
+    var riskLevel: ManagerRiskLevel
+}
+
+struct ManagerOfficerPerformanceSummary: Identifiable, Hashable {
+    var id: UUID { officer.id }
+    let officer: ManagerOfficer
+    let escalations: [ManagerOfficerEscalation]
+    let managerRating: Double?
+    let suggestedRating: Double
+
+    var displayRating: Double {
+        managerRating ?? suggestedRating
+    }
+
+    var officerEscalationCount: Int { escalations.count }
+}
+
 struct ManagerOfficer: Identifiable, Hashable {
     let id: UUID
     var name: String
@@ -180,10 +190,10 @@ struct ManagerOfficer: Identifiable, Hashable {
     var activeCases: Int
     var maxCapacity: Int
     var rating: Double
+    var managerRating: Double? = nil
     var performance: Double
     var loansProcessedYTD: Int
     var approvalRate: Double
-    var managerRating: Double?
 
     var initials: String {
         let parts = name.components(separatedBy: " ")
