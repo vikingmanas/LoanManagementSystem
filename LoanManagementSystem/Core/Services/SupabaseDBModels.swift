@@ -50,7 +50,7 @@ struct DBEMISchedule: Codable, Identifiable, Sendable {
 }
 
 /// Swift representation of the `public.messages` database table.
-struct DBMessage: Codable, Identifiable, Sendable {
+struct DBMessage: Codable, Identifiable, Sendable, Equatable {
     var id: UUID { messageId }
     
     let messageId: UUID

@@ -1,10 +1,12 @@
 import SwiftUI
+import Combine
 
 struct ChatsFeedTabView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @State private var searchText = ""
     @State private var showUnreadOnly = false
     @State private var showingCompose = false
+    private let refreshTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     private var conversations: [OfficerConversation] {
         OfficerConversation.make(from: viewModel.activityFeed)
@@ -88,6 +90,11 @@ struct ChatsFeedTabView: View {
                 }
             }
             .refreshable { await viewModel.fetchDashboardData() }
+            .onReceive(refreshTimer) { _ in
+                Task {
+                    await viewModel.fetchDashboardData()
+                }
+            }
             .sheet(isPresented: $showingCompose) {
                 OfficerComposeMessageSheet(viewModel: viewModel)
             }
@@ -193,6 +200,7 @@ private struct OfficerMessageThreadView: View {
     @State private var messageText = ""
     @State private var messages: [OfficerThreadMessage]
     @FocusState private var isComposerFocused: Bool
+    private let refreshTimer = Timer.publish(every: 4, on: .main, in: .common).autoconnect()
 
     init(conversation: OfficerConversation, viewModel: LoanOfficerDashboardViewModel) {
         self.conversation = conversation
@@ -237,6 +245,11 @@ private struct OfficerMessageThreadView: View {
         }
         .onAppear {
             conversation.items.forEach { viewModel.markActivityRead($0.id) }
+            Task {
+                await loadMessages()
+            }
+        }
+        .onReceive(refreshTimer) { _ in
             Task {
                 await loadMessages()
             }
@@ -303,6 +316,7 @@ private struct OfficerMessageThreadView: View {
                     title: "New message from your loan officer",
                     message: trimmed
                 )
+                await viewModel.fetchDashboardData()
             } catch {
                 print("Failed to send officer message to DB: \(error)")
             }
@@ -487,6 +501,7 @@ private struct OfficerComposeMessageSheet: View {
                     message: trimmed
                 )
                 print("Message composed and sent successfully.")
+                await viewModel.fetchDashboardData()
             } catch {
                 print("Failed to send composed message to DB: \(error)")
             }

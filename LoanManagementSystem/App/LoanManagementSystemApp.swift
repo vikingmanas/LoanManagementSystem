@@ -9,6 +9,7 @@ import SwiftUI
 
 @main
 struct LoanManagementSystemApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     
     /// Shared authentication manager injected into the environment.
     @StateObject private var authManager = AuthManager.shared

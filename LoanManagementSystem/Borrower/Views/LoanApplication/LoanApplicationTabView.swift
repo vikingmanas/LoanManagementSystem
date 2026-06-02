@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Loans Tab (Marketplace only — no applications here)
 
@@ -864,6 +865,7 @@ extension BorrowerLoanProductType {
 
 // MARK: - Loan Application Tracking Screen
 struct LoanApplicationTrackingScreen: View {
+    @EnvironmentObject private var authManager: AuthManager
     @ObservedObject var viewModel: LoanApplicationViewModel
     let application: BorrowerLoanApplication
     let onResume: () -> Void
@@ -871,6 +873,10 @@ struct LoanApplicationTrackingScreen: View {
 
     @State private var showDeleteConfirmation = false
     @State private var resubmittingDocument: BorrowerLoanDocumentItem? = nil
+    @State private var showOfficerChat = false
+    @State private var showSanctionShareSheet = false
+    @State private var sanctionShareItems: [Any] = []
+    @State private var exportError: String?
 
     private var currentApplication: BorrowerLoanApplication {
         viewModel.applications.first(where: { $0.id == application.id }) ?? application
@@ -893,6 +899,20 @@ struct LoanApplicationTrackingScreen: View {
                     viewModel: viewModel,
                     application: app
                 )
+
+                AssignedLoanOfficerCard(
+                    application: app,
+                    onMessage: { showOfficerChat = true },
+                    onBranchSelected: { branch in
+                        var updated = app
+                        updated.formData.preferredBranch = branch
+                        updated.updatedAt = Date()
+                        CentralLoanRepository.shared.updateApplication(updated)
+                        Task {
+                            await CentralLoanRepository.shared.assignOfficerIfNeeded(applicationId: updated.id)
+                        }
+                    }
+                )
                 
                 // Task 4: Documents Section with Resubmission Action Sheet
                 SubmittedDocumentsCard(
@@ -901,6 +921,12 @@ struct LoanApplicationTrackingScreen: View {
                         resubmittingDocument = doc
                     }
                 )
+
+                if app.currentStage == .approved || app.currentStage == .disbursed {
+                    SanctionLetterCard {
+                        exportSanctionLetter(for: app)
+                    }
+                }
                 
                 // Task 3: Collapsible Info Sections
                 SubmittedInfoViewerCard(
@@ -945,6 +971,16 @@ struct LoanApplicationTrackingScreen: View {
                         Image(systemName: "trash")
                     }
                 }
+            } else {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showOfficerChat = true
+                    } label: {
+                        Image(systemName: "message.fill")
+                    }
+                    .disabled(app.assignedOfficer == nil && app.assignedOfficerId == nil)
+                    .accessibilityLabel("Message loan officer")
+                }
             }
         }
         .alert("Delete Draft?", isPresented: $showDeleteConfirmation) {
@@ -962,6 +998,293 @@ struct LoanApplicationTrackingScreen: View {
                     source: source
                 )
             }
+        }
+        .sheet(isPresented: $showOfficerChat) {
+            NavigationStack {
+                BorrowerOfficerChatView(
+                    application: app,
+                    borrowerUserId: UUID(uuidString: authManager.currentUser?.uid ?? "") ?? app.borrowerId
+                )
+            }
+        }
+        .sheet(isPresented: $showSanctionShareSheet) {
+            BorrowerActivityShareSheet(activityItems: sanctionShareItems)
+        }
+        .task(id: app.assignedOfficerId) {
+            guard !app.isDraft,
+                  app.assignedOfficer == nil,
+                  app.assignedOfficerId == nil,
+                  !app.formData.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return
+            }
+            await CentralLoanRepository.shared.assignOfficerIfNeeded(applicationId: app.id)
+        }
+        .alert("Export Failed", isPresented: Binding(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(exportError ?? "")
+        }
+    }
+
+    private func exportSanctionLetter(for application: BorrowerLoanApplication) {
+        do {
+            let url = try SanctionLetterService.generateSanctionLetter(for: application)
+            HapticsManager.triggerImpact(style: .medium)
+            sanctionShareItems = [url]
+            showSanctionShareSheet = true
+        } catch {
+            exportError = error.localizedDescription
+        }
+    }
+}
+
+private struct SanctionLetterCard: View {
+    let onExport: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 14) {
+            Image(systemName: "doc.richtext.fill")
+                .font(.title2)
+                .foregroundStyle(LMSColors.emerald)
+                .frame(width: 42, height: 42)
+                .background(LMSColors.emerald.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Sanction Letter")
+                    .font(LMSFont.subheadline.weight(.bold))
+                    .foregroundStyle(LMSColors.textPrimary)
+                Text("Download the approved loan sanction document.")
+                    .font(LMSFont.caption)
+                    .foregroundStyle(LMSColors.textSecondary)
+            }
+
+            Spacer()
+
+            Button(action: onExport) {
+                Label("Export", systemImage: "square.and.arrow.up")
+                    .font(LMSFont.caption.weight(.bold))
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(LMSColors.brandNavy)
+        }
+        .padding(16)
+        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(LMSColors.emerald.opacity(0.18), lineWidth: 0.8)
+        )
+    }
+}
+
+private struct BorrowerActivityShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+private struct BorrowerOfficerChatView: View {
+    let application: BorrowerLoanApplication
+    let borrowerUserId: UUID?
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var messages: [DBMessage] = []
+    @State private var messageText = ""
+    @State private var officerUserId: UUID?
+    @State private var isLoading = true
+    @State private var isSending = false
+    @State private var errorMessage: String?
+
+    private var canSend: Bool {
+        borrowerUserId != nil &&
+        officerUserId != nil &&
+        !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !isSending
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if isLoading {
+                ProgressView("Loading conversation...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let errorMessage {
+                ContentUnavailableView(
+                    "Messaging unavailable",
+                    systemImage: "message.badge",
+                    description: Text(errorMessage)
+                )
+            } else {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 10) {
+                            ForEach(messages) { message in
+                                BorrowerMessageBubble(
+                                    message: message,
+                                    isOutgoing: message.senderId == borrowerUserId
+                                )
+                                .id(message.id)
+                            }
+
+                            if messages.isEmpty {
+                                ContentUnavailableView(
+                                    "No messages yet",
+                                    systemImage: "message",
+                                    description: Text("Start a conversation about documents, verification, or application status.")
+                                )
+                                .padding(.top, 80)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                    }
+                    .onChange(of: messages.count) { _, _ in
+                        if let last = messages.last?.id {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo(last, anchor: .bottom)
+                            }
+                        }
+                    }
+                }
+
+                Divider()
+
+                HStack(alignment: .bottom, spacing: 10) {
+                    TextField("Message loan officer", text: $messageText, axis: .vertical)
+                        .lineLimit(1...4)
+                        .textFieldStyle(.plain)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                    Button {
+                        Task { await sendMessage() }
+                    } label: {
+                        Image(systemName: "paperplane.fill")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 42, height: 42)
+                            .background(canSend ? LMSColors.brandNavy : LMSColors.textTertiary, in: Circle())
+                    }
+                    .disabled(!canSend)
+                    .accessibilityLabel("Send message")
+                }
+                .padding(12)
+                .background(LMSColors.background)
+            }
+        }
+        .background(LMSColors.background)
+        .navigationTitle(application.displayIdentifier)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Done") { dismiss() }
+            }
+        }
+        .task {
+            await loadConversation()
+        }
+    }
+
+    private func loadConversation() async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            guard borrowerUserId != nil else {
+                errorMessage = "Sign in again to message your loan officer."
+                isLoading = false
+                return
+            }
+
+            if let assignedUserId = application.assignedOfficer?.userId {
+                officerUserId = assignedUserId
+            } else if application.assignedOfficerId != nil {
+                officerUserId = try await DatabaseService.shared.fetchAssignedLoanOfficerUserId(applicationId: application.id)
+            } else {
+                officerUserId = nil
+            }
+            guard officerUserId != nil else {
+                errorMessage = "No loan officer is available for this application yet."
+                isLoading = false
+                return
+            }
+
+            messages = try await DatabaseService.shared.fetchMessagesForApplication(applicationId: application.id)
+            isLoading = false
+        } catch {
+            errorMessage = "Could not load messages. Please try again."
+            isLoading = false
+        }
+    }
+
+    private func sendMessage() async {
+        guard let borrowerUserId,
+              let officerUserId else { return }
+
+        let trimmed = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        isSending = true
+        messageText = ""
+        let outgoing = DBMessage(
+            messageId: UUID(),
+            senderId: borrowerUserId,
+            receiverId: officerUserId,
+            applicationId: application.id,
+            content: trimmed,
+            sentAt: Date(),
+            isRead: false
+        )
+        messages.append(outgoing)
+
+        do {
+            try await DatabaseService.shared.sendMessage(outgoing)
+            try? await DatabaseService.shared.createNotification(
+                userId: officerUserId,
+                title: "New borrower message",
+                message: "\(application.displayIdentifier): \(trimmed)"
+            )
+        } catch {
+            messages.removeAll { $0.id == outgoing.id }
+            messageText = trimmed
+            errorMessage = "Message could not be sent. Please try again."
+        }
+        isSending = false
+    }
+}
+
+private struct BorrowerMessageBubble: View {
+    let message: DBMessage
+    let isOutgoing: Bool
+
+    var body: some View {
+        HStack {
+            if isOutgoing { Spacer(minLength: 44) }
+
+            VStack(alignment: isOutgoing ? .trailing : .leading, spacing: 4) {
+                Text(message.content)
+                    .font(LMSFont.callout)
+                    .foregroundStyle(isOutgoing ? .white : LMSColors.textPrimary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(
+                        isOutgoing ? LMSColors.brandNavy : LMSColors.surface,
+                        in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    )
+
+                Text(message.sentAt, style: .time)
+                    .font(LMSFont.caption2)
+                    .foregroundStyle(LMSColors.textTertiary)
+                    .padding(.horizontal, 4)
+            }
+
+            if !isOutgoing { Spacer(minLength: 44) }
         }
     }
 }
@@ -1089,6 +1412,128 @@ private struct TrackingHeaderCard: View {
     }
 }
 
+private struct AssignedLoanOfficerCard: View {
+    let application: BorrowerLoanApplication
+    let onMessage: () -> Void
+    let onBranchSelected: (String) -> Void
+
+    private var hasBranch: Bool {
+        !application.formData.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Assigned Loan Officer")
+                    .font(LMSFont.title3)
+                    .foregroundStyle(LMSColors.textPrimary)
+
+                Spacer()
+
+                Image(systemName: application.assignedOfficer == nil ? "person.badge.clock" : "person.badge.shield.checkmark")
+                    .font(.title3)
+                    .foregroundStyle(application.assignedOfficer == nil ? LMSColors.amber : LMSColors.emerald)
+            }
+
+            if let officer = application.assignedOfficer {
+                HStack(alignment: .center, spacing: 14) {
+                    Text(officer.initials)
+                        .font(LMSFont.headline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 52, height: 52)
+                        .background(LMSColors.brandNavy, in: Circle())
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(officer.fullName)
+                            .font(LMSFont.headline.weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+
+                        Text(officer.designation.isEmpty ? "Loan Officer" : officer.designation)
+                            .font(LMSFont.subheadline)
+                            .foregroundStyle(LMSColors.textSecondary)
+
+                        Text(officer.branchName)
+                            .font(LMSFont.footnote)
+                            .foregroundStyle(LMSColors.textTertiary)
+                    }
+
+                    Spacer()
+                }
+
+                Divider().background(LMSColors.separatorLight)
+
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Employee ID")
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.textTertiary)
+                        Text(officer.employeeCode)
+                            .font(LMSFont.callout.weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                    }
+
+                    Spacer()
+
+                    Button(action: onMessage) {
+                        Label("Message Officer", systemImage: "message.fill")
+                            .font(LMSFont.footnote.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(LMSColors.brandNavy, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 12) {
+                        ProgressView()
+                            .controlSize(.small)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(hasBranch ? "Assignment in progress" : "Select application branch")
+                                .font(LMSFont.callout.weight(.semibold))
+                                .foregroundStyle(LMSColors.textPrimary)
+                            Text(hasBranch ? "We are selecting the least-loaded active officer from your branch." : "Choose the branch that should handle this application.")
+                                .font(LMSFont.footnote)
+                                .foregroundStyle(LMSColors.textSecondary)
+                        }
+                    }
+
+                    if hasBranch {
+                        Label(application.formData.preferredBranch, systemImage: "building.columns.fill")
+                            .font(LMSFont.footnote.weight(.semibold))
+                            .foregroundStyle(LMSColors.brandNavy)
+                    } else {
+                        Menu {
+                            ForEach(BorrowerLoanFormData.branchOptions, id: \.self) { branch in
+                                Button(branch) {
+                                    onBranchSelected(branch)
+                                }
+                            }
+                        } label: {
+                            HStack {
+                                Label("Choose Branch", systemImage: "building.columns.fill")
+                                Spacer()
+                                Image(systemName: "chevron.down")
+                                    .font(LMSFont.caption.weight(.bold))
+                            }
+                            .font(LMSFont.callout.weight(.semibold))
+                            .foregroundStyle(LMSColors.brandNavy)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .background(LMSColors.brandNavy.opacity(0.08), in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        .padding(LMSSpacing.lg)
+        .lmsCard()
+    }
+}
+
 // MARK: - Task 2 Components (Timeline Stepper)
 private struct TimelineStepperCard: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
@@ -1137,6 +1582,7 @@ private struct TimelineStepperCard: View {
     }
     
     private func isStageCompleted(_ stage: BorrowerApplicationStage, current: BorrowerApplicationStage, stages: [BorrowerApplicationStage]) -> Bool {
+        if current == .disbursed { return true }
         guard let currentIndex = stages.firstIndex(of: current),
               let stageIndex = stages.firstIndex(of: stage) else { return false }
         return stageIndex < currentIndex
