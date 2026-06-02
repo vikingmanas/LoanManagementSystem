@@ -296,12 +296,24 @@ class LoanOfficerDashboardViewModel: ObservableObject {
 
     @discardableResult
     func escalateApplication(applicationId: String, reason: String) -> Bool {
+<<<<<<< Updated upstream
         guard let uuid = UUID(uuidString: applicationId), let officerProfile = officerProfile else { return false }
         let officerName = officerProfile.fullName
         let didEscalate = CentralLoanRepository.shared.escalateApplicationByOfficer(
             id: uuid,
             officerId: officerProfile.id,
             officerName: officerName,
+=======
+        guard let officerProfile,
+              let app = applications.first(where: { $0.applicationId == applicationId }) else {
+            return false
+        }
+
+        let didEscalate = CentralLoanRepository.shared.escalateApplicationByOfficer(
+            id: app.id,
+            officerId: officerProfile.id,
+            officerName: officerProfile.fullName,
+>>>>>>> Stashed changes
             reason: reason
         )
         if didEscalate {
