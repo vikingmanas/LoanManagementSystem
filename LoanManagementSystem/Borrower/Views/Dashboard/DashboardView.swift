@@ -12,7 +12,6 @@ public enum DashboardRoute: Hashable {
     case linkedBankAccounts
     case profileInfo
     case notifications
-    case transactionHistory
     case payEMI
     case repaymentSchedule(DashboardLoanAccount?)
     case emiCalculator
@@ -228,14 +227,6 @@ public struct DashboardView: View {
                         }
                     )
 
-                    TransactionHistorySection(
-                        transactions: viewModel.recentTransactions,
-                        accounts: viewModel.bankAccounts,
-                        onViewAll: {
-                            navigationPath.append(.transactionHistory)
-                        }
-                    )
-
                     UpcomingPaymentSection(
                         viewModel: viewModel,
                         onPayNow: { navigationPath.append(.payEMI) },
@@ -288,8 +279,6 @@ public struct DashboardView: View {
                     ProfileInfoDetailView(viewModel: profileViewModel)
                 case .notifications:
                     NotificationsDetailView(notificationViewModel: viewModel.notificationViewModel)
-                case .transactionHistory:
-                    TransactionHistoryFullScreen(viewModel: viewModel)
                 case .payEMI:
                     PayEMIWorkflowView(viewModel: viewModel)
                 case .repaymentSchedule(let loan):

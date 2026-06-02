@@ -3,6 +3,11 @@ import Combine
 import SwiftUI
 import Supabase
 
+private enum ManagerOfficerAssignment {
+    static let unassignedOfficerId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+    static let unassignedOfficerName = "Unassigned"
+}
+
 struct LoanDisbursementEvent: Identifiable, Hashable {
     let id: UUID
     var applicationId: UUID
