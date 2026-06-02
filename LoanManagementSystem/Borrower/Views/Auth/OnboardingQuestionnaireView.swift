@@ -28,10 +28,11 @@ struct OnboardingQuestionnaireView: View {
     @State private var emergencyContactAlternateNumber = ""
     @State private var emergencyContactAddress = ""
     @State private var existingCustomerId = ""
-    @State private var preferredBranch = "Main Branch"
+    @State private var preferredBranch = "Headquarters Branch"
     @State private var showInsightCard = false
     @State private var linkedAccountsList: [LinkedBankAccount] = []
     @State private var isShowingAddAccountForm = false
+    @State private var branchesList: [BranchInfo] = []
     
     // Loading & validation state
     @State private var isLoading = false
@@ -112,6 +113,7 @@ struct OnboardingQuestionnaireView: View {
             }
             .onAppear {
                 prepopulateFieldsIfPossible()
+                loadBranches()
             }
             .onChange(of: profileStore.profile) {
                 prepopulateFieldsIfPossible()
@@ -254,7 +256,8 @@ struct OnboardingQuestionnaireView: View {
                     }
                     
                     Picker("Select Branch", selection: $preferredBranch) {
-                        ForEach(branches, id: \.self) {
+                        let actualBranches = branchesList.isEmpty ? branches : branchesList.map(\.name)
+                        ForEach(actualBranches, id: \.self) {
                             Text($0)
                         }
                     }
@@ -618,6 +621,22 @@ struct OnboardingQuestionnaireView: View {
                 await MainActor.run {
                     isLoading = false
                 }
+            }
+        }
+    }
+
+    private func loadBranches() {
+        Task {
+            do {
+                let fetched = try await DatabaseService.shared.fetchBranches()
+                await MainActor.run {
+                    self.branchesList = fetched
+                    if let first = fetched.first {
+                        self.preferredBranch = first.name
+                    }
+                }
+            } catch {
+                print("Error loading branches in onboarding questionnaire: \(error)")
             }
         }
     }

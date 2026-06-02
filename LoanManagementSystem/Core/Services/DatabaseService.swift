@@ -797,4 +797,12 @@ final class DatabaseService {
             .insert(NotificationInsert(userId: userId, notifType: type, title: title, message: message))
             .execute()
     }
+
+    func fetchBranches() async throws -> [BranchInfo] {
+        return try await client
+            .from("branches")
+            .select()
+            .execute()
+            .value
+    }
 }
