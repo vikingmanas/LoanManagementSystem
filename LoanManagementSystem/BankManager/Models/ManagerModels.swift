@@ -110,6 +110,11 @@ struct ManagerApplicant: Identifiable, Hashable {
     var tenure: Int
     var interestRate: Double
     var branchName: String
+    var escalatedAt: Date? = nil
+
+    var isAssignedToOfficer: Bool {
+        assignedOfficerId != id && !assignedOfficer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 }
 
 
@@ -153,6 +158,7 @@ struct ManagerOfficer: Identifiable, Hashable {
     var activeCases: Int
     var maxCapacity: Int
     var rating: Double
+    var managerRating: Double? = nil
     var performance: Double
     var loansProcessedYTD: Int
     var approvalRate: Double
@@ -174,6 +180,28 @@ struct ManagerOfficer: Identifiable, Hashable {
         if capacityPercentage > 0.60 { return LMSColors.amber }
         return LMSColors.emerald
     }
+}
+
+struct ManagerOfficerEscalation: Identifiable, Hashable {
+    let id: UUID
+    var applicationId: String
+    var borrowerName: String
+    var loanType: ManagerLoanType
+    var requestedAmount: Double
+    var escalatedAt: Date
+    var reason: String
+    var riskLevel: ManagerRiskLevel
+}
+
+struct ManagerOfficerPerformanceSummary: Identifiable, Hashable {
+    var officer: ManagerOfficer
+    var escalations: [ManagerOfficerEscalation]
+    var managerRating: Double?
+    var suggestedRating: Double
+
+    var id: UUID { officer.id }
+    var officerEscalationCount: Int { escalations.count }
+    var displayRating: Double { managerRating ?? suggestedRating }
 }
 
 struct ManagerStaffProfile: Hashable {

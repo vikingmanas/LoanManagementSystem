@@ -159,6 +159,83 @@ final class CentralLoanRepository: ObservableObject {
         }
     }
 
+    func isLoanUnassigned(_ app: BorrowerLoanApplication) -> Bool {
+        app.assignedOfficer == nil && app.assignedOfficerId == nil
+    }
+
+    func assignOfficer(userId: UUID, name: String, toApplicationId applicationId: UUID) {
+        guard let index = applications.firstIndex(where: { $0.id == applicationId }) else { return }
+        var app = applications[index]
+        let branchName = borrowerBranchName(for: app)
+        let officer = AssignedLoanOfficer(
+            officerId: userId,
+            userId: userId,
+            fullName: name,
+            employeeCode: "LO-\(String(userId.uuidString.prefix(4)).uppercased())",
+            branchId: UUID(),
+            branchName: branchName,
+            designation: "Loan Officer",
+            lastAssignedAt: Date(),
+            activeWorkload: applications.filter { $0.assignedOfficer?.userId == userId && !$0.currentStage.isTerminal }.count
+        )
+        reassignApplication(id: applicationId, to: officer)
+    }
+
+    func reassignApplication(id: UUID, newOfficerId: UUID, newOfficerName: String) {
+        assignOfficer(userId: newOfficerId, name: newOfficerName, toApplicationId: id)
+    }
+
+    @discardableResult
+    func escalateApplication(applicationId: String, officerName: String, reason: String) -> Bool {
+        guard let index = applications.firstIndex(where: { $0.applicationId == applicationId || $0.displayIdentifier == applicationId }) else {
+            return false
+        }
+        var app = applications[index]
+        guard app.currentStage != .approved, app.currentStage != .rejected, app.currentStage != .disbursed else {
+            return false
+        }
+
+        app.currentStage = .bankManagerReview
+        app.updatedAt = Date()
+        app.stageHistory.append(
+            BorrowerStageEntry(
+                stage: .bankManagerReview,
+                timestamp: Date(),
+                note: LoanEscalationNote.officer(name: officerName, reason: reason)
+            )
+        )
+        applications[index] = app
+        persistState()
+        syncApplicationToSupabase(app)
+        return true
+    }
+
+    func escalateApplication(id: UUID, managerName: String) {
+        guard let index = applications.firstIndex(where: { $0.id == id }) else { return }
+        var app = applications[index]
+        app.updatedAt = Date()
+        app.stageHistory.append(
+            BorrowerStageEntry(
+                stage: app.currentStage,
+                timestamp: Date(),
+                note: LoanEscalationNote.manager(name: managerName)
+            )
+        )
+        applications[index] = app
+        persistState()
+        syncApplicationToSupabase(app)
+    }
+
+    func syncOfficerDirectory() async {
+        // Staff directory is read from Supabase/admin services in the current app build.
+        // This hook is kept so manager dashboards can request a refresh without coupling to that service.
+    }
+
+    func applyOfficerDirectory(from staff: [StaffMember]) {
+        // Officer assignment is stored on each application. Directory data is used by callers
+        // to render branch teams and does not need to mutate borrower applications here.
+    }
+
     func deleteApplication(id: UUID) {
         applications.removeAll { $0.id == id }
         persistState()
@@ -1039,7 +1116,13 @@ final class CentralLoanRepository: ObservableObject {
         case .underReview: officerStatus = .underReview
         case .documentVerification: officerStatus = .documentsPending
         case .loanOfficerReview: officerStatus = .verificationCompleted
-        case .bankManagerReview: officerStatus = .finalApprovalPending
+        case .bankManagerReview:
+            if let note = app.stageHistory.last(where: { $0.stage == .bankManagerReview })?.note,
+               LoanEscalationNote.isOfficerEscalation(note) {
+                officerStatus = .escalated
+            } else {
+                officerStatus = .finalApprovalPending
+            }
         case .approved: officerStatus = .approved
         case .rejected: officerStatus = .rejected
         case .disbursed: officerStatus = .disbursed
@@ -1140,7 +1223,13 @@ final class CentralLoanRepository: ObservableObject {
         
         let status: ManagerApplicantStatus
         switch app.currentStage {
-        case .bankManagerReview: status = .sentToManager
+        case .bankManagerReview:
+            if let note = app.stageHistory.last(where: { $0.stage == .bankManagerReview })?.note,
+               LoanEscalationNote.isOfficerEscalation(note) {
+                status = .escalated
+            } else {
+                status = .sentToManager
+            }
         case .approved: status = .approved
         case .rejected: status = .rejected
         case .disbursed: status = .disbursed
@@ -1171,7 +1260,10 @@ final class CentralLoanRepository: ObservableObject {
             verificationProgress: app.documents.isEmpty ? 0 : Double(app.documents.filter { $0.status == .verified }.count) / Double(app.documents.count),
             tenure: app.formData.preferredTenureMonths,
             interestRate: 10.5,
-            branchName: self.borrowerBranchName(for: app)
+            branchName: self.borrowerBranchName(for: app),
+            escalatedAt: app.stageHistory.last(where: { entry in
+                entry.stage == .bankManagerReview && LoanEscalationNote.isOfficerEscalation(entry.note)
+            })?.timestamp
         )
     }
     
