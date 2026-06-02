@@ -27,6 +27,7 @@ final class LoanApplicationViewModel: ObservableObject {
     
     @Published var verificationComplete: Bool = false
     @Published var showVerificationResult: Bool = false
+    @Published var branchesList: [BranchInfo] = []
     
     private var cancellables = Set<AnyCancellable>()
     
@@ -91,6 +92,7 @@ final class LoanApplicationViewModel: ObservableObject {
             .assign(to: &$applications)
         
         loadProducts()
+        loadBranches()
     }
     
     /// Loads active loan products dynamically from the Supabase database.
@@ -98,6 +100,18 @@ final class LoanApplicationViewModel: ObservableObject {
         Task {
             let fetchedProducts = await ProductService.shared.fetchLoanProducts()
             self.products = fetchedProducts
+        }
+    }
+
+    /// Loads active branches dynamically from the Supabase database.
+    func loadBranches() {
+        Task {
+            do {
+                let fetchedBranches = try await DatabaseService.shared.fetchBranches()
+                self.branchesList = fetchedBranches
+            } catch {
+                print("❌ [LoanApplicationViewModel] Error fetching branches: \(error)")
+            }
         }
     }
     
@@ -205,6 +219,7 @@ final class LoanApplicationViewModel: ObservableObject {
             formData.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).count == 10,
             formData.emailAddress.contains("@") && formData.emailAddress.contains("."),
             !formData.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            !formData.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
             !formData.occupation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
             !formData.employerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
             formData.monthlyIncomeValue > 0,
@@ -350,6 +365,8 @@ final class LoanApplicationViewModel: ObservableObject {
             submittedAt: nil,
             updatedAt: now,
             assignedQueue: nil,
+            assignedOfficerId: nil,
+            assignedOfficer: nil,
             outstandingBalance: 0,
             upcomingEMI: 0
         )
@@ -484,6 +501,8 @@ final class LoanApplicationViewModel: ObservableObject {
             return (email.contains("@") && email.contains(".")) ? nil : "Enter a valid email address."
         case .address:
             return formData.address.trimmingCharacters(in: .whitespacesAndNewlines).count >= 8 ? nil : "Please enter a complete current address."
+        case .preferredBranch:
+            return formData.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Please select the branch for this loan application." : nil
         case .occupation:
             return formData.occupation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Occupation is required." : nil
         case .employerName:
@@ -582,7 +601,15 @@ final class LoanApplicationViewModel: ObservableObject {
         }
     }
     
-    func uploadDocument(_ documentID: UUID, fileName: String, source: BorrowerDocumentUploadSource, image: UIImage? = nil) {
+    func uploadDocument(
+        _ documentID: UUID,
+        fileName: String,
+        source: BorrowerDocumentUploadSource,
+        image: UIImage? = nil,
+        fileData: Data? = nil,
+        contentType: String? = nil,
+        fileExtension: String? = nil
+    ) {
         guard let index = documents.firstIndex(where: { $0.id == documentID }) else { return }
         guard !documents[index].isLocked else { return }
         
@@ -593,13 +620,38 @@ final class LoanApplicationViewModel: ObservableObject {
         documents[index].fileName = fileName
         
         if let currentDraftID = currentDraftID {
-            let data = image?.jpegData(compressionQuality: 0.8) ?? Data("dummy file content for \(fileName)".utf8)
+            let resolvedData: Data?
+            let resolvedContentType: String
+            let resolvedExtension: String
+
+            if let fileData {
+                resolvedData = fileData
+                resolvedContentType = contentType ?? contentTypeForFile(named: fileName, fallback: "application/octet-stream")
+                resolvedExtension = fileExtension ?? fileExtensionForFile(named: fileName, fallback: "bin")
+            } else if let imageData = image?.jpegData(compressionQuality: 0.85) {
+                resolvedData = imageData
+                resolvedContentType = contentType ?? "image/jpeg"
+                resolvedExtension = fileExtension ?? "jpg"
+            } else {
+                documents[index].status = .pendingUpload
+                documents[index].fileName = nil
+                documents[index].uploadDate = nil
+                autosaveDraft()
+                return
+            }
+
+            guard let data = resolvedData else { return }
             let bucket = "documents"
-            let path = "\(currentDraftID)/\(documentID).jpg"
+            let path = "\(currentDraftID)/\(documentID).\(resolvedExtension)"
             
             Task {
                 do {
-                    let publicUrl = try await StorageService.shared.uploadDocument(data: data, bucket: bucket, path: path)
+                    let publicUrl = try await StorageService.shared.uploadDocument(
+                        data: data,
+                        bucket: bucket,
+                        path: path,
+                        contentType: resolvedContentType
+                    )
                     
                     await MainActor.run {
                         if let idx = self.documents.firstIndex(where: { $0.id == documentID }) {
@@ -637,6 +689,25 @@ final class LoanApplicationViewModel: ObservableObject {
         let defaultName = "document-\(Int(Date().timeIntervalSince1970)).pdf"
         uploadDocument(documentID, fileName: defaultName, source: .pdf)
     }
+
+    private func contentTypeForFile(named fileName: String, fallback: String) -> String {
+        switch fileName.split(separator: ".").last?.lowercased() {
+        case "pdf": return "application/pdf"
+        case "png": return "image/png"
+        case "jpg", "jpeg": return "image/jpeg"
+        case "heic": return "image/heic"
+        default: return fallback
+        }
+    }
+
+    private func fileExtensionForFile(named fileName: String, fallback: String) -> String {
+        guard let ext = fileName.split(separator: ".").last?.lowercased(),
+              ext.allSatisfy({ $0.isLetter || $0.isNumber }),
+              ext.count <= 8 else {
+            return fallback
+        }
+        return String(ext)
+    }
     
     private func resolveDocType(category: BorrowerDocumentCategory, name: String) -> String {
         switch category {
@@ -668,11 +739,11 @@ final class LoanApplicationViewModel: ObservableObject {
         // Sync to Supabase Storage & Database
         Task {
             do {
-                let dummyData = Data("dummy file content for \(fileName)".utf8)
+                guard let dummyData = Data("Re-upload payload unavailable for \(fileName)".utf8) as Data? else { return }
                 let bucket = "documents"
                 let path = "\(applicationID)/\(documentID).pdf"
                 
-                let publicUrl = try await StorageService.shared.uploadDocument(data: dummyData, bucket: bucket, path: path)
+                let publicUrl = try await StorageService.shared.uploadDocument(data: dummyData, bucket: bucket, path: path, contentType: "application/pdf")
                 
                 await MainActor.run {
                     if let aIdx = self.applications.firstIndex(where: { $0.id == applicationID }),
@@ -776,7 +847,9 @@ final class LoanApplicationViewModel: ObservableObject {
             draft.currentStage = .submitted
             draft.submittedAt = now
             draft.updatedAt = now
-            draft.assignedQueue = "Retail Loan Officer Queue"
+            draft.assignedQueue = "Loan Officer Assignment Pending"
+            draft.assignedOfficerId = nil
+            draft.assignedOfficer = nil
             draft.outstandingBalance = max(0, draft.formData.requestedAmountValue * 0.92)
             draft.upcomingEMI = max(
                 0,
@@ -793,7 +866,7 @@ final class LoanApplicationViewModel: ObservableObject {
                 BorrowerStageEntry(
                     stage: .submitted,
                     timestamp: now,
-                    note: "Application submitted and assigned to Loan Officer queue."
+                    note: "Application submitted. Assigning a loan officer from your branch."
                 )
             )
             
@@ -825,7 +898,7 @@ final class LoanApplicationViewModel: ObservableObject {
                 nextStage = application.formData.creditScoreValue < CentralLoanRepository.shared.globalRules.minCibilScore ? .rejected : .approved
             case .approved:
                 nextStage = .disbursed
-            case .draft, .rejected, .disbursed:
+            case .draft, .rejected, .disbursed, .escalated:
                 nextStage = nil
             }
             
@@ -864,7 +937,7 @@ final class LoanApplicationViewModel: ObservableObject {
             if application.currentStage == .rejected || application.stageHistory.contains(where: { $0.stage == .rejected }) {
                 return BorrowerApplicationStage.rejectionFlow
             }
-            return BorrowerApplicationStage.approvalFlow
+            return BorrowerApplicationStage.approvalFlow.filter { $0 != .disbursed }
         }
         
         func stageTimestamp(for stage: BorrowerApplicationStage, application: BorrowerLoanApplication) -> Date? {
@@ -874,8 +947,10 @@ final class LoanApplicationViewModel: ObservableObject {
         }
         
         func progressValue(for application: BorrowerLoanApplication) -> Double {
+            if application.currentStage == .disbursed { return 1.0 }
             let stages = timelineStages(for: application)
-            guard let stageIndex = stages.firstIndex(of: application.currentStage), !stages.isEmpty else {
+            let checkStage = application.currentStage
+            guard let stageIndex = stages.firstIndex(of: checkStage), !stages.isEmpty else {
                 return 0
             }
             return Double(stageIndex + 1) / Double(stages.count)

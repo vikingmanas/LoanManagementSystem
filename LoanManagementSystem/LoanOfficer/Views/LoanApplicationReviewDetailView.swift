@@ -21,6 +21,9 @@ struct LoanApplicationReviewDetailView: View {
     @State private var rejectionText = ""
     @State private var rejectionPrompt: DocumentRejectionPrompt?
     @State private var documentActionStatus: OfficerDocumentStatus = .rejectFlag
+    @State private var escalationReason = ""
+    @State private var showingEscalationAlert = false
+    @State private var escalationAlertMessage = ""
     
     var app: LoanApplication? {
         viewModel.applications.first { $0.applicationId == applicationId }
@@ -44,10 +47,21 @@ struct LoanApplicationReviewDetailView: View {
         NavigationStack {
             if let currentApp = app {
                 applicationContent(currentApp)
+                    .onAppear {
+                        claimApplicationIfNeeded(currentApp)
+                    }
             } else {
                 ContentUnavailableView("Application Not Found", systemImage: "questionmark.circle")
             }
         }
+    }
+
+    private func claimApplicationIfNeeded(_ app: LoanApplication) {
+        guard let officerId = viewModel.officerProfile?.id,
+              let officerName = viewModel.officerProfile?.fullName,
+              CentralLoanRepository.shared.isLoanUnassigned(applicationId: app.id) else { return }
+        CentralLoanRepository.shared.assignOfficer(userId: officerId, name: officerName, toApplicationId: app.id)
+        viewModel.refreshFromRepository()
     }
     
     // MARK: - Main Content
@@ -497,6 +511,38 @@ struct LoanApplicationReviewDetailView: View {
                 }
                 .padding(.vertical, 4)
             }
+
+            if app.status != .escalated && app.status != .approved && app.status != .rejected && app.status != .disbursed {
+                TextField("Escalation reason for branch manager", text: $escalationReason, axis: .vertical)
+                    .lineLimit(2...4)
+
+                Button {
+                    let reason = escalationReason.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !reason.isEmpty else {
+                        escalationAlertMessage = "Add a short reason before escalating to your manager."
+                        showingEscalationAlert = true
+                        return
+                    }
+                    if viewModel.escalateApplication(applicationId: app.applicationId, reason: reason) {
+                        HapticsManager.triggerNotification(type: .success)
+                        dismiss()
+                    } else {
+                        escalationAlertMessage = "Could not escalate this application right now."
+                        showingEscalationAlert = true
+                    }
+                } label: {
+                    Text("Escalate to Branch Manager")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Color.purple)
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
+                }
+            }
+        }
+        .alert("Escalation", isPresented: $showingEscalationAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(escalationAlertMessage)
         }
     }
     

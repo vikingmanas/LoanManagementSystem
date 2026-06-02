@@ -5,6 +5,9 @@ struct LoanOfficerProfileView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
     
+    @AppStorage("biometricEnabled") private var biometricEnabled = true
+    @StateObject private var localSecurity = LocalSecurityService.shared
+    
     var body: some View {
         NavigationStack {
             List {
@@ -121,6 +124,13 @@ struct LoanOfficerProfileView: View {
                 }
 
 
+                
+                // 5. SYSTEM SETTINGS
+                Section("System Settings") {
+                    Toggle(isOn: $biometricEnabled) {
+                        Label("\(localSecurity.biometricTypeName) Login", systemImage: "faceid")
+                    }
+                }
                 
                 // 6. LOGOUT BUTTON
                 Section {

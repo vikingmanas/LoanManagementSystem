@@ -221,6 +221,21 @@ CREATE TABLE public.notifications (
   CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
 ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
+CREATE TABLE public.push_device_tokens (
+  token_id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  device_token text NOT NULL,
+  platform text NOT NULL DEFAULT 'ios'::text CHECK (platform = ANY (ARRAY['ios'::text, 'android'::text, 'web'::text])),
+  app_bundle_id text NOT NULL DEFAULT ''::text,
+  device_name text NOT NULL DEFAULT ''::text,
+  is_active boolean NOT NULL DEFAULT true,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT push_device_tokens_pkey PRIMARY KEY (token_id),
+  CONSTRAINT push_device_tokens_unique UNIQUE (user_id, device_token),
+  CONSTRAINT push_device_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+ALTER TABLE public.push_device_tokens DISABLE ROW LEVEL SECURITY;
 CREATE TABLE public.profiles (
   id uuid NOT NULL,
   full_name text NOT NULL DEFAULT ''::text,

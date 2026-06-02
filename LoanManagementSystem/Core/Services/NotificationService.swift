@@ -233,5 +233,44 @@ final class NotificationService {
             return []
         }
     }
+    
+    /// Fetches the manager_id for the branch matching the given branch name.
+    /// Falls back to all managers if the branch manager is not specified.
+    func fetchManagerIds(forBranchName branchName: String) async -> [UUID] {
+        struct DBBranch: Codable {
+            let branchId: UUID
+            let name: String
+            let managerId: UUID?
+            
+            enum CodingKeys: String, CodingKey {
+                case branchId = "branch_id"
+                case name
+                case managerId = "manager_id"
+            }
+        }
+        
+        do {
+            let branches: [DBBranch] = try await client
+                .from("branches")
+                .select("branch_id, name, manager_id")
+                .execute()
+                .value
+            
+            let normalizedBranch = branchName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+            let selectedBranch = branches.first { $0.name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) == normalizedBranch }
+                ?? branches.first { $0.name.lowercased().contains(normalizedBranch) || normalizedBranch.contains($0.name.lowercased()) }
+                ?? branches.first
+            
+            if let managerId = selectedBranch?.managerId {
+                print("[NotificationService] Found branch manager ID \(managerId) for branch '\(branchName)'")
+                return [managerId]
+            }
+        } catch {
+            print("[NotificationService] ❌ Failed to fetch manager for branch '\(branchName)': \(error)")
+        }
+        
+        // Fallback: notify all branch managers if branch manager is null or lookup failed
+        return await fetchUserIds(byRole: "manager")
+    }
 }
 

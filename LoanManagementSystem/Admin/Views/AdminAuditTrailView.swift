@@ -2,6 +2,9 @@ import SwiftUI
 
 struct AdminAuditTrailView: View {
     @StateObject private var viewModel = AdminAuditViewModel()
+    @State private var showingExportOptions = false
+    @State private var shareURL: URL?
+    @State private var isShowingShareSheet = false
     
     var body: some View {
         List {
@@ -19,8 +22,8 @@ struct AdminAuditTrailView: View {
                 ForEach(viewModel.filteredEntries) { entry in
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Image(systemName: entry.type.icon)
-                                .foregroundStyle(entry.type.color)
+                            Image(systemName: entry.displayIcon)
+                                .foregroundStyle(entry.displayColor)
                             
                             Text(entry.action)
                                 .font(LMSFont.headline)
@@ -50,16 +53,45 @@ struct AdminAuditTrailView: View {
         .searchable(text: $viewModel.searchText, prompt: "Search logs...")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button("All Types") { viewModel.selectedType = nil }
-                    ForEach(AuditLogType.allCases, id: \.self) { type in
-                        Button(type.rawValue) {
-                            viewModel.selectedType = type
-                        }
+                HStack(spacing: 16) {
+                    Button {
+                        showingExportOptions = true
+                    } label: {
+                        Label("Export", systemImage: "square.and.arrow.up")
                     }
-                } label: {
-                    Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
+                    .disabled(viewModel.filteredEntries.isEmpty)
+
+                    Menu {
+                        Button("All Types") { viewModel.selectedType = nil }
+                        ForEach(AuditLogType.allCases.filter { $0 != .systemAction }, id: \.self) { type in
+                            Button(type.rawValue) {
+                                viewModel.selectedType = type
+                            }
+                        }
+                    } label: {
+                        Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
+                    }
                 }
+            }
+        }
+        .confirmationDialog("Export Audit Trail", isPresented: $showingExportOptions, titleVisibility: .visible) {
+            Button("Export as PDF") {
+                if let url = viewModel.exportPDF() {
+                    shareURL = url
+                    isShowingShareSheet = true
+                }
+            }
+            Button("Export as CSV") {
+                if let url = viewModel.exportCSV() {
+                    shareURL = url
+                    isShowingShareSheet = true
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .sheet(isPresented: $isShowingShareSheet) {
+            if let url = shareURL {
+                AdminAuditShareSheet(items: [url])
             }
         }
         .task {
@@ -68,4 +100,12 @@ struct AdminAuditTrailView: View {
             }
         }
     }
+}
+
+private struct AdminAuditShareSheet: UIViewControllerRepresentable {
+    var items: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

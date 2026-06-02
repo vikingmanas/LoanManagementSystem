@@ -50,7 +50,7 @@ struct DBEMISchedule: Codable, Identifiable, Sendable {
 }
 
 /// Swift representation of the `public.messages` database table.
-struct DBMessage: Codable, Identifiable, Sendable {
+struct DBMessage: Codable, Identifiable, Sendable, Equatable {
     var id: UUID { messageId }
     
     let messageId: UUID
@@ -60,4 +60,28 @@ struct DBMessage: Codable, Identifiable, Sendable {
     let content: String
     let sentAt: Date
     let isRead: Bool
+}
+
+/// Swift representation of the assigned loan officer.
+struct AssignedLoanOfficer: Codable, Identifiable, Sendable, Equatable, Hashable {
+    var id: UUID { officerId }
+    
+    let officerId: UUID
+    let userId: UUID
+    let fullName: String
+    let employeeCode: String
+    let branchId: UUID
+    let branchName: String
+    let designation: String
+    let lastAssignedAt: Date?
+    let activeWorkload: Int
+    
+    var initials: String {
+        let formatter = PersonNameComponentsFormatter()
+        if let components = formatter.personNameComponents(from: fullName) {
+            formatter.style = .abbreviated
+            return formatter.string(from: components)
+        }
+        return ""
+    }
 }

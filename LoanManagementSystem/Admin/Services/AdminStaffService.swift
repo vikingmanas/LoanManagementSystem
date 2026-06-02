@@ -144,6 +144,7 @@ final class AdminStaffService {
                 let branchName = branchesMap[officer.branchId]
                 let member = StaffMember(
                     id: user.id,
+                    loanOfficerRecordId: officer.officerId,
                     email: user.email,
                     role: .loanOfficer,
                     fullName: user.fullName,
@@ -162,6 +163,7 @@ final class AdminStaffService {
                 let branchName = branchesMap[manager.branchId]
                 let member = StaffMember(
                     id: user.id,
+                    loanOfficerRecordId: nil,
                     email: user.email,
                     role: .bankManager,
                     fullName: user.fullName,
@@ -336,6 +338,20 @@ final class AdminStaffService {
                 .eq("user_id", value: id)
                 .execute()
         }
+    }
+
+    func createBranch(name: String, code: String, region: String, address: String) async throws {
+        let branchInsert: [String: String] = [
+            "name": name,
+            "code": code,
+            "region": region,
+            "address": address,
+            "status": "active"
+        ]
+        try await client
+            .from("branches")
+            .insert(branchInsert)
+            .execute()
     }
 }
 
