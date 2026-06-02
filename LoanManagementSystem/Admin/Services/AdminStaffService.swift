@@ -337,5 +337,19 @@ final class AdminStaffService {
                 .execute()
         }
     }
+
+    func createBranch(name: String, code: String, region: String, address: String) async throws {
+        let branchInsert: [String: String] = [
+            "name": name,
+            "code": code,
+            "region": region,
+            "address": address,
+            "status": "active"
+        ]
+        try await client
+            .from("branches")
+            .insert(branchInsert)
+            .execute()
+    }
 }
 

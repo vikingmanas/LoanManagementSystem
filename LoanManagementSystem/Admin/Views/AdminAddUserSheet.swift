@@ -1,20 +1,27 @@
 import SwiftUI
 
+private enum AddEntityType: String, CaseIterable {
+    case loanOfficer = "Loan Officer"
+    case bankManager = "Bank Manager"
+    case bankBranch = "Bank Branch"
+}
+
 struct AdminAddUserSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: AdminStaffViewModel
 
+    @State private var entityType: AddEntityType = .loanOfficer
 
+    // Staff fields
     @State private var email = ""
     @State private var password = ""
-    @State private var role: StaffRole = .loanOfficer
     @State private var fullName = ""
     @State private var phoneNumber = ""
     @State private var selectedBranchId: UUID? = nil
     @State private var employeeCode = ""
     @State private var designation = ""
     @State private var region = ""
-    
+
     // Additional Native Fields
     @State private var dateOfBirth = Date()
     @State private var dateOfJoining = Date()
@@ -23,6 +30,17 @@ struct AdminAddUserSheet: View {
     @State private var employmentType = "Full-Time"
     let employmentTypes = ["Full-Time", "Part-Time", "Contract", "Intern"]
 
+    // Branch fields
+    @State private var branchName = ""
+    @State private var branchCode = ""
+    @State private var branchRegion = ""
+    @State private var branchAddress = ""
+    @State private var branchCity = ""
+    @State private var branchState = ""
+    @State private var branchPincode = ""
+    @State private var branchContactNumber = ""
+    @State private var branchEmail = ""
+    @State private var branchIFSC = ""
 
     @State private var validationErrors: [String: String] = [:]
     @State private var submissionError: String? = nil
@@ -32,77 +50,24 @@ struct AdminAddUserSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Picker("Select Role", selection: $role) {
-                        Text("Loan Officer").tag(StaffRole.loanOfficer)
-                        Text("Bank Manager").tag(StaffRole.bankManager)
+                    Picker("Select Type", selection: $entityType) {
+                        ForEach(AddEntityType.allCases, id: \.self) { type in
+                            Text(type.rawValue).tag(type)
+                        }
                     }
                     .pickerStyle(.segmented)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
                     .padding(.bottom, LMSSpacing.sm)
-
-                    TextField("Full Name", text: $fullName)
-                    
-                    TextField("Email Address", text: $email)
-                        .keyboardType(.emailAddress)
-                        .autocapitalization(.none)
-                        
-                    SecureField("Login Password", text: $password)
-                    
-                    TextField("Phone Number", text: $phoneNumber)
-                        .keyboardType(.phonePad)
                 } header: {
-                    Text("Basic Credentials")
-                        .font(LMSFont.caption.weight(.bold))
-                }
-                
-                Section {
-                    DatePicker("Date of Birth", selection: $dateOfBirth, displayedComponents: .date)
-                    TextField("Full Address", text: $address)
-                } header: {
-                    Text("Personal Details")
+                    Text("Create")
                         .font(LMSFont.caption.weight(.bold))
                 }
 
-                Section {
-                    TextField("Employee Code", text: $employeeCode)
-
-                    if !viewModel.branches.isEmpty {
-                        Picker("Branch", selection: $selectedBranchId) {
-                            Text("Select Branch").tag(nil as UUID?)
-                            ForEach(viewModel.branches) { branch in
-                                Text(branch.name).tag(branch.id as UUID?)
-                            }
-                        }
-                    } else if viewModel.isLoading {
-                        Text("Loading branches...")
-                            .foregroundStyle(.secondary)
-                    }
-
-                    if role == .loanOfficer {
-                        TextField("Designation (e.g. Senior Underwriter)", text: $designation)
-                    } else if role == .bankManager {
-                        TextField("Assigned Region (e.g. North India)", text: $region)
-                    }
-                    
-                    Picker("Employment Type", selection: $employmentType) {
-                        ForEach(employmentTypes, id: \.self) { type in
-                            Text(type).tag(type)
-                        }
-                    }
-                    
-                    DatePicker("Date of Joining", selection: $dateOfJoining, displayedComponents: .date)
-                    
-                    HStack {
-                        Text("Base Salary (₹)")
-                        Spacer()
-                        TextField("Amount", text: $baseSalary)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                    }
-                } header: {
-                    Text("Employment Details")
-                        .font(LMSFont.caption.weight(.bold))
+                if entityType == .bankBranch {
+                    branchFormSections
+                } else {
+                    staffFormSections
                 }
 
                 if let submissionError {
@@ -112,7 +77,7 @@ struct AdminAddUserSheet: View {
                     }
                 }
             }
-            .navigationTitle("Create Staff Account")
+            .navigationTitle(entityType == .bankBranch ? "Add Branch" : "Create Staff Account")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -128,7 +93,11 @@ struct AdminAddUserSheet: View {
                     } else {
                         Button("Save") {
                             Task {
-                                await submitForm()
+                                if entityType == .bankBranch {
+                                    await submitBranch()
+                                } else {
+                                    await submitStaff()
+                                }
                             }
                         }
                         .font(LMSFont.headline)
@@ -148,8 +117,126 @@ struct AdminAddUserSheet: View {
         }
     }
 
+    // MARK: - Branch Form Sections
 
-    private func validateForm() -> Bool {
+    @ViewBuilder
+    private var branchFormSections: some View {
+        Section {
+            TextField("Branch Name", text: $branchName)
+            TextField("Branch Code (e.g. BR-006)", text: $branchCode)
+                .autocapitalization(.allCharacters)
+        } header: {
+            Text("Branch Identity")
+                .font(LMSFont.caption.weight(.bold))
+        }
+
+        Section {
+            TextField("Full Address", text: $branchAddress)
+            TextField("City", text: $branchCity)
+            TextField("State", text: $branchState)
+            TextField("Pincode", text: $branchPincode)
+                .keyboardType(.numberPad)
+            Picker("Region", selection: $branchRegion) {
+                Text("Select Region").tag("")
+                Text("North").tag("North")
+                Text("South").tag("South")
+                Text("East").tag("East")
+                Text("West").tag("West")
+                Text("Central").tag("Central")
+                Text("National").tag("National")
+            }
+        } header: {
+            Text("Location Details")
+                .font(LMSFont.caption.weight(.bold))
+        }
+
+        Section {
+            TextField("Contact Number", text: $branchContactNumber)
+                .keyboardType(.phonePad)
+            TextField("Branch Email", text: $branchEmail)
+                .keyboardType(.emailAddress)
+                .autocapitalization(.none)
+            TextField("IFSC Code (Optional)", text: $branchIFSC)
+                .autocapitalization(.allCharacters)
+        } header: {
+            Text("Contact Information")
+                .font(LMSFont.caption.weight(.bold))
+        }
+    }
+
+    // MARK: - Staff Form Sections
+
+    @ViewBuilder
+    private var staffFormSections: some View {
+        Section {
+            TextField("Full Name", text: $fullName)
+
+            TextField("Email Address", text: $email)
+                .keyboardType(.emailAddress)
+                .autocapitalization(.none)
+
+            SecureField("Login Password", text: $password)
+
+            TextField("Phone Number", text: $phoneNumber)
+                .keyboardType(.phonePad)
+        } header: {
+            Text("Basic Credentials")
+                .font(LMSFont.caption.weight(.bold))
+        }
+
+        Section {
+            DatePicker("Date of Birth", selection: $dateOfBirth, displayedComponents: .date)
+            TextField("Full Address", text: $address)
+        } header: {
+            Text("Personal Details")
+                .font(LMSFont.caption.weight(.bold))
+        }
+
+        Section {
+            TextField("Employee Code", text: $employeeCode)
+
+            if !viewModel.branches.isEmpty {
+                Picker("Branch", selection: $selectedBranchId) {
+                    Text("Select Branch").tag(nil as UUID?)
+                    ForEach(viewModel.branches) { branch in
+                        Text(branch.name).tag(branch.id as UUID?)
+                    }
+                }
+            } else if viewModel.isLoading {
+                Text("Loading branches...")
+                    .foregroundStyle(.secondary)
+            }
+
+            if entityType == .loanOfficer {
+                TextField("Designation (e.g. Senior Underwriter)", text: $designation)
+            } else if entityType == .bankManager {
+                TextField("Assigned Region (e.g. North India)", text: $region)
+            }
+
+            Picker("Employment Type", selection: $employmentType) {
+                ForEach(employmentTypes, id: \.self) { type in
+                    Text(type).tag(type)
+                }
+            }
+
+            DatePicker("Date of Joining", selection: $dateOfJoining, displayedComponents: .date)
+
+            HStack {
+                Text("Base Salary (₹)")
+                Spacer()
+                TextField("Amount", text: $baseSalary)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+            }
+        } header: {
+            Text("Employment Details")
+                .font(LMSFont.caption.weight(.bold))
+        }
+    }
+
+    // MARK: - Validation & Submission
+
+    private func validateStaffForm() -> Bool {
         validationErrors.removeAll()
 
         if fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -159,13 +246,13 @@ struct AdminAddUserSheet: View {
         let cleanedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
         let emailRegex = "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}$"
         let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
-        
+
         if cleanedEmail.isEmpty {
             validationErrors["email"] = "Email address is required"
         } else if !emailPredicate.evaluate(with: cleanedEmail) {
             validationErrors["email"] = "Enter a valid email address"
         }
-        
+
         if password.count < 8 {
             validationErrors["password"] = "Password must be at least 8 characters"
         }
@@ -182,19 +269,43 @@ struct AdminAddUserSheet: View {
             validationErrors["branchId"] = "Please select a branch"
         }
 
-        if role == .loanOfficer && designation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if entityType == .loanOfficer && designation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             validationErrors["designation"] = "Designation is required"
         }
 
-        if role == .bankManager && region.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if entityType == .bankManager && region.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             validationErrors["region"] = "Region is required"
         }
 
         return validationErrors.isEmpty
     }
 
-    private func submitForm() async {
-        guard validateForm(), let branchId = selectedBranchId else {
+    private func validateBranchForm() -> Bool {
+        validationErrors.removeAll()
+
+        if branchName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            validationErrors["branchName"] = "Branch name is required"
+        }
+        if branchCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            validationErrors["branchCode"] = "Branch code is required"
+        }
+        if branchRegion.isEmpty {
+            validationErrors["branchRegion"] = "Please select a region"
+        }
+        if branchAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            validationErrors["branchAddress"] = "Address is required"
+        }
+        if branchCity.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            validationErrors["branchCity"] = "City is required"
+        }
+
+        return validationErrors.isEmpty
+    }
+
+    private func submitStaff() async {
+        let role: StaffRole = entityType == .loanOfficer ? .loanOfficer : .bankManager
+
+        guard validateStaffForm(), let branchId = selectedBranchId else {
             submissionError = validationErrors.values.first ?? "Please fill all required fields."
             return
         }
@@ -224,5 +335,37 @@ struct AdminAddUserSheet: View {
             submissionError = viewModel.errorMessage ?? "An error occurred while creating the account."
         }
     }
-}
 
+    private func submitBranch() async {
+        guard validateBranchForm() else {
+            submissionError = validationErrors.values.first ?? "Please fill all required fields."
+            return
+        }
+
+        isSubmitting = true
+        submissionError = nil
+
+        let fullAddress: String
+        if !branchCity.isEmpty || !branchState.isEmpty || !branchPincode.isEmpty {
+            let parts = [branchAddress, branchCity, branchState, branchPincode].filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            fullAddress = parts.joined(separator: ", ")
+        } else {
+            fullAddress = branchAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        let success = await viewModel.createBranch(
+            name: branchName.trimmingCharacters(in: .whitespacesAndNewlines),
+            code: branchCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
+            region: branchRegion,
+            address: fullAddress
+        )
+
+        isSubmitting = false
+
+        if success {
+            dismiss()
+        } else {
+            submissionError = viewModel.errorMessage ?? "An error occurred while creating the branch."
+        }
+    }
+}
