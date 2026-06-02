@@ -296,9 +296,11 @@ class LoanOfficerDashboardViewModel: ObservableObject {
 
     @discardableResult
     func escalateApplication(applicationId: String, reason: String) -> Bool {
-        let officerName = officerProfile?.fullName ?? "Loan Officer"
-        let didEscalate = CentralLoanRepository.shared.escalateApplication(
-            applicationId: applicationId,
+        guard let uuid = UUID(uuidString: applicationId), let officerProfile = officerProfile else { return false }
+        let officerName = officerProfile.fullName
+        let didEscalate = CentralLoanRepository.shared.escalateApplicationByOfficer(
+            id: uuid,
+            officerId: officerProfile.id,
             officerName: officerName,
             reason: reason
         )

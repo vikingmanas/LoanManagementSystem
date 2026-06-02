@@ -40,6 +40,11 @@ struct LoanDisbursementEvent: Identifiable, Hashable {
 /// Centralized repository serving as the single source of truth for all loan applications.
 /// Bridges real-time state updates across the Customer, Loan Officer, and Manager portals.
 @MainActor
+struct ManagerOfficerAssignment {
+    static let unassignedOfficerName = "Unassigned"
+    static let unassignedOfficerId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+}
+
 final class CentralLoanRepository: ObservableObject {
     static let shared = CentralLoanRepository()
     
@@ -124,6 +129,11 @@ final class CentralLoanRepository: ObservableObject {
             return queue.isEmpty || queue == "Retail Loan Officer Queue" || queue == "Loan Officer Queue"
         }
         return false
+    }
+
+    func isLoanUnassigned(applicationId: UUID) -> Bool {
+        guard let app = applications.first(where: { $0.id == applicationId }) else { return false }
+        return isLoanUnassigned(app)
     }
 
     func isVisibleToOfficer(_ app: BorrowerLoanApplication, userId: UUID) -> Bool {
