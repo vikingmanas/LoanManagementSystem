@@ -47,7 +47,11 @@ struct MainTabView: View {
                 }
                 .tag(BorrowerTab.loans)
 
-            
+            BorrowerChatView()
+                .tabItem {
+                    Label("Messages", systemImage: "message.fill")
+                }
+                .tag(BorrowerTab.messages)
 
         }
         .tint(LMSColors.brandNavy)

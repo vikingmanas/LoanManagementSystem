@@ -216,6 +216,8 @@ class LoanOfficerDashboardViewModel: ObservableObject {
                     self.officerProfile = profile
                 }
             }
+
+            await CentralLoanRepository.shared.syncOfficerDirectory()
             
             // Fetch all submitted applications from Supabase for the officer view
             await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
@@ -235,9 +237,19 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         }
     }
 
-    private func refreshFromRepository() {
-        applications = CentralLoanRepository.shared.applications.compactMap {
+    func refreshFromRepository() {
+        let allApplications = CentralLoanRepository.shared.applications.compactMap {
             CentralLoanRepository.shared.toOfficerApplication(from: $0)
+        }
+        guard let officerId = officerProfile?.id else {
+            applications = allApplications
+            return
+        }
+        applications = allApplications.filter { app in
+            guard let source = CentralLoanRepository.shared.applications.first(where: { $0.id == app.id }) else {
+                return true
+            }
+            return CentralLoanRepository.shared.isVisibleToOfficer(source, userId: officerId)
         }
     }
     
@@ -271,7 +283,14 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
     
     func updateDocumentStatus(applicationId: String, docId: UUID, newStatus: DocumentStatus, rejectionReason: String? = nil) {
-        CentralLoanRepository.shared.updateDocumentStatus(applicationId: applicationId, docId: docId, status: newStatus, reason: rejectionReason)
+        CentralLoanRepository.shared.updateDocumentStatus(
+            applicationId: applicationId,
+            docId: docId,
+            status: newStatus,
+            reason: rejectionReason,
+            officerUserId: officerProfile?.id,
+            officerName: officerProfile?.fullName
+        )
         refreshFromRepository()
         
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }),
@@ -309,6 +328,35 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         }
     }
     
+    var escalatableApplications: [LoanApplication] {
+        applications.filter { app in
+            ![.approved, .rejected, .disbursed, .escalated].contains(app.status)
+        }
+    }
+
+    @discardableResult
+    func escalateApplication(applicationId: String, reason: String) -> Bool {
+        guard let app = applications.first(where: { $0.applicationId == applicationId }),
+              let officerId = officerProfile?.id else { return false }
+        let officerName = officerProfile?.fullName ?? "Loan Officer"
+        let didEscalate = CentralLoanRepository.shared.escalateApplicationByOfficer(
+            id: app.id,
+            officerId: officerId,
+            officerName: officerName,
+            reason: reason
+        )
+        guard didEscalate else { return false }
+        refreshFromRepository()
+        logActivity(
+            borrowerName: app.borrowerName,
+            applicationId: applicationId,
+            loanType: app.loanType.rawValue,
+            eventType: .queryRaised,
+            description: "Escalated to branch manager by \(officerName): \(reason)"
+        )
+        return true
+    }
+
     func sendForFinalApproval(applicationId: String) {
         guard let app = applications.first(where: { $0.applicationId == applicationId }),
               !app.documents.isEmpty,
@@ -316,7 +364,11 @@ class LoanOfficerDashboardViewModel: ObservableObject {
             return
         }
         let officerName = officerProfile?.fullName ?? "Officer Arjun"
-        CentralLoanRepository.shared.sendForFinalApproval(applicationId: applicationId, officerName: officerName)
+        CentralLoanRepository.shared.sendForFinalApproval(
+            applicationId: applicationId,
+            officerName: officerName,
+            officerId: officerProfile?.id
+        )
         refreshFromRepository()
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }) {
             logActivity(

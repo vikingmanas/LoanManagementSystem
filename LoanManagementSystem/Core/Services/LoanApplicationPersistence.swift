@@ -18,6 +18,7 @@ struct StoredLoanApplication: Codable {
     var submittedAt: Date?
     var updatedAt: Date
     var assignedQueue: String?
+    var assignedOfficerId: UUID?
     var outstandingBalance: Double
     var upcomingEMI: Double
 }
@@ -224,6 +225,7 @@ enum LoanApplicationPersistence {
             submittedAt: app.submittedAt,
             updatedAt: app.updatedAt,
             assignedQueue: app.assignedQueue,
+            assignedOfficerId: app.assignedOfficerId,
             outstandingBalance: app.outstandingBalance,
             upcomingEMI: app.upcomingEMI
         )
@@ -314,6 +316,7 @@ enum LoanApplicationPersistence {
             submittedAt: stored.submittedAt,
             updatedAt: stored.updatedAt,
             assignedQueue: stored.assignedQueue,
+            assignedOfficerId: stored.assignedOfficerId,
             outstandingBalance: stored.outstandingBalance,
             upcomingEMI: stored.upcomingEMI
         )

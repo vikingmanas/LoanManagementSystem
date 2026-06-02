@@ -5,6 +5,9 @@ struct AdminProfileSheet: View {
     @EnvironmentObject private var appState: AppStateManager
     @Environment(\.dismiss) private var dismiss
     
+    @AppStorage("biometricEnabled") private var biometricEnabled = true
+    @StateObject private var localSecurity = LocalSecurityService.shared
+    
     var body: some View {
         NavigationStack {
             List {
@@ -68,6 +71,9 @@ struct AdminProfileSheet: View {
                 }
                 
                 Section("Security") {
+                    Toggle(isOn: $biometricEnabled) {
+                        Label("\(localSecurity.biometricTypeName) Login", systemImage: "faceid")
+                    }
                     Button(action: {
                         // In a real app this would present a password change sheet
                     }) {

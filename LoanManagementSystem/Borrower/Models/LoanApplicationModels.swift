@@ -898,6 +898,7 @@ enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hash
     case approved = "Approved"
     case rejected = "Rejected"
     case disbursed = "Disbursed"
+    case escalated = "Escalated"
 
     var id: String { rawValue }
 
@@ -912,6 +913,7 @@ enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hash
         case .approved: return "approved"
         case .rejected: return "rejected"
         case .disbursed: return "disbursed"
+        case .escalated: return "escalated"
         }
     }
     
@@ -926,6 +928,7 @@ enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hash
         case "approved": return .approved
         case "rejected": return .rejected
         case "disbursed": return .disbursed
+        case "escalated": return .escalated
         default: return .draft
         }
     }
@@ -941,6 +944,7 @@ enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hash
         case .approved: return "checkmark.circle.fill"
         case .rejected: return "xmark.circle.fill"
         case .disbursed: return "indianrupeesign.circle.fill"
+        case .escalated: return "arrow.up.forward.circle.fill"
         }
     }
 
@@ -954,6 +958,8 @@ enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hash
             return Color.brandEmerald
         case .rejected:
             return Color.brandCoral
+        case .escalated:
+            return Color.purple
         }
     }
 
@@ -1012,6 +1018,7 @@ struct BorrowerLoanApplication: Identifiable, Hashable {
     var submittedAt: Date?
     var updatedAt: Date
     var assignedQueue: String?
+    var assignedOfficerId: UUID?
     var outstandingBalance: Double
     var upcomingEMI: Double
 
@@ -1052,6 +1059,7 @@ struct DBLoanApplication: Codable {
             submittedAt: submittedAt,
             updatedAt: updatedAt,
             assignedQueue: status == "draft" ? nil : "Retail Loan Officer Queue",
+            assignedOfficerId: officerId,
             outstandingBalance: max(0, amountRequested * 0.92),
             upcomingEMI: max(0, amountRequested / Double(max(1, tenureMonths)))
         )
@@ -1064,7 +1072,7 @@ struct DBLoanApplication: Codable {
         return DBLoanApplication(
             applicationId: app.id,
             borrowerId: borrowerId,
-            officerId: nil,
+            officerId: app.assignedOfficerId,
             productId: app.product.id,
             amountRequested: app.formData.requestedAmountValue,
             tenureMonths: app.formData.preferredTenureMonths,

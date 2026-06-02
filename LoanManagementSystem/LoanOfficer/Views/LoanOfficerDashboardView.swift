@@ -162,7 +162,7 @@ private struct LoanOfficerTodayView: View {
             Text("The monthly branch performance report is being prepared.")
         }
         .sheet(isPresented: $showingEscalationSheet) {
-            OfficerEscalationSheet()
+            OfficerEscalationSheet(viewModel: viewModel)
         }
         .sheet(isPresented: $showingCalculator) {
             OfficerCalculatorSheet()
@@ -732,13 +732,34 @@ private struct LoanOfficerReviewQueueView: View {
 // MARK: - Escalation Sheet
 
 private struct OfficerEscalationSheet: View {
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var reason = ""
     @State private var priority = "Normal"
+    @State private var selectedApplicationId: String = ""
+    @State private var errorMessage: String?
+
+    private var escalatableApplications: [OfficerLoanApplication] {
+        viewModel.escalatableApplications
+    }
 
     var body: some View {
         NavigationStack {
             Form {
+                Section("Application") {
+                    if escalatableApplications.isEmpty {
+                        Text("No active applications available to escalate.")
+                            .foregroundStyle(LMSColors.textSecondary)
+                    } else {
+                        Picker("Select Loan", selection: $selectedApplicationId) {
+                            Text("Choose application").tag("")
+                            ForEach(escalatableApplications) { app in
+                                Text("\(app.applicationId) · \(app.borrowerName)").tag(app.applicationId)
+                            }
+                        }
+                    }
+                }
+
                 Section("Priority") {
                     Picker("Priority", selection: $priority) {
                         Text("Normal").tag("Normal")
@@ -749,8 +770,14 @@ private struct OfficerEscalationSheet: View {
                 }
 
                 Section("Reason") {
-                    TextField("Describe the blocker", text: $reason, axis: .vertical)
+                    TextField("Describe why this case needs manager review", text: $reason, axis: .vertical)
                         .lineLimit(3...6)
+                }
+
+                Section {
+                    Text("The branch manager will see this escalation under Officer Performance with your name and the loan details.")
+                        .font(.footnote)
+                        .foregroundStyle(LMSColors.textSecondary)
                 }
             }
             .navigationTitle("Escalate Case")
@@ -760,11 +787,41 @@ private struct OfficerEscalationSheet: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Send") { dismiss() }
-                        .disabled(reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("Send") { submitEscalation() }
+                        .disabled(!canSubmit)
+                }
+            }
+            .alert("Escalation Failed", isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(errorMessage ?? "")
+            }
+            .onAppear {
+                if selectedApplicationId.isEmpty {
+                    selectedApplicationId = escalatableApplications.first?.applicationId ?? ""
                 }
             }
         }
+    }
+
+    private var canSubmit: Bool {
+        !selectedApplicationId.isEmpty
+            && !reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !escalatableApplications.isEmpty
+    }
+
+    private func submitEscalation() {
+        let trimmedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        let composedReason = "[\(priority)] \(trimmedReason)"
+        guard viewModel.escalateApplication(applicationId: selectedApplicationId, reason: composedReason) else {
+            errorMessage = "Could not escalate this application. It may already be closed or escalated."
+            return
+        }
+        HapticsManager.triggerNotification(type: .success)
+        dismiss()
     }
 }
 

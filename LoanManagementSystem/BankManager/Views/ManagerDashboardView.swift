@@ -37,12 +37,10 @@ struct ManagerDashboardView: View {
             .tag(ManagerWorkspaceTab.applicants)
 
             NavigationStack {
-                ManagerCommunicationTabView(viewModel: viewModel)
-                    .navigationTitle("Messages")
+                ManagerBranchTabView(viewModel: viewModel)
             }
-            .tabItem { Label("Messages", systemImage: "message") }
-            .badge(viewModel.unreadChatCount > 0 ? viewModel.unreadChatCount : 0)
-            .tag(ManagerWorkspaceTab.messages)
+            .tabItem { Label("Branch", systemImage: "building.2") }
+            .tag(ManagerWorkspaceTab.branch)
         }
         .tint(LMSColors.brandNavy)
         .task {
@@ -118,7 +116,7 @@ struct ManagerDashboardView: View {
 enum ManagerWorkspaceTab: Int, Hashable {
     case dashboard = 0
     case applicants = 1
-    case messages = 2
+    case branch = 2
 }
 
 private struct ManagerSearchSheet: View {

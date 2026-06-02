@@ -15,6 +15,8 @@ public enum DashboardRoute: Hashable {
     case notifications
     case transactionHistory
     case payEMI
+    case repaymentSchedule(DashboardLoanAccount?)
+    case emiCalculator
     case statement
     case topUp
     case foreclosure
@@ -177,7 +179,6 @@ public struct DashboardView: View {
     
     @StateObject private var profileViewModel = BorrowerProfileViewModel()
     @State private var navigationPath = [DashboardRoute]()
-    @State private var showingCalculatorAlert = false
     @AppStorage("dashboard.dismissedProfileCompletionPercentage") private var dismissedProfileCompletionPercentage = -1
 
     private var shouldShowProfileCompletionCard: Bool {
@@ -213,7 +214,7 @@ public struct DashboardView: View {
                         onPayEMI: { navigationPath.append(.payEMI) },
                         onStatement: { navigationPath.append(.statement) },
                         onSupport: { navigationPath.append(.support) },
-                        onCalculator: { showingCalculatorAlert = true },
+                        onCalculator: { navigationPath.append(.emiCalculator) },
                         onForeclosure: { navigationPath.append(.foreclosure) },
                         onTopUp: { navigationPath.append(.topUp) }
                     )
@@ -239,7 +240,8 @@ public struct DashboardView: View {
                     UpcomingPaymentSection(
                         viewModel: viewModel,
                         onPayNow: { navigationPath.append(.payEMI) },
-                        onViewAll: { navigationPath.append(.allPendingEMIs) }
+                        onViewAll: { navigationPath.append(.allPendingEMIs) },
+                        onSchedule: { navigationPath.append(.repaymentSchedule(nil)) }
                     )
                 }
                 .padding(.top, LMSSpacing.sm)
@@ -255,11 +257,6 @@ public struct DashboardView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     dashboardToolbarActions
                 }
-            }
-            .alert("Loan Calculator", isPresented: $showingCalculatorAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text("EMI calculator is coming soon. Use the Loans tab to explore products and apply.")
             }
             .task {
                 await viewModel.fetchDashboardData()
@@ -296,6 +293,10 @@ public struct DashboardView: View {
                     TransactionHistoryFullScreen(viewModel: viewModel)
                 case .payEMI:
                     PayEMIWorkflowView(viewModel: viewModel)
+                case .repaymentSchedule(let loan):
+                    RepaymentScheduleView(viewModel: viewModel, initialLoan: loan)
+                case .emiCalculator:
+                    EMICalculatorView()
                 case .statement:
                     StatementWorkflowView(viewModel: viewModel)
                 case .topUp:
@@ -342,6 +343,334 @@ public struct DashboardView: View {
         .padding(.vertical, 4)
         .background(.regularMaterial, in: Capsule())
         .frame(width: 104, height: 52)
+    }
+}
+
+// MARK: - Repayment Schedule
+
+private enum RepaymentScheduleStatus: String {
+    case paid = "Paid"
+    case due = "Due Soon"
+    case upcoming = "Upcoming"
+    case overdue = "Overdue"
+
+    var tint: Color {
+        switch self {
+        case .paid: return LMSColors.emerald
+        case .due: return LMSColors.amber
+        case .upcoming: return LMSColors.actionBlue
+        case .overdue: return LMSColors.coral
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .paid: return "checkmark.circle.fill"
+        case .due: return "clock.badge.exclamationmark.fill"
+        case .upcoming: return "calendar.circle.fill"
+        case .overdue: return "exclamationmark.circle.fill"
+        }
+    }
+}
+
+private struct RepaymentScheduleItem: Identifiable, Hashable {
+    let id = UUID()
+    let instalmentNo: Int
+    let dueDate: Date
+    let emiAmount: Double
+    let principal: Double
+    let interest: Double
+    let outstandingAfterPayment: Double
+    let status: RepaymentScheduleStatus
+}
+
+private struct RepaymentScheduleView: View {
+    @ObservedObject var viewModel: DashboardViewModel
+    @State private var selectedLoanID: UUID?
+
+    init(viewModel: DashboardViewModel, initialLoan: DashboardLoanAccount?) {
+        self.viewModel = viewModel
+        _selectedLoanID = State(initialValue: initialLoan?.id)
+    }
+
+    private var selectedLoan: DashboardLoanAccount? {
+        if let selectedLoanID,
+           let loan = viewModel.loanAccounts.first(where: { $0.id == selectedLoanID }) {
+            return loan
+        }
+        return viewModel.loanAccounts.first
+    }
+
+    private var scheduleItems: [RepaymentScheduleItem] {
+        guard let loan = selectedLoan else { return [] }
+
+        let totalMonths = max(1, loan.totalTenureMonths)
+        let paidMonths = min(totalMonths, max(0, totalMonths - loan.tenureRemainingMonths))
+        let principalPerMonth = loan.sanctionedAmount / Double(totalMonths)
+        let interestPerMonth = max(0, loan.totalEMI - principalPerMonth)
+        let firstDueDate = Calendar.current.date(
+            byAdding: .month,
+            value: -paidMonths,
+            to: loan.nextEMIDate
+        ) ?? loan.nextEMIDate
+
+        return (1...totalMonths).map { month in
+            let dueDate = Calendar.current.date(
+                byAdding: .month,
+                value: month - 1,
+                to: firstDueDate
+            ) ?? firstDueDate
+
+            let status: RepaymentScheduleStatus
+            if month <= paidMonths {
+                status = .paid
+            } else if month == paidMonths + 1 {
+                status = dueDate < Calendar.current.startOfDay(for: Date()) ? .overdue : .due
+            } else {
+                status = .upcoming
+            }
+
+            return RepaymentScheduleItem(
+                instalmentNo: month,
+                dueDate: dueDate,
+                emiAmount: loan.totalEMI,
+                principal: principalPerMonth,
+                interest: interestPerMonth,
+                outstandingAfterPayment: max(0, loan.sanctionedAmount - principalPerMonth * Double(month)),
+                status: status
+            )
+        }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                if viewModel.loanAccounts.isEmpty {
+                    DashboardEmptyState(
+                        icon: "calendar.badge.clock",
+                        title: "No Repayment Schedule",
+                        message: "Approved or disbursed loans will show their full EMI timeline here."
+                    )
+                    .padding(.top, 80)
+                } else if let loan = selectedLoan {
+                    headerCard(for: loan)
+                    accountFilter
+                    timelineCard
+                }
+            }
+            .padding(.horizontal, LMSSpacing.lg)
+            .padding(.vertical, LMSSpacing.lg)
+        }
+        .background(LMSColors.background)
+        .navigationTitle("Repayment Schedule")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            if selectedLoanID == nil {
+                selectedLoanID = viewModel.loanAccounts.first?.id
+            }
+        }
+    }
+
+    private func headerCard(for loan: DashboardLoanAccount) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(loan.loanType)
+                        .font(.system(.headline, design: .rounded).weight(.bold))
+                        .foregroundStyle(LMSColors.textPrimary)
+
+                    Text(loan.accountNumber)
+                        .font(LMSFont.caption.monospaced())
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+
+                Spacer()
+
+                Text("\(loan.tenureRemainingMonths) left")
+                    .font(LMSFont.caption.weight(.bold))
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(LMSColors.brandNavy.opacity(0.10), in: Capsule())
+            }
+
+            HStack(spacing: 10) {
+                scheduleMetric("EMI", value: loan.totalEMI.formattedAsINR())
+                scheduleMetric("Outstanding", value: loan.principalOutstanding.formattedAsINR())
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Timeline Progress")
+                        .font(LMSFont.caption)
+                        .foregroundStyle(LMSColors.textSecondary)
+                    Spacer()
+                    Text("\(Int(loan.repaidPercentage * 100))%")
+                        .font(LMSFont.caption.weight(.bold))
+                        .foregroundStyle(LMSColors.brandNavy)
+                }
+
+                ProgressView(value: loan.repaidPercentage)
+                    .tint(LMSColors.emerald)
+            }
+        }
+        .padding(16)
+        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+        )
+    }
+
+    private var accountFilter: some View {
+        Group {
+            if viewModel.loanAccounts.count > 1 {
+                Menu {
+                    ForEach(viewModel.loanAccounts) { loan in
+                        Button {
+                            selectedLoanID = loan.id
+                        } label: {
+                            Label(
+                                "\(loan.loanType) - \(loan.accountNumber)",
+                                systemImage: selectedLoanID == loan.id ? "checkmark.circle.fill" : "circle"
+                            )
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Label(selectedLoan?.accountNumber ?? "Select Account", systemImage: "line.3.horizontal.decrease.circle.fill")
+                            .font(LMSFont.callout.weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .font(LMSFont.caption.weight(.bold))
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+                    .padding(14)
+                    .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                            .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+                    )
+                }
+            }
+        }
+    }
+
+    private var timelineCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Full Tenure Timeline")
+                    .font(.system(.headline, design: .rounded).weight(.bold))
+                    .foregroundStyle(LMSColors.textPrimary)
+                Spacer()
+                Text("\(scheduleItems.count) EMIs")
+                    .font(LMSFont.caption.weight(.semibold))
+                    .foregroundStyle(LMSColors.textSecondary)
+            }
+            .padding(.bottom, 14)
+
+            ForEach(Array(scheduleItems.enumerated()), id: \.element.id) { index, item in
+                RepaymentScheduleRow(
+                    item: item,
+                    isLast: index == scheduleItems.count - 1
+                )
+            }
+        }
+        .padding(16)
+        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+        )
+    }
+
+    private func scheduleMetric(_ title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(LMSFont.caption2)
+                .foregroundStyle(LMSColors.textTertiary)
+            Text(value)
+                .font(LMSFont.callout.weight(.bold))
+                .foregroundStyle(LMSColors.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(LMSColors.surfaceElevated, in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+    }
+}
+
+private struct RepaymentScheduleRow: View {
+    let item: RepaymentScheduleItem
+    let isLast: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(spacing: 0) {
+                Image(systemName: item.status.icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(item.status.tint)
+                    .frame(width: 28, height: 28)
+                    .background(item.status.tint.opacity(0.12), in: Circle())
+
+                if !isLast {
+                    Rectangle()
+                        .fill(LMSColors.separatorLight)
+                        .frame(width: 2, height: 56)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("EMI \(item.instalmentNo)")
+                            .font(LMSFont.callout.weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                        Text(item.dueDate.formattedAsDDMMMYYYY())
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text(item.emiAmount.formattedAsINR())
+                            .font(LMSFont.callout.weight(.bold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                            .monospacedDigit()
+                        Text(item.status.rawValue)
+                            .font(LMSFont.caption2.weight(.bold))
+                            .foregroundStyle(item.status.tint)
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    miniBreakdown("Principal", value: item.principal.formattedAsINR())
+                    miniBreakdown("Interest", value: item.interest.formattedAsINR())
+                }
+
+                Text("Balance after payment: \(item.outstandingAfterPayment.formattedAsINR())")
+                    .font(LMSFont.caption2)
+                    .foregroundStyle(LMSColors.textTertiary)
+                    .padding(.bottom, isLast ? 0 : 14)
+            }
+        }
+    }
+
+    private func miniBreakdown(_ title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(LMSFont.caption2)
+                .foregroundStyle(LMSColors.textTertiary)
+            Text(value)
+                .font(LMSFont.caption.weight(.semibold))
+                .foregroundStyle(LMSColors.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -393,6 +722,315 @@ struct GovernmentSchemesSection: View {
                 Text("This feature is currently under development.")
             }
         }
+    }
+}
+
+// MARK: - EMI Calculator
+
+private enum EMICalculatorTenureUnit: String, CaseIterable, Identifiable {
+    case months = "Months"
+    case years = "Years"
+
+    var id: String { rawValue }
+}
+
+private struct EMICalculatorResult {
+    let monthlyEMI: Double
+    let totalInterest: Double
+    let totalPayable: Double
+    let processingFee: Double
+    let firstMonthInterest: Double
+    let firstMonthPrincipal: Double
+    let payoffMonth: Date
+}
+
+private struct EMICalculatorView: View {
+    @State private var principalText = "500000"
+    @State private var annualRateText = "10.5"
+    @State private var tenureText = "60"
+    @State private var tenureUnit: EMICalculatorTenureUnit = .months
+    @State private var processingFeeText = "1.0"
+
+    private var principal: Double { sanitizedDouble(principalText) }
+    private var annualRate: Double { sanitizedDouble(annualRateText) }
+    private var processingFeePercent: Double { sanitizedDouble(processingFeeText) }
+    private var tenureMonths: Int {
+        let rawTenure = max(1, Int(sanitizedDouble(tenureText)))
+        return tenureUnit == .years ? rawTenure * 12 : rawTenure
+    }
+
+    private var result: EMICalculatorResult? {
+        guard principal > 0, annualRate >= 0, tenureMonths > 0 else { return nil }
+
+        let monthlyRate = annualRate / 12.0 / 100.0
+        let months = Double(tenureMonths)
+        let monthlyEMI: Double
+
+        if monthlyRate == 0 {
+            monthlyEMI = principal / months
+        } else {
+            let factor = pow(1 + monthlyRate, months)
+            monthlyEMI = principal * monthlyRate * factor / (factor - 1)
+        }
+
+        let totalPayable = monthlyEMI * months
+        let totalInterest = max(0, totalPayable - principal)
+        let processingFee = principal * processingFeePercent / 100.0
+        let firstMonthInterest = principal * monthlyRate
+        let firstMonthPrincipal = max(0, monthlyEMI - firstMonthInterest)
+        let payoffMonth = Calendar.current.date(byAdding: .month, value: tenureMonths, to: Date()) ?? Date()
+
+        return EMICalculatorResult(
+            monthlyEMI: monthlyEMI,
+            totalInterest: totalInterest,
+            totalPayable: totalPayable,
+            processingFee: processingFee,
+            firstMonthInterest: firstMonthInterest,
+            firstMonthPrincipal: firstMonthPrincipal,
+            payoffMonth: payoffMonth
+        )
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 18) {
+                resultHeader
+                inputSection
+                breakdownSection
+                amortizationPreview
+            }
+            .padding(.horizontal, LMSSpacing.lg)
+            .padding(.vertical, LMSSpacing.lg)
+        }
+        .background(LMSColors.background)
+        .navigationTitle("EMI Calculator")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var resultHeader: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "function")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .frame(width: 46, height: 46)
+                    .background(LMSColors.brandNavy.opacity(0.10), in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Estimated Monthly EMI")
+                        .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                        .foregroundStyle(LMSColors.textSecondary)
+
+                    Text(result?.monthlyEMI.formattedAsINR() ?? "-")
+                        .font(.system(.title, design: .rounded).weight(.bold))
+                        .foregroundStyle(LMSColors.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            HStack(spacing: 10) {
+                calculatorMetric("Interest", value: result?.totalInterest.formattedAsINR() ?? "-", tint: LMSColors.amber)
+                calculatorMetric("Payable", value: result?.totalPayable.formattedAsINR() ?? "-", tint: LMSColors.emerald)
+            }
+        }
+        .padding(16)
+        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+        )
+    }
+
+    private var inputSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Loan Inputs")
+                .font(.system(.headline, design: .rounded).weight(.bold))
+                .foregroundStyle(LMSColors.textPrimary)
+
+            calculatorTextField(
+                title: "Loan Amount",
+                text: $principalText,
+                prefix: "₹",
+                keyboardType: .numberPad
+            )
+
+            calculatorTextField(
+                title: "Annual Interest Rate",
+                text: $annualRateText,
+                suffix: "%",
+                keyboardType: .decimalPad
+            )
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Tenure")
+                    .font(.system(.caption, design: .rounded).weight(.semibold))
+                    .foregroundStyle(LMSColors.textSecondary)
+
+                HStack(spacing: 10) {
+                    TextField("Tenure", text: $tenureText)
+                        .keyboardType(.numberPad)
+                        .textFieldStyle(.plain)
+                        .font(.system(.body, design: .rounded).weight(.semibold))
+                        .padding(.horizontal, 12)
+                        .frame(height: 46)
+                        .background(LMSColors.background, in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+
+                    Picker("Tenure Unit", selection: $tenureUnit) {
+                        ForEach(EMICalculatorTenureUnit.allCases) { unit in
+                            Text(unit.rawValue).tag(unit)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 190)
+                }
+            }
+
+            calculatorTextField(
+                title: "Processing Fee",
+                text: $processingFeeText,
+                suffix: "%",
+                keyboardType: .decimalPad
+            )
+        }
+        .padding(16)
+        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+        )
+    }
+
+    private var breakdownSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Cost Breakdown")
+                .font(.system(.headline, design: .rounded).weight(.bold))
+                .foregroundStyle(LMSColors.textPrimary)
+
+            calculatorRow("Principal", value: principal.formattedAsINR())
+            calculatorRow("Interest", value: result?.totalInterest.formattedAsINR() ?? "-")
+            calculatorRow("Processing Fee", value: result?.processingFee.formattedAsINR() ?? "-")
+            calculatorRow("Total Payable", value: result?.totalPayable.formattedAsINR() ?? "-", isEmphasized: true)
+            calculatorRow("Loan Closure Month", value: result.map { monthFormatter.string(from: $0.payoffMonth) } ?? "-")
+        }
+        .padding(16)
+        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+        )
+    }
+
+    private var amortizationPreview: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("First EMI Split")
+                .font(.system(.headline, design: .rounded).weight(.bold))
+                .foregroundStyle(LMSColors.textPrimary)
+
+            calculatorRow("Principal Component", value: result?.firstMonthPrincipal.formattedAsINR() ?? "-")
+            calculatorRow("Interest Component", value: result?.firstMonthInterest.formattedAsINR() ?? "-")
+
+            if let result, result.monthlyEMI > 0 {
+                let principalShare = min(1, max(0, result.firstMonthPrincipal / result.monthlyEMI))
+                ProgressView(value: principalShare)
+                    .tint(LMSColors.emerald)
+                HStack {
+                    Text("Principal \(Int(principalShare * 100))%")
+                    Spacer()
+                    Text("Interest \(Int((1 - principalShare) * 100))%")
+                }
+                .font(.system(.caption, design: .rounded).weight(.medium))
+                .foregroundStyle(LMSColors.textSecondary)
+            }
+        }
+        .padding(16)
+        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+        )
+    }
+
+    private func calculatorMetric(_ title: String, value: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(.caption2, design: .rounded).weight(.semibold))
+                .foregroundStyle(LMSColors.textSecondary)
+            Text(value)
+                .font(.system(.subheadline, design: .rounded).weight(.bold))
+                .foregroundStyle(LMSColors.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+    }
+
+    private func calculatorTextField(
+        title: String,
+        text: Binding<String>,
+        prefix: String = "",
+        suffix: String = "",
+        keyboardType: UIKeyboardType
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(.caption, design: .rounded).weight(.semibold))
+                .foregroundStyle(LMSColors.textSecondary)
+
+            HStack(spacing: 8) {
+                if !prefix.isEmpty {
+                    Text(prefix)
+                        .font(.system(.body, design: .rounded).weight(.bold))
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+
+                TextField(title, text: text)
+                    .keyboardType(keyboardType)
+                    .textFieldStyle(.plain)
+                    .font(.system(.body, design: .rounded).weight(.semibold))
+
+                if !suffix.isEmpty {
+                    Text(suffix)
+                        .font(.system(.body, design: .rounded).weight(.bold))
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 46)
+            .background(LMSColors.background, in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+        }
+    }
+
+    private func calculatorRow(_ title: String, value: String, isEmphasized: Bool = false) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .font(.system(.subheadline, design: .rounded).weight(isEmphasized ? .bold : .medium))
+                .foregroundStyle(isEmphasized ? LMSColors.textPrimary : LMSColors.textSecondary)
+
+            Spacer(minLength: 12)
+
+            Text(value)
+                .font(.system(.subheadline, design: .rounded).weight(.bold))
+                .foregroundStyle(isEmphasized ? LMSColors.brandNavy : LMSColors.textPrimary)
+                .multilineTextAlignment(.trailing)
+                .lineLimit(2)
+                .minimumScaleFactor(0.75)
+        }
+    }
+
+    private func sanitizedDouble(_ value: String) -> Double {
+        let allowed = value.filter { $0.isNumber || $0 == "." }
+        return Double(allowed) ?? 0
+    }
+
+    private var monthFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM yyyy"
+        return formatter
     }
 }
 

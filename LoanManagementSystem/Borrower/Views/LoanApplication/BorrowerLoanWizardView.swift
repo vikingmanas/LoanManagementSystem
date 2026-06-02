@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 import Combine
 import AVFoundation
+import UniformTypeIdentifiers
 @preconcurrency import Vision
 
 private enum WizardNavigationDirection {
@@ -324,6 +325,7 @@ struct BorrowerLoanWizardView: View {
     @State private var selectedUploadDocId: UUID? = nil
     @State private var showUploadSourceSheet = false
     @State private var showDocumentImagePicker = false
+    @State private var showDocumentFileImporter = false
     @State private var imagePickerSourceType: UIImagePickerController.SourceType = .photoLibrary
     @State private var previewImage: DocumentPreviewImage?
     
@@ -438,10 +440,24 @@ struct BorrowerLoanWizardView: View {
                 selectedSource: $uploadSource,
                 onSelect: { source in
                     if let docId = selectedUploadDocId {
-                        beginDocumentSelection(for: docId, source: source)
+                        if source == .pdf {
+                            uploadSource = source
+                            showDocumentFileImporter = true
+                        } else {
+                            beginDocumentSelection(for: docId, source: source)
+                        }
                     }
                 }
             )
+        }
+        .fileImporter(
+            isPresented: $showDocumentFileImporter,
+            allowedContentTypes: [.pdf],
+            allowsMultipleSelection: false
+        ) { result in
+            if let docId = selectedUploadDocId {
+                processSelectedDocumentFile(result, for: docId)
+            }
         }
         .fullScreenCover(isPresented: $showDocumentImagePicker) {
             DocumentImagePicker(sourceType: imagePickerSourceType) { image in
@@ -1057,7 +1073,13 @@ struct BorrowerLoanWizardView: View {
     private func validationMessageForCurrentStep() -> String? {
         switch currentStep {
         case 3:
-            return MobileNumberValidator.validationMessage(for: viewModel.formData.mobileNumber)
+            if let mobileValidation = MobileNumberValidator.validationMessage(for: viewModel.formData.mobileNumber) {
+                return mobileValidation
+            }
+            if let addressValidation = viewModel.validationMessage(for: .address) {
+                return addressValidation
+            }
+            return viewModel.validationMessage(for: .preferredBranch)
         case 5:
             return MobileNumberValidator.validationMessage(for: bankRegisteredMobile)
         case 7:
@@ -1141,6 +1163,80 @@ struct BorrowerLoanWizardView: View {
             .replacingOccurrences(of: " ", with: "_")
             .replacingOccurrences(of: "/", with: "_")
         return "\(normalized)_\(Int(Date().timeIntervalSince1970)).jpg"
+    }
+
+    private func processSelectedDocumentFile(_ result: Result<[URL], Error>, for docId: UUID) {
+        guard let doc = viewModel.documents.first(where: { $0.id == docId }) else { return }
+
+        do {
+            guard let url = try result.get().first else { return }
+            let didAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if didAccess {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+
+            let data = try Data(contentsOf: url)
+            guard !data.isEmpty else {
+                documentFailureReasons[docId] = "The selected PDF is empty. Choose a valid document."
+                uploadLifecycle[docId] = .failed
+                viewModel.markDocument(docId, status: .rejected)
+                return
+            }
+
+            HapticsManager.triggerImpact(style: .medium)
+            documentFailureReasons[docId] = nil
+            documentExtractedDetails[docId] = [
+                "Document": doc.name,
+                "File": url.lastPathComponent,
+                "Size": ByteCountFormatter.string(fromByteCount: Int64(data.count), countStyle: .file)
+            ]
+            uploadLifecycle[docId] = .uploading
+            isUploading[doc.name] = true
+            uploadProgress[doc.name] = 0.0
+            ocrStatus[doc.name] = "Manual Review"
+
+            let steps = 8
+            for i in 1...steps {
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.05) {
+                    uploadProgress[doc.name] = Double(i) / Double(steps)
+                    if i == steps {
+                        isUploading[doc.name] = false
+                        uploadLifecycle[docId] = .success
+                        documentUploadDates[docId] = Date()
+                        viewModel.uploadDocument(
+                            docId,
+                            fileName: pdfFileName(for: doc, originalName: url.lastPathComponent),
+                            source: .pdf,
+                            fileData: data,
+                            contentType: "application/pdf",
+                            fileExtension: "pdf"
+                        )
+                        viewModel.markDocument(docId, status: .uploaded)
+                        triggerAutosave()
+                        HapticsManager.triggerNotification(type: .success)
+                    }
+                }
+            }
+        } catch {
+            documentFailureReasons[docId] = "Unable to read the selected PDF. Please try another file."
+            uploadLifecycle[docId] = .failed
+            viewModel.markDocument(docId, status: .rejected)
+            HapticsManager.triggerNotification(type: .error)
+        }
+    }
+
+    private func pdfFileName(for doc: BorrowerLoanDocumentItem, originalName: String) -> String {
+        let normalized = doc.name
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "_")
+            .replacingOccurrences(of: "/", with: "_")
+        let originalBase = originalName
+            .replacingOccurrences(of: ".pdf", with: "", options: [.caseInsensitive])
+            .filter { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "-" }
+        let suffix = originalBase.isEmpty ? "\(Int(Date().timeIntervalSince1970))" : originalBase
+        return "\(normalized)_\(suffix).pdf"
     }
 
     private func recognizeText(in image: UIImage) async -> (text: String, confidence: Float) {
@@ -1735,6 +1831,14 @@ private struct Step3PersonalInfoOverhaulView: View {
             
             WizardFormSection(title: "Residence Information") {
                 WizardTextField(label: "Current Address", text: $viewModel.formData.address, placeholder: "Door No, Building, Street Address")
+                FormDivider()
+                WizardPickerRow(
+                    label: "Application Branch",
+                    selection: $viewModel.formData.preferredBranch,
+                    options: [""] + BorrowerLoanFormData.branchOptions
+                ) { option in
+                    option.isEmpty ? "Select Branch" : option
+                }
                 FormDivider()
                 WizardPickerRow(label: "Residence Ownership", selection: $viewModel.formData.repaymentPreference, options: ["Owned", "Rented", "Family Owned"]) { $0 }
             }
@@ -2692,6 +2796,8 @@ private struct Step9ReviewOverhaulView: View {
                 WizardInlineValueRow(label: "Date of Birth", value: viewModel.formData.dateOfBirth.formattedAsDDMMMYYYY())
                 FormDivider()
                 WizardInlineValueRow(label: "Contact Email", value: viewModel.formData.emailAddress)
+                FormDivider()
+                WizardInlineValueRow(label: "Application Branch", value: viewModel.formData.preferredBranch.isEmpty ? "Not selected" : viewModel.formData.preferredBranch)
             }
             
             WizardFormSection(title: "Employment Credentials") {
