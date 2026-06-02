@@ -752,10 +752,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         .empty.mergedWithProfile(profile)
     }
 
-    static let branchOptions = [
-        "Headquarters Branch",
-        "Mysuru"
-    ]
+    static let branchOptions: [String] = []
 
     static func formattedAddress(from address: AddressInfo) -> String {
         var components: [String] = []

@@ -42,7 +42,7 @@ struct OnboardingQuestionnaireView: View {
     // Lists of Options
     private let employmentTypes = ["Salaried", "Self-Employed", "Business Owner"]
     private let relationships = ["Spouse", "Parent", "Sibling", "Friend", "Relative", "Other"]
-    private let branches = ["Main Branch", "Downtown", "Uptown", "East Side", "West Side"]
+
     
     var body: some View {
         NavigationStack {
@@ -256,9 +256,11 @@ struct OnboardingQuestionnaireView: View {
                     }
                     
                     Picker("Select Branch", selection: $preferredBranch) {
-                        let actualBranches = branchesList.isEmpty ? branches : branchesList.map(\.name)
-                        ForEach(actualBranches, id: \.self) {
-                            Text($0)
+                        if branchesList.isEmpty {
+                            Text("No branches available").tag("")
+                        }
+                        ForEach(branchesList, id: \.id) { branch in
+                            Text(branch.name).tag(branch.name)
                         }
                     }
                     
