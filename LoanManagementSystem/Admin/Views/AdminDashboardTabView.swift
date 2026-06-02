@@ -49,7 +49,6 @@ struct AdminDashboardTabView: View {
                         )
                     }
                     
-                    headerSection
                     kpiSection
                     auditPreviewSection
                 }
@@ -57,7 +56,7 @@ struct AdminDashboardTabView: View {
                 .padding(.vertical, LMSSpacing.md)
             }
             .background(LMSColors.background.ignoresSafeArea())
-            .navigationTitle("Admin Portal")
+            .navigationTitle("Dashboard")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -94,18 +93,7 @@ struct AdminDashboardTabView: View {
         }
     }
     
-    private var headerSection: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Good morning, \(authManager.userDisplayName.split(separator: " ").first ?? "Admin")")
-                    .font(LMSFont.title3)
-                Text(Date().formatted(date: .complete, time: .omitted))
-                    .font(LMSFont.subheadline)
-                    .foregroundStyle(LMSColors.textSecondary)
-            }
-            Spacer()
-        }
-    }
+
     
     private var kpiSection: some View {
         LazyVGrid(columns: columns, spacing: 10) {

@@ -402,6 +402,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
     var mobileNumber: String
     var emailAddress: String
     var address: String
+    var preferredBranch: String
 
     var occupation: String
     var employmentType: String
@@ -469,6 +470,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         case mobileNumber
         case emailAddress
         case address
+        case preferredBranch
         case occupation
         case employmentType
         case employerName
@@ -537,6 +539,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         mobileNumber: String,
         emailAddress: String,
         address: String,
+        preferredBranch: String = "",
         occupation: String,
         employmentType: String,
         employerName: String,
@@ -595,6 +598,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         self.mobileNumber = mobileNumber
         self.emailAddress = emailAddress
         self.address = address
+        self.preferredBranch = preferredBranch
         self.occupation = occupation
         self.employmentType = employmentType
         self.employerName = employerName
@@ -657,6 +661,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
             mobileNumber: try container.decodeIfPresent(String.self, forKey: .mobileNumber) ?? "",
             emailAddress: try container.decodeIfPresent(String.self, forKey: .emailAddress) ?? "",
             address: try container.decodeIfPresent(String.self, forKey: .address) ?? "",
+            preferredBranch: try container.decodeIfPresent(String.self, forKey: .preferredBranch) ?? "",
             occupation: try container.decodeIfPresent(String.self, forKey: .occupation) ?? "",
             employmentType: try container.decodeIfPresent(String.self, forKey: .employmentType) ?? "Salaried",
             employerName: try container.decodeIfPresent(String.self, forKey: .employerName) ?? "",
@@ -718,6 +723,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         mobileNumber: "",
         emailAddress: "",
         address: "",
+        preferredBranch: "",
         occupation: "",
         employmentType: "Salaried",
         employerName: "",
@@ -745,6 +751,15 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
     static func prefilled(from profile: BorrowerProfile?) -> BorrowerLoanFormData {
         .empty.mergedWithProfile(profile)
     }
+
+    static let branchOptions = [
+        "Mumbai Main Branch",
+        "Andheri Tech Park Branch",
+        "Mindspace Malad Branch",
+        "Bandra Kurla Complex Branch",
+        "Delhi Connaught Place Branch",
+        "Bengaluru Whitefield Branch"
+    ]
 
     static func formattedAddress(from address: AddressInfo) -> String {
         var components: [String] = []
@@ -878,6 +893,7 @@ enum BorrowerLoanFormField: String, CaseIterable, Hashable {
     case mobileNumber
     case emailAddress
     case address
+    case preferredBranch
     case occupation
     case employerName
     case monthlyIncome
@@ -1005,6 +1021,26 @@ struct BorrowerStageEntry: Codable, Identifiable, Hashable {
     }
 }
 
+struct AssignedLoanOfficer: Codable, Identifiable, Hashable {
+    let officerId: UUID
+    let userId: UUID
+    var fullName: String
+    var employeeCode: String
+    var branchId: UUID
+    var branchName: String
+    var designation: String
+    var lastAssignedAt: Date?
+    var activeWorkload: Int
+
+    var id: UUID { officerId }
+
+    var initials: String {
+        let parts = fullName.split(separator: " ")
+        let letters = parts.prefix(2).compactMap(\.first).map(String.init).joined()
+        return letters.isEmpty ? "LO" : letters.uppercased()
+    }
+}
+
 struct BorrowerLoanApplication: Identifiable, Hashable {
     let id: UUID
     var applicationId: String?
@@ -1019,6 +1055,7 @@ struct BorrowerLoanApplication: Identifiable, Hashable {
     var updatedAt: Date
     var assignedQueue: String?
     var assignedOfficerId: UUID?
+    var assignedOfficer: AssignedLoanOfficer?
     var outstandingBalance: Double
     var upcomingEMI: Double
 
@@ -1058,8 +1095,9 @@ struct DBLoanApplication: Codable {
             draftStepIndex: min(max(formData.draftStepIndex, 1), 10),
             submittedAt: submittedAt,
             updatedAt: updatedAt,
-            assignedQueue: status == "draft" ? nil : "Retail Loan Officer Queue",
+            assignedQueue: status == "draft" ? nil : "Loan Officer Assignment Pending",
             assignedOfficerId: officerId,
+            assignedOfficer: nil,
             outstandingBalance: max(0, amountRequested * 0.92),
             upcomingEMI: max(0, amountRequested / Double(max(1, tenureMonths)))
         )
@@ -1072,7 +1110,7 @@ struct DBLoanApplication: Codable {
         return DBLoanApplication(
             applicationId: app.id,
             borrowerId: borrowerId,
-            officerId: app.assignedOfficerId,
+            officerId: app.assignedOfficer?.officerId ?? app.assignedOfficerId,
             productId: app.product.id,
             amountRequested: app.formData.requestedAmountValue,
             tenureMonths: app.formData.preferredTenureMonths,
