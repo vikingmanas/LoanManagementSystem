@@ -49,6 +49,10 @@ final class AuthManager: ObservableObject {
     /// Indicates the auth state listener has resolved at least once.
     @Published var isAuthStateResolved: Bool = false
 
+    /// True while the user is in the password-reset OTP flow.
+    /// When true, ContentView should NOT route to the dashboard.
+    @Published var isResettingPassword: Bool = false
+
     // MARK: - Init
 
     init() {}
@@ -321,9 +325,38 @@ final class AuthManager: ObservableObject {
             return false
         }
     }
+
+    // MARK: - Verify Recovery OTP
+    /// Verifies the 6-digit password recovery code.
+    /// NOTE: Does NOT set isAuthenticated to avoid routing to dashboard.
+    /// Instead sets isResettingPassword so the UI stays on the reset flow.
+    @discardableResult
+    func verifyRecoveryOTP(email: String, token: String) async -> Bool {
+        clearError()
+        isLoading = true
+
+        do {
+            try await SupabaseManager.shared.client.auth.verifyOTP(
+                email: email,
+                token: token,
+                type: .recovery
+            )
+            
+            // Keep session alive for the password update call,
+            // but do NOT set isAuthenticated or currentUser.
+            self.isResettingPassword = true
+            self.isLoading = false
+            return true
+        } catch {
+            self.errorMessage = mapSupabaseError(error)
+            self.isLoading = false
+            return false
+        }
+    }
     
     // MARK: - Update Password
     /// Updates the password for the currently signed-in user.
+    /// After success, signs the user out so they can log in fresh with the new password.
     @discardableResult
     func updatePassword(newPassword: String) async -> Bool {
         clearError()
@@ -331,6 +364,9 @@ final class AuthManager: ObservableObject {
 
         do {
             try await AuthService.shared.updatePassword(newPassword: newPassword)
+            // Sign out after password update so user logs in fresh
+            signOut()
+            self.isResettingPassword = false
             self.isLoading = false
             return true
         } catch {
