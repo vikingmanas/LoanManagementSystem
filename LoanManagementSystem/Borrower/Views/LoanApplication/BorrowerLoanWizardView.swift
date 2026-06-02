@@ -1073,7 +1073,13 @@ struct BorrowerLoanWizardView: View {
     private func validationMessageForCurrentStep() -> String? {
         switch currentStep {
         case 3:
-            return MobileNumberValidator.validationMessage(for: viewModel.formData.mobileNumber)
+            if let mobileValidation = MobileNumberValidator.validationMessage(for: viewModel.formData.mobileNumber) {
+                return mobileValidation
+            }
+            if let addressValidation = viewModel.validationMessage(for: .address) {
+                return addressValidation
+            }
+            return viewModel.validationMessage(for: .preferredBranch)
         case 5:
             return MobileNumberValidator.validationMessage(for: bankRegisteredMobile)
         case 7:
@@ -1825,6 +1831,14 @@ private struct Step3PersonalInfoOverhaulView: View {
             
             WizardFormSection(title: "Residence Information") {
                 WizardTextField(label: "Current Address", text: $viewModel.formData.address, placeholder: "Door No, Building, Street Address")
+                FormDivider()
+                WizardPickerRow(
+                    label: "Application Branch",
+                    selection: $viewModel.formData.preferredBranch,
+                    options: [""] + BorrowerLoanFormData.branchOptions
+                ) { option in
+                    option.isEmpty ? "Select Branch" : option
+                }
                 FormDivider()
                 WizardPickerRow(label: "Residence Ownership", selection: $viewModel.formData.repaymentPreference, options: ["Owned", "Rented", "Family Owned"]) { $0 }
             }
@@ -2782,6 +2796,8 @@ private struct Step9ReviewOverhaulView: View {
                 WizardInlineValueRow(label: "Date of Birth", value: viewModel.formData.dateOfBirth.formattedAsDDMMMYYYY())
                 FormDivider()
                 WizardInlineValueRow(label: "Contact Email", value: viewModel.formData.emailAddress)
+                FormDivider()
+                WizardInlineValueRow(label: "Application Branch", value: viewModel.formData.preferredBranch.isEmpty ? "Not selected" : viewModel.formData.preferredBranch)
             }
             
             WizardFormSection(title: "Employment Credentials") {

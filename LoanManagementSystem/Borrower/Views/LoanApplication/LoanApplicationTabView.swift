@@ -899,6 +899,20 @@ struct LoanApplicationTrackingScreen: View {
                     viewModel: viewModel,
                     application: app
                 )
+
+                AssignedLoanOfficerCard(
+                    application: app,
+                    onMessage: { showOfficerChat = true },
+                    onBranchSelected: { branch in
+                        var updated = app
+                        updated.formData.preferredBranch = branch
+                        updated.updatedAt = Date()
+                        CentralLoanRepository.shared.updateApplication(updated)
+                        Task {
+                            await CentralLoanRepository.shared.assignOfficerIfNeeded(applicationId: updated.id)
+                        }
+                    }
+                )
                 
                 // Task 4: Documents Section with Resubmission Action Sheet
                 SubmittedDocumentsCard(
@@ -964,6 +978,7 @@ struct LoanApplicationTrackingScreen: View {
                     } label: {
                         Image(systemName: "message.fill")
                     }
+                    .disabled(app.assignedOfficer == nil && app.assignedOfficerId == nil)
                     .accessibilityLabel("Message loan officer")
                 }
             }
@@ -994,6 +1009,15 @@ struct LoanApplicationTrackingScreen: View {
         }
         .sheet(isPresented: $showSanctionShareSheet) {
             BorrowerActivityShareSheet(activityItems: sanctionShareItems)
+        }
+        .task(id: app.assignedOfficerId) {
+            guard !app.isDraft,
+                  app.assignedOfficer == nil,
+                  app.assignedOfficerId == nil,
+                  !app.formData.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return
+            }
+            await CentralLoanRepository.shared.assignOfficerIfNeeded(applicationId: app.id)
         }
         .alert("Export Failed", isPresented: Binding(
             get: { exportError != nil },
@@ -1178,7 +1202,13 @@ private struct BorrowerOfficerChatView: View {
                 return
             }
 
-            officerUserId = try await DatabaseService.shared.fetchAssignedLoanOfficerUserId(applicationId: application.id)
+            if let assignedUserId = application.assignedOfficer?.userId {
+                officerUserId = assignedUserId
+            } else if application.assignedOfficerId != nil {
+                officerUserId = try await DatabaseService.shared.fetchAssignedLoanOfficerUserId(applicationId: application.id)
+            } else {
+                officerUserId = nil
+            }
             guard officerUserId != nil else {
                 errorMessage = "No loan officer is available for this application yet."
                 isLoading = false
@@ -1379,6 +1409,128 @@ private struct TrackingHeaderCard: View {
         }
         .padding(LMSSpacing.lg)
         .lmsCardElevated()
+    }
+}
+
+private struct AssignedLoanOfficerCard: View {
+    let application: BorrowerLoanApplication
+    let onMessage: () -> Void
+    let onBranchSelected: (String) -> Void
+
+    private var hasBranch: Bool {
+        !application.formData.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Assigned Loan Officer")
+                    .font(LMSFont.title3)
+                    .foregroundStyle(LMSColors.textPrimary)
+
+                Spacer()
+
+                Image(systemName: application.assignedOfficer == nil ? "person.badge.clock" : "person.badge.shield.checkmark")
+                    .font(.title3)
+                    .foregroundStyle(application.assignedOfficer == nil ? LMSColors.amber : LMSColors.emerald)
+            }
+
+            if let officer = application.assignedOfficer {
+                HStack(alignment: .center, spacing: 14) {
+                    Text(officer.initials)
+                        .font(LMSFont.headline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 52, height: 52)
+                        .background(LMSColors.brandNavy, in: Circle())
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(officer.fullName)
+                            .font(LMSFont.headline.weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+
+                        Text(officer.designation.isEmpty ? "Loan Officer" : officer.designation)
+                            .font(LMSFont.subheadline)
+                            .foregroundStyle(LMSColors.textSecondary)
+
+                        Text(officer.branchName)
+                            .font(LMSFont.footnote)
+                            .foregroundStyle(LMSColors.textTertiary)
+                    }
+
+                    Spacer()
+                }
+
+                Divider().background(LMSColors.separatorLight)
+
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Employee ID")
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.textTertiary)
+                        Text(officer.employeeCode)
+                            .font(LMSFont.callout.weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                    }
+
+                    Spacer()
+
+                    Button(action: onMessage) {
+                        Label("Message Officer", systemImage: "message.fill")
+                            .font(LMSFont.footnote.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(LMSColors.brandNavy, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 12) {
+                        ProgressView()
+                            .controlSize(.small)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(hasBranch ? "Assignment in progress" : "Select application branch")
+                                .font(LMSFont.callout.weight(.semibold))
+                                .foregroundStyle(LMSColors.textPrimary)
+                            Text(hasBranch ? "We are selecting the least-loaded active officer from your branch." : "Choose the branch that should handle this application.")
+                                .font(LMSFont.footnote)
+                                .foregroundStyle(LMSColors.textSecondary)
+                        }
+                    }
+
+                    if hasBranch {
+                        Label(application.formData.preferredBranch, systemImage: "building.columns.fill")
+                            .font(LMSFont.footnote.weight(.semibold))
+                            .foregroundStyle(LMSColors.brandNavy)
+                    } else {
+                        Menu {
+                            ForEach(BorrowerLoanFormData.branchOptions, id: \.self) { branch in
+                                Button(branch) {
+                                    onBranchSelected(branch)
+                                }
+                            }
+                        } label: {
+                            HStack {
+                                Label("Choose Branch", systemImage: "building.columns.fill")
+                                Spacer()
+                                Image(systemName: "chevron.down")
+                                    .font(LMSFont.caption.weight(.bold))
+                            }
+                            .font(LMSFont.callout.weight(.semibold))
+                            .foregroundStyle(LMSColors.brandNavy)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .background(LMSColors.brandNavy.opacity(0.08), in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        .padding(LMSSpacing.lg)
+        .lmsCard()
     }
 }
 

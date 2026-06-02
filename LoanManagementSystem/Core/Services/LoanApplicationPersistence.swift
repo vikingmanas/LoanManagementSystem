@@ -18,6 +18,8 @@ struct StoredLoanApplication: Codable {
     var submittedAt: Date?
     var updatedAt: Date
     var assignedQueue: String?
+    var assignedOfficerId: UUID?
+    var assignedOfficer: AssignedLoanOfficer?
     var outstandingBalance: Double
     var upcomingEMI: Double
 }
@@ -29,6 +31,7 @@ struct StoredLoanFormData: Codable {
     var mobileNumber: String
     var emailAddress: String
     var address: String
+    var preferredBranch: String?
     var occupation: String
     var employmentType: String
     var employerName: String
@@ -163,6 +166,7 @@ enum LoanApplicationPersistence {
                 mobileNumber: app.formData.mobileNumber,
                 emailAddress: app.formData.emailAddress,
                 address: app.formData.address,
+                preferredBranch: app.formData.preferredBranch,
                 occupation: app.formData.occupation,
                 employmentType: app.formData.employmentType,
                 employerName: app.formData.employerName,
@@ -224,6 +228,8 @@ enum LoanApplicationPersistence {
             submittedAt: app.submittedAt,
             updatedAt: app.updatedAt,
             assignedQueue: app.assignedQueue,
+            assignedOfficerId: app.assignedOfficerId,
+            assignedOfficer: app.assignedOfficer,
             outstandingBalance: app.outstandingBalance,
             upcomingEMI: app.upcomingEMI
         )
@@ -244,6 +250,7 @@ enum LoanApplicationPersistence {
             mobileNumber: stored.formData.mobileNumber,
             emailAddress: stored.formData.emailAddress,
             address: stored.formData.address,
+            preferredBranch: stored.formData.preferredBranch ?? "",
             occupation: stored.formData.occupation,
             employmentType: stored.formData.employmentType,
             employerName: stored.formData.employerName,
@@ -314,6 +321,8 @@ enum LoanApplicationPersistence {
             submittedAt: stored.submittedAt,
             updatedAt: stored.updatedAt,
             assignedQueue: stored.assignedQueue,
+            assignedOfficerId: stored.assignedOfficerId ?? stored.assignedOfficer?.officerId,
+            assignedOfficer: stored.assignedOfficer,
             outstandingBalance: stored.outstandingBalance,
             upcomingEMI: stored.upcomingEMI
         )

@@ -205,6 +205,7 @@ final class LoanApplicationViewModel: ObservableObject {
             formData.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).count == 10,
             formData.emailAddress.contains("@") && formData.emailAddress.contains("."),
             !formData.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            !formData.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
             !formData.occupation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
             !formData.employerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
             formData.monthlyIncomeValue > 0,
@@ -350,6 +351,8 @@ final class LoanApplicationViewModel: ObservableObject {
             submittedAt: nil,
             updatedAt: now,
             assignedQueue: nil,
+            assignedOfficerId: nil,
+            assignedOfficer: nil,
             outstandingBalance: 0,
             upcomingEMI: 0
         )
@@ -484,6 +487,8 @@ final class LoanApplicationViewModel: ObservableObject {
             return (email.contains("@") && email.contains(".")) ? nil : "Enter a valid email address."
         case .address:
             return formData.address.trimmingCharacters(in: .whitespacesAndNewlines).count >= 8 ? nil : "Please enter a complete current address."
+        case .preferredBranch:
+            return formData.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Please select the branch for this loan application." : nil
         case .occupation:
             return formData.occupation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Occupation is required." : nil
         case .employerName:
@@ -828,7 +833,9 @@ final class LoanApplicationViewModel: ObservableObject {
             draft.currentStage = .submitted
             draft.submittedAt = now
             draft.updatedAt = now
-            draft.assignedQueue = "Retail Loan Officer Queue"
+            draft.assignedQueue = "Loan Officer Assignment Pending"
+            draft.assignedOfficerId = nil
+            draft.assignedOfficer = nil
             draft.outstandingBalance = max(0, draft.formData.requestedAmountValue * 0.92)
             draft.upcomingEMI = max(
                 0,
@@ -845,7 +852,7 @@ final class LoanApplicationViewModel: ObservableObject {
                 BorrowerStageEntry(
                     stage: .submitted,
                     timestamp: now,
-                    note: "Application submitted and assigned to Loan Officer queue."
+                    note: "Application submitted. Assigning a loan officer from your branch."
                 )
             )
             

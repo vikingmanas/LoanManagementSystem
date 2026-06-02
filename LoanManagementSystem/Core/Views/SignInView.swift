@@ -15,13 +15,10 @@ struct SignInView: View {
                     VStack(alignment: .leading, spacing: LMSSpacing.xxl) {
                         // Header
                         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
-                            Text("Welcome Back")
+                            Text("Welcome")
                                 .font(LMSFont.largeTitle)
                                 .foregroundStyle(LMSColors.textPrimary)
                             
-                            Text("Sign in securely to manage your loans.")
-                                .font(LMSFont.subheadline)
-                                .foregroundStyle(LMSColors.textSecondary)
                         }
                         .padding(.top, LMSSpacing.sm)
 

@@ -18,6 +18,7 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     typealias DocumentType = OfficerDocumentType
     @Published var applications: [LoanApplication] = []
     @Published var activityFeed: [ActivityFeedItem] = []
+    @Published var applicationMessages: [UUID: [DBMessage]] = [:]
     @Published var officerProfile: StaffMember? = nil
     @Published var isLoading: Bool = true
     @Published var hasError: Bool = false
@@ -223,6 +224,7 @@ class LoanOfficerDashboardViewModel: ObservableObject {
             // Fetch all submitted applications from Supabase for the officer view
             await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
             refreshFromRepository()
+            await loadAssignedApplicationMessages()
             
             // Simulate brief loading delay for UI
             try await Task.sleep(nanoseconds: 400_000_000)
@@ -239,9 +241,25 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
 
     private func refreshFromRepository() {
-        applications = CentralLoanRepository.shared.applications.compactMap {
-            CentralLoanRepository.shared.toOfficerApplication(from: $0)
+        applications = CentralLoanRepository.shared.applications.compactMap { borrowerApplication in
+            guard borrowerApplication.currentStage != .draft else { return nil }
+            if let officerUserId = officerProfile?.id {
+                guard borrowerApplication.assignedOfficer?.userId == officerUserId else { return nil }
+            }
+            return CentralLoanRepository.shared.toOfficerApplication(from: borrowerApplication)
         }
+    }
+
+    func loadAssignedApplicationMessages() async {
+        var nextMessages: [UUID: [DBMessage]] = [:]
+        for app in applications {
+            do {
+                nextMessages[app.id] = try await DatabaseService.shared.fetchMessagesForApplication(applicationId: app.id)
+            } catch {
+                nextMessages[app.id] = []
+            }
+        }
+        applicationMessages = nextMessages
     }
     
     func updateUnreadCount() {
