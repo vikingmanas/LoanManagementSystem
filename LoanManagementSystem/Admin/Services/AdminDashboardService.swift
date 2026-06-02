@@ -192,8 +192,7 @@ final class AdminDashboardService {
             return $0.status == "active"
         }.count
         
-        // System Health
-        let serverUptime = 99.98 + (sin(now.timeIntervalSince1970 / 10000.0) * 0.01) // Simulate dynamic uptime
+        let serverUptime = dbApps.isEmpty && dbUsers.isEmpty && dbLogs.isEmpty ? 0.0 : 100.0
         let lastBackupTime = dbLogs.first?.ts ?? Calendar.current.date(byAdding: .hour, value: -2, to: now) ?? now
         
         return DashboardData(

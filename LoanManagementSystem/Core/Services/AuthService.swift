@@ -60,6 +60,19 @@ final class AuthService {
         let session = try await client.auth.signIn(email: cleanEmail, password: password)
         return session
     }
+
+    /// Sends a Supabase-managed email OTP/magic-link token for an existing borrower account.
+    func sendEmailOTP(email: String) async throws {
+        let cleanEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        try await client.auth.signInWithOTP(email: cleanEmail, shouldCreateUser: false)
+    }
+
+    /// Verifies a Supabase-managed email OTP and returns the authenticated session response.
+    func verifyEmailOTP(email: String, token: String) async throws -> AuthResponse {
+        let cleanEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let cleanToken = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        return try await client.auth.verifyOTP(email: cleanEmail, token: cleanToken, type: .email)
+    }
     
     /// Checks whether an email is already registered in the 'users' table.
     func isEmailRegistered(_ email: String) async -> Bool {

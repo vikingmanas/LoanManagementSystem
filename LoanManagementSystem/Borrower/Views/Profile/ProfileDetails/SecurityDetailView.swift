@@ -3,6 +3,7 @@ import SwiftUI
 struct SecurityDetailView: View {
     @AppStorage("biometricEnabled") private var biometricEnabled = true
     @AppStorage("doubleAuthEnabled") private var doubleAuthEnabled = false
+    @EnvironmentObject private var authManager: AuthManager
     @StateObject private var localSecurity = LocalSecurityService.shared
     @State private var showOTPSheet = false
     @State private var securityMessage: String?
@@ -42,7 +43,7 @@ struct SecurityDetailView: View {
             
             Section {
                 Toggle(isOn: $doubleAuthEnabled) {
-                    Label("Two-Factor Auth (2FA)", systemImage: "shield")
+                    Label("Email OTP Verification", systemImage: "envelope.badge.shield.half.filled")
                 }
                 .onChange(of: doubleAuthEnabled) { _, enabled in
                     if enabled {
@@ -53,12 +54,39 @@ struct SecurityDetailView: View {
                 Button {
                     showOTPSheet = true
                 } label: {
-                    Label(doubleAuthEnabled ? "Regenerate OTP" : "Set Up OTP", systemImage: "number")
+                    Label(doubleAuthEnabled ? "Re-verify Email OTP" : "Set Up Email OTP", systemImage: "number")
+                }
+                .disabled(authManager.currentUser?.email == nil)
+            } header: {
+                Text("Email Security")
+            } footer: {
+                Text(authManager.currentUser?.email == nil ? "Sign in with an email account to enable OTP verification." : "A one-time code is sent by Supabase Auth and must be verified before this device marks OTP protection as enabled.")
+            }
+
+            Section {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "person.badge.key")
+                        .font(.title2)
+                        .foregroundStyle(LMSColors.brandNavy)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Passkeys")
+                            .font(LMSFont.body.weight(.semibold))
+                        Text("Requires Apple Associated Domains and a production WebAuthn/passkey provider for the app bundle before it can be enabled safely.")
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+
+                    Spacer()
+
+                    Text("Setup Needed")
+                        .font(LMSFont.caption.weight(.semibold))
+                        .foregroundStyle(LMSColors.amber)
                 }
             } header: {
-                Text("Two-Factor Authentication")
+                Text("Passwordless Login")
             } footer: {
-                Text("Local OTP adds a second verification step without requiring any back-end service.")
+                Text("This build has no associated-domains entitlement, so passkeys are shown as a readiness item instead of a non-working toggle.")
             }
             
             Section {
@@ -82,7 +110,8 @@ struct SecurityDetailView: View {
         .navigationTitle("Security")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showOTPSheet) {
-            LocalOTPSetupSheet(isEnabled: $doubleAuthEnabled)
+            EmailOTPSetupSheet(isEnabled: $doubleAuthEnabled)
+                .environmentObject(authManager)
         }
         .alert("Security Check", isPresented: Binding(
             get: { securityMessage != nil },
@@ -95,27 +124,34 @@ struct SecurityDetailView: View {
     }
 }
 
-private struct LocalOTPSetupSheet: View {
+private struct EmailOTPSetupSheet: View {
     @Binding var isEnabled: Bool
+    @EnvironmentObject private var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var localSecurity = LocalSecurityService.shared
     @State private var enteredCode = ""
     @State private var errorMessage = ""
+    @State private var infoMessage = ""
+    @State private var hasSentCode = false
+    @State private var isWorking = false
+
+    private var email: String {
+        authManager.currentUser?.email ?? ""
+    }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
                     VStack(spacing: 14) {
-                        Image(systemName: "lock.rotation")
+                        Image(systemName: "envelope.badge.shield.half.filled")
                             .font(.system(size: 48))
                             .foregroundStyle(LMSColors.brandNavy)
 
-                        Text(localSecurity.lastOTPCode.isEmpty ? "Generate a one-time code" : localSecurity.lastOTPCode)
-                            .font(.system(.largeTitle, design: .rounded).weight(.bold).monospacedDigit())
+                        Text("Verify your email")
+                            .font(.title2.weight(.bold))
                             .foregroundStyle(LMSColors.textPrimary)
 
-                        Text("For this offline build, the code is shown locally so testers can complete the flow without SMS or network services.")
+                        Text(email.isEmpty ? "No email is attached to the current session." : "We will send a one-time code to \(email).")
                             .font(LMSFont.footnote)
                             .foregroundStyle(LMSColors.textSecondary)
                             .multilineTextAlignment(.center)
@@ -124,12 +160,11 @@ private struct LocalOTPSetupSheet: View {
                     .padding(.vertical, 16)
 
                     Button {
-                        enteredCode = ""
-                        errorMessage = ""
-                        localSecurity.issueOTP()
+                        Task { await sendCode() }
                     } label: {
-                        Label("Generate OTP", systemImage: "sparkles")
+                        Label(hasSentCode ? "Resend OTP" : "Send OTP", systemImage: "paperplane")
                     }
+                    .disabled(email.isEmpty || isWorking)
                 }
 
                 Section {
@@ -138,6 +173,12 @@ private struct LocalOTPSetupSheet: View {
                         .textContentType(.oneTimeCode)
                         .font(.system(.body, design: .rounded).monospacedDigit())
 
+                    if !infoMessage.isEmpty {
+                        Text(infoMessage)
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.emerald)
+                    }
+
                     if !errorMessage.isEmpty {
                         Text(errorMessage)
                             .font(LMSFont.caption)
@@ -145,40 +186,69 @@ private struct LocalOTPSetupSheet: View {
                     }
 
                     Button {
-                        if localSecurity.verifyOTP(enteredCode) {
-                            isEnabled = true
-                            localSecurity.clearOTP()
-                            dismiss()
-                        } else {
-                            errorMessage = "Invalid or expired OTP. Generate a new code and try again."
-                        }
+                        Task { await verifyCode() }
                     } label: {
-                        Text("Verify and Enable")
+                        Text(isWorking ? "Verifying..." : "Verify and Enable")
                             .fontWeight(.bold)
                             .frame(maxWidth: .infinity)
                     }
-                    .disabled(enteredCode.trimmingCharacters(in: .whitespacesAndNewlines).count < 6)
+                    .disabled(!hasSentCode || enteredCode.trimmingCharacters(in: .whitespacesAndNewlines).count < 6 || isWorking)
                 } header: {
                     Text("Verification")
                 }
             }
-            .navigationTitle("Local OTP")
+            .navigationTitle("Email OTP")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         if !isEnabled {
-                            localSecurity.clearOTP()
+                            enteredCode = ""
                         }
                         dismiss()
                     }
                 }
             }
             .onAppear {
-                if localSecurity.lastOTPCode.isEmpty {
-                    localSecurity.issueOTP()
+                if !email.isEmpty && !hasSentCode {
+                    Task { await sendCode() }
                 }
             }
+        }
+    }
+
+    @MainActor
+    private func sendCode() async {
+        isWorking = true
+        errorMessage = ""
+        infoMessage = ""
+        enteredCode = ""
+
+        let sent = await authManager.sendEmailOTP(email: email)
+        isWorking = false
+
+        if sent {
+            hasSentCode = true
+            infoMessage = "OTP sent. Check your email inbox."
+        } else {
+            errorMessage = authManager.errorMessage ?? "Unable to send OTP. Try again."
+        }
+    }
+
+    @MainActor
+    private func verifyCode() async {
+        isWorking = true
+        errorMessage = ""
+        infoMessage = ""
+
+        let result = await authManager.verifyEmailOTP(email: email, token: enteredCode)
+        isWorking = false
+
+        if result.success {
+            isEnabled = true
+            dismiss()
+        } else {
+            errorMessage = authManager.errorMessage ?? "Invalid or expired OTP. Request a new code and try again."
         }
     }
 }

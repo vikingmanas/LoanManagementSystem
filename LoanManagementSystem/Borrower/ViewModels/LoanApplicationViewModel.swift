@@ -582,7 +582,15 @@ final class LoanApplicationViewModel: ObservableObject {
         }
     }
     
-    func uploadDocument(_ documentID: UUID, fileName: String, source: BorrowerDocumentUploadSource, image: UIImage? = nil) {
+    func uploadDocument(
+        _ documentID: UUID,
+        fileName: String,
+        source: BorrowerDocumentUploadSource,
+        image: UIImage? = nil,
+        fileData: Data? = nil,
+        contentType: String? = nil,
+        fileExtension: String? = nil
+    ) {
         guard let index = documents.firstIndex(where: { $0.id == documentID }) else { return }
         guard !documents[index].isLocked else { return }
         
@@ -593,13 +601,38 @@ final class LoanApplicationViewModel: ObservableObject {
         documents[index].fileName = fileName
         
         if let currentDraftID = currentDraftID {
-            let data = image?.jpegData(compressionQuality: 0.8) ?? Data("dummy file content for \(fileName)".utf8)
+            let resolvedData: Data?
+            let resolvedContentType: String
+            let resolvedExtension: String
+
+            if let fileData {
+                resolvedData = fileData
+                resolvedContentType = contentType ?? contentTypeForFile(named: fileName, fallback: "application/octet-stream")
+                resolvedExtension = fileExtension ?? fileExtensionForFile(named: fileName, fallback: "bin")
+            } else if let imageData = image?.jpegData(compressionQuality: 0.85) {
+                resolvedData = imageData
+                resolvedContentType = contentType ?? "image/jpeg"
+                resolvedExtension = fileExtension ?? "jpg"
+            } else {
+                documents[index].status = .pendingUpload
+                documents[index].fileName = nil
+                documents[index].uploadDate = nil
+                autosaveDraft()
+                return
+            }
+
+            guard let data = resolvedData else { return }
             let bucket = "documents"
-            let path = "\(currentDraftID)/\(documentID).jpg"
+            let path = "\(currentDraftID)/\(documentID).\(resolvedExtension)"
             
             Task {
                 do {
-                    let publicUrl = try await StorageService.shared.uploadDocument(data: data, bucket: bucket, path: path)
+                    let publicUrl = try await StorageService.shared.uploadDocument(
+                        data: data,
+                        bucket: bucket,
+                        path: path,
+                        contentType: resolvedContentType
+                    )
                     
                     await MainActor.run {
                         if let idx = self.documents.firstIndex(where: { $0.id == documentID }) {
@@ -637,6 +670,25 @@ final class LoanApplicationViewModel: ObservableObject {
         let defaultName = "document-\(Int(Date().timeIntervalSince1970)).pdf"
         uploadDocument(documentID, fileName: defaultName, source: .pdf)
     }
+
+    private func contentTypeForFile(named fileName: String, fallback: String) -> String {
+        switch fileName.split(separator: ".").last?.lowercased() {
+        case "pdf": return "application/pdf"
+        case "png": return "image/png"
+        case "jpg", "jpeg": return "image/jpeg"
+        case "heic": return "image/heic"
+        default: return fallback
+        }
+    }
+
+    private func fileExtensionForFile(named fileName: String, fallback: String) -> String {
+        guard let ext = fileName.split(separator: ".").last?.lowercased(),
+              ext.allSatisfy({ $0.isLetter || $0.isNumber }),
+              ext.count <= 8 else {
+            return fallback
+        }
+        return String(ext)
+    }
     
     private func resolveDocType(category: BorrowerDocumentCategory, name: String) -> String {
         switch category {
@@ -668,11 +720,11 @@ final class LoanApplicationViewModel: ObservableObject {
         // Sync to Supabase Storage & Database
         Task {
             do {
-                let dummyData = Data("dummy file content for \(fileName)".utf8)
+                guard let dummyData = Data("Re-upload payload unavailable for \(fileName)".utf8) as Data? else { return }
                 let bucket = "documents"
                 let path = "\(applicationID)/\(documentID).pdf"
                 
-                let publicUrl = try await StorageService.shared.uploadDocument(data: dummyData, bucket: bucket, path: path)
+                let publicUrl = try await StorageService.shared.uploadDocument(data: dummyData, bucket: bucket, path: path, contentType: "application/pdf")
                 
                 await MainActor.run {
                     if let aIdx = self.applications.firstIndex(where: { $0.id == applicationID }),

@@ -176,11 +176,7 @@ private struct ManagerReportSheet: View {
                 }
 
                 Section {
-                    Button(action: {
-                        HapticsManager.triggerImpact(style: .medium)
-                        shareItems = ["Monthly_Branch_Report_\(viewModel.branchOverview.name).pdf\n\n(Simulated PDF Content: Active Loans: \(viewModel.branchOverview.activeLoanCount), Total Disbursed: \(CurrencyFormatter.shared.format(viewModel.branchOverview.totalDisbursed)))"]
-                        showShareSheet = true
-                    }) {
+                    Button(action: exportPDF) {
                         Text("Export as PDF")
                             .font(.system(.body, design: .rounded).weight(.bold))
                             .foregroundStyle(LMSColors.actionBlue)
@@ -235,6 +231,24 @@ private struct ManagerReportSheet: View {
         do {
             let url = try CSVExportService.managerReportURL(
                 branchName: viewModel.branchOverview.name,
+                applicants: viewModel.applicants,
+                officers: viewModel.officers
+            )
+            HapticsManager.triggerImpact(style: .medium)
+            shareItems = [url]
+            showShareSheet = true
+        } catch {
+            exportError = error.localizedDescription
+        }
+    }
+
+    private func exportPDF() {
+        do {
+            let url = try CSVExportService.managerReportPDFURL(
+                branchName: viewModel.branchOverview.name,
+                branchRegion: viewModel.branchOverview.region,
+                activeLoanCount: viewModel.branchOverview.activeLoanCount,
+                totalDisbursed: viewModel.branchOverview.totalDisbursed,
                 applicants: viewModel.applicants,
                 officers: viewModel.officers
             )

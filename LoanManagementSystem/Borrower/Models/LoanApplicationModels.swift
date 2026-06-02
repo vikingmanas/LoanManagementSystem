@@ -361,7 +361,7 @@ enum BorrowerDocumentUploadSource: String, Identifiable, Hashable {
     var id: String { rawValue }
 
     static var mobileSources: [BorrowerDocumentUploadSource] {
-        [.camera, .gallery]
+        [.camera, .gallery, .pdf]
     }
 
     var iconName: String {
@@ -377,7 +377,7 @@ enum BorrowerDocumentUploadSource: String, Identifiable, Hashable {
         switch self {
         case .camera: return "Choose document using camera"
         case .gallery: return "Upload JPG, PNG, or HEIC from Photos"
-        case .pdf: return "PDF uploads are unavailable on mobile"
+        case .pdf: return "Upload a PDF document from Files"
         case .dragAndDrop: return "Drag and drop is unavailable on mobile"
         }
     }

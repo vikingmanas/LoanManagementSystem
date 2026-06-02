@@ -520,6 +520,53 @@ final class DatabaseService {
             .value
     }
 
+    func fetchAssignedLoanOfficerUserId(applicationId: UUID) async throws -> UUID? {
+        struct ApplicationOfficerRow: Codable {
+            let officerId: UUID?
+        }
+
+        struct LoanOfficerUserRow: Codable {
+            let userId: UUID
+        }
+
+        struct UserRoleRow: Codable {
+            let id: UUID
+        }
+
+        let applications: [ApplicationOfficerRow] = try await client
+            .from("loan_applications")
+            .select("officer_id")
+            .eq("application_id", value: applicationId.uuidString)
+            .limit(1)
+            .execute()
+            .value
+
+        if let officerId = applications.first?.officerId {
+            let officers: [LoanOfficerUserRow] = try await client
+                .from("loan_officers")
+                .select("user_id")
+                .eq("officer_id", value: officerId.uuidString)
+                .limit(1)
+                .execute()
+                .value
+
+            if let userId = officers.first?.userId {
+                return userId
+            }
+        }
+
+        let fallbackOfficers: [UserRoleRow] = try await client
+            .from("users")
+            .select("id")
+            .eq("role", value: "loan_officer")
+            .eq("status", value: "active")
+            .limit(1)
+            .execute()
+            .value
+
+        return fallbackOfficers.first?.id
+    }
+
     func fetchMessages(for userId: UUID) async throws -> [DBMessage] {
         return try await client
             .from("messages")

@@ -14,7 +14,7 @@ final class StorageService {
     private init() {}
 
 
-    func uploadDocument(data: Data, bucket: String, path: String) async throws -> URL {
+    func uploadDocument(data: Data, bucket: String, path: String, contentType: String = "image/jpeg") async throws -> URL {
         try await SupabaseManager.shared.client
             .storage
             .from(bucket)
@@ -23,7 +23,7 @@ final class StorageService {
                 data: data,
                 options: FileOptions(
                     cacheControl: "3600",
-                    contentType: "image/jpeg",
+                    contentType: contentType,
                     upsert: true
                 )
             )
@@ -42,4 +42,3 @@ final class StorageService {
             .remove(paths: [path])
     }
 }
-

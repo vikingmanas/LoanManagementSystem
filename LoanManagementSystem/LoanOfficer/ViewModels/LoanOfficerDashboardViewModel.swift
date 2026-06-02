@@ -75,14 +75,17 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
     
     var closedThisMonthValue: Double {
-        // Mock closed value: disbursed or approved within last 30 days
-        applications
-            .filter { ($0.status == .disbursed || $0.status == .approved) }
-            .reduce(0) { $0 + $1.requestedAmount * 0.4 } // Simulating monthly fraction
+        let monthStart = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
+        return applications
+            .filter { ($0.status == .disbursed || $0.status == .approved) && $0.submittedDate >= monthStart }
+            .reduce(0) { $0 + $1.requestedAmount }
     }
     
     var closedThisMonthCount: Int {
-        applications.filter { $0.status == .disbursed || $0.status == .approved }.count
+        let monthStart = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
+        return applications.filter {
+            ($0.status == .disbursed || $0.status == .approved) && $0.submittedDate >= monthStart
+        }.count
     }
     
     var sentToManagerApps: [LoanApplication] {
