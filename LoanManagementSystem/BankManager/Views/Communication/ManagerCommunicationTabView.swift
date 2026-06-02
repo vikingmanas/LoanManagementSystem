@@ -3,7 +3,6 @@ import SwiftUI
 
 struct ManagerCommunicationTabView: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
-
     @State private var activeConversation: ManagerChatConversation? = nil
     @State private var showBroadcastSheet = false
 
@@ -11,6 +10,7 @@ struct ManagerCommunicationTabView: View {
         let filtered = viewModel.filteredConversations
 
         List {
+            // Segmented Picker Header
             Section {
                 Picker("Filter", selection: $viewModel.selectedChatFilter) {
                     ForEach(ManagerDashboardViewModel.ChatFilterMode.allCases, id: \.self) { mode in
@@ -18,60 +18,51 @@ struct ManagerCommunicationTabView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .padding(.horizontal, LMSSpacing.screenHorizontal)
-                .padding(.vertical, LMSSpacing.sm)
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(LMSColors.background)
-                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
+                .listRowBackground(Color.clear)
             }
 
             if filtered.isEmpty {
-                ContentUnavailableView(
-                    "No Conversations",
-                    systemImage: "bubble.left.and.bubble.right",
-                    description: Text("Loan officer conversations and branch announcements will appear here.")
-                )
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-                .padding(.top, LMSSpacing.xxxl)
-            } else {
-                ForEach(filtered) { conversation in
-                    Button(action: {
-                        HapticsManager.triggerImpact(style: .medium)
-                        viewModel.markConversationRead(conversation.id)
-                        activeConversation = conversation
-                    }) {
-                        ConversationRow(conversation: conversation)
-                    }
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(
-                        conversation.unreadCount > 0
-                            ? LMSColors.actionBlue.opacity(0.03)
-                            : LMSColors.surface
+                Section {
+                    ContentUnavailableView(
+                        "No Conversations",
+                        systemImage: "bubble.left.and.bubble.right",
+                        description: Text("Officer conversations and announcements will appear here.")
                     )
                 }
+                .listRowBackground(Color.clear)
+            } else {
+                Section {
+                    ForEach(filtered) { conversation in
+                        NavigationLink {
+                            ManagerChatDetailView(conversation: conversation, viewModel: viewModel)
+                        } label: {
+                            ConversationRow(conversation: conversation)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button {
+                                viewModel.markConversationRead(conversation.id)
+                            } label: {
+                                Label("Read", systemImage: "envelope.open.fill")
+                            }
+                            .tint(.blue)
+                        }
+                    }
+                }
             }
         }
-        .listStyle(.plain)
-        .background(LMSColors.background)
-        .searchable(text: $viewModel.chatSearchQuery, prompt: "Search officers…")
+        .listStyle(.insetGrouped)
+        .searchable(text: $viewModel.chatSearchQuery, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search officers…")
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button(action: {
-                    HapticsManager.triggerImpact(style: .medium)
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    HapticsManager.triggerImpact(style: .light)
                     showBroadcastSheet = true
-                }) {
-                    Label("Broadcast", systemImage: "megaphone")
+                } label: {
+                    Label("Broadcast", systemImage: "megaphone.fill")
                 }
                 .disabled(viewModel.officers.isEmpty)
-                .accessibilityLabel("Broadcast announcement")
             }
-        }
-        .sheet(item: $activeConversation) { conversation in
-            ManagerChatDetailView(
-                conversation: conversation,
-                viewModel: viewModel
-            )
         }
         .sheet(isPresented: $showBroadcastSheet) {
             BroadcastAnnouncementSheet(viewModel: viewModel)
@@ -79,87 +70,69 @@ struct ManagerCommunicationTabView: View {
     }
 }
 
-
 private struct ConversationRow: View {
     let conversation: ManagerChatConversation
 
     var body: some View {
-        HStack(spacing: LMSSpacing.md) {
-
+        HStack(spacing: 12) {
+            // Avatar with Status
             ZStack(alignment: .bottomTrailing) {
                 Circle()
-                    .fill(LMSColors.brandNavy.opacity(0.10))
+                    .fill(LMSColors.brandNavy.gradient)
                     .frame(width: 48, height: 48)
                     .overlay(
                         Text(conversation.officerInitials)
                             .font(.system(.body, design: .rounded).bold())
-                            .foregroundStyle(LMSColors.brandNavy)
+                            .foregroundStyle(.white)
                     )
 
-                if conversation.priority != .normal {
+                if conversation.priority == .high {
                     Circle()
-                        .fill(conversation.priority.color)
+                        .fill(.red)
                         .frame(width: 12, height: 12)
-                        .overlay(Circle().stroke(Color(UIColor.systemBackground), lineWidth: 2))
+                        .overlay(Circle().stroke(Color(.systemBackground), lineWidth: 2))
                         .offset(x: 2, y: 2)
                 }
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
+                    Text(conversation.officerName)
+                        .font(.headline)
+                    
                     if conversation.isPinned {
                         Image(systemName: "pin.fill")
-                            .font(.system(size: 9))
-                            .foregroundStyle(LMSColors.amber)
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
                     }
-                    Text(conversation.officerName)
-                        .font(.system(.callout, design: .rounded).bold())
-                        .foregroundStyle(LMSColors.textPrimary)
-
+                    
                     Spacer()
-
-                    Text(conversation.timestamp, style: .relative)
-                        .font(.system(.caption2, design: .rounded))
-                        .foregroundStyle(LMSColors.textTertiary)
+                    
+                    Text(conversation.timestamp, style: .time)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
-                HStack {
-                    Text(conversation.officerRole)
-                        .font(.system(.caption2, design: .rounded).bold())
-                        .foregroundStyle(LMSColors.textTertiary)
-                    Spacer()
-                }
+                Text(conversation.lastMessage)
+                    .font(.subheadline)
+                    .foregroundStyle(conversation.unreadCount > 0 ? Color(.label) : .secondary)
+                    .lineLimit(2)
+            }
 
-                HStack {
-                    Text(conversation.lastMessage)
-                        .font(.system(.caption, design: .rounded))
-                        .foregroundStyle(conversation.unreadCount > 0 ? LMSColors.textPrimary : LMSColors.textSecondary)
-                        .lineLimit(1)
-
-                    Spacer()
-
-                    if conversation.unreadCount > 0 {
-                        Text("\(conversation.unreadCount)")
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .frame(width: 20, height: 20)
-                            .background(LMSColors.actionBlue)
-                            .clipShape(Circle())
-                    }
-                }
+            if conversation.unreadCount > 0 {
+                Circle()
+                    .fill(.blue)
+                    .frame(width: 8, height: 8)
             }
         }
-        .padding(.vertical, LMSSpacing.md)
-        .padding(.horizontal, LMSSpacing.lg)
+        .padding(.vertical, 4)
     }
 }
-
 
 private struct ManagerChatDetailView: View {
     let conversation: ManagerChatConversation
     @ObservedObject var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
-
     @State private var chatText = ""
 
     private var currentMessages: [ManagerChatMessage] {
@@ -167,248 +140,145 @@ private struct ManagerChatDetailView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 16) {
+                        ForEach(currentMessages) { msg in
+                            ChatBubble(message: msg)
+                                .id(msg.id)
+                        }
+                    }
+                    .padding()
+                }
+                .onChange(of: currentMessages.count) { _, _ in
+                    if let lastId = currentMessages.last?.id {
+                        withAnimation(.spring()) { proxy.scrollTo(lastId, anchor: .bottom) }
+                    }
+                }
+            }
+
+            // Native Input Bar
             VStack(spacing: 0) {
-
-                HStack(spacing: LMSSpacing.md) {
-                    ZStack(alignment: .bottomTrailing) {
-                        Circle()
-                            .fill(LMSColors.brandNavy.opacity(0.12))
-                            .frame(width: 44, height: 44)
-                            .overlay(
-                                Text(conversation.officerInitials)
-                                    .font(.system(.subheadline, design: .rounded).bold())
-                                    .foregroundStyle(LMSColors.brandNavy)
-                            )
-                        Circle()
-                            .fill(LMSColors.emerald)
-                            .frame(width: 10, height: 10)
-                            .overlay(Circle().stroke(Color(UIColor.systemBackground), lineWidth: 1.5))
-                            .offset(x: 1, y: 1)
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(conversation.officerName)
-                            .font(.system(.subheadline, design: .rounded).bold())
-                            .foregroundStyle(LMSColors.textPrimary)
-                        Text("\(conversation.officerRole) · Online")
-                            .font(.system(.caption2, design: .rounded))
-                            .foregroundStyle(LMSColors.emerald)
-                    }
-                    Spacer()
-                }
-                .padding(LMSSpacing.lg)
-                .background(LMSColors.surface)
-
                 Divider()
+                HStack(spacing: 12) {
+                    TextField("Message", text: $chatText, axis: .vertical)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color(.secondarySystemFill), in: RoundedRectangle(cornerRadius: 20))
+                        .lineLimit(1...5)
 
-
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(spacing: LMSSpacing.md) {
-                            ForEach(currentMessages) { msg in
-                                ManagerChatBubble(message: msg)
-                                    .id(msg.id)
-                            }
-                        }
-                        .padding(LMSSpacing.lg)
-                    }
-                    .onChange(of: currentMessages.count) { _, _ in
-                        if let lastId = currentMessages.last?.id {
-                            withAnimation(.spring(response: 0.3)) {
-                                proxy.scrollTo(lastId, anchor: .bottom)
-                            }
-                        }
-                    }
-                }
-
-                Divider()
-
-
-                HStack(spacing: 10) {
-                    TextField("Type a message…", text: $chatText, axis: .vertical)
-                        .font(.system(.subheadline, design: .rounded))
-                        .lineLimit(1...4)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(LMSColors.textPrimary.opacity(0.06))
-                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-
-                    Button(action: {
+                    Button {
                         viewModel.sendMessage(chatText, toConversation: conversation.id)
                         chatText = ""
-                    }) {
-                        Image(systemName: "paperplane.fill")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 38, height: 38)
-                            .background(chatText.trimmingCharacters(in: .whitespaces).isEmpty ? Color.gray : LMSColors.actionBlue)
-                            .clipShape(Circle())
+                    } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 32))
+                            .foregroundStyle(chatText.isEmpty ? Color(.systemGray4) : .blue)
                     }
-                    .disabled(chatText.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(chatText.isEmpty)
                 }
-                .padding(LMSSpacing.md)
-                .background(LMSColors.surface)
+                .padding(.horizontal)
+                .padding(.vertical, 10)
+                .background(.ultraThinMaterial)
             }
-            .navigationTitle("Chat")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") { dismiss() }
+        }
+        .navigationTitle(conversation.officerName)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                VStack {
+                    Text(conversation.officerName).font(.headline)
+                    Text(conversation.officerRole).font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
     }
 }
 
-
-private struct ManagerChatBubble: View {
+private struct ChatBubble: View {
     let message: ManagerChatMessage
 
     var body: some View {
         HStack {
             if message.isFromManager { Spacer() }
-
-            if message.isSystemMessage {
-                Spacer()
-                Text(message.text)
-                    .font(.system(.caption2, design: .rounded).bold())
-                    .foregroundStyle(LMSColors.textSecondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(LMSColors.textPrimary.opacity(0.05))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                Spacer()
-            } else {
-                VStack(alignment: message.isFromManager ? .trailing : .leading, spacing: 3) {
-                    if !message.isFromManager {
-                        Text(message.senderName)
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundStyle(LMSColors.textTertiary)
-                    }
-
-                    Text(message.text)
-                        .font(.system(.subheadline, design: .rounded))
-                        .foregroundStyle(message.isFromManager ? .white : LMSColors.textPrimary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(
-                            message.isFromManager
-                                ? AnyShapeStyle(LinearGradient(colors: [LMSColors.brandNavy, LMSColors.actionBlue], startPoint: .leading, endPoint: .trailing))
-                                : AnyShapeStyle(LMSColors.surfaceElevated)
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-                    HStack(spacing: 4) {
-                        Text(message.timestamp, style: .time)
-                            .font(.system(.caption2, design: .rounded))
-                            .foregroundStyle(LMSColors.textTertiary)
-
-                        if message.isFromManager {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 9))
-                                .foregroundStyle(LMSColors.emerald)
-                        }
-                    }
-                }
-                .frame(maxWidth: 280, alignment: message.isFromManager ? .trailing : .leading)
-            }
-
-            if !message.isFromManager && !message.isSystemMessage { Spacer() }
+            
+            Text(message.text)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(message.isFromManager ? Color.blue : Color(.secondarySystemFill))
+                .foregroundStyle(message.isFromManager ? .white : Color(.label))
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            
+            if !message.isFromManager { Spacer() }
         }
     }
 }
 
-
 private struct BroadcastAnnouncementSheet: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
-
     @State private var subject = ""
     @State private var message = ""
     @State private var isSending = false
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: LMSSpacing.xl) {
-
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [LMSColors.brandNavy.opacity(0.15), LMSColors.actionBlue.opacity(0.15)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 64, height: 64)
-                    Image(systemName: "megaphone.fill")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundStyle(LMSColors.brandNavy)
-                }
-                .padding(.top, LMSSpacing.lg)
-
-                Text("Broadcast to All Officers")
-                    .font(.system(.title3, design: .rounded).bold())
-                    .foregroundStyle(LMSColors.textPrimary)
-
-                Text("This message will be sent to \(viewModel.officers.count) officers at \(viewModel.branchOverview.name).")
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(LMSColors.textSecondary)
-                    .multilineTextAlignment(.center)
-
-                VStack(alignment: .leading, spacing: LMSSpacing.sm) {
-                    TextField("Subject", text: $subject)
-                        .font(.system(.body, design: .rounded))
-                        .padding(LMSSpacing.md)
-                        .background(LMSColors.surfaceElevated)
-                        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
-
-                    TextEditor(text: $message)
-                        .font(.system(.body, design: .rounded))
-                        .frame(height: 120)
-                        .padding(LMSSpacing.sm)
-                        .background(LMSColors.surfaceElevated)
-                        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
-                                .stroke(LMSColors.separatorLight, lineWidth: 0.5)
-                        )
-                }
-
-                Spacer()
-
-                Button(action: {
-                    isSending = true
-                    HapticsManager.triggerImpact(style: .heavy)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                        viewModel.broadcastAnnouncement(subject: subject, message: message)
-                        isSending = false
-                        dismiss()
+            List {
+                Section {
+                    VStack(alignment: .center, spacing: 12) {
+                        Image(systemName: "megaphone.fill")
+                            .font(.system(size: 44))
+                            .foregroundStyle(LMSColors.brandNavy.gradient)
+                        
+                        Text("Broadcast Announcement")
+                            .font(.title3.bold())
+                        
+                        Text("Sent to all \(viewModel.officers.count) officers in \(viewModel.branchOverview.name)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
                     }
-                }) {
-                    Group {
-                        if isSending {
-                            ProgressView().tint(.white)
-                        } else {
-                            Text("Send Broadcast")
-                                .font(.system(.body, design: .rounded).weight(.bold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical)
+                }
+                .listRowBackground(Color.clear)
+
+                Section("Details") {
+                    TextField("Subject", text: $subject)
+                    TextEditor(text: $message)
+                        .frame(minHeight: 150)
+                }
+
+                Section {
+                    Button {
+                        isSending = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            viewModel.broadcastAnnouncement(subject: subject, message: message)
+                            isSending = false
+                            dismiss()
+                        }
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if isSending {
+                                ProgressView().tint(.white)
+                            } else {
+                                Text("Send to All Officers").bold()
+                            }
+                            Spacer()
                         }
                     }
                     .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-                    .background(LMSColors.brandNavy)
-                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+                    .listRowBackground(subject.isEmpty || message.isEmpty ? Color.gray : LMSColors.brandNavy)
+                    .disabled(subject.isEmpty || message.isEmpty || isSending)
                 }
-                .disabled(subject.isEmpty || message.isEmpty || isSending)
-                .opacity(subject.isEmpty || message.isEmpty ? 0.5 : 1.0)
             }
-            .padding(.horizontal, LMSSpacing.screenHorizontal)
-            .navigationTitle("Broadcast")
+            .navigationTitle("New Broadcast")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
                 }
             }

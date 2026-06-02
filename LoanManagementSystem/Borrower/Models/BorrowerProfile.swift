@@ -237,7 +237,7 @@ public struct IncomeInfo: Codable, Equatable {
         monthlyIncome = try container.decodeIfPresent(Double.self, forKey: .monthlyIncome) ?? 0.0
         annualIncome = try container.decodeIfPresent(Double.self, forKey: .annualIncome) ?? 0.0
         existingEMIs = try container.decodeIfPresent(Double.self, forKey: .existingEMIs) ?? 0.0
-        creditScore = try container.decodeIfPresent(Int.self, forKey: .creditScore) ?? 700
+        creditScore = try container.decodeIfPresent(Int.self, forKey: .creditScore) ?? 0
         incomeSource = try container.decodeIfPresent(String.self, forKey: .incomeSource) ?? ""
     }
 }

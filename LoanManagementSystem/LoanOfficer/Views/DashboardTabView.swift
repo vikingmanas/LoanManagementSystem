@@ -90,10 +90,8 @@ struct DashboardTabView: View {
         .sheet(isPresented: $showingPortfolioMetrics) {
             PortfolioMetricsSheet(viewModel: viewModel)
         }
-        .sheet(item: $selectedDocumentForReview) { docItem in
-            NavigationStack {
-                DocumentReviewDetailView(item: docItem, viewModel: viewModel, isPresentedModally: true)
-            }
+        .navigationDestination(item: $selectedDocumentForReview) { docItem in
+            DocumentReviewDetailView(item: docItem, viewModel: viewModel)
         }
     }
 }

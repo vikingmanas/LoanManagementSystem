@@ -17,9 +17,13 @@ public final class DashboardViewModel: ObservableObject {
     @Published public var pendingEMIs: [EMIRecord] = []
     @Published public var transactions: [Transaction] = []
     @Published public var schemes: [GovernmentScheme] = []
+    @Published public var foreclosureRequests: [ForeclosureRequest] = []
     @Published public var isLoading: Bool = true
     @Published public var profileName: String = ""
     @Published public var profileCompletionPercentage: Int = 0
+    
+    // Notification support
+    public let notificationViewModel = NotificationViewModel()
     
     // Quick demonstration toggle state (e.g. to mock low balance vs normal)
     @Published public var forceLowBalanceMockState: Bool = false
@@ -59,19 +63,46 @@ public final class DashboardViewModel: ObservableObject {
         loanAccounts.filter { $0.principalOutstanding <= 0.0 }.count
     }
     
+    public var unpaidEMIs: [EMIRecord] {
+        pendingEMIs
+            .filter { $0.status != .paid }
+            .sorted { $0.dueDate < $1.dueDate }
+    }
+
     public var nextEMI: EMIRecord? {
-        pendingEMIs.first { $0.status != .paid }
+        nextDueEMIs.first
+    }
+
+    public var nextDueEMIs: [EMIRecord] {
+        guard let nextDueDate = unpaidEMIs.first?.dueDate else { return [] }
+        let calendar = Calendar.current
+        return unpaidEMIs.filter {
+            calendar.isDate($0.dueDate, inSameDayAs: nextDueDate)
+        }
+    }
+
+    public var nextDueAmount: Double {
+        nextDueEMIs.map(\.amount).reduce(0, +)
+    }
+
+    public var nextDueLoanLabel: String {
+        let dueEMIs = nextDueEMIs
+        guard let first = dueEMIs.first else { return "No active EMI" }
+        return dueEMIs.count == 1 ? first.loanType : "\(dueEMIs.count) loans due"
+    }
+
+    public var nextDueStatus: DashboardEMIStatus {
+        nextDueEMIs.contains { $0.status == .overdue } ? .overdue : .dueSoon
     }
     
     public var isLowBalance: Bool {
         guard !bankAccounts.isEmpty else { return false }
-        guard let nextEMI = nextEMI else { return false }
-        return bankAccount.availableBalance < nextEMI.amount
+        guard nextDueAmount > 0 else { return false }
+        return bankAccount.availableBalance < nextDueAmount
     }
     
     public var balanceDeficit: Double {
-        guard let nextEMI = nextEMI else { return 0 }
-        return max(0, nextEMI.amount - bankAccount.availableBalance)
+        max(0, nextDueAmount - bankAccount.availableBalance)
     }
     
     public var isAccountHealthy: Bool {
@@ -109,12 +140,15 @@ public final class DashboardViewModel: ObservableObject {
         transactions.sorted { $0.date > $1.date }
     }
 
+    public func foreclosureRequest(for loan: DashboardLoanAccount) -> ForeclosureRequest? {
+        foreclosureRequests
+            .filter { $0.loanID == loan.id && $0.status != .closed && $0.status != .rejected }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .first
+    }
+
     public var dashboardNotifications: [LMSNotification] {
-        let live = CentralLoanRepository.shared.borrowerNotifications
-        let merged = live + LMSMockNotifications.sample
-        var seen = Set<UUID>()
-        return merged.filter { seen.insert($0.id).inserted }
-            .sorted { $0.timestamp > $1.timestamp }
+        return notificationViewModel.lmsNotifications
     }
 
     public var profileMissingRequirements: [String] {
@@ -186,13 +220,13 @@ public final class DashboardViewModel: ObservableObject {
             self.profileCompletionPercentage = profile.profileCompletionPercentage
             let disbursedCredits = disbursementCredits(for: profile)
             self.bankAccounts = buildBankAccounts(from: profile, disbursedCredits: disbursedCredits)
-            self.bankAccount = bankAccounts.first(where: { $0.accountType == .savings })
+            self.bankAccount = bankAccounts.first(where: { $0.accountType == .overdraft })
                 ?? bankAccounts.first
-                ?? BankAccount(accountNumber: "", bankName: "", accountType: .savings, availableBalance: 0)
+                ?? BankAccount(accountNumber: "", bankName: "", accountType: .overdraft, availableBalance: 0)
         } else {
             self.profileName = ""
             self.profileCompletionPercentage = 0
-            self.bankAccount = BankAccount(accountNumber: "", bankName: "", accountType: .savings, availableBalance: 0.0)
+            self.bankAccount = BankAccount(accountNumber: "", bankName: "", accountType: .overdraft, availableBalance: 0.0)
             self.bankAccounts = []
         }
         
@@ -217,9 +251,17 @@ public final class DashboardViewModel: ObservableObject {
                 linkedBankAccountId: bankAccount.id
             )
         }
+
+        for closedRequest in foreclosureRequests where closedRequest.status == .closed {
+            if let index = loanAccounts.firstIndex(where: { $0.id == closedRequest.loanID }) {
+                loanAccounts[index].principalOutstanding = 0
+                loanAccounts[index].tenureRemainingMonths = 0
+                loanAccounts[index].repaidPercentage = 1
+            }
+        }
         
         // Dynamically populate pending EMIs based on active loans
-        self.pendingEMIs = self.loanAccounts.compactMap { loan in
+        self.pendingEMIs = self.loanAccounts.filter { $0.principalOutstanding > 0 }.compactMap { loan in
             EMIRecord(
                 dueDate: loan.nextEMIDate,
                 amount: loan.totalEMI,
@@ -227,6 +269,7 @@ public final class DashboardViewModel: ObservableObject {
                 status: .dueSoon
             )
         }
+        .sorted { $0.dueDate < $1.dueDate }
         
         self.schemes = MockData.sampleSchemes
 
@@ -267,50 +310,31 @@ public final class DashboardViewModel: ObservableObject {
         }
 
         self.transactions = dbTransactionsList.sorted { $0.date > $1.date }
+        
+        // Configure notifications from Supabase
+        if let profile = BorrowerProfileStore.shared.profile,
+           let userId = UUID(uuidString: profile.id) {
+            notificationViewModel.configure(userId: userId)
+        }
     }
 
 
 
     private func buildBankAccounts(from profile: BorrowerProfile, disbursedCredits: [String: Double]) -> [BankAccount] {
         var accounts: [BankAccount] = []
-        let bank = profile.bankDetails
         let linked = profile.linkedAccounts ?? []
-        let linkedNumbers = Set(linked.map(\.accountNumber))
-
-        if !bank.accountNumber.isEmpty, !linkedNumbers.contains(bank.accountNumber) {
-            accounts.append(
-                BankAccount(
-                    accountNumber: bank.accountNumber,
-                    bankName: bank.bankName.isEmpty ? "My Main Bank" : bank.bankName,
-                    accountType: .savings,
-                    availableBalance: disbursedCredits[bank.accountNumber, default: 0]
-                )
-            )
-        }
 
         for linkedAccount in linked {
-            let isOD = linkedAccount.isOverdraftAccount
-            let extraCredits = isOD ? 0 : disbursedCredits[linkedAccount.accountNumber, default: 0]
+            guard linkedAccount.isOverdraftAccount else { continue }
             accounts.append(
                 BankAccount(
                     id: linkedAccount.id,
                     accountNumber: linkedAccount.accountNumber,
                     bankName: linkedAccount.bankName,
-                    accountType: isOD ? .overdraft : .savings,
-                    availableBalance: linkedAccount.balance + extraCredits,
+                    accountType: .overdraft,
+                    availableBalance: linkedAccount.balance,
                     odLimit: linkedAccount.odSanctionLimit,
                     linkedLoanIds: linkedAccount.linkedLoanApplicationId.map { [$0] } ?? []
-                )
-            )
-        }
-
-        if accounts.isEmpty, !bank.accountNumber.isEmpty {
-            accounts.append(
-                BankAccount(
-                    accountNumber: bank.accountNumber,
-                    bankName: bank.bankName.isEmpty ? "My Main Bank" : bank.bankName,
-                    accountType: .savings,
-                    availableBalance: disbursedCredits[bank.accountNumber, default: 0]
                 )
             )
         }
@@ -319,8 +343,7 @@ public final class DashboardViewModel: ObservableObject {
     }
 
     private func emiRepaymentAccount() -> BankAccount? {
-        bankAccounts.first(where: { $0.accountType == .overdraft }) ??
-        bankAccounts.first(where: { $0.accountType == .savings })
+        bankAccounts.first(where: { $0.accountType == .overdraft })
     }
 
     private func disbursementCredits(for profile: BorrowerProfile) -> [String: Double] {
@@ -340,8 +363,16 @@ public final class DashboardViewModel: ObservableObject {
     
     // Quick-action methods
     public func payNextEMI() {
-        guard let currentNextEMI = nextEMI else { return }
-        _ = payEMI(currentNextEMI)
+        let dueEMIs = nextDueEMIs
+        guard !dueEMIs.isEmpty,
+              let repaymentAccount = emiRepaymentAccount(),
+              repaymentAccount.availableBalance >= nextDueAmount else {
+            return
+        }
+
+        for emi in dueEMIs {
+            _ = payEMI(emi)
+        }
     }
 
     @discardableResult
@@ -528,120 +559,141 @@ public final class DashboardViewModel: ObservableObject {
         }
     }
 
-    public func transferFunds(amount: Double, from source: BankAccount, to destination: BankAccount) {
-        let feedback = UIImpactFeedbackGenerator(style: .medium)
-        feedback.impactOccurred()
+    public func submitForeclosureRequest(for loan: DashboardLoanAccount) -> ForeclosureRequest {
+        if let existing = foreclosureRequest(for: loan) {
+            return existing
+        }
+
+        let summary = Self.foreclosureAmountSummary(for: loan)
+        let request = ForeclosureRequest(
+            requestID: "FC-\(Int(Date().timeIntervalSince1970))",
+            loanID: loan.id,
+            loanType: loan.loanType,
+            loanAccountNumber: loan.accountNumber,
+            outstandingPrincipal: summary.principal,
+            accruedInterest: summary.interest,
+            foreclosureCharges: summary.charges,
+            gst: summary.gst,
+            totalPayable: summary.total
+        )
+        foreclosureRequests.insert(request, at: 0)
+        transactions.insert(
+            Transaction(
+                title: "Foreclosure request submitted - \(loan.loanType)",
+                date: Date(),
+                amount: 0,
+                type: .credit,
+                referenceNo: request.requestID,
+                bankAccountId: loan.linkedBankAccountId
+            ),
+            at: 0
+        )
+        simulateForeclosureReview(for: request.id)
+        return request
+    }
+
+    public func payForeclosureAmount(requestID: UUID, from account: BankAccount) -> Bool {
+        guard let requestIndex = foreclosureRequests.firstIndex(where: { $0.id == requestID }),
+              foreclosureRequests[requestIndex].status.isPaymentReady,
+              account.availableBalance >= foreclosureRequests[requestIndex].totalPayable else {
+            return false
+        }
+
+        let request = foreclosureRequests[requestIndex]
+        let updatedBalance = account.availableBalance - request.totalPayable
+        let reference = "FCP\(Int.random(in: 1000000...9999999))"
 
         withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-            if let sourceIndex = bankAccounts.firstIndex(where: { $0.id == source.id }) {
-                bankAccounts[sourceIndex].availableBalance = max(0, bankAccounts[sourceIndex].availableBalance - amount)
+            if let accountIndex = bankAccounts.firstIndex(where: { $0.id == account.id }) {
+                bankAccounts[accountIndex].availableBalance = updatedBalance
             }
-
-            if let destinationIndex = bankAccounts.firstIndex(where: { $0.id == destination.id }) {
-                bankAccounts[destinationIndex].availableBalance += amount
-                bankAccount = bankAccounts[destinationIndex]
+            if bankAccount.id == account.id {
+                bankAccount.availableBalance = updatedBalance
             }
+            BorrowerProfileStore.shared.updateLinkedAccountBalance(accountId: account.id, balance: updatedBalance)
 
+            if let loanIndex = loanAccounts.firstIndex(where: { $0.id == request.loanID }) {
+                loanAccounts[loanIndex].principalOutstanding = 0
+                loanAccounts[loanIndex].tenureRemainingMonths = 0
+                loanAccounts[loanIndex].repaidPercentage = 1
+            }
+            pendingEMIs.removeAll { $0.loanType == request.loanType }
+
+            foreclosureRequests[requestIndex].status = .closed
+            foreclosureRequests[requestIndex].paymentReference = reference
+            foreclosureRequests[requestIndex].updatedAt = Date()
+
+            let payment = Transaction(
+                title: "Foreclosure paid - \(request.loanType)",
+                date: Date(),
+                amount: request.totalPayable,
+                type: .emiPayment,
+                referenceNo: reference,
+                bankAccountId: account.id
+            )
+            let certificate = Transaction(
+                title: "Loan closure certificate generated",
+                date: Date(),
+                amount: 0,
+                type: .credit,
+                referenceNo: "LCC\(Int.random(in: 100000...999999))",
+                bankAccountId: account.id
+            )
+            transactions.insert(contentsOf: [payment, certificate], at: 0)
+            saveTransactionToRemote(payment, type: "foreclosure_payment", borrowerType: "emi_payment")
+        }
+
+        HapticsManager.triggerNotification(type: .success)
+        return true
+    }
+
+    public static func foreclosureAmountSummary(for loan: DashboardLoanAccount) -> (principal: Double, interest: Double, charges: Double, gst: Double, total: Double) {
+        let principal = loan.principalOutstanding
+        let interest = max(loan.totalEMI * 0.18, principal * 0.002)
+        let charges = min(max(2_000, principal * 0.002), principal * 0.015)
+        let gst = charges * 0.18
+        return (principal, interest, charges, gst, principal + interest + charges + gst)
+    }
+
+    private func simulateForeclosureReview(for id: UUID) {
+        let statuses: [(ForeclosureRequestStatus, String?, String?, UInt64)] = [
+            (.officerReview, nil, nil, 700_000_000),
+            (.recommended, "Recommended after payment history and pending dues review.", nil, 900_000_000),
+            (.managerApproval, "Recommended after payment history and pending dues review.", nil, 900_000_000),
+            (.awaitingPayment, "Recommended after payment history and pending dues review.", "Approved. Final foreclosure amount generated.", 1_000_000_000)
+        ]
+
+        Task { @MainActor in
+            for item in statuses {
+                try? await Task.sleep(nanoseconds: item.3)
+                guard let index = foreclosureRequests.firstIndex(where: { $0.id == id }),
+                      foreclosureRequests[index].status != .closed,
+                      foreclosureRequests[index].status != .rejected else {
+                    return
+                }
+                foreclosureRequests[index].status = item.0
+                foreclosureRequests[index].officerRecommendation = item.1
+                foreclosureRequests[index].managerDecision = item.2
+                foreclosureRequests[index].updatedAt = Date()
+            }
+        }
+    }
+
+    public func topUpLoanLinkedAccount(amount: Double, to loan: DashboardLoanAccount) {
+        guard amount > 0 else { return }
+
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
             let refNo = "TXN\(Int.random(in: 1000000...9999999))"
             let newTx = Transaction(
-                title: "Transfer to \(destination.bankName.isEmpty ? "Linked Account" : destination.bankName)",
+                title: "Funds added to \(loan.loanType) linked account",
                 date: Date(),
                 amount: amount,
                 type: .credit,
                 referenceNo: refNo,
-                bankAccountId: destination.id
+                bankAccountId: loan.linkedBankAccountId
             )
             transactions.insert(newTx, at: 0)
-
-            if let profile = BorrowerProfileStore.shared.profile,
-               let borrowerUUID = UUID(uuidString: profile.id) {
-                let dbTx = DBTransaction(
-                    id: newTx.id,
-                    title: newTx.title,
-                    date: newTx.date,
-                    amount: newTx.amount,
-                    type: "credit",
-                    referenceNo: refNo,
-                    bankAccountId: destination.id,
-                    borrowerId: borrowerUUID
-                )
-                Task {
-                    do {
-                        try await SupabaseManager.shared.client
-                            .from("transactions")
-                            .insert(dbTx)
-                            .execute()
-                        print("[DashboardViewModel] Successfully saved transfer transaction to Supabase.")
-                    } catch {
-                        print("[DashboardViewModel] Error saving transfer transaction to Supabase: \(error.localizedDescription)")
-                    }
-                }
-            }
-        }
-    }
-
-    public func transferFundsToLoan(amount: Double, from source: BankAccount, to loan: DashboardLoanAccount) {
-        guard source.availableBalance >= amount else { return }
-
-        let feedback = UIImpactFeedbackGenerator(style: .medium)
-        feedback.impactOccurred()
-
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-            let updatedBalance = source.availableBalance - amount
-            if let sourceIndex = bankAccounts.firstIndex(where: { $0.id == source.id }) {
-                bankAccounts[sourceIndex].availableBalance = updatedBalance
-            }
-            if bankAccount.id == source.id {
-                bankAccount.availableBalance = updatedBalance
-            }
-            BorrowerProfileStore.shared.updateLinkedAccountBalance(accountId: source.id, balance: updatedBalance)
-
-            if let loanIndex = loanAccounts.firstIndex(where: { $0.id == loan.id }) {
-                loanAccounts[loanIndex].principalOutstanding = max(0, loanAccounts[loanIndex].principalOutstanding - amount)
-                if loanAccounts[loanIndex].sanctionedAmount > 0 {
-                    let paid = loanAccounts[loanIndex].sanctionedAmount - loanAccounts[loanIndex].principalOutstanding
-                    loanAccounts[loanIndex].repaidPercentage = min(1, max(0, paid / loanAccounts[loanIndex].sanctionedAmount))
-                }
-            }
-
-            let refNo = "TXN\(Int.random(in: 1000000...9999999))"
-            let newTx = Transaction(
-                title: "Top up to \(loan.loanType)",
-                date: Date(),
-                amount: amount,
-                type: .emiPayment,
-                referenceNo: refNo,
-                bankAccountId: source.id
-            )
-            transactions.insert(newTx, at: 0)
-            saveTransactionToRemote(newTx, type: "emi_payment", borrowerType: "emi_payment")
-        }
-    }
-
-    public func transferToExternalReceiver(amount: Double, from source: BankAccount, receiverName: String) {
-        guard source.availableBalance >= amount else { return }
-
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-            let updatedBalance = source.availableBalance - amount
-            if let sourceIndex = bankAccounts.firstIndex(where: { $0.id == source.id }) {
-                bankAccounts[sourceIndex].availableBalance = updatedBalance
-            }
-            if bankAccount.id == source.id {
-                bankAccount.availableBalance = updatedBalance
-            }
-            BorrowerProfileStore.shared.updateLinkedAccountBalance(accountId: source.id, balance: updatedBalance)
-
-            let refNo = "TXN\(Int.random(in: 1000000...9999999))"
-            let newTx = Transaction(
-                title: "QR transfer to \(receiverName)",
-                date: Date(),
-                amount: amount,
-                type: .failedDebit,
-                referenceNo: refNo,
-                bankAccountId: source.id
-            )
-            transactions.insert(newTx, at: 0)
-            saveTransactionToRemote(newTx, type: "transfer", borrowerType: "transfer")
+            saveTransactionToRemote(newTx, type: "loan_linked_top_up", borrowerType: "credit")
         }
     }
 

@@ -2,10 +2,17 @@ import SwiftUI
 import UIKit
 
 struct LoanOfficerDashboardView: View {
+    @EnvironmentObject private var authManager: AuthManager
     @StateObject private var viewModel = LoanOfficerDashboardViewModel()
+    @StateObject private var notificationViewModel = NotificationViewModel()
     @State private var selectedTab: OfficerWorkspaceTab = .dashboard
     @State private var showingProfile = false
-    @State private var showingCalculator = false
+
+    private var appsRequiringReviewCount: Int {
+        viewModel.applications.filter { app in
+            app.documents.contains { $0.status != .verified }
+        }.count
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -13,7 +20,7 @@ struct LoanOfficerDashboardView: View {
                 LoanOfficerTodayView(
                     viewModel: viewModel,
                     selectedTab: $selectedTab,
-                    onCalculator: { showingCalculator = true },
+                    notificationViewModel: notificationViewModel,
                     onProfile: { showingProfile = true }
                 )
             }
@@ -24,7 +31,7 @@ struct LoanOfficerDashboardView: View {
                 LoanApprovalWorkflowView(viewModel: viewModel)
             }
             .tabItem { Label("Review", systemImage: "checklist.checked") }
-            .badge(viewModel.pendingDocumentCount > 0 ? viewModel.pendingDocumentCount : 0)
+            .badge(appsRequiringReviewCount > 0 ? appsRequiringReviewCount : 0)
             .tag(OfficerWorkspaceTab.review)
 
             ChatsFeedTabView(viewModel: viewModel)
@@ -41,12 +48,14 @@ struct LoanOfficerDashboardView: View {
         .tint(LMSColors.brandNavy)
         .task {
             await viewModel.fetchDashboardData()
+            // Configure notification VM with current user ID
+            if let userId = authManager.currentUser?.uid,
+               let uuid = UUID(uuidString: userId) {
+                notificationViewModel.configure(userId: uuid)
+            }
         }
         .sheet(isPresented: $showingProfile) {
             LoanOfficerProfileView()
-        }
-        .sheet(isPresented: $showingCalculator) {
-            OfficerCalculatorSheet()
         }
     }
 }
@@ -64,13 +73,20 @@ private struct LoanOfficerTodayView: View {
     @EnvironmentObject var authManager: AuthManager
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Binding var selectedTab: OfficerWorkspaceTab
-    var onCalculator: () -> Void
+    @ObservedObject var notificationViewModel: NotificationViewModel
     var onProfile: () -> Void
 
     @State private var selectedMetricStatus: OfficerApplicationStatus?
     @State private var selectedApplication: OfficerLoanApplication?
     @State private var showingReportConfirmation = false
     @State private var showingEscalationSheet = false
+    @State private var showingPendingAppsList = false
+    @State private var showingReadyToSendApps = false
+    @State private var showingCalculator = false
+    
+    private var pendingApps: [OfficerLoanApplication] {
+        viewModel.applications.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending || $0.status == .documentsRejected }
+    }
 
     private var nextApplication: OfficerLoanApplication? {
         viewModel.applications.first { app in
@@ -85,7 +101,10 @@ private struct LoanOfficerTodayView: View {
                 OfficerActionItemsRow(
                     viewModel: viewModel,
                     selectedTab: $selectedTab,
-                    showingEscalationSheet: $showingEscalationSheet
+                    showingEscalationSheet: $showingEscalationSheet,
+                    showingPendingAppsList: $showingPendingAppsList,
+                    showingReadyToSendApps: $showingReadyToSendApps,
+                    showingCalculator: $showingCalculator
                 )
                 .padding(.top, LMSSpacing.md)
 
@@ -114,10 +133,12 @@ private struct LoanOfficerTodayView: View {
         .navigationTitle("Dashboard")
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Button(action: onCalculator) {
-                    Image(systemName: "plus.slash.minus")
+                NavigationLink {
+                    NotificationsListView(viewModel: notificationViewModel, isPushed: true)
+                } label: {
+                    Image(systemName: notificationViewModel.unreadCount > 0 ? "bell.badge" : "bell")
                 }
-                .accessibilityLabel("Calculator")
+                .accessibilityLabel("Notifications")
 
                 Button(action: onProfile) {
                     Text(authManager.currentStaffProfile?.initials ?? "AK")
@@ -132,7 +153,7 @@ private struct LoanOfficerTodayView: View {
         .refreshable {
             await viewModel.fetchDashboardData()
         }
-        .sheet(item: $selectedApplication) { app in
+        .navigationDestination(item: $selectedApplication) { app in
             LoanApplicationReviewDetailView(applicationId: app.applicationId, viewModel: viewModel)
         }
         .alert("Report queued", isPresented: $showingReportConfirmation) {
@@ -141,7 +162,28 @@ private struct LoanOfficerTodayView: View {
             Text("The monthly branch performance report is being prepared.")
         }
         .sheet(isPresented: $showingEscalationSheet) {
-            OfficerEscalationSheet()
+            OfficerEscalationSheet(viewModel: viewModel)
+        }
+        .sheet(isPresented: $showingCalculator) {
+            OfficerCalculatorSheet()
+        }
+        .navigationDestination(isPresented: $showingPendingAppsList) {
+            OfficerPushApplicationListView(
+                title: "Pending Applications",
+                systemImage: "doc.text.badge.clock",
+                description: "No pending applications at the moment.",
+                applications: pendingApps,
+                viewModel: viewModel
+            )
+        }
+        .navigationDestination(isPresented: $showingReadyToSendApps) {
+            OfficerPushApplicationListView(
+                title: "Ready to Send",
+                systemImage: "paperplane.fill",
+                description: "No applications ready to send.",
+                applications: viewModel.sentToManagerApps,
+                viewModel: viewModel
+            )
         }
     }
 }
@@ -152,6 +194,13 @@ private struct OfficerActionItemsRow: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Binding var selectedTab: OfficerWorkspaceTab
     @Binding var showingEscalationSheet: Bool
+    @Binding var showingPendingAppsList: Bool
+    @Binding var showingReadyToSendApps: Bool
+    @Binding var showingCalculator: Bool
+    
+    private var pendingAppsCount: Int {
+        viewModel.applications.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending || $0.status == .documentsRejected }.count
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
@@ -162,13 +211,13 @@ private struct OfficerActionItemsRow: View {
 
             HStack(spacing: LMSSpacing.md) {
                 OfficerActionCard(
-                    title: "Pending Docs",
-                    value: "\(viewModel.pendingDocumentCount)",
-                    icon: "doc.badge.clock",
-                    tint: viewModel.pendingDocumentCount == 0 ? LMSColors.emerald : LMSColors.actionBlue,
+                    title: "Pending Apps",
+                    value: "\(pendingAppsCount)",
+                    icon: "doc.text.badge.clock",
+                    tint: pendingAppsCount == 0 ? LMSColors.emerald : LMSColors.actionBlue,
                     action: {
                         HapticsManager.triggerImpact(style: .light)
-                        selectedTab = .review
+                        showingPendingAppsList = true
                     }
                 )
 
@@ -179,12 +228,48 @@ private struct OfficerActionItemsRow: View {
                     tint: viewModel.sentToManagerApps.isEmpty ? LMSColors.emerald : LMSColors.coral,
                     action: {
                         HapticsManager.triggerImpact(style: .light)
-                        viewModel.historyFilter = .approvalQueue
-                        selectedTab = .registry
+                        showingReadyToSendApps = true
                     }
                 )
             }
             .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
+
+            Button {
+                HapticsManager.triggerImpact(style: .light)
+                showingCalculator = true
+            } label: {
+                HStack(alignment: .center, spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.purple.opacity(0.12))
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "plus.slash.minus")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(Color.purple)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("EMI Calculator")
+                            .font(.system(.body, design: .rounded).weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                        Text("Quick loan EMI & interest calculation")
+                            .font(.system(.subheadline, design: .rounded))
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(.headline, design: .rounded).weight(.semibold))
+                        .foregroundStyle(LMSColors.textTertiary)
+                }
+                .padding(LMSSpacing.lg)
+                .background(LMSColors.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
+            }
+            .buttonStyle(.plain)
             .padding(.horizontal, LMSSpacing.screenHorizontal)
         }
     }
@@ -285,25 +370,26 @@ private struct OfficerReviewSnapshotView: View {
     @Binding var selectedTab: OfficerWorkspaceTab
     @Binding var selectedApplication: OfficerLoanApplication?
 
-    private var appsWithPendingDocs: [OfficerLoanApplication] {
+    private var appsWithPendingDocsToday: [OfficerLoanApplication] {
         viewModel.applications.filter { app in
-            app.documents.contains { $0.status != .verified }
+            app.documents.contains { doc in
+                doc.status != .verified && Calendar.current.isDateInToday(doc.uploadedDate ?? app.submittedDate)
+            }
         }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
             HStack {
-                Text("Review Queue")
+                Text("Today's Review Queue")
                     .font(.system(.title3, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
 
                 Spacer()
 
-                Button(action: {
-                    HapticsManager.triggerImpact(style: .light)
-                    selectedTab = .review
-                }) {
+                NavigationLink {
+                    OfficerTodayReviewQueueListView(viewModel: viewModel)
+                } label: {
                     HStack(spacing: 4) {
                         Text("View All")
                             .font(.system(.subheadline, design: .rounded).bold())
@@ -312,14 +398,17 @@ private struct OfficerReviewSnapshotView: View {
                     }
                     .foregroundStyle(LMSColors.actionBlue)
                 }
+                .simultaneousGesture(TapGesture().onEnded {
+                    HapticsManager.triggerImpact(style: .light)
+                })
             }
             .padding(.horizontal, LMSSpacing.screenHorizontal)
 
-            if appsWithPendingDocs.isEmpty {
+            if appsWithPendingDocsToday.isEmpty {
                 ContentUnavailableView(
                     "Queue Clear",
                     systemImage: "checkmark.circle.fill",
-                    description: Text("No documents currently require your review.")
+                    description: Text("No documents currently require your review today.")
                 )
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, LMSSpacing.xl)
@@ -332,9 +421,11 @@ private struct OfficerReviewSnapshotView: View {
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
             } else {
                 VStack(spacing: LMSSpacing.md) {
-                    ForEach(appsWithPendingDocs.prefix(2)) { app in
-                        let pendingDocs = app.documents.filter { $0.status != .verified }
-                        OfficerApplicationReviewCard(application: app, matchingDocuments: pendingDocs, viewModel: viewModel)
+                    ForEach(appsWithPendingDocsToday.prefix(2)) { app in
+                        let todayPendingDocs = app.documents.filter { doc in
+                            doc.status != .verified && Calendar.current.isDateInToday(doc.uploadedDate ?? app.submittedDate)
+                        }
+                        OfficerApplicationReviewCard(application: app, matchingDocuments: todayPendingDocs, viewModel: viewModel)
                     }
                 }
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
@@ -437,8 +528,12 @@ private struct OfficerPipelineChart: View {
     let stats: (pending: Int, underReview: Int, sentToManager: Int, completed: Int)
     @State private var animated = false
 
-    private var total: Double {
-        max(Double(stats.pending + stats.underReview + stats.sentToManager + stats.completed), 1)
+    private var totalCount: Int {
+        stats.pending + stats.underReview + stats.sentToManager + stats.completed
+    }
+
+    private var chartTotal: Double {
+        max(Double(totalCount), 1)
     }
 
     var body: some View {
@@ -449,34 +544,34 @@ private struct OfficerPipelineChart: View {
                     .frame(width: 96, height: 96)
 
                 Circle()
-                    .trim(from: 0, to: animated ? Double(stats.pending) / total : 0)
+                    .trim(from: 0, to: animated ? Double(stats.pending) / chartTotal : 0)
                     .stroke(LMSColors.amber, style: StrokeStyle(lineWidth: 11, lineCap: .round))
                     .frame(width: 96, height: 96)
                     .rotationEffect(.degrees(-90))
 
                 Circle()
-                    .trim(from: Double(stats.pending) / total, to: animated ? Double(stats.pending + stats.underReview) / total : Double(stats.pending) / total)
+                    .trim(from: Double(stats.pending) / chartTotal, to: animated ? Double(stats.pending + stats.underReview) / chartTotal : Double(stats.pending) / chartTotal)
                     .stroke(LMSColors.actionBlue, style: StrokeStyle(lineWidth: 11, lineCap: .round))
                     .frame(width: 96, height: 96)
                     .rotationEffect(.degrees(-90))
                     
                 Circle()
-                    .trim(from: Double(stats.pending + stats.underReview) / total, to: animated ? Double(stats.pending + stats.underReview + stats.sentToManager) / total : Double(stats.pending + stats.underReview) / total)
+                    .trim(from: Double(stats.pending + stats.underReview) / chartTotal, to: animated ? Double(stats.pending + stats.underReview + stats.sentToManager) / chartTotal : Double(stats.pending + stats.underReview) / chartTotal)
                     .stroke(Color.purple, style: StrokeStyle(lineWidth: 11, lineCap: .round))
                     .frame(width: 96, height: 96)
                     .rotationEffect(.degrees(-90))
 
                 Circle()
                     .trim(
-                        from: Double(stats.pending + stats.underReview + stats.sentToManager) / total,
-                        to: animated ? 1.0 : Double(stats.pending + stats.underReview + stats.sentToManager) / total
+                        from: Double(stats.pending + stats.underReview + stats.sentToManager) / chartTotal,
+                        to: animated ? Double(totalCount) / chartTotal : Double(stats.pending + stats.underReview + stats.sentToManager) / chartTotal
                     )
                     .stroke(LMSColors.emerald, style: StrokeStyle(lineWidth: 11, lineCap: .round))
                     .frame(width: 96, height: 96)
                     .rotationEffect(.degrees(-90))
 
                 VStack(spacing: 2) {
-                    Text("\(Int(total))")
+                    Text("\(totalCount)")
                         .font(.system(size: 26, weight: .bold, design: .rounded))
                         .foregroundStyle(LMSColors.textPrimary)
                     Text("Total")
@@ -529,6 +624,49 @@ private struct ChartLegendRow: View {
 }
 
 
+// MARK: - Today's Review Queue List
+
+private struct OfficerTodayReviewQueueListView: View {
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+
+    private var todayApplications: [(application: OfficerLoanApplication, matchingDocuments: [LoanDocument])] {
+        viewModel.applications.compactMap { application in
+            let todayDocs = application.documents.filter { doc in
+                doc.status != .verified && Calendar.current.isDateInToday(doc.uploadedDate ?? application.submittedDate)
+            }
+            return todayDocs.isEmpty ? nil : (application, todayDocs)
+        }
+    }
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: LMSSpacing.md) {
+                if todayApplications.isEmpty {
+                    ContentUnavailableView(
+                        "Queue Clear",
+                        systemImage: "checkmark.circle.fill",
+                        description: Text("No documents currently require your review today.")
+                    )
+                    .padding(.top, 40)
+                } else {
+                    ForEach(todayApplications, id: \.application.id) { pair in
+                        OfficerApplicationReviewCard(
+                            application: pair.application,
+                            matchingDocuments: pair.matchingDocuments,
+                            viewModel: viewModel
+                        )
+                    }
+                    .padding(.horizontal, LMSSpacing.screenHorizontal)
+                }
+            }
+            .padding(.vertical, LMSSpacing.md)
+        }
+        .background(LMSColors.background)
+        .navigationTitle("Today's Review Queue")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
 // MARK: - Review Queue Tab
 
 private struct LoanOfficerReviewQueueView: View {
@@ -554,16 +692,6 @@ private struct LoanOfficerReviewQueueView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: LMSSpacing.md) {
-                Picker("Status", selection: $selectedStatus) {
-                    Text("All").tag(Optional<OfficerDocumentStatus>.none)
-                    Text("New").tag(Optional(OfficerDocumentStatus.uploaded))
-                    Text("Re-upload").tag(Optional(OfficerDocumentStatus.reUploaded))
-                    Text("Missing").tag(Optional(OfficerDocumentStatus.pending))
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, LMSSpacing.screenHorizontal)
-                .padding(.bottom, 8)
-
                 if filteredApplications.isEmpty {
                     ContentUnavailableView("No documents", systemImage: "doc.text.magnifyingglass", description: Text("Try a different search or status."))
                         .padding(.top, 40)
@@ -583,6 +711,20 @@ private struct LoanOfficerReviewQueueView: View {
         .background(LMSColors.background)
         .navigationTitle("Review")
         .searchable(text: $query, prompt: "Borrower, document, application")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Picker("Filter by Status", selection: $selectedStatus) {
+                        Text("All").tag(Optional<OfficerDocumentStatus>.none)
+                        Text("New").tag(Optional(OfficerDocumentStatus.uploaded))
+                        Text("Re-upload").tag(Optional(OfficerDocumentStatus.reUploaded))
+                        Text("Missing").tag(Optional(OfficerDocumentStatus.pending))
+                    }
+                } label: {
+                    Label("Filter", systemImage: selectedStatus == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                }
+            }
+        }
         .refreshable { await viewModel.fetchDashboardData() }
     }
 }
@@ -590,13 +732,34 @@ private struct LoanOfficerReviewQueueView: View {
 // MARK: - Escalation Sheet
 
 private struct OfficerEscalationSheet: View {
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var reason = ""
     @State private var priority = "Normal"
+    @State private var selectedApplicationId: String = ""
+    @State private var errorMessage: String?
+
+    private var escalatableApplications: [OfficerLoanApplication] {
+        viewModel.escalatableApplications
+    }
 
     var body: some View {
         NavigationStack {
             Form {
+                Section("Application") {
+                    if escalatableApplications.isEmpty {
+                        Text("No active applications available to escalate.")
+                            .foregroundStyle(LMSColors.textSecondary)
+                    } else {
+                        Picker("Select Loan", selection: $selectedApplicationId) {
+                            Text("Choose application").tag("")
+                            ForEach(escalatableApplications) { app in
+                                Text("\(app.applicationId) · \(app.borrowerName)").tag(app.applicationId)
+                            }
+                        }
+                    }
+                }
+
                 Section("Priority") {
                     Picker("Priority", selection: $priority) {
                         Text("Normal").tag("Normal")
@@ -607,8 +770,14 @@ private struct OfficerEscalationSheet: View {
                 }
 
                 Section("Reason") {
-                    TextField("Describe the blocker", text: $reason, axis: .vertical)
+                    TextField("Describe why this case needs manager review", text: $reason, axis: .vertical)
                         .lineLimit(3...6)
+                }
+
+                Section {
+                    Text("The branch manager will see this escalation under Officer Performance with your name and the loan details.")
+                        .font(.footnote)
+                        .foregroundStyle(LMSColors.textSecondary)
                 }
             }
             .navigationTitle("Escalate Case")
@@ -618,11 +787,41 @@ private struct OfficerEscalationSheet: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Send") { dismiss() }
-                        .disabled(reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("Send") { submitEscalation() }
+                        .disabled(!canSubmit)
+                }
+            }
+            .alert("Escalation Failed", isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(errorMessage ?? "")
+            }
+            .onAppear {
+                if selectedApplicationId.isEmpty {
+                    selectedApplicationId = escalatableApplications.first?.applicationId ?? ""
                 }
             }
         }
+    }
+
+    private var canSubmit: Bool {
+        !selectedApplicationId.isEmpty
+            && !reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !escalatableApplications.isEmpty
+    }
+
+    private func submitEscalation() {
+        let trimmedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        let composedReason = "[\(priority)] \(trimmedReason)"
+        guard viewModel.escalateApplication(applicationId: selectedApplicationId, reason: composedReason) else {
+            errorMessage = "Could not escalate this application. It may already be closed or escalated."
+            return
+        }
+        HapticsManager.triggerNotification(type: .success)
+        dismiss()
     }
 }
 
@@ -722,111 +921,65 @@ struct OfficerAvatar: View {
     }
 }
 
+// MARK: - Notifications Sheet
 
-// MARK: - Calculator Sheet
-
-struct OfficerCalculatorSheet: View {
+struct NotificationsFeedSheet: View {
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) private var dismiss
-
-    @State private var principalAmount: Double = 2500000.0
-    @State private var interestRate: Double = 8.65
-    @State private var tenureYears: Double = 15.0
-
-    private var calculatedEMI: Double {
-        let monthlyRate = (interestRate / 100.0) / 12.0
-        let totalMonths = tenureYears * 12.0
-        guard monthlyRate > 0 else { return principalAmount / totalMonths }
-        let emi = principalAmount * (monthlyRate * pow(1.0 + monthlyRate, totalMonths)) / (pow(1.0 + monthlyRate, totalMonths) - 1.0)
-        return emi.isNaN ? 0.0 : emi
-    }
-
-    private var totalInterest: Double {
-        (calculatedEMI * tenureYears * 12.0) - principalAmount
-    }
 
     var body: some View {
         NavigationStack {
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: LMSSpacing.xl) {
-                    // Output metrics
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Monthly EMI")
-                                .font(.system(.caption, design: .rounded).bold())
-                                .foregroundStyle(LMSColors.textSecondary)
-                            Text(CurrencyFormatter.shared.format(calculatedEMI))
-                                .font(.system(.title, design: .rounded).bold())
-                                .foregroundStyle(LMSColors.actionBlue)
+            List {
+                if viewModel.activityFeed.isEmpty {
+                    ContentUnavailableView("No Notifications", systemImage: "bell.slash", description: Text("All priority work is clear."))
+                } else {
+                    ForEach(viewModel.activityFeed) { item in
+                        HStack(alignment: .top, spacing: 14) {
+                            if !item.isRead {
+                                Circle()
+                                    .fill(Color.blue)
+                                    .frame(width: 10, height: 10)
+                                    .padding(.top, 12)
+                            } else {
+                                Circle()
+                                    .fill(Color.clear)
+                                    .frame(width: 10, height: 10)
+                                    .padding(.top, 12)
+                            }
+                            
+                            Image(systemName: item.eventType.symbol)
+                                .font(.title3)
+                                .foregroundStyle(item.eventType.themeColor)
+                                .frame(width: 36, height: 36)
+                                .background(item.eventType.themeColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(item.borrowerName)
+                                        .font(.subheadline.weight(.semibold))
+                                    Spacer()
+                                    Text(RelativeDateFormatter.shared.relativeString(from: item.timestamp))
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Text(item.eventDescription)
+                                    .font(.subheadline)
+                                    .foregroundStyle(!item.isRead ? .primary : .secondary)
+                                    .lineLimit(3)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                         }
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Text("Total Interest Payable")
-                                .font(.system(.caption, design: .rounded).bold())
-                                .foregroundStyle(LMSColors.textSecondary)
-                            Text(CurrencyFormatter.shared.format(totalInterest))
-                                .font(.system(.body, design: .rounded).bold())
-                                .foregroundStyle(LMSColors.textPrimary)
-                        }
+                        .padding(.vertical, 6)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 4, bottom: 8, trailing: 16))
                     }
-                    .padding(LMSSpacing.lg)
-                    .background(LMSColors.actionBlue.opacity(0.06))
-                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-
-                    // Sliders
-                    VStack(spacing: LMSSpacing.lg) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text("Principal Loan Amount")
-                                    .font(.system(.caption, design: .rounded).weight(.bold))
-                                Spacer()
-                                Text(CurrencyFormatter.shared.format(principalAmount))
-                                    .font(.system(.caption, design: .rounded).bold())
-                                    .foregroundStyle(LMSColors.actionBlue)
-                            }
-                            Slider(value: $principalAmount, in: 500000...10000000, step: 100000)
-                                .tint(LMSColors.actionBlue)
-                        }
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text("Interest Rate (p.a.)")
-                                    .font(.system(.caption, design: .rounded).weight(.bold))
-                                Spacer()
-                                Text(String(format: "%.2f %%", interestRate))
-                                    .font(.system(.caption, design: .rounded).bold())
-                                    .foregroundStyle(LMSColors.actionBlue)
-                            }
-                            Slider(value: $interestRate, in: 5.0...15.0, step: 0.05)
-                                .tint(LMSColors.actionBlue)
-                        }
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text("Tenure Duration")
-                                    .font(.system(.caption, design: .rounded).weight(.bold))
-                                Spacer()
-                                Text("\(Int(tenureYears)) Years")
-                                    .font(.system(.caption, design: .rounded).bold())
-                                    .foregroundStyle(LMSColors.actionBlue)
-                            }
-                            Slider(value: $tenureYears, in: 1...30, step: 1)
-                                .tint(LMSColors.actionBlue)
-                        }
-                    }
-                    .padding(LMSSpacing.lg)
-                    .background(LMSColors.surfaceElevated)
-                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
                 }
-                .padding(.horizontal, LMSSpacing.screenHorizontal)
-                .padding(.top, LMSSpacing.md)
             }
-            .background(LMSColors.background)
-            .navigationTitle("Quick Financial Calculator")
+            .listStyle(.plain)
+            .navigationTitle("Notifications")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
-                        .font(.system(.body, design: .rounded).bold())
                 }
             }
         }
@@ -981,9 +1134,53 @@ private struct OfficerApplicationListSheet: View {
                     Button("Close") { dismiss() }
                 }
             }
-            .sheet(item: $selectedApplication) { application in
+            .navigationDestination(item: $selectedApplication) { application in
                 LoanApplicationReviewDetailView(applicationId: application.applicationId, viewModel: viewModel)
             }
+        }
+    }
+}
+
+private struct OfficerPushApplicationListView: View {
+    let title: String
+    let systemImage: String
+    let description: String
+    let applications: [OfficerLoanApplication]
+    
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @State private var selectedApplication: OfficerLoanApplication?
+    
+    var body: some View {
+        Group {
+            if applications.isEmpty {
+                ContentUnavailableView(
+                    title,
+                    systemImage: systemImage,
+                    description: Text(description)
+                )
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: LMSSpacing.sm) {
+                        ForEach(applications) { application in
+                            Button(action: {
+                                HapticsManager.triggerImpact(style: .medium)
+                                selectedApplication = application
+                            }) {
+                                OfficerApplicationCompactRow(app: application, accessory: "View")
+                            }
+                            .buttonStyle(LMSPressableStyle())
+                        }
+                    }
+                    .padding(LMSSpacing.screenHorizontal)
+                    .padding(.vertical, LMSSpacing.md)
+                }
+                .background(LMSColors.background)
+            }
+        }
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(item: $selectedApplication) { application in
+            LoanApplicationReviewDetailView(applicationId: application.applicationId, viewModel: viewModel)
         }
     }
 }
@@ -998,38 +1195,43 @@ struct OfficerApplicationReviewCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Header: Borrower Avatar, Name, Loan details, status
-            HStack(spacing: 12) {
-                OfficerAvatar(name: application.borrowerName, tint: application.loanType.themeColor)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(application.borrowerName)
-                        .font(.system(.body, design: .rounded).weight(.semibold))
-                        .foregroundStyle(LMSColors.textPrimary)
+            NavigationLink {
+                LoanApplicationReviewDetailView(applicationId: application.applicationId, viewModel: viewModel)
+            } label: {
+                HStack(spacing: 12) {
+                    OfficerAvatar(name: application.borrowerName, tint: application.loanType.themeColor)
                     
-                    Text("\(application.loanType.rawValue) · \(CurrencyFormatter.shared.format(application.requestedAmount))")
-                        .font(.system(.caption, design: .rounded).weight(.medium))
-                        .foregroundStyle(LMSColors.textSecondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(application.borrowerName)
+                            .font(.system(.body, design: .rounded).weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                        
+                        Text("\(application.loanType.rawValue) · \(CurrencyFormatter.shared.format(application.requestedAmount))")
+                            .font(.system(.caption, design: .rounded).weight(.medium))
+                            .foregroundStyle(LMSColors.textSecondary)
+                        
+                        Text("App ID: \(application.applicationId)")
+                            .font(.system(.caption2, design: .rounded).monospaced())
+                            .foregroundStyle(LMSColors.textTertiary)
+                    }
                     
-                    Text("App ID: \(application.applicationId)")
-                        .font(.system(.caption2, design: .rounded).monospaced())
-                        .foregroundStyle(LMSColors.textTertiary)
-                }
-                
-                Spacer()
-                
-                // Document progress indicator
-                VStack(alignment: .trailing, spacing: 4) {
-                    let total = application.documents.count
-                    let verified = application.documents.filter { $0.status == .verified }.count
-                    Text("\(verified)/\(total) Verified")
-                        .font(.system(.caption2, design: .rounded).bold())
-                        .foregroundStyle(verified == total ? LMSColors.emerald : LMSColors.actionBlue)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background((verified == total ? LMSColors.emerald : LMSColors.actionBlue).opacity(0.1))
-                        .clipShape(Capsule())
+                    Spacer()
+                    
+                    // Document progress indicator
+                    VStack(alignment: .trailing, spacing: 4) {
+                        let total = application.documents.count
+                        let verified = application.documents.filter { $0.status == .verified }.count
+                        Text("\(verified)/\(total) Verified")
+                            .font(.system(.caption2, design: .rounded).bold())
+                            .foregroundStyle(verified == total ? LMSColors.emerald : LMSColors.actionBlue)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background((verified == total ? LMSColors.emerald : LMSColors.actionBlue).opacity(0.1))
+                            .clipShape(Capsule())
+                    }
                 }
             }
+            .buttonStyle(.plain)
             
             Divider()
                 .padding(.vertical, 4)
@@ -1043,7 +1245,8 @@ struct OfficerApplicationReviewCard: View {
                         docType: doc.docType,
                         status: doc.status,
                         submittedDate: doc.uploadedDate ?? application.submittedDate,
-                        applicationId: application.applicationId
+                        applicationId: application.applicationId,
+                        fileURL: doc.fileURL
                     )
                     
                     NavigationLink {
@@ -1078,7 +1281,7 @@ struct OfficerApplicationReviewCard: View {
                             Spacer()
                             
                             // Status tag
-                            Text(statusText(doc.status))
+                            Text(doc.status.rawValue)
                                 .font(.system(size: 10, weight: .bold, design: .rounded))
                                 .foregroundStyle(doc.status == .pending ? LMSColors.amber : .white)
                                 .padding(.horizontal, 8)
@@ -1105,15 +1308,115 @@ struct OfficerApplicationReviewCard: View {
         .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
     }
     
-    private func statusText(_ status: OfficerDocumentStatus) -> String {
-        switch status {
-        case .pending: return "Missing"
-        case .uploaded: return "New Upload"
-        case .underReview: return "In Review"
-        case .verified: return "Verified ✓"
-        case .rejectFlag: return "Re-upload Req."
-        case .reUploaded: return "Re-Uploaded"
+
+}
+
+// MARK: - Calculator Sheet
+
+struct OfficerCalculatorSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var principalAmount: Double = 2500000.0
+    @State private var interestRate: Double = 8.65
+    @State private var tenureYears: Double = 15.0
+
+    private var calculatedEMI: Double {
+        let monthlyRate = (interestRate / 100.0) / 12.0
+        let totalMonths = tenureYears * 12.0
+        guard monthlyRate > 0 else { return principalAmount / totalMonths }
+        let emi = principalAmount * (monthlyRate * pow(1.0 + monthlyRate, totalMonths)) / (pow(1.0 + monthlyRate, totalMonths) - 1.0)
+        return emi.isNaN ? 0.0 : emi
+    }
+
+    private var totalInterest: Double {
+        (calculatedEMI * tenureYears * 12.0) - principalAmount
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: LMSSpacing.xl) {
+                    // Output metrics
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Monthly EMI")
+                                .font(.system(.caption, design: .rounded).bold())
+                                .foregroundStyle(LMSColors.textSecondary)
+                            Text(CurrencyFormatter.shared.format(calculatedEMI))
+                                .font(.system(.title, design: .rounded).bold())
+                                .foregroundStyle(LMSColors.actionBlue)
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("Total Interest Payable")
+                                .font(.system(.caption, design: .rounded).bold())
+                                .foregroundStyle(LMSColors.textSecondary)
+                            Text(CurrencyFormatter.shared.format(totalInterest))
+                                .font(.system(.body, design: .rounded).bold())
+                                .foregroundStyle(LMSColors.textPrimary)
+                        }
+                    }
+                    .padding(LMSSpacing.lg)
+                    .background(LMSColors.actionBlue.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+
+                    // Sliders
+                    VStack(spacing: LMSSpacing.lg) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Principal Loan Amount")
+                                    .font(.system(.caption, design: .rounded).weight(.bold))
+                                Spacer()
+                                Text(CurrencyFormatter.shared.format(principalAmount))
+                                    .font(.system(.caption, design: .rounded).bold())
+                                    .foregroundStyle(LMSColors.actionBlue)
+                            }
+                            Slider(value: $principalAmount, in: 500000...10000000, step: 100000)
+                                .tint(LMSColors.actionBlue)
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Interest Rate (p.a.)")
+                                    .font(.system(.caption, design: .rounded).weight(.bold))
+                                Spacer()
+                                Text(String(format: "%.2f %%", interestRate))
+                                    .font(.system(.caption, design: .rounded).bold())
+                                    .foregroundStyle(LMSColors.actionBlue)
+                            }
+                            Slider(value: $interestRate, in: 5.0...15.0, step: 0.05)
+                                .tint(LMSColors.actionBlue)
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Tenure Duration")
+                                    .font(.system(.caption, design: .rounded).weight(.bold))
+                                Spacer()
+                                Text("\(Int(tenureYears)) Years")
+                                    .font(.system(.caption, design: .rounded).bold())
+                                    .foregroundStyle(LMSColors.actionBlue)
+                            }
+                            Slider(value: $tenureYears, in: 1...30, step: 1)
+                                .tint(LMSColors.actionBlue)
+                        }
+                    }
+                    .padding(LMSSpacing.lg)
+                    .background(LMSColors.surfaceElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+                }
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+                .padding(.top, LMSSpacing.md)
+            }
+            .background(LMSColors.background)
+            .navigationTitle("Quick Financial Calculator")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .font(.system(.body, design: .rounded).bold())
+                }
+            }
         }
     }
 }
-

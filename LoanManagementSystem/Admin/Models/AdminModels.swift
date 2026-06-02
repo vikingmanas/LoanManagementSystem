@@ -41,20 +41,15 @@ enum AuditLogType: String, Codable, CaseIterable {
     
     var icon: String {
         switch self {
-        case .userAction: return "person.crop.circle.badge.plus"
-        case .documentAction: return "doc.text.magnifyingglass"
-        case .loanAction: return "banknote"
-        case .systemAction: return "gearshape.2"
+        case .userAction: return "person.badge.plus"
+        case .documentAction: return "doc.text"
+        case .loanAction: return "checkmark.circle"
+        case .systemAction: return "server.rack"
         }
     }
     
     var color: Color {
-        switch self {
-        case .userAction: return LMSColors.actionBlue
-        case .documentAction: return LMSColors.emerald
-        case .loanAction: return LMSColors.amber
-        case .systemAction: return LMSColors.brandNavy
-        }
+        return LMSColors.textPrimary
     }
 }
 
@@ -68,6 +63,81 @@ struct AuditLogEntry: Identifiable, Codable, Hashable {
     let timestamp: Date
     let details: String
     let type: AuditLogType
+    
+    var displayIcon: String {
+        if type == .loanAction {
+            if action.lowercased().contains("disburs") {
+                return "indianrupeesign.circle"
+            }
+            if action.lowercased().contains("approv") {
+                return "checkmark.circle"
+            }
+        }
+        return type.icon
+    }
+    
+    var displayColor: Color {
+        return LMSColors.textPrimary
+    }
+}
+
+// MARK: - Admin Communication Center
+enum AdminIssueCategory: String, CaseIterable, Identifiable, Hashable {
+    case customerFeedback = "Customer Feedback"
+    case branchOperations = "Branch Operations"
+    case staffingRequest = "Staffing Request"
+    case employeeConcern = "Employee Concern"
+    case productFeedback = "Product Feedback"
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .customerFeedback: return "person.crop.circle.badge.exclamationmark"
+        case .branchOperations: return "building.2.crop.circle"
+        case .staffingRequest: return "person.2.badge.plus"
+        case .employeeConcern: return "person.badge.shield.checkmark"
+        case .productFeedback: return "lightbulb.max.fill"
+        }
+    }
+}
+
+enum AdminIssuePriority: String, CaseIterable, Identifiable, Hashable {
+    case low = "Low"
+    case medium = "Medium"
+    case high = "High"
+    case critical = "Critical"
+
+    var id: String { rawValue }
+
+    var color: Color {
+        switch self {
+        case .low: return LMSColors.actionBlue
+        case .medium: return LMSColors.amber
+        case .high: return LMSColors.coral
+        case .critical: return Color.purple
+        }
+    }
+}
+
+enum AdminIssueStatus: String, CaseIterable, Identifiable, Hashable {
+    case open = "Open"
+    case inProgress = "In Progress"
+    case waitingForResponse = "Waiting For Response"
+    case resolved = "Resolved"
+    case archived = "Archived"
+
+    var id: String { rawValue }
+
+    var color: Color {
+        switch self {
+        case .open: return LMSColors.coral
+        case .inProgress: return LMSColors.actionBlue
+        case .waitingForResponse: return LMSColors.amber
+        case .resolved: return LMSColors.emerald
+        case .archived: return LMSColors.textSecondary
+        }
+    }
 }
 
 // MARK: - Loan Products

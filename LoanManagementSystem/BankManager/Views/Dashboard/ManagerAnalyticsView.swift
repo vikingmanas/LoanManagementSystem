@@ -13,10 +13,11 @@ struct ManagerAnalyticsView: View {
     }
 
     private var portfolioItems: [LoanPortfolioItem] {
-        let totalAmount = max(viewModel.applicants.reduce(0) { $0 + $1.requestedAmount }, 1)
+        let loanBook = viewModel.applicants.filter { $0.status == .approved || $0.status == .disbursed }
+        let totalAmount = max(loanBook.reduce(0) { $0 + $1.requestedAmount }, 1)
 
         return ManagerLoanType.allCases.map { loanType in
-            let loans = viewModel.applicants.filter { $0.loanType == loanType }
+            let loans = loanBook.filter { $0.loanType == loanType }
             let amount = loans.reduce(0) { $0 + $1.requestedAmount }
             return LoanPortfolioItem(
                 loanType: loanType,
@@ -87,7 +88,7 @@ struct ManagerAnalyticsView: View {
                     .frame(minHeight: 120)
                 }
             } else {
-                let escalationsCount = viewModel.applicants.filter { $0.status == .escalated }.count
+                let escalationsCount = viewModel.officerEscalatedApplicants.count
                 if viewModel.branchOverview.nplRate > 0 || escalationsCount > 0 || !highRiskApplicants.isEmpty {
                     VStack(spacing: LMSSpacing.sm) {
                         HStack(spacing: LMSSpacing.md) {
@@ -146,7 +147,7 @@ struct ManagerAnalyticsView: View {
                 title: "NPL Loans",
                 systemImage: "exclamationmark.triangle.fill",
                 description: "No non-performing loans found.",
-                applicants: viewModel.applicants.filter { $0.riskLevel == .critical || $0.status == .rejected },
+                applicants: viewModel.nonPerformingApplicants,
                 viewModel: viewModel
             )
         }
@@ -155,7 +156,7 @@ struct ManagerAnalyticsView: View {
                 title: "Escalations",
                 systemImage: "arrow.up.circle.fill",
                 description: "No escalated applications.",
-                applicants: viewModel.applicants.filter { $0.status == .escalated },
+                applicants: viewModel.officerEscalatedApplicants,
                 viewModel: viewModel
             )
         }
@@ -428,7 +429,7 @@ struct BranchPortfolioLedgerSheet: View {
     var body: some View {
         NavigationStack {
             Group {
-                if viewModel.applicants.isEmpty {
+                if portfolioItems.isEmpty {
                     ContentUnavailableView(
                         "No Loans",
                         systemImage: "list.clipboard",
@@ -438,7 +439,9 @@ struct BranchPortfolioLedgerSheet: View {
                     List {
                         ForEach(portfolioItems) { item in
                             Section {
-                                let sectorLoans = viewModel.applicants.filter { $0.loanType == item.loanType }
+                                let sectorLoans = viewModel.applicants.filter {
+                                    $0.loanType == item.loanType && ($0.status == .approved || $0.status == .disbursed)
+                                }
                                 ForEach(sectorLoans) { loan in
                                     HStack(spacing: LMSSpacing.md) {
                                         ZStack {
@@ -491,8 +494,8 @@ struct BranchPortfolioLedgerSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") { dismiss() }
-                        .font(.system(.body, design: .rounded).bold())
+                    Button("Done") { dismiss() }
+                        .bold()
                 }
             }
         }

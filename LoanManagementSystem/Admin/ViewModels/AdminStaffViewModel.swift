@@ -141,5 +141,21 @@ final class AdminStaffViewModel: ObservableObject {
             return false
         }
     }
+
+    func createBranch(name: String, code: String, region: String, address: String) async -> Bool {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            try await service.createBranch(name: name, code: code, region: region, address: address)
+            self.branches = try await service.fetchBranches()
+            isLoading = false
+            return true
+        } catch {
+            self.errorMessage = error.localizedDescription
+            isLoading = false
+            return false
+        }
+    }
 }
 

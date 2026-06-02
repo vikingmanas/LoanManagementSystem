@@ -361,7 +361,7 @@ enum BorrowerDocumentUploadSource: String, Identifiable, Hashable {
     var id: String { rawValue }
 
     static var mobileSources: [BorrowerDocumentUploadSource] {
-        [.camera, .gallery]
+        [.camera, .gallery, .pdf]
     }
 
     var iconName: String {
@@ -377,7 +377,7 @@ enum BorrowerDocumentUploadSource: String, Identifiable, Hashable {
         switch self {
         case .camera: return "Choose document using camera"
         case .gallery: return "Upload JPG, PNG, or HEIC from Photos"
-        case .pdf: return "PDF uploads are unavailable on mobile"
+        case .pdf: return "Upload a PDF document from Files"
         case .dragAndDrop: return "Drag and drop is unavailable on mobile"
         }
     }
@@ -402,6 +402,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
     var mobileNumber: String
     var emailAddress: String
     var address: String
+    var preferredBranch: String
 
     var occupation: String
     var employmentType: String
@@ -431,6 +432,37 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
     var selectedAddressDoc: String
     var selectedIncomeDoc: String
 
+    // Draft-only persistence fields that are collected across wizard steps.
+    var draftStepIndex: Int
+    var bankName: String
+    var bankAccountNumber: String
+    var bankIFSCCode: String
+    var bankRegisteredMobile: String
+    var monthlySalaryDeposited: String
+    var employmentJoiningDate: Date?
+    var creditCardLimit: String
+    var savingsInvestments: String
+    var coApplicantMobile: String
+    var coApplicantPAN: String
+    var coApplicantAadhaar: String
+    var coApplicantIncome: String
+    var autoDebitConsent: Bool
+    var nomineeName: String
+    var nomineeRelation: String
+    var nomineeMobile: String
+    var referenceName: String
+    var referenceMobile: String
+    var emergencyContactName: String
+    var emergencyContactMobile: String
+    var signatureImageData: String
+    var signatureVerificationStatus: String
+    var liveVerificationCompleted: Bool
+    var liveVerificationReference: String
+    var selfieVerificationStatus: String
+    var acceptedTerms: Bool
+    var acceptedBureauConsent: Bool
+    var acceptedDebitConsent: Bool
+
     enum CodingKeys: String, CodingKey {
         case fullName
         case dateOfBirth
@@ -438,6 +470,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         case mobileNumber
         case emailAddress
         case address
+        case preferredBranch
         case occupation
         case employmentType
         case employerName
@@ -460,6 +493,35 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         case selectedIdentityDoc
         case selectedAddressDoc
         case selectedIncomeDoc
+        case draftStepIndex
+        case bankName
+        case bankAccountNumber
+        case bankIFSCCode
+        case bankRegisteredMobile
+        case monthlySalaryDeposited
+        case employmentJoiningDate
+        case creditCardLimit
+        case savingsInvestments
+        case coApplicantMobile
+        case coApplicantPAN
+        case coApplicantAadhaar
+        case coApplicantIncome
+        case autoDebitConsent
+        case nomineeName
+        case nomineeRelation
+        case nomineeMobile
+        case referenceName
+        case referenceMobile
+        case emergencyContactName
+        case emergencyContactMobile
+        case signatureImageData
+        case signatureVerificationStatus
+        case liveVerificationCompleted
+        case liveVerificationReference
+        case selfieVerificationStatus
+        case acceptedTerms
+        case acceptedBureauConsent
+        case acceptedDebitConsent
     }
 
     var monthlyIncomeValue: Double { monthlyIncome.numericValue }
@@ -477,6 +539,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         mobileNumber: String,
         emailAddress: String,
         address: String,
+        preferredBranch: String = "",
         occupation: String,
         employmentType: String,
         employerName: String,
@@ -498,7 +561,36 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         gstNumber: String = "",
         selectedIdentityDoc: String = "Aadhaar Card",
         selectedAddressDoc: String = "Utility Bill",
-        selectedIncomeDoc: String = "Salary Slips"
+        selectedIncomeDoc: String = "Salary Slips",
+        draftStepIndex: Int = 1,
+        bankName: String = "",
+        bankAccountNumber: String = "",
+        bankIFSCCode: String = "",
+        bankRegisteredMobile: String = "",
+        monthlySalaryDeposited: String = "",
+        employmentJoiningDate: Date? = nil,
+        creditCardLimit: String = "",
+        savingsInvestments: String = "",
+        coApplicantMobile: String = "",
+        coApplicantPAN: String = "",
+        coApplicantAadhaar: String = "",
+        coApplicantIncome: String = "",
+        autoDebitConsent: Bool = false,
+        nomineeName: String = "",
+        nomineeRelation: String = "",
+        nomineeMobile: String = "",
+        referenceName: String = "",
+        referenceMobile: String = "",
+        emergencyContactName: String = "",
+        emergencyContactMobile: String = "",
+        signatureImageData: String = "",
+        signatureVerificationStatus: String = "",
+        liveVerificationCompleted: Bool = false,
+        liveVerificationReference: String = "",
+        selfieVerificationStatus: String = "",
+        acceptedTerms: Bool = false,
+        acceptedBureauConsent: Bool = false,
+        acceptedDebitConsent: Bool = false
     ) {
         self.fullName = fullName
         self.dateOfBirth = dateOfBirth
@@ -506,6 +598,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         self.mobileNumber = mobileNumber
         self.emailAddress = emailAddress
         self.address = address
+        self.preferredBranch = preferredBranch
         self.occupation = occupation
         self.employmentType = employmentType
         self.employerName = employerName
@@ -528,6 +621,99 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         self.selectedIdentityDoc = selectedIdentityDoc
         self.selectedAddressDoc = selectedAddressDoc
         self.selectedIncomeDoc = selectedIncomeDoc
+        self.draftStepIndex = min(max(draftStepIndex, 1), 10)
+        self.bankName = bankName
+        self.bankAccountNumber = bankAccountNumber
+        self.bankIFSCCode = bankIFSCCode
+        self.bankRegisteredMobile = bankRegisteredMobile
+        self.monthlySalaryDeposited = monthlySalaryDeposited
+        self.employmentJoiningDate = employmentJoiningDate
+        self.creditCardLimit = creditCardLimit
+        self.savingsInvestments = savingsInvestments
+        self.coApplicantMobile = coApplicantMobile
+        self.coApplicantPAN = coApplicantPAN
+        self.coApplicantAadhaar = coApplicantAadhaar
+        self.coApplicantIncome = coApplicantIncome
+        self.autoDebitConsent = autoDebitConsent
+        self.nomineeName = nomineeName
+        self.nomineeRelation = nomineeRelation
+        self.nomineeMobile = nomineeMobile
+        self.referenceName = referenceName
+        self.referenceMobile = referenceMobile
+        self.emergencyContactName = emergencyContactName
+        self.emergencyContactMobile = emergencyContactMobile
+        self.signatureImageData = signatureImageData
+        self.signatureVerificationStatus = signatureVerificationStatus
+        self.liveVerificationCompleted = liveVerificationCompleted
+        self.liveVerificationReference = liveVerificationReference
+        self.selfieVerificationStatus = selfieVerificationStatus
+        self.acceptedTerms = acceptedTerms
+        self.acceptedBureauConsent = acceptedBureauConsent
+        self.acceptedDebitConsent = acceptedDebitConsent
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            fullName: try container.decodeIfPresent(String.self, forKey: .fullName) ?? "",
+            dateOfBirth: try container.decodeIfPresent(Date.self, forKey: .dateOfBirth) ?? Self.empty.dateOfBirth,
+            gender: try container.decodeIfPresent(String.self, forKey: .gender) ?? "",
+            mobileNumber: try container.decodeIfPresent(String.self, forKey: .mobileNumber) ?? "",
+            emailAddress: try container.decodeIfPresent(String.self, forKey: .emailAddress) ?? "",
+            address: try container.decodeIfPresent(String.self, forKey: .address) ?? "",
+            preferredBranch: try container.decodeIfPresent(String.self, forKey: .preferredBranch) ?? "",
+            occupation: try container.decodeIfPresent(String.self, forKey: .occupation) ?? "",
+            employmentType: try container.decodeIfPresent(String.self, forKey: .employmentType) ?? "Salaried",
+            employerName: try container.decodeIfPresent(String.self, forKey: .employerName) ?? "",
+            workExperienceYears: try container.decodeIfPresent(Int.self, forKey: .workExperienceYears) ?? 0,
+            monthlyIncome: try container.decodeIfPresent(String.self, forKey: .monthlyIncome) ?? "",
+            annualIncome: try container.decodeIfPresent(String.self, forKey: .annualIncome) ?? "",
+            existingLoans: try container.decodeIfPresent(String.self, forKey: .existingLoans) ?? "",
+            existingEMIs: try container.decodeIfPresent(String.self, forKey: .existingEMIs) ?? "",
+            creditCardObligations: try container.decodeIfPresent(String.self, forKey: .creditCardObligations) ?? "",
+            creditScore: try container.decodeIfPresent(String.self, forKey: .creditScore) ?? "",
+            loanAmountRequested: try container.decodeIfPresent(String.self, forKey: .loanAmountRequested) ?? "",
+            loanPurpose: try container.decodeIfPresent(String.self, forKey: .loanPurpose) ?? "",
+            repaymentPreference: try container.decodeIfPresent(String.self, forKey: .repaymentPreference) ?? "EMI Auto-Debit",
+            preferredTenureMonths: try container.decodeIfPresent(Int.self, forKey: .preferredTenureMonths) ?? 60,
+            hasCoApplicant: try container.decodeIfPresent(Bool.self, forKey: .hasCoApplicant) ?? false,
+            coApplicantDetails: try container.decodeIfPresent(String.self, forKey: .coApplicantDetails) ?? "",
+            hasGuarantor: try container.decodeIfPresent(Bool.self, forKey: .hasGuarantor) ?? false,
+            guarantorDetails: try container.decodeIfPresent(String.self, forKey: .guarantorDetails) ?? "",
+            gstNumber: try container.decodeIfPresent(String.self, forKey: .gstNumber) ?? "",
+            selectedIdentityDoc: try container.decodeIfPresent(String.self, forKey: .selectedIdentityDoc) ?? "Aadhaar Card",
+            selectedAddressDoc: try container.decodeIfPresent(String.self, forKey: .selectedAddressDoc) ?? "Utility Bill",
+            selectedIncomeDoc: try container.decodeIfPresent(String.self, forKey: .selectedIncomeDoc) ?? "Salary Slips",
+            draftStepIndex: try container.decodeIfPresent(Int.self, forKey: .draftStepIndex) ?? 1,
+            bankName: try container.decodeIfPresent(String.self, forKey: .bankName) ?? "",
+            bankAccountNumber: try container.decodeIfPresent(String.self, forKey: .bankAccountNumber) ?? "",
+            bankIFSCCode: try container.decodeIfPresent(String.self, forKey: .bankIFSCCode) ?? "",
+            bankRegisteredMobile: try container.decodeIfPresent(String.self, forKey: .bankRegisteredMobile) ?? "",
+            monthlySalaryDeposited: try container.decodeIfPresent(String.self, forKey: .monthlySalaryDeposited) ?? "",
+            employmentJoiningDate: try container.decodeIfPresent(Date.self, forKey: .employmentJoiningDate),
+            creditCardLimit: try container.decodeIfPresent(String.self, forKey: .creditCardLimit) ?? "",
+            savingsInvestments: try container.decodeIfPresent(String.self, forKey: .savingsInvestments) ?? "",
+            coApplicantMobile: try container.decodeIfPresent(String.self, forKey: .coApplicantMobile) ?? "",
+            coApplicantPAN: try container.decodeIfPresent(String.self, forKey: .coApplicantPAN) ?? "",
+            coApplicantAadhaar: try container.decodeIfPresent(String.self, forKey: .coApplicantAadhaar) ?? "",
+            coApplicantIncome: try container.decodeIfPresent(String.self, forKey: .coApplicantIncome) ?? "",
+            autoDebitConsent: try container.decodeIfPresent(Bool.self, forKey: .autoDebitConsent) ?? false,
+            nomineeName: try container.decodeIfPresent(String.self, forKey: .nomineeName) ?? "",
+            nomineeRelation: try container.decodeIfPresent(String.self, forKey: .nomineeRelation) ?? "",
+            nomineeMobile: try container.decodeIfPresent(String.self, forKey: .nomineeMobile) ?? "",
+            referenceName: try container.decodeIfPresent(String.self, forKey: .referenceName) ?? "",
+            referenceMobile: try container.decodeIfPresent(String.self, forKey: .referenceMobile) ?? "",
+            emergencyContactName: try container.decodeIfPresent(String.self, forKey: .emergencyContactName) ?? "",
+            emergencyContactMobile: try container.decodeIfPresent(String.self, forKey: .emergencyContactMobile) ?? "",
+            signatureImageData: try container.decodeIfPresent(String.self, forKey: .signatureImageData) ?? "",
+            signatureVerificationStatus: try container.decodeIfPresent(String.self, forKey: .signatureVerificationStatus) ?? "",
+            liveVerificationCompleted: try container.decodeIfPresent(Bool.self, forKey: .liveVerificationCompleted) ?? false,
+            liveVerificationReference: try container.decodeIfPresent(String.self, forKey: .liveVerificationReference) ?? "",
+            selfieVerificationStatus: try container.decodeIfPresent(String.self, forKey: .selfieVerificationStatus) ?? "",
+            acceptedTerms: try container.decodeIfPresent(Bool.self, forKey: .acceptedTerms) ?? false,
+            acceptedBureauConsent: try container.decodeIfPresent(Bool.self, forKey: .acceptedBureauConsent) ?? false,
+            acceptedDebitConsent: try container.decodeIfPresent(Bool.self, forKey: .acceptedDebitConsent) ?? false
+        )
     }
 
     static let empty = BorrowerLoanFormData(
@@ -537,6 +723,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         mobileNumber: "",
         emailAddress: "",
         address: "",
+        preferredBranch: "",
         occupation: "",
         employmentType: "Salaried",
         employerName: "",
@@ -565,6 +752,11 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         .empty.mergedWithProfile(profile)
     }
 
+    static let branchOptions = [
+        "Headquarters Branch",
+        "Mysuru"
+    ]
+
     static func formattedAddress(from address: AddressInfo) -> String {
         var components: [String] = []
         if !address.streetAddress.isEmpty { components.append(address.streetAddress) }
@@ -572,6 +764,31 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         if !address.state.isEmpty { components.append(address.state) }
         if !address.zipCode.isEmpty { components.append(address.zipCode) }
         return components.joined(separator: ", ")
+    }
+
+    static func isMockValue(_ value: String) -> Bool {
+        let normalized = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        guard !normalized.isEmpty else { return false }
+        let mockValues: Set<String> = [
+            "sample",
+            "sample user",
+            "test",
+            "test user",
+            "demo",
+            "demo user",
+            "john doe",
+            "jane doe",
+            "default applicant",
+            "mock applicant",
+            "abc123",
+            "9999999999"
+        ]
+        return mockValues.contains(normalized)
+            || normalized.contains("placeholder")
+            || normalized.contains("dummy")
+            || normalized.contains("mock applicant")
     }
 
     func isPlaceholderDateOfBirth() -> Bool {
@@ -599,11 +816,14 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
             return authEmail?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
         }()
 
-        if result.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !resolvedName.isEmpty {
+        if result.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           !resolvedName.isEmpty,
+           !Self.isMockValue(resolvedName) {
             result.fullName = resolvedName
         }
         if result.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-           let profile, !profile.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+           let profile, !profile.mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           !Self.isMockValue(profile.mobileNumber) {
             result.mobileNumber = profile.mobileNumber
         }
         if result.emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !resolvedEmail.isEmpty {
@@ -615,6 +835,11 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
             if !formatted.isEmpty {
                 result.address = formatted
             }
+        }
+        if result.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let profile,
+           !profile.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            result.preferredBranch = profile.preferredBranch
         }
         if result.isPlaceholderDateOfBirth(), let profile {
             result.dateOfBirth = profile.dateOfBirth
@@ -669,6 +894,7 @@ enum BorrowerLoanFormField: String, CaseIterable, Hashable {
     case mobileNumber
     case emailAddress
     case address
+    case preferredBranch
     case occupation
     case employerName
     case monthlyIncome
@@ -689,6 +915,7 @@ enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hash
     case approved = "Approved"
     case rejected = "Rejected"
     case disbursed = "Disbursed"
+    case escalated = "Escalated"
 
     var id: String { rawValue }
 
@@ -703,6 +930,7 @@ enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hash
         case .approved: return "approved"
         case .rejected: return "rejected"
         case .disbursed: return "disbursed"
+        case .escalated: return "escalated"
         }
     }
     
@@ -717,6 +945,7 @@ enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hash
         case "approved": return .approved
         case "rejected": return .rejected
         case "disbursed": return .disbursed
+        case "escalated": return .escalated
         default: return .draft
         }
     }
@@ -732,6 +961,7 @@ enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hash
         case .approved: return "checkmark.circle.fill"
         case .rejected: return "xmark.circle.fill"
         case .disbursed: return "indianrupeesign.circle.fill"
+        case .escalated: return "arrow.up.forward.circle.fill"
         }
     }
 
@@ -741,6 +971,8 @@ enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hash
             return Color(.secondaryLabel)
         case .submitted, .underReview, .documentVerification, .loanOfficerReview, .bankManagerReview:
             return Color.brandNavy
+        case .escalated:
+            return Color.purple
         case .approved, .disbursed:
             return Color.brandEmerald
         case .rejected:
@@ -790,6 +1022,7 @@ struct BorrowerStageEntry: Codable, Identifiable, Hashable {
     }
 }
 
+
 struct BorrowerLoanApplication: Identifiable, Hashable {
     let id: UUID
     var applicationId: String?
@@ -803,6 +1036,8 @@ struct BorrowerLoanApplication: Identifiable, Hashable {
     var submittedAt: Date?
     var updatedAt: Date
     var assignedQueue: String?
+    var assignedOfficerId: UUID?
+    var assignedOfficer: AssignedLoanOfficer?
     var outstandingBalance: Double
     var upcomingEMI: Double
 
@@ -836,28 +1071,34 @@ struct DBLoanApplication: Codable {
             borrowerId: borrowerId,
             product: product,
             formData: formData,
-            documents: documents.isEmpty ? BorrowerLoanDocumentItem.defaultRequirements(for: product) : documents,
+            documents: documents,
             currentStage: BorrowerApplicationStage.from(databaseValue: status),
             stageHistory: stageHistory,
+            draftStepIndex: min(max(formData.draftStepIndex, 1), 10),
             submittedAt: submittedAt,
             updatedAt: updatedAt,
-            assignedQueue: status == "draft" ? nil : "Retail Loan Officer Queue",
+            assignedQueue: status == "draft" ? nil : "Loan Officer Assignment Pending",
+            assignedOfficerId: officerId,
+            assignedOfficer: nil,
             outstandingBalance: max(0, amountRequested * 0.92),
             upcomingEMI: max(0, amountRequested / Double(max(1, tenureMonths)))
         )
     }
     
     static func from(borrowerApplication app: BorrowerLoanApplication, borrowerId: UUID) -> DBLoanApplication {
+        var formData = app.formData
+        formData.draftStepIndex = min(max(app.draftStepIndex, 1), 10)
+
         return DBLoanApplication(
             applicationId: app.id,
             borrowerId: borrowerId,
-            officerId: nil,
+            officerId: app.assignedOfficer?.officerId ?? app.assignedOfficerId,
             productId: app.product.id,
             amountRequested: app.formData.requestedAmountValue,
             tenureMonths: app.formData.preferredTenureMonths,
             purpose: app.formData.loanPurpose,
             status: app.currentStage.databaseValue,
-            formData: app.formData,
+            formData: formData,
             stageHistory: app.stageHistory,
             submittedAt: app.submittedAt,
             updatedAt: app.updatedAt
@@ -1184,20 +1425,56 @@ extension BorrowerLoanDocumentItem {
             )
         ]
 
-        let loanSpecific = product.loanSpecificDocuments.map {
-            BorrowerLoanDocumentItem(
-                id: UUID(),
-                name: $0,
-                category: .loanSpecific,
-                status: .pendingUpload,
-                fileName: nil,
-                uploadDate: nil,
-                lastUpdated: nil,
-                isLocked: false
-            )
-        }
+        let baseDocKeys = Set([
+            canonicalDocumentKey(identityDoc),
+            canonicalDocumentKey(addressDoc),
+            canonicalDocumentKey(incomeDoc)
+        ])
+        let loanSpecific = product.loanSpecificDocuments
+            .filter { !baseDocKeys.contains(canonicalDocumentKey($0)) }
+            .map {
+                BorrowerLoanDocumentItem(
+                    id: UUID(),
+                    name: $0,
+                    category: .loanSpecific,
+                    status: .pendingUpload,
+                    fileName: nil,
+                    uploadDate: nil,
+                    lastUpdated: nil,
+                    isLocked: false
+                )
+            }
 
         return identity + address + income + loanSpecific
+    }
+
+    static func canonicalDocumentKey(_ name: String) -> String {
+        let normalized = name.lowercased()
+
+        if normalized.contains("aadhaar") || normalized.contains("aadhar") {
+            return "aadhaar"
+        }
+        if normalized.contains("pan") {
+            return "pan"
+        }
+        if normalized.contains("salary") || normalized.contains("payslip") || normalized.contains("pay slip") {
+            return "salary_slip"
+        }
+        if normalized.contains("bank") && normalized.contains("statement") {
+            return "bank_statement"
+        }
+        if normalized.contains("utility") {
+            return "utility_bill"
+        }
+        if normalized.contains("passport") {
+            return "passport"
+        }
+        if normalized.contains("driving") {
+            return "driving_license"
+        }
+
+        let compact = normalized.filter { $0.isLetter || $0.isNumber }
+        return compact.hasSuffix("s") ? String(compact.dropLast()) : compact
     }
 }
 

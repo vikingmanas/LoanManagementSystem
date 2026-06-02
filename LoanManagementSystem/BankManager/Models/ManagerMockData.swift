@@ -77,7 +77,8 @@ enum ManagerMockData {
             managerRemarks: "",
             verificationProgress: 1.0,
             tenure: 240,
-            interestRate: 8.65
+            interestRate: 8.65,
+            branchName: "Bengaluru Central"
         ),
         ManagerApplicant(
             id: UUID(uuidString: "B0000001-0000-0000-0000-000000000002")!,
@@ -97,7 +98,8 @@ enum ManagerMockData {
             managerRemarks: "",
             verificationProgress: 0.85,
             tenure: 60,
-            interestRate: 9.25
+            interestRate: 9.25,
+            branchName: "Bengaluru Central"
         ),
         ManagerApplicant(
             id: UUID(uuidString: "B0000001-0000-0000-0000-000000000003")!,
@@ -117,7 +119,8 @@ enum ManagerMockData {
             managerRemarks: "Please verify co-applicant income source and provide updated ITR.",
             verificationProgress: 0.65,
             tenure: 36,
-            interestRate: 12.50
+            interestRate: 12.50,
+            branchName: "Bengaluru Central"
         ),
         ManagerApplicant(
             id: UUID(uuidString: "B0000001-0000-0000-0000-000000000004")!,
@@ -137,7 +140,8 @@ enum ManagerMockData {
             managerRemarks: "Approved. Proceed with disbursement.",
             verificationProgress: 1.0,
             tenure: 60,
-            interestRate: 9.75
+            interestRate: 9.75,
+            branchName: "Bengaluru Central"
         ),
         ManagerApplicant(
             id: UUID(uuidString: "B0000001-0000-0000-0000-000000000005")!,
@@ -157,7 +161,8 @@ enum ManagerMockData {
             managerRemarks: "Rejected due to poor credit profile. Advised to clear existing obligations.",
             verificationProgress: 0.50,
             tenure: 24,
-            interestRate: 14.50
+            interestRate: 14.50,
+            branchName: "Bengaluru Central"
         ),
         ManagerApplicant(
             id: UUID(uuidString: "B0000001-0000-0000-0000-000000000006")!,
@@ -177,7 +182,8 @@ enum ManagerMockData {
             managerRemarks: "",
             verificationProgress: 0.95,
             tenure: 300,
-            interestRate: 8.45
+            interestRate: 8.45,
+            branchName: "Bengaluru Central"
         ),
         ManagerApplicant(
             id: UUID(uuidString: "B0000001-0000-0000-0000-000000000007")!,
@@ -197,7 +203,8 @@ enum ManagerMockData {
             managerRemarks: "Escalated to Admin for fraud investigation.",
             verificationProgress: 0.40,
             tenure: 48,
-            interestRate: 15.00
+            interestRate: 15.00,
+            branchName: "Bengaluru Central"
         ),
         ManagerApplicant(
             id: UUID(uuidString: "B0000001-0000-0000-0000-000000000008")!,
@@ -217,7 +224,8 @@ enum ManagerMockData {
             managerRemarks: "Approved and disbursed.",
             verificationProgress: 1.0,
             tenure: 84,
-            interestRate: 8.90
+            interestRate: 8.90,
+            branchName: "Bengaluru Central"
         )
     ]
 
@@ -296,7 +304,7 @@ enum ManagerMockData {
 
     static let conversations: [ManagerChatConversation] = [
         ManagerChatConversation(
-            id: UUID(), officerName: "Aarav Patel", officerInitials: "AP",
+            id: UUID(), officerUserId: UUID(), officerName: "Aarav Patel", officerInitials: "AP",
             officerRole: "Senior Loan Officer",
             lastMessage: "Priya Sharma's property valuation report has been uploaded.",
             timestamp: Date().addingTimeInterval(-1200), unreadCount: 2, isPinned: true,
@@ -309,7 +317,7 @@ enum ManagerMockData {
             ]
         ),
         ManagerChatConversation(
-            id: UUID(), officerName: "Priya Menon", officerInitials: "PM",
+            id: UUID(), officerUserId: UUID(), officerName: "Priya Menon", officerInitials: "PM",
             officerRole: "Loan Officer",
             lastMessage: "Escalation for Vikram Joshi's case — GST discrepancy found.",
             timestamp: Date().addingTimeInterval(-3600), unreadCount: 1, isPinned: false,
@@ -321,7 +329,7 @@ enum ManagerMockData {
             ]
         ),
         ManagerChatConversation(
-            id: UUID(), officerName: "Rohan Gupta", officerInitials: "RG",
+            id: UUID(), officerUserId: UUID(), officerName: "Rohan Gupta", officerInitials: "RG",
             officerRole: "Junior Loan Officer",
             lastMessage: "Kavitha Nair's disbursement has been processed.",
             timestamp: Date().addingTimeInterval(-86400), unreadCount: 0, isPinned: false,
@@ -333,7 +341,7 @@ enum ManagerMockData {
             ]
         ),
         ManagerChatConversation(
-            id: UUID(), officerName: "Neha Singh", officerInitials: "NS",
+            id: UUID(), officerUserId: UUID(), officerName: "Neha Singh", officerInitials: "NS",
             officerRole: "Loan Officer",
             lastMessage: "Ananya Reddy's home loan file is ready for your review.",
             timestamp: Date().addingTimeInterval(-600), unreadCount: 3, isPinned: true,
@@ -364,4 +372,3 @@ enum ManagerMockData {
         approved: 187, rejected: 15, pending: 45
     )
 }
-

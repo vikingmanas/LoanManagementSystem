@@ -20,6 +20,29 @@ struct BorrowerApplicationsTabView: View {
             .background(LMSColors.background)
             .navigationTitle("Applications")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        ForEach(BorrowerApplicationFilter.allCases) { filter in
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    viewModel.selectedApplicationFilter = filter
+                                }
+                            } label: {
+                                if viewModel.selectedApplicationFilter == filter {
+                                    Label(filter.rawValue, systemImage: "checkmark")
+                                } else {
+                                    Text(filter.rawValue)
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.system(size: 18, weight: .semibold))
+                    }
+                    .accessibilityLabel("Filter applications")
+                }
+            }
             .task(id: authManager.userEmail) {
                 viewModel.setBorrowerAuthContext(
                     email: authManager.userEmail ?? "",
@@ -50,6 +73,8 @@ struct BorrowerApplicationsTabView: View {
                             }
                         }
                     )
+                case .governmentSchemeDetail(let scheme):
+                    GovernmentSchemeDetailView(scheme: scheme)
                 }
             }
         }
@@ -77,9 +102,6 @@ struct BorrowerApplicationsHub: View {
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
 
                 ApplicationMetricsRow(metrics: viewModel.dashboardMetrics)
-
-                ApplicationFilterChipRow(selection: $viewModel.selectedApplicationFilter)
-                    .padding(.horizontal, LMSSpacing.screenHorizontal)
 
                 if viewModel.filteredSubmittedApplications.isEmpty {
                     ApplicationsEmptyState(
@@ -166,41 +188,6 @@ private struct ApplicationMetricTile: View {
     }
 }
 
-// MARK: - Filter Chips
-
-private struct ApplicationFilterChipRow: View {
-    @Binding var selection: BorrowerApplicationFilter
-
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: LMSSpacing.sm) {
-                ForEach(BorrowerApplicationFilter.allCases) { filter in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            selection = filter
-                        }
-                    } label: {
-                        Text(filter.rawValue)
-                            .font(LMSFont.footnote.weight(.semibold))
-                            .foregroundStyle(selection == filter ? .white : LMSColors.textPrimary)
-                            .padding(.horizontal, LMSSpacing.lg)
-                            .padding(.vertical, LMSSpacing.sm)
-                            .background(
-                                selection == filter ? LMSColors.brandNavy : LMSColors.surface,
-                                in: Capsule()
-                            )
-                            .overlay(
-                                Capsule()
-                                    .stroke(selection == filter ? Color.clear : LMSColors.separatorLight, lineWidth: 0.5)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-}
-
 // MARK: - Application Card
 
 struct ApplicationTrackingCard: View {
@@ -237,12 +224,17 @@ struct ApplicationTrackingCard: View {
 
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Submitted")
+                    Text(application.isDraft ? "Current Step" : "Submitted")
                         .font(LMSFont.caption2)
                         .foregroundStyle(LMSColors.textSecondary)
-                    Text((application.submittedAt ?? application.updatedAt).formattedAsDDMMMYYYY())
+                    Text(application.isDraft ? "Step \(application.draftStepIndex) of 10" : (application.submittedAt ?? application.updatedAt).formattedAsDDMMMYYYY())
                         .font(LMSFont.footnote.weight(.medium))
                         .foregroundStyle(LMSColors.textPrimary)
+                    if application.isDraft {
+                        Text("Updated \(RelativeDateFormatter.shared.relativeString(from: application.updatedAt))")
+                            .font(LMSFont.caption2)
+                            .foregroundStyle(LMSColors.textTertiary)
+                    }
                 }
                 Spacer()
                 if application.formData.requestedAmountValue > 0 {

@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 import Combine
 import AVFoundation
+import UniformTypeIdentifiers
 @preconcurrency import Vision
 
 private enum WizardNavigationDirection {
@@ -265,6 +266,7 @@ struct BorrowerLoanWizardView: View {
     let product: BorrowerLoanProduct
     let onComplete: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var authManager: AuthManager
 
     @State private var currentStep: Int = 1
@@ -323,6 +325,7 @@ struct BorrowerLoanWizardView: View {
     @State private var selectedUploadDocId: UUID? = nil
     @State private var showUploadSourceSheet = false
     @State private var showDocumentImagePicker = false
+    @State private var showDocumentFileImporter = false
     @State private var imagePickerSourceType: UIImagePickerController.SourceType = .photoLibrary
     @State private var previewImage: DocumentPreviewImage?
     
@@ -361,6 +364,51 @@ struct BorrowerLoanWizardView: View {
         Double(currentStep) / 10.0
     }
 
+    private var localDraftAutosaveToken: String {
+        [
+            "\(desiredAmount)",
+            "\(loanTenureMonths)",
+            salariedCompany,
+            salariedEmpID,
+            salariedDesignation,
+            "\(salariedJoiningDate.timeIntervalSince1970)",
+            selfEmployedBusinessName,
+            selfEmployedBusinessType,
+            "\(selfEmployedYearsInBusiness)",
+            selfEmployedGSTNumber,
+            selfEmployedAnnualRevenue,
+            selfEmployedAnnualProfit,
+            existingLoansCount,
+            creditCardLimit,
+            creditCardOutstanding,
+            savingsInvestments,
+            "\(hasCoApplicantToggle)",
+            coApplicantName,
+            coApplicantRelation,
+            coApplicantMobile,
+            coApplicantPAN,
+            coApplicantAadhaar,
+            coApplicantIncome,
+            bankName,
+            bankAccountNumber,
+            bankIFSCCode,
+            bankRegisteredMobile,
+            monthlySalaryDeposited,
+            "\(autoDebitConsent)",
+            nomineeName,
+            nomineeMobile,
+            ocrPANFather,
+            ocrPANNumber,
+            "\(signatureImage != nil)",
+            "\(isSignatureEmpty)",
+            "\(liveVerificationCompleted)",
+            liveVerificationReference ?? "",
+            "\(acceptTerms)",
+            "\(acceptBureau)",
+            "\(acceptDebit)"
+        ].joined(separator: "|")
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: LMSSpacing.lg) {
@@ -392,10 +440,24 @@ struct BorrowerLoanWizardView: View {
                 selectedSource: $uploadSource,
                 onSelect: { source in
                     if let docId = selectedUploadDocId {
-                        beginDocumentSelection(for: docId, source: source)
+                        if source == .pdf {
+                            uploadSource = source
+                            showDocumentFileImporter = true
+                        } else {
+                            beginDocumentSelection(for: docId, source: source)
+                        }
                     }
                 }
             )
+        }
+        .fileImporter(
+            isPresented: $showDocumentFileImporter,
+            allowedContentTypes: [.pdf],
+            allowsMultipleSelection: false
+        ) { result in
+            if let docId = selectedUploadDocId {
+                processSelectedDocumentFile(result, for: docId)
+            }
         }
         .fullScreenCover(isPresented: $showDocumentImagePicker) {
             DocumentImagePicker(sourceType: imagePickerSourceType) { image in
@@ -444,6 +506,21 @@ struct BorrowerLoanWizardView: View {
         }
         .onChange(of: currentStep) { _, newStep in
             viewModel.updateDraftStep(newStep)
+        }
+        .onChange(of: viewModel.formData) { _, _ in
+            scheduleAutosaveIndicator()
+            viewModel.autosaveDraft()
+        }
+        .onChange(of: localDraftAutosaveToken) { _, _ in
+            triggerAutosave()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .inactive || phase == .background {
+                persistCurrentDraftImmediately()
+            }
+        }
+        .onDisappear {
+            persistCurrentDraftImmediately()
         }
         .alert("Unable to Submit", isPresented: Binding(
             get: { submissionErrorMessage != nil },
@@ -506,13 +583,24 @@ struct BorrowerLoanWizardView: View {
             Circle()
                 .fill(isAutosaving ? LMSColors.actionBlue : LMSColors.emerald)
                 .frame(width: 5, height: 5)
-            Text(isAutosaving ? "Saving" : "Saved")
+            Text(autosaveStatusText)
                 .font(LMSFont.caption2.weight(.medium))
                 .foregroundStyle(LMSColors.textSecondary)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(LMSColors.surfaceTertiary, in: Capsule())
+    }
+
+    private var autosaveStatusText: String {
+        if isAutosaving { return "Saving..." }
+        guard let savedAt = viewModel.lastDraftSavedAt ?? Optional(lastAutosavedTime) else {
+            return "Saved"
+        }
+        let elapsed = max(0, Int(Date().timeIntervalSince(savedAt)))
+        if elapsed < 5 { return "Draft Updated" }
+        if elapsed < 60 { return "Last Saved: \(elapsed)s ago" }
+        return "Last Saved: \(elapsed / 60)m ago"
     }
 
     @ViewBuilder
@@ -720,7 +808,26 @@ struct BorrowerLoanWizardView: View {
         currentStep = min(max(viewModel.currentStepIndex, 1), 10)
 
         ensureRequiredDocumentsLoaded()
+        hydrateWizardStateFromFormData()
+    }
 
+    private func ensureRequiredDocumentsLoaded() {
+        guard viewModel.documents.isEmpty else {
+            viewModel.normalizeDuplicateDocumentRequirements()
+            return
+        }
+
+        viewModel.documents = BorrowerLoanDocumentItem.defaultRequirements(
+            for: product,
+            identityDoc: viewModel.formData.selectedIdentityDoc,
+            addressDoc: viewModel.formData.selectedAddressDoc,
+            incomeDoc: viewModel.formData.selectedIncomeDoc
+        )
+        viewModel.normalizeDuplicateDocumentRequirements(autosave: false)
+        viewModel.autosaveDraft()
+    }
+
+    private func hydrateWizardStateFromFormData() {
         if viewModel.formData.requestedAmountValue > 0 {
             desiredAmount = viewModel.formData.requestedAmountValue
         } else {
@@ -731,32 +838,83 @@ struct BorrowerLoanWizardView: View {
             loanTenureMonths = Double(viewModel.formData.preferredTenureMonths)
         }
 
-        if salariedCompany.isEmpty {
-            salariedCompany = viewModel.formData.employerName
+        if !viewModel.formData.employerName.isEmpty {
+            if viewModel.formData.employmentType == "Salaried" {
+                salariedCompany = viewModel.formData.employerName
+            } else {
+                selfEmployedBusinessName = viewModel.formData.employerName
+            }
         }
-        if salariedDesignation.isEmpty {
+        if !viewModel.formData.occupation.isEmpty {
             salariedDesignation = viewModel.formData.occupation
         }
-        if selfEmployedBusinessName.isEmpty {
-            selfEmployedBusinessName = viewModel.formData.employerName
+        if viewModel.formData.workExperienceYears > 0 {
+            selfEmployedYearsInBusiness = viewModel.formData.workExperienceYears
         }
-    }
+        if !viewModel.formData.gstNumber.isEmpty {
+            selfEmployedGSTNumber = viewModel.formData.gstNumber
+        }
+        if !viewModel.formData.existingLoans.isEmpty {
+            existingLoansCount = viewModel.formData.existingLoans
+        }
+        if !viewModel.formData.creditCardObligations.isEmpty {
+            creditCardOutstanding = viewModel.formData.creditCardObligations
+        }
+        if let joiningDate = viewModel.formData.employmentJoiningDate {
+            salariedJoiningDate = joiningDate
+        }
+        creditCardLimit = viewModel.formData.creditCardLimit
+        savingsInvestments = viewModel.formData.savingsInvestments
 
-    private func ensureRequiredDocumentsLoaded() {
-        guard viewModel.documents.isEmpty else { return }
+        bankName = viewModel.formData.bankName
+        bankAccountNumber = viewModel.formData.bankAccountNumber
+        bankIFSCCode = viewModel.formData.bankIFSCCode
+        bankRegisteredMobile = viewModel.formData.bankRegisteredMobile
+        monthlySalaryDeposited = viewModel.formData.monthlySalaryDeposited
+        autoDebitConsent = viewModel.formData.autoDebitConsent
 
-        viewModel.documents = BorrowerLoanDocumentItem.defaultRequirements(
-            for: product,
-            identityDoc: viewModel.formData.selectedIdentityDoc,
-            addressDoc: viewModel.formData.selectedAddressDoc,
-            incomeDoc: viewModel.formData.selectedIncomeDoc
-        )
-        viewModel.autosaveDraft()
+        hasCoApplicantToggle = viewModel.formData.hasCoApplicant
+        if viewModel.formData.hasCoApplicant, !viewModel.formData.coApplicantDetails.isEmpty {
+            let details = viewModel.formData.coApplicantDetails
+            if let openParen = details.lastIndex(of: "("),
+               let closeParen = details.lastIndex(of: ")"),
+               openParen < closeParen {
+                coApplicantName = String(details[..<openParen]).trimmingCharacters(in: .whitespacesAndNewlines)
+                coApplicantRelation = String(details[details.index(after: openParen)..<closeParen])
+            } else {
+                coApplicantName = details
+            }
+        }
+        coApplicantMobile = viewModel.formData.coApplicantMobile
+        coApplicantPAN = viewModel.formData.coApplicantPAN
+        coApplicantAadhaar = viewModel.formData.coApplicantAadhaar
+        coApplicantIncome = viewModel.formData.coApplicantIncome
+
+        nomineeName = viewModel.formData.nomineeName
+        if !viewModel.formData.nomineeRelation.isEmpty {
+            coApplicantRelation = viewModel.formData.nomineeRelation
+        }
+        nomineeMobile = viewModel.formData.nomineeMobile
+        ocrPANFather = viewModel.formData.referenceName
+        ocrPANNumber = viewModel.formData.referenceMobile
+
+        acceptTerms = viewModel.formData.acceptedTerms
+        acceptBureau = viewModel.formData.acceptedBureauConsent
+        acceptDebit = viewModel.formData.acceptedDebitConsent
+        liveVerificationCompleted = viewModel.formData.liveVerificationCompleted
+        liveVerificationReference = viewModel.formData.liveVerificationReference.isEmpty ? nil : viewModel.formData.liveVerificationReference
+        if !viewModel.formData.signatureImageData.isEmpty,
+           let data = Data(base64Encoded: viewModel.formData.signatureImageData),
+           let image = UIImage(data: data) {
+            signatureImage = image
+            isSignatureEmpty = false
+        }
     }
 
     private func syncWizardFormToViewModel() {
         viewModel.formData.loanAmountRequested = String(Int(desiredAmount))
         viewModel.formData.preferredTenureMonths = Int(loanTenureMonths)
+        viewModel.formData.draftStepIndex = currentStep
 
         if viewModel.formData.employmentType == "Salaried" {
             if !salariedCompany.isEmpty {
@@ -765,7 +923,9 @@ struct BorrowerLoanWizardView: View {
             if !salariedDesignation.isEmpty {
                 viewModel.formData.occupation = salariedDesignation
             }
-            viewModel.formData.workExperienceYears = 2
+            let years = Calendar.current.dateComponents([.year], from: salariedJoiningDate, to: Date()).year ?? 0
+            viewModel.formData.workExperienceYears = max(0, years)
+            viewModel.formData.employmentJoiningDate = salariedJoiningDate
             if viewModel.formData.annualIncomeValue <= 0, viewModel.formData.monthlyIncomeValue > 0 {
                 let annual = Int(viewModel.formData.monthlyIncomeValue * 12)
                 viewModel.formData.annualIncome = annual > 0 ? String(annual) : ""
@@ -774,7 +934,9 @@ struct BorrowerLoanWizardView: View {
             if !selfEmployedBusinessName.isEmpty {
                 viewModel.formData.employerName = selfEmployedBusinessName
             }
-            viewModel.formData.occupation = "Business Owner"
+            if !selfEmployedBusinessType.isEmpty {
+                viewModel.formData.occupation = selfEmployedBusinessType
+            }
             viewModel.formData.workExperienceYears = selfEmployedYearsInBusiness
             viewModel.formData.gstNumber = selfEmployedGSTNumber
             if viewModel.formData.annualIncomeValue <= 0, !selfEmployedAnnualProfit.isEmpty {
@@ -792,22 +954,62 @@ struct BorrowerLoanWizardView: View {
         if !creditCardOutstanding.isEmpty {
             viewModel.formData.creditCardObligations = creditCardOutstanding
         }
+        viewModel.formData.creditCardLimit = creditCardLimit
+        viewModel.formData.savingsInvestments = savingsInvestments
+        viewModel.formData.bankName = bankName
+        viewModel.formData.bankAccountNumber = bankAccountNumber
+        viewModel.formData.bankIFSCCode = bankIFSCCode
+        viewModel.formData.bankRegisteredMobile = bankRegisteredMobile
+        viewModel.formData.monthlySalaryDeposited = monthlySalaryDeposited
+        viewModel.formData.autoDebitConsent = autoDebitConsent
 
         viewModel.formData.hasCoApplicant = hasCoApplicantToggle
         if hasCoApplicantToggle, !coApplicantName.isEmpty {
             viewModel.formData.coApplicantDetails = "\(coApplicantName) (\(coApplicantRelation))"
         }
+        viewModel.formData.coApplicantMobile = coApplicantMobile
+        viewModel.formData.coApplicantPAN = coApplicantPAN
+        viewModel.formData.coApplicantAadhaar = coApplicantAadhaar
+        viewModel.formData.coApplicantIncome = coApplicantIncome
+        viewModel.formData.nomineeName = nomineeName
+        viewModel.formData.nomineeRelation = coApplicantRelation
+        viewModel.formData.nomineeMobile = nomineeMobile
+        viewModel.formData.referenceName = ocrPANFather
+        viewModel.formData.referenceMobile = ocrPANNumber
+        viewModel.formData.emergencyContactName = ocrPANFather
+        viewModel.formData.emergencyContactMobile = ocrPANNumber
+        viewModel.formData.liveVerificationCompleted = liveVerificationCompleted
+        viewModel.formData.liveVerificationReference = liveVerificationReference ?? ""
+        if let signatureImage,
+           let data = signatureImage.pngData() {
+            viewModel.formData.signatureImageData = data.base64EncodedString()
+        }
+        viewModel.formData.acceptedTerms = acceptTerms
+        viewModel.formData.acceptedBureauConsent = acceptBureau
+        viewModel.formData.acceptedDebitConsent = acceptDebit
 
+    }
+
+    private func persistCurrentDraftImmediately() {
+        syncWizardFormToViewModel()
+        viewModel.updateDraftStep(currentStep)
+        viewModel.flushAutosave()
+        isAutosaving = false
+        lastAutosavedTime = Date()
     }
 
     private func triggerAutosave() {
         isAutosaving = true
         syncWizardFormToViewModel()
         viewModel.autosaveDraft()
-        
+        scheduleAutosaveIndicator()
+    }
+
+    private func scheduleAutosaveIndicator() {
+        isAutosaving = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             isAutosaving = false
-            lastAutosavedTime = Date()
+            lastAutosavedTime = viewModel.lastDraftSavedAt ?? Date()
         }
     }
     
@@ -824,9 +1026,9 @@ struct BorrowerLoanWizardView: View {
             }
 
             if currentStep == 6 {
-                let unverifiedDocuments = viewModel.documents.filter { $0.status != .verified }
-                if !unverifiedDocuments.isEmpty {
-                    stepValidationMessage = "Upload and verify all required documents: \(unverifiedDocuments.map(\.name).joined(separator: ", "))."
+                let unuploadedDocuments = viewModel.documents.filter { $0.status == .pendingUpload }
+                if !unuploadedDocuments.isEmpty {
+                    stepValidationMessage = "Upload all required documents: \(unuploadedDocuments.map(\.name).joined(separator: ", "))."
                     HapticsManager.triggerNotification(type: .warning)
                     return
                 }
@@ -871,7 +1073,13 @@ struct BorrowerLoanWizardView: View {
     private func validationMessageForCurrentStep() -> String? {
         switch currentStep {
         case 3:
-            return MobileNumberValidator.validationMessage(for: viewModel.formData.mobileNumber)
+            if let mobileValidation = MobileNumberValidator.validationMessage(for: viewModel.formData.mobileNumber) {
+                return mobileValidation
+            }
+            if let addressValidation = viewModel.validationMessage(for: .address) {
+                return addressValidation
+            }
+            return viewModel.validationMessage(for: .preferredBranch)
         case 5:
             return MobileNumberValidator.validationMessage(for: bankRegisteredMobile)
         case 7:
@@ -934,7 +1142,7 @@ struct BorrowerLoanWizardView: View {
                     isUploading[doc.name] = false
                     uploadLifecycle[docId] = .processing
                     ocrStatus[doc.name] = "Scanning"
-                    viewModel.uploadDocument(docId, fileName: imageFileName(for: doc), source: source)
+                    viewModel.uploadDocument(docId, fileName: imageFileName(for: doc), source: source, image: image)
                     viewModel.markDocument(docId, status: .underVerification)
 
                     Task {
@@ -955,6 +1163,80 @@ struct BorrowerLoanWizardView: View {
             .replacingOccurrences(of: " ", with: "_")
             .replacingOccurrences(of: "/", with: "_")
         return "\(normalized)_\(Int(Date().timeIntervalSince1970)).jpg"
+    }
+
+    private func processSelectedDocumentFile(_ result: Result<[URL], Error>, for docId: UUID) {
+        guard let doc = viewModel.documents.first(where: { $0.id == docId }) else { return }
+
+        do {
+            guard let url = try result.get().first else { return }
+            let didAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if didAccess {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+
+            let data = try Data(contentsOf: url)
+            guard !data.isEmpty else {
+                documentFailureReasons[docId] = "The selected PDF is empty. Choose a valid document."
+                uploadLifecycle[docId] = .failed
+                viewModel.markDocument(docId, status: .rejected)
+                return
+            }
+
+            HapticsManager.triggerImpact(style: .medium)
+            documentFailureReasons[docId] = nil
+            documentExtractedDetails[docId] = [
+                "Document": doc.name,
+                "File": url.lastPathComponent,
+                "Size": ByteCountFormatter.string(fromByteCount: Int64(data.count), countStyle: .file)
+            ]
+            uploadLifecycle[docId] = .uploading
+            isUploading[doc.name] = true
+            uploadProgress[doc.name] = 0.0
+            ocrStatus[doc.name] = "Manual Review"
+
+            let steps = 8
+            for i in 1...steps {
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.05) {
+                    uploadProgress[doc.name] = Double(i) / Double(steps)
+                    if i == steps {
+                        isUploading[doc.name] = false
+                        uploadLifecycle[docId] = .success
+                        documentUploadDates[docId] = Date()
+                        viewModel.uploadDocument(
+                            docId,
+                            fileName: pdfFileName(for: doc, originalName: url.lastPathComponent),
+                            source: .pdf,
+                            fileData: data,
+                            contentType: "application/pdf",
+                            fileExtension: "pdf"
+                        )
+                        viewModel.markDocument(docId, status: .uploaded)
+                        triggerAutosave()
+                        HapticsManager.triggerNotification(type: .success)
+                    }
+                }
+            }
+        } catch {
+            documentFailureReasons[docId] = "Unable to read the selected PDF. Please try another file."
+            uploadLifecycle[docId] = .failed
+            viewModel.markDocument(docId, status: .rejected)
+            HapticsManager.triggerNotification(type: .error)
+        }
+    }
+
+    private func pdfFileName(for doc: BorrowerLoanDocumentItem, originalName: String) -> String {
+        let normalized = doc.name
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "_")
+            .replacingOccurrences(of: "/", with: "_")
+        let originalBase = originalName
+            .replacingOccurrences(of: ".pdf", with: "", options: [.caseInsensitive])
+            .filter { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "-" }
+        let suffix = originalBase.isEmpty ? "\(Int(Date().timeIntervalSince1970))" : originalBase
+        return "\(normalized)_\(suffix).pdf"
     }
 
     private func recognizeText(in image: UIImage) async -> (text: String, confidence: Float) {
@@ -1139,7 +1421,7 @@ struct BorrowerLoanWizardView: View {
 
         return DocumentOCRResult(
             isValid: isValid,
-            title: isValid ? "Document Verified" : invalidTitle,
+            title: isValid ? "Document Uploaded" : invalidTitle,
             message: isValid ? "We extracted the following details. Please verify." : invalidMessage,
             extractedDetails: [
                 "Document": title,
@@ -1160,9 +1442,11 @@ struct BorrowerLoanWizardView: View {
         if result.isValid {
             documentUploadDates[doc.id] = Date()
             documentFailureReasons[doc.id] = nil
-            viewModel.markDocument(doc.id, status: .verified)
+            viewModel.markDocument(doc.id, status: .uploaded)
 
-            if let fullName = result.fullName, !fullName.isEmpty {
+            if let fullName = result.fullName,
+               !fullName.isEmpty,
+               !BorrowerLoanFormData.isMockValue(fullName) {
                 viewModel.formData.fullName = fullName
                 ocrAadhaarName = fullName
                 ocrPANName = fullName
@@ -1548,6 +1832,14 @@ private struct Step3PersonalInfoOverhaulView: View {
             WizardFormSection(title: "Residence Information") {
                 WizardTextField(label: "Current Address", text: $viewModel.formData.address, placeholder: "Door No, Building, Street Address")
                 FormDivider()
+                WizardPickerRow(
+                    label: "Application Branch",
+                    selection: $viewModel.formData.preferredBranch,
+                    options: [""] + (viewModel.branchesList.isEmpty ? BorrowerLoanFormData.branchOptions : viewModel.branchesList.map(\.name))
+                ) { option in
+                    option.isEmpty ? "Select Branch" : option
+                }
+                FormDivider()
                 WizardPickerRow(label: "Residence Ownership", selection: $viewModel.formData.repaymentPreference, options: ["Owned", "Rented", "Family Owned"]) { $0 }
             }
         }
@@ -1723,7 +2015,7 @@ private struct Step6DocumentCenterOverhaulView: View {
                 let loanSpecific = viewModel.documents(for: .loanSpecific)
                 if !loanSpecific.isEmpty {
                     documentSection(
-                        title: "Product Specific Files",
+                        title: "Loan Specific Files",
                         category: .loanSpecific
                     )
                 }
@@ -1814,10 +2106,10 @@ private struct UploadRow: View {
                         Text("Verifying document…")
                             .font(LMSFont.caption)
                             .foregroundStyle(LMSColors.amber)
-                    } else if lifecycle == .success || doc.status == .verified {
-                        Text("Verified Successfully")
+                    } else if lifecycle == .success || doc.status == .uploaded || doc.status == .verified {
+                        Text(doc.status == .verified ? "Verified Successfully" : "Uploaded Successfully")
                             .font(LMSFont.caption)
-                            .foregroundStyle(LMSColors.emerald)
+                            .foregroundStyle(doc.status == .verified ? LMSColors.emerald : LMSColors.actionBlue)
                     } else if lifecycle == .failed || doc.status == .rejected || doc.status == .requiresResubmission {
                         Text(failureReason ?? doc.status.rawValue)
                             .font(LMSFont.caption)
@@ -1881,7 +2173,7 @@ private struct UploadRow: View {
                     .padding(.bottom, 8)
             }
 
-            if lifecycle == .success || doc.status == .verified {
+            if lifecycle == .success || doc.status == .uploaded || doc.status == .verified {
                 verifiedPreview
             } else if lifecycle == .failed || doc.status == .rejected || doc.status == .requiresResubmission {
                 failurePreview
@@ -1916,9 +2208,12 @@ private struct UploadRow: View {
     private var verifiedPreview: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Label("Document Verified", systemImage: "checkmark.seal.fill")
-                    .font(LMSFont.caption.weight(.bold))
-                    .foregroundStyle(LMSColors.emerald)
+                Label(
+                    doc.status == .verified ? "Document Verified" : "Document Uploaded",
+                    systemImage: doc.status == .verified ? "checkmark.seal.fill" : "arrow.up.doc.fill"
+                )
+                .font(LMSFont.caption.weight(.bold))
+                .foregroundStyle(doc.status == .verified ? LMSColors.emerald : LMSColors.actionBlue)
                 Spacer()
                 if let uploadDate {
                     Text(uploadDate.formattedAsDDMMMYYYY())
@@ -1957,10 +2252,10 @@ private struct UploadRow: View {
             .foregroundStyle(LMSColors.brandNavy)
         }
         .padding(12)
-        .background(LMSColors.emerald.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background((doc.status == .verified ? LMSColors.emerald : LMSColors.actionBlue).opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(LMSColors.emerald.opacity(0.18), lineWidth: 0.8)
+                .stroke((doc.status == .verified ? LMSColors.emerald : LMSColors.actionBlue).opacity(0.18), lineWidth: 0.8)
         )
         .padding(.horizontal, 16)
         .padding(.bottom, 12)
@@ -1993,9 +2288,9 @@ private struct UploadRow: View {
         switch lifecycle {
         case .uploading: return "arrow.up.doc.fill"
         case .processing: return "viewfinder"
-        case .success: return "checkmark.seal.fill"
+        case .success: return "arrow.up.doc.fill"
         case .failed: return "xmark.octagon.fill"
-        case .idle: return doc.status == .verified ? "checkmark.seal.fill" : doc.status.iconName
+        case .idle: return doc.status == .verified ? "checkmark.seal.fill" : (doc.status == .uploaded ? "arrow.up.doc.fill" : doc.status.iconName)
         }
     }
 
@@ -2003,9 +2298,9 @@ private struct UploadRow: View {
         switch lifecycle {
         case .uploading: return LMSColors.actionBlue
         case .processing: return LMSColors.amber
-        case .success: return LMSColors.emerald
+        case .success: return LMSColors.actionBlue
         case .failed: return LMSColors.coral
-        case .idle: return doc.status == .verified ? LMSColors.emerald : doc.status.tintColor
+        case .idle: return doc.status == .verified ? LMSColors.emerald : (doc.status == .uploaded ? LMSColors.actionBlue : doc.status.tintColor)
         }
     }
 }
@@ -2501,6 +2796,8 @@ private struct Step9ReviewOverhaulView: View {
                 WizardInlineValueRow(label: "Date of Birth", value: viewModel.formData.dateOfBirth.formattedAsDDMMMYYYY())
                 FormDivider()
                 WizardInlineValueRow(label: "Contact Email", value: viewModel.formData.emailAddress)
+                FormDivider()
+                WizardInlineValueRow(label: "Application Branch", value: viewModel.formData.preferredBranch.isEmpty ? "Not selected" : viewModel.formData.preferredBranch)
             }
             
             WizardFormSection(title: "Employment Credentials") {

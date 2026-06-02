@@ -322,6 +322,195 @@ final class DatabaseService {
         )
     }
 
+    func fetchLoanOfficerAssignment(officerId: UUID) async throws -> AssignedLoanOfficer? {
+        struct DBLoanOfficer: Codable {
+            let officerId: UUID
+            let userId: UUID
+            let employeeCode: String
+            let branchId: UUID
+            let designation: String
+            let createdAt: Date
+        }
+
+        struct DBUser: Codable {
+            let id: UUID
+            let fullName: String
+            let status: String
+        }
+
+        let officers: [DBLoanOfficer] = try await client
+            .from("loan_officers")
+            .select()
+            .eq("officer_id", value: officerId.uuidString)
+            .limit(1)
+            .execute()
+            .value
+
+        guard let officer = officers.first else { return nil }
+
+        let users: [DBUser] = try await client
+            .from("users")
+            .select("id, full_name, status")
+            .eq("id", value: officer.userId.uuidString)
+            .limit(1)
+            .execute()
+            .value
+
+        guard let user = users.first else { return nil }
+
+        let branches: [BranchInfo] = try await client
+            .from("branches")
+            .select()
+            .eq("branch_id", value: officer.branchId.uuidString)
+            .limit(1)
+            .execute()
+            .value
+
+        return AssignedLoanOfficer(
+            officerId: officer.officerId,
+            userId: officer.userId,
+            fullName: user.fullName,
+            employeeCode: officer.employeeCode,
+            branchId: officer.branchId,
+            branchName: branches.first?.name ?? "Home Branch",
+            designation: officer.designation.isEmpty ? "Loan Officer" : officer.designation,
+            lastAssignedAt: nil,
+            activeWorkload: 0
+        )
+    }
+
+    func assignLoanOfficer(forBranchName branchName: String) async throws -> AssignedLoanOfficer? {
+        struct DBLoanOfficer: Codable {
+            let officerId: UUID
+            let userId: UUID
+            let employeeCode: String
+            let branchId: UUID
+            let designation: String
+            let createdAt: Date
+        }
+
+        struct DBUser: Codable {
+            let id: UUID
+            let fullName: String
+            let status: String
+        }
+
+        struct WorkloadApplication: Codable {
+            let officerId: UUID?
+            let status: String
+            let updatedAt: Date
+            let submittedAt: Date?
+        }
+
+        let branches: [BranchInfo] = try await client
+            .from("branches")
+            .select()
+            .execute()
+            .value
+
+        let normalizedBranch = Self.normalizedBranchName(branchName)
+        let selectedBranch = branches.first { Self.normalizedBranchName($0.name) == normalizedBranch }
+            ?? branches.first { Self.normalizedBranchName($0.name).contains(normalizedBranch) || normalizedBranch.contains(Self.normalizedBranchName($0.name)) }
+            ?? branches.first
+
+        guard let selectedBranch else { return nil }
+
+        let officers: [DBLoanOfficer] = try await client
+            .from("loan_officers")
+            .select()
+            .eq("branch_id", value: selectedBranch.branchId.uuidString)
+            .execute()
+            .value
+
+        guard !officers.isEmpty else { return nil }
+
+        let userIds = officers.map(\.userId.uuidString)
+        let users: [DBUser] = try await client
+            .from("users")
+            .select("id, full_name, status")
+            .in("id", values: userIds)
+            .eq("status", value: "active")
+            .execute()
+            .value
+
+        let activeUserIds = Set(users.map(\.id))
+        let eligibleOfficers = officers.filter { activeUserIds.contains($0.userId) }
+        guard !eligibleOfficers.isEmpty else { return nil }
+
+        let officerIds = eligibleOfficers.map(\.officerId.uuidString)
+        let activeStatuses = [
+            "submitted",
+            "under_review",
+            "document_verification",
+            "officer_review",
+            "customer_response_received",
+            "pending_documents"
+        ]
+
+        let workloadRows: [WorkloadApplication] = try await client
+            .from("loan_applications")
+            .select("officer_id, status, updated_at, submitted_at")
+            .in("officer_id", values: officerIds)
+            .in("status", values: activeStatuses)
+            .execute()
+            .value
+
+        var workloadByOfficer: [UUID: Int] = [:]
+        var lastAssignmentByOfficer: [UUID: Date] = [:]
+
+        for row in workloadRows {
+            guard let officerId = row.officerId else { continue }
+            workloadByOfficer[officerId, default: 0] += 1
+            let assignmentDate = row.submittedAt ?? row.updatedAt
+            if let current = lastAssignmentByOfficer[officerId] {
+                lastAssignmentByOfficer[officerId] = max(current, assignmentDate)
+            } else {
+                lastAssignmentByOfficer[officerId] = assignmentDate
+            }
+        }
+
+        let userById = Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
+
+        guard let selectedOfficer = eligibleOfficers.sorted(by: { lhs, rhs in
+            let lhsWorkload = workloadByOfficer[lhs.officerId, default: 0]
+            let rhsWorkload = workloadByOfficer[rhs.officerId, default: 0]
+            if lhsWorkload != rhsWorkload {
+                return lhsWorkload < rhsWorkload
+            }
+
+            let lhsLastAssigned = lastAssignmentByOfficer[lhs.officerId] ?? .distantPast
+            let rhsLastAssigned = lastAssignmentByOfficer[rhs.officerId] ?? .distantPast
+            if lhsLastAssigned != rhsLastAssigned {
+                return lhsLastAssigned < rhsLastAssigned
+            }
+
+            return lhs.createdAt < rhs.createdAt
+        }).first,
+        let selectedUser = userById[selectedOfficer.userId] else {
+            return nil
+        }
+
+        return AssignedLoanOfficer(
+            officerId: selectedOfficer.officerId,
+            userId: selectedOfficer.userId,
+            fullName: selectedUser.fullName,
+            employeeCode: selectedOfficer.employeeCode,
+            branchId: selectedOfficer.branchId,
+            branchName: selectedBranch.name,
+            designation: selectedOfficer.designation.isEmpty ? "Loan Officer" : selectedOfficer.designation,
+            lastAssignedAt: lastAssignmentByOfficer[selectedOfficer.officerId],
+            activeWorkload: workloadByOfficer[selectedOfficer.officerId, default: 0]
+        )
+    }
+
+    private static func normalizedBranchName(_ value: String) -> String {
+        value
+            .lowercased()
+            .replacingOccurrences(of: "branch", with: "")
+            .replacingOccurrences(of: "-", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     func fetchProfile(userId: String) async throws -> BorrowerProfile? {
 
         let dbProfiles: [DBProfile] = try await client
@@ -426,5 +615,194 @@ final class DatabaseService {
 
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: nil)
         return directory.appendingPathComponent("\(userId).json")
+    }
+
+    // MARK: - Supabase Document Sync Operations
+
+    func upsertDocument(_ doc: DBDocument) async throws {
+        do {
+            try await client
+                .from("documents")
+                .upsert(doc, onConflict: "document_id")
+                .execute()
+            print("[DatabaseService] Document upserted successfully: \(doc.documentId)")
+        } catch {
+            print("❌ [DatabaseService] upsertDocument failed: \(error)")
+            throw error
+        }
+    }
+
+    func fetchDocuments(applicationId: UUID) async throws -> [DBDocument] {
+        return try await client
+            .from("documents")
+            .select()
+            .eq("application_id", value: applicationId.uuidString)
+            .execute()
+            .value
+    }
+
+    func fetchDocuments(borrowerId: UUID) async throws -> [DBDocument] {
+        return try await client
+            .from("documents")
+            .select()
+            .eq("borrower_id", value: borrowerId.uuidString)
+            .execute()
+            .value
+    }
+
+    // MARK: - Supabase Repayment & Account Operations
+
+    func insertLoanAccount(_ account: DBLoanAccount) async throws {
+        try await client
+            .from("loan_accounts")
+            .insert(account)
+            .execute()
+    }
+
+    func insertEMISchedule(_ schedule: [DBEMISchedule]) async throws {
+        try await client
+            .from("emi_schedule")
+            .insert(schedule)
+            .execute()
+    }
+
+    func fetchLoanAccounts(borrowerId: UUID) async throws -> [DBLoanAccount] {
+        return try await client
+            .from("loan_accounts")
+            .select()
+            .eq("borrower_id", value: borrowerId.uuidString)
+            .execute()
+            .value
+    }
+
+    func fetchEMISchedule(accountId: UUID) async throws -> [DBEMISchedule] {
+        return try await client
+            .from("emi_schedule")
+            .select()
+            .eq("account_id", value: accountId.uuidString)
+            .execute()
+            .value
+    }
+
+    func updateEMIScheduleItemStatus(emiId: UUID, status: String, paidDate: Date?, paidAmount: Double?) async throws {
+        struct EMIUpdate: Codable {
+            let status: String
+            let paidDate: Date?
+            let paidAmount: Double?
+        }
+        try await client
+            .from("emi_schedule")
+            .update(EMIUpdate(status: status, paidDate: paidDate, paidAmount: paidAmount))
+            .eq("emi_id", value: emiId.uuidString)
+            .execute()
+    }
+
+    // MARK: - Supabase Chat Sync Operations
+
+    func fetchMessagesForApplication(applicationId: UUID) async throws -> [DBMessage] {
+        return try await client
+            .from("messages")
+            .select()
+            .eq("application_id", value: applicationId.uuidString)
+            .order("sent_at", ascending: true)
+            .execute()
+            .value
+    }
+
+    func fetchAssignedLoanOfficerUserId(applicationId: UUID) async throws -> UUID? {
+        struct ApplicationOfficerRow: Codable {
+            let officerId: UUID?
+        }
+
+        struct LoanOfficerUserRow: Codable {
+            let userId: UUID
+        }
+
+        let applications: [ApplicationOfficerRow] = try await client
+            .from("loan_applications")
+            .select("officer_id")
+            .eq("application_id", value: applicationId.uuidString)
+            .limit(1)
+            .execute()
+            .value
+
+        if let officerId = applications.first?.officerId {
+            let officers: [LoanOfficerUserRow] = try await client
+                .from("loan_officers")
+                .select("user_id")
+                .eq("officer_id", value: officerId.uuidString)
+                .limit(1)
+                .execute()
+                .value
+
+            if let userId = officers.first?.userId {
+                return userId
+            }
+        }
+
+        return nil
+    }
+
+    func fetchMessages(for userId: UUID) async throws -> [DBMessage] {
+        return try await client
+            .from("messages")
+            .select()
+            .or("sender_id.eq.\(userId.uuidString),receiver_id.eq.\(userId.uuidString)")
+            .order("sent_at", ascending: true)
+            .execute()
+            .value
+    }
+
+    func sendMessage(_ msg: DBMessage) async throws {
+        try await client
+            .from("messages")
+            .insert(msg)
+            .execute()
+    }
+
+    func markMessagesRead(messageIds: [UUID]) async throws {
+        guard !messageIds.isEmpty else { return }
+        struct ReadUpdate: Encodable {
+            let isRead: Bool
+
+            enum CodingKeys: String, CodingKey {
+                case isRead = "is_read"
+            }
+        }
+
+        try await client
+            .from("messages")
+            .update(ReadUpdate(isRead: true))
+            .in("message_id", values: messageIds.map(\.uuidString))
+            .execute()
+    }
+
+    func createNotification(userId: UUID, title: String, message: String, type: String = "push") async throws {
+        struct NotificationInsert: Encodable {
+            let userId: UUID
+            let notifType: String
+            let title: String
+            let message: String
+
+            enum CodingKeys: String, CodingKey {
+                case userId = "user_id"
+                case notifType = "notif_type"
+                case title
+                case message
+            }
+        }
+
+        try await client
+            .from("notifications")
+            .insert(NotificationInsert(userId: userId, notifType: type, title: title, message: message))
+            .execute()
+    }
+
+    func fetchBranches() async throws -> [BranchInfo] {
+        return try await client
+            .from("branches")
+            .select()
+            .execute()
+            .value
     }
 }

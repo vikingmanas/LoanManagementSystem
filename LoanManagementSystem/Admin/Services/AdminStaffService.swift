@@ -72,6 +72,32 @@ final class AdminStaffService {
 
 
     func fetchBranches() async throws -> [BranchInfo] {
+        let existing: [BranchInfo] = try await client
+            .from("branches")
+            .select()
+            .execute()
+            .value
+        
+        if !existing.isEmpty {
+            return existing
+        }
+        
+        // Seed default branches if empty
+        let defaultBranches = [
+            ["name": "Main Branch, Mumbai", "code": "BR-001", "region": "West", "address": "Bandra Kurla Complex, Mumbai", "status": "active"],
+            ["name": "Connaught Place, Delhi", "code": "BR-002", "region": "North", "address": "Connaught Place, New Delhi", "status": "active"],
+            ["name": "Koramangala, Bangalore", "code": "BR-003", "region": "South", "address": "80 Feet Road, Koramangala, Bengaluru", "status": "active"],
+            ["name": "Bandra West, Mumbai", "code": "BR-004", "region": "West", "address": "Linking Road, Bandra West, Mumbai", "status": "active"],
+            ["name": "Salt Lake, Kolkata", "code": "BR-005", "region": "East", "address": "Sector V, Salt Lake, Kolkata", "status": "active"]
+        ]
+        
+        for branch in defaultBranches {
+            try? await client
+                .from("branches")
+                .insert(branch)
+                .execute()
+        }
+        
         let branches: [BranchInfo] = try await client
             .from("branches")
             .select()
@@ -118,6 +144,7 @@ final class AdminStaffService {
                 let branchName = branchesMap[officer.branchId]
                 let member = StaffMember(
                     id: user.id,
+                    loanOfficerRecordId: officer.officerId,
                     email: user.email,
                     role: .loanOfficer,
                     fullName: user.fullName,
@@ -136,6 +163,7 @@ final class AdminStaffService {
                 let branchName = branchesMap[manager.branchId]
                 let member = StaffMember(
                     id: user.id,
+                    loanOfficerRecordId: nil,
                     email: user.email,
                     role: .bankManager,
                     fullName: user.fullName,
@@ -310,6 +338,20 @@ final class AdminStaffService {
                 .eq("user_id", value: id)
                 .execute()
         }
+    }
+
+    func createBranch(name: String, code: String, region: String, address: String) async throws {
+        let branchInsert: [String: String] = [
+            "name": name,
+            "code": code,
+            "region": region,
+            "address": address,
+            "status": "active"
+        ]
+        try await client
+            .from("branches")
+            .insert(branchInsert)
+            .execute()
     }
 }
 
