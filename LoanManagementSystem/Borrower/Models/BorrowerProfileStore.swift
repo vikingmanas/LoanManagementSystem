@@ -174,7 +174,9 @@ public class BorrowerProfileStore: ObservableObject {
         if let existingIndex = linkedAccounts.firstIndex(where: {
             $0.linkedLoanApplicationId == applicationId && $0.isOverdraftAccount
         }) {
-            linkedAccounts[existingIndex].balance = max(linkedAccounts[existingIndex].balance, sanctionedAmount)
+            if linkedAccounts[existingIndex].balance == 0 {
+                linkedAccounts[existingIndex].balance = sanctionedAmount
+            }
             linkedAccounts[existingIndex].odSanctionLimit = max(
                 linkedAccounts[existingIndex].odSanctionLimit ?? 0,
                 sanctionedAmount

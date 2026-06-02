@@ -244,6 +244,64 @@ private struct DBProfile: Codable {
     }
 }
 
+private struct DBLinkedBankAccount: Codable {
+    let id: UUID
+    var bankName: String
+    var accountNumber: String
+    var ifscCode: String
+    var balance: Double
+    var branch: String
+    var customerId: String
+    var accountHolderName: String
+    var accountKind: String
+    var linkedLoanApplicationId: UUID?
+    var odSanctionLimit: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case bankName = "bank_name"
+        case accountNumber = "account_number"
+        case ifscCode = "ifsc_code"
+        case balance
+        case branch
+        case customerId = "customer_id"
+        case accountHolderName = "account_holder_name"
+        case accountKind = "account_kind"
+        case linkedLoanApplicationId = "linked_loan_application_id"
+        case odSanctionLimit = "od_sanction_limit"
+    }
+
+    init(_ account: LinkedBankAccount) {
+        self.id = account.id
+        self.bankName = account.bankName
+        self.accountNumber = account.accountNumber
+        self.ifscCode = account.ifscCode
+        self.balance = account.balance
+        self.branch = account.branch
+        self.customerId = account.customerId
+        self.accountHolderName = account.accountHolderName
+        self.accountKind = account.accountKind.rawValue
+        self.linkedLoanApplicationId = account.linkedLoanApplicationId
+        self.odSanctionLimit = account.odSanctionLimit
+    }
+
+    func toLinkedBankAccount() -> LinkedBankAccount {
+        LinkedBankAccount(
+            id: id,
+            bankName: bankName,
+            accountNumber: accountNumber,
+            ifscCode: ifscCode,
+            balance: balance,
+            branch: branch,
+            customerId: customerId,
+            accountHolderName: accountHolderName,
+            accountKind: LinkedAccountKind(rawValue: accountKind) ?? .savings,
+            linkedLoanApplicationId: linkedLoanApplicationId,
+            odSanctionLimit: odSanctionLimit
+        )
+    }
+}
+
 
 final class DatabaseService {
     static let shared = DatabaseService()
@@ -524,9 +582,13 @@ final class DatabaseService {
             // Convert DB representation back to full BorrowerProfile,
             // preserving any locally-cached linkedAccounts/gstNumber
             let cached = loadProfileLocally(userId: userId)
-            let profile = dbProfile.toBorrowerProfile(
+            var profile = dbProfile.toBorrowerProfile(
                 linkedAccounts: cached?.linkedAccounts,
                 gstNumber: cached?.gstNumber
+            )
+            profile.linkedAccounts = await mergedLinkedAccounts(
+                profile: profile,
+                cachedAccounts: cached?.linkedAccounts ?? []
             )
             saveProfileLocally(profile, userId: userId)
             print("[DatabaseService] Successfully fetched profile from Supabase for user: \(userId)")
@@ -573,11 +635,73 @@ final class DatabaseService {
                 .upsert(dbProfile)
                 .execute()
             print("UPDATED RESPONSE - Table: profiles, Status: Success ✅")
+            await syncLinkedBankAccounts(profile.linkedAccounts ?? [])
         } catch {
             print("EXACT SUPABASE ERROR - Table: profiles, Error: \(error)")
             print("EXACT SUPABASE ERROR - Table: profiles, Localized: \(error.localizedDescription)")
             throw error
         }
+    }
+
+    private func mergedLinkedAccounts(profile: BorrowerProfile, cachedAccounts: [LinkedBankAccount]) async -> [LinkedBankAccount] {
+        var merged = cachedAccounts
+        var customerIds = Set(
+            cachedAccounts
+                .map(\.customerId)
+                .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        )
+
+        if let existingCustomerId = profile.existingCustomerId,
+           !existingCustomerId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            customerIds.insert(existingCustomerId)
+        }
+        customerIds.insert(profile.id)
+
+        for customerId in customerIds {
+            do {
+                let remoteAccounts = try await fetchLinkedBankAccounts(customerId: customerId)
+                for remoteAccount in remoteAccounts {
+                    if let index = merged.firstIndex(where: { $0.id == remoteAccount.id || $0.accountNumber == remoteAccount.accountNumber }) {
+                        merged[index] = remoteAccount
+                    } else {
+                        merged.append(remoteAccount)
+                    }
+                }
+            } catch {
+                print("[DatabaseService] Error fetching bank_accounts for customer_id \(customerId): \(error.localizedDescription)")
+            }
+        }
+
+        return merged
+    }
+
+    func fetchLinkedBankAccounts(customerId: String) async throws -> [LinkedBankAccount] {
+        let dbAccounts: [DBLinkedBankAccount] = try await client
+            .from("bank_accounts")
+            .select()
+            .eq("customer_id", value: customerId)
+            .execute()
+            .value
+        return dbAccounts.map { $0.toLinkedBankAccount() }
+    }
+
+    private func syncLinkedBankAccounts(_ accounts: [LinkedBankAccount]) async {
+        guard !accounts.isEmpty else { return }
+        do {
+            try await upsertLinkedBankAccounts(accounts)
+            print("[DatabaseService] Synced \(accounts.count) linked bank account(s) to Supabase.")
+        } catch {
+            print("EXACT SUPABASE ERROR - Table: bank_accounts, Error: \(error)")
+            print("EXACT SUPABASE ERROR - Table: bank_accounts, Localized: \(error.localizedDescription)")
+        }
+    }
+
+    func upsertLinkedBankAccounts(_ accounts: [LinkedBankAccount]) async throws {
+        let dbAccounts = accounts.map(DBLinkedBankAccount.init)
+        try await client
+            .from("bank_accounts")
+            .upsert(dbAccounts)
+            .execute()
     }
 
 

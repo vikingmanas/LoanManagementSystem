@@ -448,15 +448,10 @@ struct OnboardingQuestionnaireView: View {
         showValidationError = false
         
         do {
-            let fetchedAccounts: [LinkedBankAccount]? = try await SupabaseManager.shared.client
-                .from("bank_accounts")
-                .select()
-                .eq("customer_id", value: trimmedId)
-                .execute()
-                .value
+            let fetchedAccounts = try await DatabaseService.shared.fetchLinkedBankAccounts(customerId: trimmedId)
             
             let verifiedAcc: LinkedBankAccount
-            if let account = fetchedAccounts?.first {
+            if let account = fetchedAccounts.first {
                 verifiedAcc = account
             } else {
                 let bankNames = ["HDFC Bank", "ICICI Bank", "State Bank of India", "Axis Bank", "Kotak Mahindra Bank"]

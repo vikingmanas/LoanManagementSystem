@@ -122,14 +122,6 @@ final class LoanApplicationViewModel: ObservableObject {
             result = result.filter { $0.type == type }
         }
         
-        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !query.isEmpty {
-            result = result.filter { product in
-                product.type.title.localizedCaseInsensitiveContains(query) ||
-                product.shortDescription.localizedCaseInsensitiveContains(query)
-            }
-        }
-        
         return result
     }
     

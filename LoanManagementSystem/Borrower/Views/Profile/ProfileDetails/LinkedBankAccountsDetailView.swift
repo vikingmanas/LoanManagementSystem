@@ -2,7 +2,6 @@ import SwiftUI
 
 struct LinkedBankAccountsDetailView: View {
     @ObservedObject var viewModel: BorrowerProfileViewModel
-    @State private var showingEditSheet = false
     @State private var accountToDelete: LinkedBankAccount?
     @State private var showingDeleteAlert = false
     
@@ -122,16 +121,6 @@ struct LinkedBankAccountsDetailView: View {
         }
         .navigationTitle("Bank Accounts")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Edit") {
-                    showingEditSheet = true
-                }
-            }
-        }
-        .sheet(isPresented: $showingEditSheet) {
-            EditBankDetailsView(viewModel: viewModel)
-        }
         .alert("Delete Bank Account?", isPresented: $showingDeleteAlert, presenting: accountToDelete) { account in
             Button("Delete", role: .destructive) {
                 viewModel.deleteLinkedBankAccount(withId: account.id)
