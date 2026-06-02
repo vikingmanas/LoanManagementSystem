@@ -533,6 +533,9 @@ struct LoanApplicationStatusBadge: View {
         case .sentToManager, .finalApprovalPending:
             text = "Final Review"
             color = LMSColors.brandNavy
+        case .escalated:
+            text = "Escalated"
+            color = .purple
         }
         
         return Text(text)
