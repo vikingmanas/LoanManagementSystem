@@ -270,7 +270,7 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         }
     }
 
-    private func refreshFromRepository() {
+    func refreshFromRepository() {
         applications = CentralLoanRepository.shared.applications.compactMap { borrowerApplication in
             guard borrowerApplication.currentStage != .draft else { return nil }
             if let officerUserId = officerProfile?.id {
@@ -378,6 +378,35 @@ class LoanOfficerDashboardViewModel: ObservableObject {
                 description: "Application verified & forwarded to Manager for final approval by \(officerName)."
             )
         }
+    }
+
+    var escalatableApplications: [LoanApplication] {
+        applications.filter { app in
+            ![.approved, .rejected, .disbursed, .escalated].contains(app.status)
+        }
+    }
+
+    @discardableResult
+    func escalateApplication(applicationId: String, reason: String) -> Bool {
+        guard let app = applications.first(where: { $0.applicationId == applicationId }),
+              let officerId = officerProfile?.id else { return false }
+        let officerName = officerProfile?.fullName ?? "Loan Officer"
+        let didEscalate = CentralLoanRepository.shared.escalateApplicationByOfficer(
+            id: app.id,
+            officerId: officerId,
+            officerName: officerName,
+            reason: reason
+        )
+        guard didEscalate else { return false }
+        refreshFromRepository()
+        logActivity(
+            borrowerName: app.borrowerName,
+            applicationId: applicationId,
+            loanType: app.loanType.rawValue,
+            eventType: .queryRaised,
+            description: "Escalated to branch manager by \(officerName): \(reason)"
+        )
+        return true
     }
     
     func logActivity(borrowerName: String, applicationId: String, loanType: String, eventType: ActivityEventType, description: String) {
