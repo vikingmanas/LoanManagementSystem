@@ -7,6 +7,7 @@ struct LoanOfficerProfileView: View {
     
     @AppStorage("biometricEnabled") private var biometricEnabled = true
     @StateObject private var localSecurity = LocalSecurityService.shared
+    @State private var showChangePassword = false
     
     var body: some View {
         NavigationStack {
@@ -130,6 +131,13 @@ struct LoanOfficerProfileView: View {
                     Toggle(isOn: $biometricEnabled) {
                         Label("\(localSecurity.biometricTypeName) Login", systemImage: "faceid")
                     }
+                    
+                    Button {
+                        showChangePassword = true
+                    } label: {
+                        Label("Change Password", systemImage: "lock.fill")
+                    }
+                    .foregroundStyle(Color(.label))
                 }
                 
                 // 6. LOGOUT BUTTON
@@ -152,6 +160,9 @@ struct LoanOfficerProfileView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $showChangePassword) {
+                ChangePasswordSheet()
             }
         }
     }
