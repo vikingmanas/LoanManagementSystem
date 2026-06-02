@@ -187,6 +187,28 @@ final class CentralLoanRepository: ObservableObject {
         return normalized
     }
 
+    func assignOfficerIfNeeded(applicationId: UUID) async {
+        // Find application
+        guard let index = applications.firstIndex(where: { $0.id == applicationId }) else { return }
+        let app = applications[index]
+        if isLoanUnassigned(app) {
+            // Automatically assign to a default queue or officer based on branch
+            let branch = app.formData.preferredBranch
+            let queueName = branch.isEmpty ? "Retail Loan Officer Queue" : "\(branch) Queue"
+            if let recordId = officerUserIdByRecordId.keys.first, let userId = officerUserIdByRecordId[recordId] {
+                // If an officer is found, we might assign them, but for now we just assign to the branch queue
+                assignOfficer(userId: userId, name: queueName, toApplicationId: applicationId)
+            } else {
+                var updatedApp = app
+                updatedApp.assignedQueue = queueName
+                updatedApp.updatedAt = Date()
+                applications[index] = updatedApp
+                persistState()
+                syncApplicationToSupabase(updatedApp)
+            }
+        }
+    }
+
     // MARK: - Core Operations
     
     func submitApplication(_ app: BorrowerLoanApplication) {

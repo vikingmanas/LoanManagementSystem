@@ -738,7 +738,7 @@ final class ManagerDashboardViewModel: ObservableObject {
     }
 
     private func rebuildConversations() {
-        let existing = Dictionary(uniqueKeysWithValues: conversations.map { ($0.id, $0) })
+        let existing = Dictionary(conversations.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         conversations = officers.map { officer in
             let id = stableId(for: "conversation-\(officer.id.uuidString)")
             let threadMessages = databaseMessages

@@ -425,6 +425,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
     var hasGuarantor: Bool
     var guarantorDetails: String
     var gstNumber: String
+    var preferredBranch: String
 
     // Dropdown selections
     var selectedIdentityDoc: String
@@ -488,6 +489,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         case hasGuarantor
         case guarantorDetails
         case gstNumber
+        case preferredBranch
         case selectedIdentityDoc
         case selectedAddressDoc
         case selectedIncomeDoc
@@ -556,6 +558,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         hasGuarantor: Bool,
         guarantorDetails: String,
         gstNumber: String = "",
+        preferredBranch: String = "",
         selectedIdentityDoc: String = "Aadhaar Card",
         selectedAddressDoc: String = "Utility Bill",
         selectedIncomeDoc: String = "Salary Slips",
@@ -614,6 +617,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         self.hasGuarantor = hasGuarantor
         self.guarantorDetails = guarantorDetails
         self.gstNumber = gstNumber
+        self.preferredBranch = preferredBranch
         self.selectedIdentityDoc = selectedIdentityDoc
         self.selectedAddressDoc = selectedAddressDoc
         self.selectedIncomeDoc = selectedIncomeDoc
@@ -676,6 +680,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
             hasGuarantor: try container.decodeIfPresent(Bool.self, forKey: .hasGuarantor) ?? false,
             guarantorDetails: try container.decodeIfPresent(String.self, forKey: .guarantorDetails) ?? "",
             gstNumber: try container.decodeIfPresent(String.self, forKey: .gstNumber) ?? "",
+            preferredBranch: try container.decodeIfPresent(String.self, forKey: .preferredBranch) ?? "",
             selectedIdentityDoc: try container.decodeIfPresent(String.self, forKey: .selectedIdentityDoc) ?? "Aadhaar Card",
             selectedAddressDoc: try container.decodeIfPresent(String.self, forKey: .selectedAddressDoc) ?? "Utility Bill",
             selectedIncomeDoc: try container.decodeIfPresent(String.self, forKey: .selectedIncomeDoc) ?? "Salary Slips",
@@ -737,6 +742,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         hasGuarantor: false,
         guarantorDetails: "",
         gstNumber: "",
+        preferredBranch: "",
         selectedIdentityDoc: "Aadhaar Card",
         selectedAddressDoc: "Utility Bill",
         selectedIncomeDoc: "Salary Slips"
@@ -779,6 +785,16 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
             || normalized.contains("dummy")
             || normalized.contains("mock applicant")
     }
+
+    static let branchOptions = [
+        "Main Branch - Downtown",
+        "Northside Branch",
+        "Southside Branch",
+        "Westside Branch",
+        "Eastside Branch",
+        "Airport Branch",
+        "University Branch"
+    ]
 
     func isPlaceholderDateOfBirth() -> Bool {
         Calendar.current.isDate(dateOfBirth, inSameDayAs: Self.empty.dateOfBirth)
@@ -886,6 +902,7 @@ enum BorrowerLoanFormField: String, CaseIterable, Hashable {
     case loanPurpose
     case coApplicantDetails
     case guarantorDetails
+    case preferredBranch
 }
 
 enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hashable {
@@ -1019,6 +1036,7 @@ struct BorrowerLoanApplication: Identifiable, Hashable {
     var updatedAt: Date
     var assignedQueue: String?
     var assignedOfficerId: UUID?
+    var assignedOfficer: AssignedLoanOfficer? = nil
     var outstandingBalance: Double
     var upcomingEMI: Double
 

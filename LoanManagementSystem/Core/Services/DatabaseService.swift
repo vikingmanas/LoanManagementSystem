@@ -307,7 +307,6 @@ final class DatabaseService {
 
         return StaffMember(
             id: dbUser.id,
-            loanOfficerRecordId: dbOfficer.officerId,
             email: dbUser.email,
             role: .loanOfficer,
             fullName: dbUser.fullName,
