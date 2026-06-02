@@ -318,18 +318,7 @@ final class ManagerDashboardViewModel: ObservableObject {
 
     func reassignApplicant(_ id: UUID, to officerId: UUID) {
         guard let officer = officers.first(where: { $0.id == officerId }) else { return }
-        let newOfficer = AssignedLoanOfficer(
-            officerId: officerId,
-            userId: officerId,
-            fullName: officer.name,
-            employeeCode: "EMP-\(officerId.uuidString.prefix(4))",
-            branchId: UUID(),
-            branchName: "Main Branch",
-            designation: officer.role,
-            lastAssignedAt: Date(),
-            activeWorkload: officer.activeCases
-        )
-        CentralLoanRepository.shared.reassignApplication(id: id, to: newOfficer)
+        CentralLoanRepository.shared.reassignApplication(id: id, newOfficerId: officerId, newOfficerName: officer.name)
         appendAudit(action: "Reassigned \(applicationLabel(for: id)) to \(officer.name)", severity: .info)
         HapticsManager.triggerImpact(style: .medium)
     }

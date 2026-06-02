@@ -271,11 +271,16 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
 
     func refreshFromRepository() {
+        guard let officerProfile else {
+            // Keep the queue safe and empty until the profile is successfully loaded from the DB
+            self.applications = []
+            return
+        }
+        
+        let officerUserId = officerProfile.id
         applications = CentralLoanRepository.shared.applications.compactMap { borrowerApplication in
             guard borrowerApplication.currentStage != .draft else { return nil }
-            if let officerUserId = officerProfile?.id {
-                guard borrowerApplication.assignedOfficer?.userId == officerUserId else { return nil }
-            }
+            guard CentralLoanRepository.shared.isVisibleToOfficer(borrowerApplication, userId: officerUserId) else { return nil }
             return CentralLoanRepository.shared.toOfficerApplication(from: borrowerApplication)
         }
     }
@@ -291,9 +296,11 @@ class LoanOfficerDashboardViewModel: ObservableObject {
 
     @discardableResult
     func escalateApplication(applicationId: String, reason: String) -> Bool {
-        let officerName = officerProfile?.fullName ?? "Loan Officer"
-        let didEscalate = CentralLoanRepository.shared.escalateApplication(
-            applicationId: applicationId,
+        guard let uuid = UUID(uuidString: applicationId), let officerProfile = officerProfile else { return false }
+        let officerName = officerProfile.fullName
+        let didEscalate = CentralLoanRepository.shared.escalateApplicationByOfficer(
+            id: uuid,
+            officerId: officerProfile.id,
             officerName: officerName,
             reason: reason
         )
