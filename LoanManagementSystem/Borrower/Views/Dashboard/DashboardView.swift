@@ -1,5 +1,4 @@
 import SwiftUI
-import CoreImage.CIFilterBuiltins
 import UIKit
 
 // MARK: - Navigation Destinations
@@ -300,9 +299,7 @@ public struct DashboardView: View {
                 case .statement:
                     StatementWorkflowView(viewModel: viewModel)
                 case .topUp:
-                    TopUpWorkflowView(viewModel: viewModel) {
-                        navigationPath.append(.linkedBankAccounts)
-                    }
+                    TopUpWorkflowView(viewModel: viewModel)
                 case .foreclosure:
                     ForeclosureSheet(viewModel: viewModel)
                 case .support:
@@ -1197,9 +1194,9 @@ struct PayEMIWorkflowView: View {
         Section {
             if viewModel.bankAccounts.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("No linked bank account", systemImage: "building.columns")
+                    Label("No loan OD account", systemImage: "building.columns")
                         .font(.headline)
-                    Text("Add a bank account to pay EMI from this app.")
+                    Text("Loan OD accounts are created automatically after approval and disbursement.")
                         .font(.subheadline)
                         .foregroundStyle(LMSColors.textSecondary)
                 }
@@ -1439,22 +1436,8 @@ struct StatementWorkflowView: View {
         }
     }
 
-    private var bankStatementAccounts: [StatementAccountOption] {
-        viewModel.bankAccounts.map {
-            StatementAccountOption(
-                id: "bank-\($0.id.uuidString)",
-                title: $0.bankName.isEmpty ? $0.accountType.rawValue : $0.bankName,
-                subtitle: "****\($0.accountNumber.suffix(4))",
-                detail: "Available: \($0.availableBalance.formattedAsINR())",
-                icon: "building.columns.fill",
-                loan: nil,
-                bank: $0
-            )
-        }
-    }
-
     private var allStatementAccounts: [StatementAccountOption] {
-        loanStatementAccounts + bankStatementAccounts
+        loanStatementAccounts
     }
 
     private var selectedAccount: StatementAccountOption? {
@@ -1479,25 +1462,6 @@ struct StatementWorkflowView: View {
                         .foregroundStyle(LMSColors.textSecondary)
                 } header: {
                     Text("Loan Accounts")
-                }
-            }
-
-            if !bankStatementAccounts.isEmpty {
-                Section {
-                    ForEach(bankStatementAccounts) { account in
-                        StatementAccountOptionRow(account: account, isSelected: selectedAccount?.id == account.id) {
-                            selectedAccountID = account.id
-                        }
-                    }
-                } header: {
-                    Text("Linked Bank Accounts")
-                }
-            } else {
-                Section {
-                    Text("No linked bank account")
-                        .foregroundStyle(LMSColors.textSecondary)
-                } header: {
-                    Text("Linked Bank Accounts")
                 }
             }
 
@@ -1651,34 +1615,19 @@ private enum TopUpStep: Int, CaseIterable {
 
 private enum TopUpMode {
     case addMoney
-    case transfer
-}
-
-private enum TopUpDestinationType: String, CaseIterable, Identifiable {
-    case loan = "Own Loan Account"
-    case savings = "Own Savings Account"
-    case linked = "Another Linked Account"
-    case qr = "QR Transfer"
-    var id: String { rawValue }
 }
 
 struct TopUpWorkflowView: View {
     @ObservedObject var viewModel: DashboardViewModel
-    let onAddAccount: () -> Void
     @State private var step: TopUpStep = .home
     @State private var mode: TopUpMode?
-    @State private var sourceAccountID: UUID?
-    @State private var destinationType: TopUpDestinationType = .loan
     @State private var destinationAccountID: UUID?
     @State private var destinationLoanID: UUID?
     @State private var amountText = "5000"
     @State private var mpin = ""
-    @State private var scannedReceiver: QRReceiver?
-    @State private var showQRScanner = false
     @State private var showSuccess = false
 
     private var amount: Double { Double(amountText.filter { $0.isNumber }) ?? 0 }
-    private var sourceAccount: BankAccount? { viewModel.bankAccounts.first { $0.id == sourceAccountID } ?? viewModel.bankAccounts.first }
     private var destinationAccount: BankAccount? {
         if mode == .addMoney {
             if destinationLoanID != nil && destinationAccountID == nil { return nil }
@@ -1691,15 +1640,11 @@ struct TopUpWorkflowView: View {
     private var canContinue: Bool {
         switch step {
         case .home: return mode != nil
-        case .source: return mode == .addMoney || sourceAccount != nil
+        case .source: return true
         case .destination:
-            if mode == .addMoney { return destinationAccount != nil || destinationLoan != nil }
-            if destinationType == .qr { return scannedReceiver != nil }
-            if destinationType == .loan { return destinationLoan != nil }
-            return destinationAccount != nil
+            return destinationLoan != nil
         case .amount:
-            if mode == .addMoney { return amount > 0 }
-            return amount > 0 && (sourceAccount?.availableBalance ?? 0) >= amount
+            return amount > 0
         case .review: return true
         case .authorize: return mpin.count >= 4
         }
@@ -1736,15 +1681,7 @@ struct TopUpWorkflowView: View {
             }
         }
         .onAppear {
-            sourceAccountID = sourceAccountID ?? viewModel.bankAccounts.first?.id
-            destinationAccountID = destinationAccountID ?? viewModel.bankAccounts.first?.id
             destinationLoanID = destinationLoanID ?? viewModel.loanAccounts.first?.id
-        }
-        .sheet(isPresented: $showQRScanner) {
-            QRScannerMockView {
-                scannedReceiver = QRReceiver(name: "Akash Kumar", handle: "akash@upi", bank: "HDFC Bank")
-                showQRScanner = false
-            }
         }
         .fullScreenCover(isPresented: $showSuccess) {
             TopUpSuccessView(amount: amount) {
@@ -1757,7 +1694,7 @@ struct TopUpWorkflowView: View {
     private var topUpContent: some View {
         switch step {
         case .home: topUpHomeSection
-        case .source: sourceSection
+        case .source: destinationSection
         case .destination: destinationSection
         case .amount: amountSection
         case .review: reviewSection
@@ -1771,7 +1708,7 @@ struct TopUpWorkflowView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(step.title).font(.title3.bold())
-                        Text(mode == .transfer ? "Move funds between active accounts." : "Add money or transfer between accounts.")
+                        Text("Add funds to your loan OD account.")
                             .font(.caption)
                             .foregroundStyle(LMSColors.textSecondary)
                     }
@@ -1798,19 +1735,6 @@ struct TopUpWorkflowView: View {
                     subtitle: "Add funds into your account.",
                     icon: "plus.circle.fill",
                     tint: LMSColors.emerald
-                )
-            }
-            .buttonStyle(LMSPressableStyle())
-
-            Button {
-                mode = .transfer
-                withAnimation(.smooth(duration: 0.22)) { step = .source }
-            } label: {
-                topUpModeCard(
-                    title: "Transfer Money",
-                    subtitle: "Move funds between linked accounts.",
-                    icon: "arrow.left.arrow.right.circle.fill",
-                    tint: LMSColors.brandNavy
                 )
             }
             .buttonStyle(LMSPressableStyle())
@@ -1842,106 +1766,28 @@ struct TopUpWorkflowView: View {
         .padding(.vertical, 8)
     }
 
-    private var sourceSection: some View {
+    private var destinationSection: some View {
         Section {
-            if viewModel.bankAccounts.isEmpty {
+            let activeLoans = viewModel.loanAccounts.filter { $0.principalOutstanding > 0 }
+            if activeLoans.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    Label("No linked bank account", systemImage: "building.columns")
+                    Label("No loan account", systemImage: "building.columns")
                         .font(.headline)
-                        .foregroundStyle(LMSColors.textPrimary)
-                    Text("Add a bank account to transfer funds.")
+                    Text("Loan accounts are created automatically after approval and disbursement.")
                         .font(.subheadline)
                         .foregroundStyle(LMSColors.textSecondary)
-                    Button {
-                        onAddAccount()
-                    } label: {
-                        Label("Add Bank Account", systemImage: "plus.circle.fill")
-                    }
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(LMSColors.brandNavy)
                 }
                 .padding(.vertical, 8)
             } else {
-                ForEach(viewModel.bankAccounts) { account in
-                    SelectableBankAccountCard(account: account, isSelected: sourceAccountID == account.id, warning: false) {
-                        sourceAccountID = account.id
+                ForEach(activeLoans) { loan in
+                    SelectableLoanPaymentCard(loan: loan, isSelected: destinationLoanID == loan.id && destinationAccountID == nil) {
+                        destinationLoanID = loan.id
+                        destinationAccountID = nil
                     }
                 }
             }
         } header: {
-            Text("Select Source Account")
-        }
-    }
-
-    private var destinationSection: some View {
-        Section {
-            if mode == .addMoney {
-                if viewModel.bankAccounts.isEmpty && viewModel.loanAccounts.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Label("No destination account", systemImage: "building.columns")
-                            .font(.headline)
-                        Text("Add a bank account to receive funds.")
-                            .font(.subheadline)
-                            .foregroundStyle(LMSColors.textSecondary)
-                        Button {
-                            onAddAccount()
-                        } label: {
-                            Label("Add Bank Account", systemImage: "plus.circle.fill")
-                        }
-                    }
-                    .padding(.vertical, 8)
-                } else {
-                    ForEach(viewModel.bankAccounts) { account in
-                        SelectableBankAccountCard(account: account, isSelected: destinationAccountID == account.id, warning: false) {
-                            destinationAccountID = account.id
-                            destinationLoanID = nil
-                        }
-                    }
-                    ForEach(viewModel.loanAccounts.filter { $0.principalOutstanding > 0 }) { loan in
-                        SelectableLoanPaymentCard(loan: loan, isSelected: destinationLoanID == loan.id && destinationAccountID == nil) {
-                            destinationLoanID = loan.id
-                            destinationAccountID = nil
-                        }
-                    }
-                }
-            } else {
-                Picker("Destination", selection: $destinationType) {
-                    ForEach(TopUpDestinationType.allCases) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.inline)
-
-                if destinationType == .loan {
-                    ForEach(viewModel.loanAccounts.filter { $0.principalOutstanding > 0 }) { loan in
-                        SelectableLoanPaymentCard(loan: loan, isSelected: destinationLoanID == loan.id) {
-                            destinationLoanID = loan.id
-                        }
-                    }
-                } else if destinationType == .savings || destinationType == .linked {
-                    ForEach(viewModel.bankAccounts.filter { $0.id != sourceAccountID }) { account in
-                        SelectableBankAccountCard(account: account, isSelected: destinationAccountID == account.id, warning: false) {
-                            destinationAccountID = account.id
-                        }
-                    }
-                    if viewModel.bankAccounts.filter({ $0.id != sourceAccountID }).isEmpty {
-                        Text("Add another active account before transferring between accounts.")
-                            .font(.subheadline)
-                            .foregroundStyle(LMSColors.textSecondary)
-                    }
-                } else {
-                    Button {
-                        showQRScanner = true
-                    } label: {
-                        Label(scannedReceiver == nil ? "Scan QR Code" : "QR Scanned", systemImage: "qrcode.viewfinder")
-                    }
-                    if let scannedReceiver {
-                        LabeledContent("Receiver", value: scannedReceiver.name)
-                        LabeledContent("UPI ID", value: scannedReceiver.handle)
-                        LabeledContent("Bank", value: scannedReceiver.bank)
-                    }
-                }
-            }
-        } header: {
-            Text(mode == .addMoney ? "Select Destination Account" : "Select Destination")
+            Text("Select Loan Account")
         }
     }
 
@@ -1956,28 +1802,14 @@ struct TopUpWorkflowView: View {
                         .buttonStyle(.bordered)
                 }
             }
-            if (sourceAccount?.availableBalance ?? 0) < amount {
-                Label("Insufficient source balance", systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(LMSColors.coral)
-            }
-        } header: {
-            Text(mode == .addMoney ? "Add Money" : "Enter Amount")
-        }
+        } header: { Text("Add Money") }
     }
 
     private var reviewSection: some View {
         Section {
-            if mode == .transfer {
-                LabeledContent("From", value: sourceAccount.map { "\($0.bankName.isEmpty ? $0.accountType.rawValue : $0.bankName) ••\($0.accountNumber.suffix(4))" } ?? "-")
-            }
             LabeledContent("To", value: destinationLabel)
             LabeledContent("Amount", value: amount.formattedAsINR())
-            if mode == .transfer {
-                LabeledContent("Balance after transfer", value: max(0, (sourceAccount?.availableBalance ?? 0) - amount).formattedAsINR())
-            }
-        } header: {
-            Text(mode == .addMoney ? "Review Add Money" : "Review Transfer")
-        }
+        } header: { Text("Review Add Money") }
     }
 
     private var authSection: some View {
@@ -2010,7 +1842,7 @@ struct TopUpWorkflowView: View {
                 withAnimation(.smooth(duration: 0.22)) { step = nextStep }
             }
         } label: {
-            Text(step == .authorize ? (mode == .addMoney ? "Add Money" : "Transfer Now") : "Continue")
+            Text(step == .authorize ? "Add Money" : "Continue")
                 .font(.headline)
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
@@ -2024,72 +1856,18 @@ struct TopUpWorkflowView: View {
     }
 
     private var destinationLabel: String {
-        if mode == .addMoney {
-            if let destinationAccount {
-                return "\(destinationAccount.bankName.isEmpty ? destinationAccount.accountType.rawValue : destinationAccount.bankName) ••\(destinationAccount.accountNumber.suffix(4))"
-            }
-            return destinationLoan.map { "\($0.loanType) Linked Account ••\($0.accountNumber.suffix(4))" } ?? "-"
-        }
-
-        switch destinationType {
-        case .loan:
-            return destinationLoan.map { "\($0.loanType) Linked Account ••\($0.accountNumber.suffix(4))" } ?? "-"
-        case .savings, .linked:
-            return destinationAccount.map { "\($0.bankName.isEmpty ? $0.accountType.rawValue : $0.bankName) ••\($0.accountNumber.suffix(4))" } ?? "-"
-        case .qr:
-            return scannedReceiver.map { "\($0.name) \($0.handle)" } ?? "-"
-        }
+        destinationLoan.map { "\($0.loanType) OD Account ••\($0.accountNumber.suffix(4))" } ?? "-"
     }
 
     private func confirmTopUp() {
         if mode == .addMoney {
-            if let destinationAccount {
-                viewModel.topUpAccount(amount: amount, to: destinationAccount)
-            } else if let destinationLoan {
+            if let destinationLoan {
                 viewModel.topUpLoanLinkedAccount(amount: amount, to: destinationLoan)
             }
             HapticsManager.triggerNotification(type: .success)
             showSuccess = true
             return
         }
-
-        guard let sourceAccount else { return }
-        switch destinationType {
-        case .loan:
-            if let destinationLoan { viewModel.transferFundsToLoan(amount: amount, from: sourceAccount, to: destinationLoan) }
-        case .savings, .linked:
-            if let destinationAccount { viewModel.transferFunds(amount: amount, from: sourceAccount, to: destinationAccount) }
-        case .qr:
-            viewModel.transferToExternalReceiver(amount: amount, from: sourceAccount, receiverName: scannedReceiver?.name ?? "QR Receiver")
-        }
-        HapticsManager.triggerNotification(type: .success)
-        showSuccess = true
-    }
-}
-
-private struct QRReceiver {
-    let name: String
-    let handle: String
-    let bank: String
-}
-
-private struct QRScannerMockView: View {
-    let onScan: () -> Void
-    @Environment(\.dismiss) private var dismiss
-    var body: some View {
-        VStack(spacing: 18) {
-            Image(systemName: "qrcode.viewfinder")
-                .font(.system(size: 84))
-            Text("Scan QR")
-                .font(.title2.bold())
-            Text("Camera QR scanning placeholder. Tap below to simulate a secure QR scan.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(LMSColors.textSecondary)
-            Button("Simulate Scan", action: onScan)
-                .buttonStyle(.borderedProminent)
-            Button("Cancel") { dismiss() }
-        }
-        .padding(24)
     }
 }
 
@@ -3005,7 +2783,6 @@ struct TopUpSheet: View {
     @ObservedObject var viewModel: DashboardViewModel
     @Environment(\.dismiss) var dismiss
     @State private var topUpAmount = 10000.0
-    @State private var sourceAccountID: UUID?
     @State private var destinationAccountID: UUID?
     @State private var successMessage = ""
     @State private var showSuccessAlert = false
@@ -3015,12 +2792,9 @@ struct TopUpSheet: View {
         viewModel.bankAccounts.filter { account in
             !account.accountNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
             account.accountNumber != "XXXX 0000" &&
-            account.bankName != "Default Bank"
+            account.bankName != "Default Bank" &&
+            account.accountType == .overdraft
         }
-    }
-
-    private var sourceAccount: BankAccount? {
-        linkedAccounts.first { $0.id == sourceAccountID }
     }
 
     private var destinationAccount: BankAccount? {
@@ -3028,15 +2802,7 @@ struct TopUpSheet: View {
     }
 
     private var canConfirmTransfer: Bool {
-        if linkedAccounts.count == 1 { return true }
-        guard linkedAccounts.count > 1,
-              let sourceAccount,
-              let destinationAccount else {
-            return false
-        }
-
-        return sourceAccount.id != destinationAccount.id &&
-               sourceAccount.availableBalance >= topUpAmount
+        destinationAccount != nil
     }
     
     var body: some View {
@@ -3046,10 +2812,8 @@ struct TopUpSheet: View {
 
                 if linkedAccounts.isEmpty {
                     noAccountSection
-                } else if linkedAccounts.count == 1 {
-                    qrReceiveSection(account: linkedAccounts[0])
                 } else {
-                    transferSection
+                    loanODAccountSection
                 }
 
                 if !linkedAccounts.isEmpty {
@@ -3084,7 +2848,7 @@ struct TopUpSheet: View {
                     .foregroundStyle(linkedAccounts.isEmpty ? LMSColors.brandNavy : LMSColors.emerald)
 
                 VStack(spacing: 4) {
-                    Text(linkedAccounts.count > 1 ? "Transfer Amount" : "Top-Up Amount")
+                    Text("Top-Up Amount")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
@@ -3106,92 +2870,29 @@ struct TopUpSheet: View {
     private var noAccountSection: some View {
         Section {
             VStack(alignment: .leading, spacing: 14) {
-                Label("No linked bank account found", systemImage: "exclamationmark.circle.fill")
+                Label("No loan OD account found", systemImage: "exclamationmark.circle.fill")
                     .font(.headline)
                     .foregroundStyle(LMSColors.textPrimary)
 
-                Text("Add and verify a bank account before adding funds.")
+                Text("Loan OD accounts are created automatically after loan approval and disbursement.")
                     .font(.subheadline)
                     .foregroundStyle(LMSColors.textSecondary)
-
-                Button {
-                    onAddAccount()
-                } label: {
-                    HStack {
-                        Spacer()
-                        Label("Add Account", systemImage: "building.columns.fill")
-                            .fontWeight(.bold)
-                        Spacer()
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(LMSColors.brandNavy)
             }
             .padding(.vertical, 8)
         }
     }
 
-    private func qrReceiveSection(account: BankAccount) -> some View {
+    private var loanODAccountSection: some View {
         Section {
-            VStack(spacing: 16) {
-                QRCodeView(payload: qrPayload(for: account))
-                    .frame(width: 170, height: 170)
-                    .padding(12)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-
-                VStack(spacing: 4) {
-                    Text("Scan to add funds")
-                        .font(.headline)
-                        .foregroundStyle(LMSColors.textPrimary)
-
-                    Text("\(account.bankName.isEmpty ? "Linked Account" : account.bankName) \(maskedAccountNumber(account.accountNumber))")
-                        .font(.subheadline)
-                        .foregroundStyle(LMSColors.textSecondary)
-                        .multilineTextAlignment(.center)
+            ForEach(linkedAccounts) { account in
+                SelectableBankAccountCard(account: account, isSelected: destinationAccountID == account.id, warning: false) {
+                    destinationAccountID = account.id
                 }
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-        } header: {
-            Text("Receive to Account")
-        } footer: {
-            Text("Scan this QR from any payment app, then confirm once the payment is completed.")
-        }
-    }
-
-    private var transferSection: some View {
-        Section {
-            Picker("From Account", selection: Binding(
-                get: { sourceAccountID ?? linkedAccounts.first?.id },
-                set: { sourceAccountID = $0 }
-            )) {
-                ForEach(linkedAccounts) { account in
-                    Text(accountPickerTitle(account)).tag(Optional(account.id))
-                }
-            }
-
-            Picker("To Account", selection: Binding(
-                get: { destinationAccountID ?? linkedAccounts.dropFirst().first?.id ?? linkedAccounts.first?.id },
-                set: { destinationAccountID = $0 }
-            )) {
-                ForEach(linkedAccounts) { account in
-                    Text(accountPickerTitle(account)).tag(Optional(account.id))
-                }
-            }
-
-            if let sourceAccount, sourceAccount.availableBalance < topUpAmount {
-                Label("Insufficient balance in source account", systemImage: "exclamationmark.triangle.fill")
-                    .font(.footnote)
-                    .foregroundStyle(LMSColors.coral)
-            } else if sourceAccountID == destinationAccountID {
-                Label("Choose a different destination account", systemImage: "arrow.left.arrow.right")
-                    .font(.footnote)
-                    .foregroundStyle(LMSColors.amber)
             }
         } header: {
-            Text("Transfer Details")
+            Text("Loan OD Accounts")
         } footer: {
-            Text("Move money from one linked account to another.")
+            Text("Only loan overdraft accounts are shown here.")
         }
     }
 
@@ -3202,7 +2903,7 @@ struct TopUpSheet: View {
             } label: {
                 HStack {
                     Spacer()
-                    Text(linkedAccounts.count > 1 ? "Confirm Transfer" : "Confirm Deposit")
+                    Text("Confirm Deposit")
                         .fontWeight(.bold)
                         .foregroundStyle(.white)
                     Spacer()
@@ -3219,21 +2920,13 @@ struct TopUpSheet: View {
 
     private func configureDefaultAccounts() {
         guard !linkedAccounts.isEmpty else { return }
-        sourceAccountID = sourceAccountID ?? linkedAccounts.first?.id
-        destinationAccountID = destinationAccountID ?? (linkedAccounts.dropFirst().first?.id ?? linkedAccounts.first?.id)
+        destinationAccountID = destinationAccountID ?? linkedAccounts.first?.id
     }
 
     private func confirmFunds() {
-        if linkedAccounts.count == 1, let account = linkedAccounts.first {
-            viewModel.topUpAccount(amount: topUpAmount, to: account)
-            successMessage = "Your amount \(topUpAmount.formattedAsINR()) is credited in the bank account \(maskedAccountNumber(account.accountNumber))."
-            showSuccessAlert = true
-            return
-        }
-
-        guard let sourceAccount, let destinationAccount else { return }
-        viewModel.transferFunds(amount: topUpAmount, from: sourceAccount, to: destinationAccount)
-        successMessage = "Your amount \(topUpAmount.formattedAsINR()) is credited in the bank account \(maskedAccountNumber(destinationAccount.accountNumber))."
+        guard let destinationAccount else { return }
+        viewModel.topUpAccount(amount: topUpAmount, to: destinationAccount)
+        successMessage = "Your amount \(topUpAmount.formattedAsINR()) is credited in the loan OD account \(maskedAccountNumber(destinationAccount.accountNumber))."
         showSuccessAlert = true
     }
 
@@ -3242,42 +2935,6 @@ struct TopUpSheet: View {
         return "•••• \(suffix)"
     }
 
-    private func accountPickerTitle(_ account: BankAccount) -> String {
-        let name = account.bankName.isEmpty ? account.accountType.rawValue : account.bankName
-        return "\(name) \(maskedAccountNumber(account.accountNumber))"
-    }
-
-    private func qrPayload(for account: BankAccount) -> String {
-        "lms://add-funds?account=\(account.accountNumber)&amount=\(Int(topUpAmount))"
-    }
-}
-
-private struct QRCodeView: View {
-    let payload: String
-    private let context = CIContext()
-    private let filter = CIFilter.qrCodeGenerator()
-
-    var body: some View {
-        if let image = makeQRCode() {
-            Image(uiImage: image)
-                .interpolation(.none)
-                .resizable()
-                .scaledToFit()
-        } else {
-            Image(systemName: "qrcode")
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(LMSColors.textPrimary)
-        }
-    }
-
-    private func makeQRCode() -> UIImage? {
-        filter.message = Data(payload.utf8)
-        guard let outputImage = filter.outputImage else { return nil }
-        let scaledImage = outputImage.transformed(by: CGAffineTransform(scaleX: 10, y: 10))
-        guard let cgImage = context.createCGImage(scaledImage, from: scaledImage.extent) else { return nil }
-        return UIImage(cgImage: cgImage)
-    }
 }
 
 // MARK: - Premium Detail Views

@@ -280,6 +280,38 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         }
     }
 
+    var escalatableApplications: [LoanApplication] {
+        applications.filter { app in
+            app.status != .approved &&
+            app.status != .rejected &&
+            app.status != .disbursed &&
+            app.status != .escalated
+        }
+    }
+
+    @discardableResult
+    func escalateApplication(applicationId: String, reason: String) -> Bool {
+        let officerName = officerProfile?.fullName ?? "Loan Officer"
+        let didEscalate = CentralLoanRepository.shared.escalateApplication(
+            applicationId: applicationId,
+            officerName: officerName,
+            reason: reason
+        )
+        if didEscalate {
+            refreshFromRepository()
+            if let app = applications.first(where: { $0.applicationId == applicationId }) {
+                logActivity(
+                    borrowerName: app.borrowerName,
+                    applicationId: applicationId,
+                    loanType: app.loanType.rawValue,
+                    eventType: .queryRaised,
+                    description: "Escalated to Branch Manager: \(reason)"
+                )
+            }
+        }
+        return didEscalate
+    }
+
     func loadAssignedApplicationMessages() async {
         var nextMessages: [UUID: [DBMessage]] = [:]
         for app in applications {

@@ -162,7 +162,7 @@ struct LoanPortfolioSummaryCard: View {
                     )
                     portfolioMetric(
                         title: "EMI Amount",
-                        value: viewModel.nextEMI.map { $0.amount.formattedAsINR() } ?? "—"
+                        value: viewModel.nextDueAmount > 0 ? viewModel.nextDueAmount.formattedAsINR() : "—"
                     )
                 }
 
@@ -361,10 +361,10 @@ struct UpcomingPaymentSection: View {
                     VStack(alignment: .leading, spacing: LMSSpacing.lg) {
                         HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: LMSSpacing.xs) {
-                                Text(nextEMI.status == .overdue ? "Overdue" : "Due Soon")
+                                Text(viewModel.nextDueStatus == .overdue ? "Overdue" : "Due Soon")
                                     .font(LMSFont.caption.weight(.bold))
-                                    .foregroundStyle(nextEMI.status == .overdue ? LMSColors.coral : LMSColors.amber)
-                                Text(nextEMI.amount.formattedAsINR())
+                                    .foregroundStyle(viewModel.nextDueStatus == .overdue ? LMSColors.coral : LMSColors.amber)
+                                Text(viewModel.nextDueAmount.formattedAsINR())
                                     .font(.system(.title, design: .rounded).weight(.bold))
                                     .foregroundStyle(LMSColors.textPrimary)
                                     .monospacedDigit()
@@ -380,7 +380,7 @@ struct UpcomingPaymentSection: View {
                             }
                         }
 
-                        Label(nextEMI.loanType, systemImage: "doc.text.fill")
+                        Label(viewModel.nextDueLoanLabel, systemImage: "doc.text.fill")
                             .font(LMSFont.footnote)
                             .foregroundStyle(LMSColors.textSecondary)
 
@@ -392,7 +392,7 @@ struct UpcomingPaymentSection: View {
 
                         DashboardFilledButton(
                             title: "Pay Now",
-                            tint: nextEMI.status == .overdue ? LMSColors.coral : LMSColors.brandNavy,
+                            tint: viewModel.nextDueStatus == .overdue ? LMSColors.coral : LMSColors.brandNavy,
                             action: onPayNow
                         )
                     }

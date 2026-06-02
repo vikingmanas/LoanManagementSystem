@@ -35,6 +35,17 @@ struct ManagerBranchTabView: View {
         .filter { $0.amount > 0 }
     }
 
+    private func assignedCount(for summary: ManagerOfficerPerformanceSummary) -> Int {
+        viewModel.applicants(for: summary.officer).count
+    }
+
+    private func disbursedAmount(for summary: ManagerOfficerPerformanceSummary) -> Double {
+        let officerId = summary.officer.id
+        return snapshot.officerRows.first { row in
+            row.officer.id == officerId
+        }?.disbursedAmount ?? 0
+    }
+
     private var statusChartData: [BranchChartSlice] {
         let approved = viewModel.applicants.filter { $0.status == .approved || $0.status == .disbursed }.count
         let pending = viewModel.pendingApplicants.count
@@ -179,8 +190,33 @@ struct ManagerBranchTabView: View {
                         .font(.footnote)
                         .foregroundStyle(LMSColors.textSecondary)
                 } else {
-                    ForEach(Array(viewModel.officerPerformanceSummaries.prefix(5))) { summary in
-                        officerPerformanceRow(summary: summary)
+                    ForEach(viewModel.officerPerformanceSummaries.prefix(5)) { summary in
+                        let assignedCount = assignedCount(for: summary)
+                        let disbursedAmount = disbursedAmount(for: summary)
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text(summary.officer.name)
+                                    .font(.subheadline.weight(.semibold))
+                                Spacer()
+                                HStack(spacing: 3) {
+                                    Image(systemName: "star.fill")
+                                        .font(.caption2)
+                                        .foregroundStyle(LMSColors.amber)
+                                    Text(String(format: "%.1f", summary.displayRating))
+                                        .font(.caption.weight(.bold))
+                                }
+                            }
+                            HStack {
+                                Text("\(assignedCount) assigned")
+                                Text("·")
+                                Text("\(summary.officerEscalationCount) escalated")
+                                Text("·")
+                                Text(CurrencyFormatter.shared.format(disbursedAmount))
+                            }
+                            .font(.caption)
+                            .foregroundStyle(LMSColors.textSecondary)
+                        }
+                        .padding(.vertical, 2)
                     }
 
                     if !viewModel.unassignedApplicants.isEmpty {
@@ -323,36 +359,6 @@ struct ManagerBranchTabView: View {
                 .foregroundStyle(LMSColors.textPrimary)
                 .multilineTextAlignment(.trailing)
         }
-    }
-
-    private func officerPerformanceRow(summary: ManagerOfficerPerformanceSummary) -> some View {
-        let assignedCount = viewModel.applicants(for: summary.officer).count
-        let disbursedAmount = snapshot.officerRows.first(where: { $0.officer.id == summary.officer.id })?.disbursedAmount ?? 0.0
-
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(summary.officer.name)
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                HStack(spacing: 3) {
-                    Image(systemName: "star.fill")
-                        .font(.caption2)
-                        .foregroundStyle(LMSColors.amber)
-                    Text(String(format: "%.1f", summary.officer.rating))
-                        .font(.caption.weight(.bold))
-                }
-            }
-            HStack {
-                Text("\(assignedCount) assigned")
-                Text("·")
-                Text("\(summary.officerEscalationCount) escalated")
-                Text("·")
-                Text(CurrencyFormatter.shared.format(disbursedAmount))
-            }
-            .font(.caption)
-            .foregroundStyle(LMSColors.textSecondary)
-        }
-        .padding(.vertical, 2)
     }
 }
 
