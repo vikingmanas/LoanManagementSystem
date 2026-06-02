@@ -902,6 +902,7 @@ struct LoanApplicationTrackingScreen: View {
 
                 AssignedLoanOfficerCard(
                     application: app,
+                    branches: viewModel.branchesList.map(\.name),
                     onMessage: { showOfficerChat = true },
                     onBranchSelected: { branch in
                         var updated = app
@@ -1414,6 +1415,7 @@ private struct TrackingHeaderCard: View {
 
 private struct AssignedLoanOfficerCard: View {
     let application: BorrowerLoanApplication
+    let branches: [String]
     let onMessage: () -> Void
     let onBranchSelected: (String) -> Void
 
@@ -1506,7 +1508,8 @@ private struct AssignedLoanOfficerCard: View {
                             .foregroundStyle(LMSColors.brandNavy)
                     } else {
                         Menu {
-                            ForEach(BorrowerLoanFormData.branchOptions, id: \.self) { branch in
+                            let actualBranches = branches.isEmpty ? BorrowerLoanFormData.branchOptions : branches
+                            ForEach(actualBranches, id: \.self) { branch in
                                 Button(branch) {
                                     onBranchSelected(branch)
                                 }

@@ -27,6 +27,7 @@ final class LoanApplicationViewModel: ObservableObject {
     
     @Published var verificationComplete: Bool = false
     @Published var showVerificationResult: Bool = false
+    @Published var branchesList: [BranchInfo] = []
     
     private var cancellables = Set<AnyCancellable>()
     
@@ -91,6 +92,7 @@ final class LoanApplicationViewModel: ObservableObject {
             .assign(to: &$applications)
         
         loadProducts()
+        loadBranches()
     }
     
     /// Loads active loan products dynamically from the Supabase database.
@@ -98,6 +100,18 @@ final class LoanApplicationViewModel: ObservableObject {
         Task {
             let fetchedProducts = await ProductService.shared.fetchLoanProducts()
             self.products = fetchedProducts
+        }
+    }
+
+    /// Loads active branches dynamically from the Supabase database.
+    func loadBranches() {
+        Task {
+            do {
+                let fetchedBranches = try await DatabaseService.shared.fetchBranches()
+                self.branchesList = fetchedBranches
+            } catch {
+                print("❌ [LoanApplicationViewModel] Error fetching branches: \(error)")
+            }
         }
     }
     
