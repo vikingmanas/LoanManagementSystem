@@ -98,13 +98,6 @@ struct AdminBranchKPIView: View {
                 Text(data.value)
                     .font(LMSFont.headline)
                     .foregroundStyle(LMSColors.textPrimary)
-                
-                HStack(spacing: 2) {
-                    Image(systemName: data.trend >= 0 ? "arrow.up.right" : "arrow.down.right")
-                    Text("\(abs(data.trend), specifier: "%.1f")%")
-                }
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(data.trend >= 0 ? LMSColors.emerald : LMSColors.coral)
             }
         }
         .padding(.horizontal, 16)
