@@ -5,6 +5,7 @@ enum BorrowerTab: Hashable {
     case dashboard
     case loans
     case applications
+    case messages
     case support
 }
 

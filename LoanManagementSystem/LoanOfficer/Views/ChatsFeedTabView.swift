@@ -1,17 +1,15 @@
 import SwiftUI
+import Combine
 
 struct ChatsFeedTabView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @State private var searchText = ""
     @State private var showUnreadOnly = false
     @State private var showingCompose = false
+    private let refreshTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     private var conversations: [OfficerConversation] {
-        OfficerConversation.make(
-            from: viewModel.applications,
-            messagesByApplication: viewModel.applicationMessages,
-            officerUserId: viewModel.officerProfile?.id
-        )
+        OfficerConversation.make(from: viewModel.activityFeed)
             .filter { conversation in
                 let matchesSearch = searchText.isEmpty || conversation.borrowerName.localizedCaseInsensitiveContains(searchText) || conversation.applicationId.localizedCaseInsensitiveContains(searchText) || conversation.loanType.localizedCaseInsensitiveContains(searchText)
                 let matchesUnread = !showUnreadOnly || conversation.unreadCount > 0
@@ -36,9 +34,35 @@ struct ChatsFeedTabView: View {
                             } label: {
                                 OfficerConversationRow(conversation: conversation)
                             }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    conversation.items.forEach { viewModel.dismissActivity($0.id) }
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+
+                                Button {
+                                    conversation.items.forEach { viewModel.markActivityRead($0.id) }
+                                } label: {
+                                    Label("Read", systemImage: "envelope.open")
+                                }
+                                .tint(.blue)
+                            }
                             .contextMenu {
+                                Button {
+                                    conversation.items.forEach { viewModel.markActivityRead($0.id) }
+                                } label: {
+                                    Label("Mark as Read", systemImage: "envelope.open")
+                                }
+
                                 Button { } label: {
                                     Label("Pin", systemImage: "pin")
+                                }
+
+                                Button(role: .destructive) {
+                                    conversation.items.forEach { viewModel.dismissActivity($0.id) }
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
                                 }
                             }
                         }
@@ -66,8 +90,10 @@ struct ChatsFeedTabView: View {
                 }
             }
             .refreshable { await viewModel.fetchDashboardData() }
-            .task {
-                await viewModel.loadAssignedApplicationMessages()
+            .onReceive(refreshTimer) { _ in
+                Task {
+                    await viewModel.fetchDashboardData()
+                }
             }
             .sheet(isPresented: $showingCompose) {
                 OfficerComposeMessageSheet(viewModel: viewModel)
@@ -81,42 +107,25 @@ struct OfficerConversation: Identifiable, Hashable {
     let borrowerName: String
     let applicationId: String
     let loanType: String
-    let applicationUUID: UUID
-    let status: String
-    let lastMessage: String
-    let lastMessageAt: Date?
-    let unreadCount: Int
+    let items: [ActivityFeedItem]
 
-    var requiresAction: Bool { unreadCount > 0 }
+    var unreadCount: Int { items.filter { !$0.isRead }.count }
+    var latestItem: ActivityFeedItem? { items.sorted { $0.timestamp > $1.timestamp }.first }
+    var requiresAction: Bool { items.contains { $0.requiresAction } }
 
-    static func make(
-        from applications: [OfficerLoanApplication],
-        messagesByApplication: [UUID: [DBMessage]],
-        officerUserId: UUID?
-    ) -> [OfficerConversation] {
-        applications.map { app in
-            let messages = messagesByApplication[app.id] ?? []
-            let latest = messages.sorted { $0.sentAt > $1.sentAt }.first
-            let unread = messages.filter { message in
-                guard let officerUserId else { return false }
-                return message.receiverId == officerUserId && !message.isRead
-            }.count
-
-            return OfficerConversation(
-                id: app.id.uuidString,
-                borrowerName: app.borrowerName,
-                applicationId: app.applicationId,
-                loanType: app.loanType.rawValue,
-                applicationUUID: app.id,
-                status: app.status.displayName,
-                lastMessage: latest?.content ?? "No messages yet",
-                lastMessageAt: latest?.sentAt,
-                unreadCount: unread
-            )
-        }
-        .sorted {
-            ($0.lastMessageAt ?? .distantPast) > ($1.lastMessageAt ?? .distantPast)
-        }
+    static func make(from items: [ActivityFeedItem]) -> [OfficerConversation] {
+        Dictionary(grouping: items, by: { $0.applicationId })
+            .compactMap { applicationId, groupedItems in
+                guard let first = groupedItems.sorted(by: { $0.timestamp > $1.timestamp }).first else { return nil }
+                return OfficerConversation(
+                    id: applicationId,
+                    borrowerName: first.borrowerName,
+                    applicationId: applicationId,
+                    loanType: first.loanType,
+                    items: groupedItems.sorted { $0.timestamp < $1.timestamp }
+                )
+            }
+            .sorted { ($0.latestItem?.timestamp ?? .distantPast) > ($1.latestItem?.timestamp ?? .distantPast) }
     }
 }
 
@@ -141,8 +150,8 @@ private struct OfficerConversationRow: View {
                     
                     Spacer()
                     
-                    if let lastMessageAt = conversation.lastMessageAt {
-                        Text(RelativeDateFormatter.shared.relativeString(from: lastMessageAt))
+                    if let latest = conversation.latestItem {
+                        Text(RelativeDateFormatter.shared.relativeString(from: latest.timestamp))
                             .font(.subheadline)
                             .foregroundStyle(conversation.unreadCount > 0 ? .blue : .secondary)
                     }
@@ -152,7 +161,7 @@ private struct OfficerConversationRow: View {
                         .foregroundStyle(Color(UIColor.tertiaryLabel))
                 }
 
-                Text(conversation.lastMessage)
+                Text(conversation.latestItem?.eventDescription ?? "No recent message")
                     .font(.subheadline)
                     .foregroundStyle(conversation.unreadCount > 0 ? .primary : .secondary)
                     .lineLimit(2)
@@ -166,15 +175,8 @@ private struct OfficerConversationRow: View {
                     
                     Spacer()
                     
-                    Text(conversation.status)
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(.blue)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.12), in: Capsule())
-
-                    if conversation.unreadCount > 0 {
-                        Text("\(conversation.unreadCount) Unread")
+                    if conversation.requiresAction {
+                        Text("Action Required")
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(.orange)
                             .padding(.horizontal, 6)
@@ -198,6 +200,7 @@ private struct OfficerMessageThreadView: View {
     @State private var messageText = ""
     @State private var messages: [OfficerThreadMessage]
     @FocusState private var isComposerFocused: Bool
+    private let refreshTimer = Timer.publish(every: 4, on: .main, in: .common).autoconnect()
 
     init(conversation: OfficerConversation, viewModel: LoanOfficerDashboardViewModel) {
         self.conversation = conversation
@@ -241,6 +244,12 @@ private struct OfficerMessageThreadView: View {
             }
         }
         .onAppear {
+            conversation.items.forEach { viewModel.markActivityRead($0.id) }
+            Task {
+                await loadMessages()
+            }
+        }
+        .onReceive(refreshTimer) { _ in
             Task {
                 await loadMessages()
             }
@@ -249,7 +258,7 @@ private struct OfficerMessageThreadView: View {
     }
 
     private func loadMessages() async {
-        guard let app = viewModel.applications.first(where: { $0.id == conversation.applicationUUID }) else { return }
+        guard let app = viewModel.applications.first(where: { $0.applicationId == conversation.applicationId }) else { return }
         do {
             let dbMsgs = try await DatabaseService.shared.fetchMessagesForApplication(applicationId: app.id)
             if !dbMsgs.isEmpty {
@@ -281,7 +290,7 @@ private struct OfficerMessageThreadView: View {
         guard !trimmed.isEmpty else { return }
         messageText = ""
 
-        guard let app = viewModel.applications.first(where: { $0.id == conversation.applicationUUID }) else { return }
+        guard let app = viewModel.applications.first(where: { $0.applicationId == conversation.applicationId }) else { return }
         let officerId = viewModel.officerProfile?.id ?? UUID()
         let borrowerId = app.borrowerId
         let appId = app.id
@@ -307,6 +316,7 @@ private struct OfficerMessageThreadView: View {
                     title: "New message from your loan officer",
                     message: trimmed
                 )
+                await viewModel.fetchDashboardData()
             } catch {
                 print("Failed to send officer message to DB: \(error)")
             }
@@ -407,7 +417,19 @@ private struct OfficerThreadMessage: Identifiable, Hashable {
     }
 
     static func seed(from conversation: OfficerConversation) -> [OfficerThreadMessage] {
-        []
+        var seeded: [OfficerThreadMessage] = [
+            OfficerThreadMessage(sender: .borrower, text: "Hello Officer, I’m checking the status of my \(conversation.loanType).", timestamp: Date().addingTimeInterval(-7200))
+        ]
+
+        seeded += conversation.items.map {
+            OfficerThreadMessage(sender: .borrower, text: $0.eventDescription, timestamp: $0.timestamp)
+        }
+
+        seeded.append(
+            OfficerThreadMessage(sender: .officer, text: "I’m reviewing this now. I’ll update you if any document needs correction.", timestamp: Date().addingTimeInterval(-1800))
+        )
+
+        return seeded.sorted { $0.timestamp < $1.timestamp }
     }
 }
 
@@ -479,6 +501,7 @@ private struct OfficerComposeMessageSheet: View {
                     message: trimmed
                 )
                 print("Message composed and sent successfully.")
+                await viewModel.fetchDashboardData()
             } catch {
                 print("Failed to send composed message to DB: \(error)")
             }
