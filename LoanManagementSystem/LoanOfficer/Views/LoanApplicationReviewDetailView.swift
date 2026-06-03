@@ -502,7 +502,8 @@ struct LoanApplicationReviewDetailView: View {
                     OfficerDocumentReviewCard(
                         doc: doc,
                         borrowerName: app.borrowerName,
-                        onPreview: { selectedDocForPreview = doc }
+                        onPreview: { selectedDocForPreview = doc },
+                        onAction: { showingActionSheetForDoc = doc }
                     )
                 }
             }
@@ -803,28 +804,21 @@ struct LoanApplicationReviewDetailView: View {
     private func approvalSection(_ app: LoanApplication) -> some View {
         if shouldShowOfficerActions(for: app) {
             Section {
-                if canSendForFinalApproval(app) {
-                    Button {
-                        HapticsManager.triggerImpact(style: .heavy)
-                        viewModel.sendForFinalApproval(applicationId: app.applicationId)
-                        dismiss()
-                    } label: {
-                        Text("Send for Final Approval")
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(.blue)
-                            .frame(maxWidth: .infinity)
-                            .multilineTextAlignment(.center)
-                    }
-                } else {
-                    HStack {
-                        Spacer()
-                        Label("Verification incomplete - resolve all documents first.", systemImage: "lock.fill")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                    }
-                    .padding(.vertical, 4)
+                approvalReadinessRow
+
+                Button {
+                    HapticsManager.triggerImpact(style: .heavy)
+                    viewModel.sendForFinalApproval(applicationId: app.applicationId)
+                    dismiss()
+                } label: {
+                    Label("Send for Approval", systemImage: "paperplane.circle.fill")
+                        .font(.body.weight(.semibold))
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(!canSendForFinalApproval(app))
+                .accessibilityHint(canSendForFinalApproval(app) ? "Sends the verified loan application to the manager module." : "Verify every uploaded document before sending this application to the manager.")
 
                 if canRejectCompleteApplication(app) {
                     Button(role: .destructive) {
@@ -875,6 +869,20 @@ struct LoanApplicationReviewDetailView: View {
                 Text(escalationAlertMessage)
             }
         }
+    }
+
+    private var approvalReadinessRow: some View {
+        let verifiedCount = loanDocuments.filter { $0.status == .verified }.count
+        let totalCount = loanDocuments.count
+
+        return Label {
+            Text(isReadyForFinalApproval ? "All documents verified. Ready for manager approval." : "Verify all documents before sending for approval.")
+                .font(.caption.weight(.medium))
+        } icon: {
+            Image(systemName: isReadyForFinalApproval ? "checkmark.seal.fill" : "lock.fill")
+        }
+        .foregroundStyle(isReadyForFinalApproval ? LMSColors.emerald : .secondary)
+        .badge("\(verifiedCount)/\(totalCount)")
     }
     
     // MARK: - Helpers
@@ -1040,6 +1048,7 @@ private struct OfficerDocumentReviewCard: View {
     let doc: LoanDocument
     let borrowerName: String
     var onPreview: () -> Void
+    var onAction: () -> Void
 
     private var statusLabel: String {
         doc.status.rawValue.replacingOccurrences(of: " ✓", with: "")
@@ -1075,6 +1084,7 @@ private struct OfficerDocumentReviewCard: View {
                             .font(.system(.body, design: .rounded).weight(.semibold))
                             .foregroundStyle(LMSColors.textPrimary)
                             .lineLimit(1)
+                            .minimumScaleFactor(0.85)
 
                         if doc.status == .verified {
                             Image(systemName: "checkmark.seal.fill")
@@ -1091,6 +1101,17 @@ private struct OfficerDocumentReviewCard: View {
                 }
 
                 Spacer(minLength: 8)
+
+                Button(action: onAction) {
+                    Image(systemName: doc.status == .verified ? "checkmark.circle.fill" : "ellipsis.circle.fill")
+                        .font(.title3)
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(doc.status == .verified ? LMSColors.emerald : LMSColors.actionBlue)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(doc.status == .verified ? "\(doc.docType.rawValue) verified" : "Review \(doc.docType.rawValue)")
             }
 
             if doc.status != .verified {
