@@ -169,18 +169,18 @@ private struct LoanOfficerTodayView: View {
         }
         .navigationDestination(isPresented: $showingPendingAppsList) {
             OfficerPushApplicationListView(
-                title: "Pending Applications",
-                systemImage: "doc.text.badge.clock",
-                description: "No pending applications at the moment.",
+                title: "Open Cases",
+                systemImage: "tray.full.fill",
+                description: "No open cases at the moment.",
                 applications: pendingApps,
                 viewModel: viewModel
             )
         }
         .navigationDestination(isPresented: $showingReadyToSendApps) {
             OfficerPushApplicationListView(
-                title: "Ready to Send",
-                systemImage: "paperplane.fill",
-                description: "No applications ready to send.",
+                title: "Manager Desk",
+                systemImage: "briefcase.fill",
+                description: "No applications are at the manager desk.",
                 applications: viewModel.sentToManagerApps,
                 viewModel: viewModel
             )
@@ -211,9 +211,9 @@ private struct OfficerActionItemsRow: View {
 
             HStack(spacing: LMSSpacing.md) {
                 OfficerActionCard(
-                    title: "Pending Apps",
+                    title: "Open Cases",
                     value: "\(pendingAppsCount)",
-                    icon: "doc.text.badge.clock",
+                    icon: "tray.full.fill",
                     tint: pendingAppsCount == 0 ? LMSColors.emerald : LMSColors.actionBlue,
                     action: {
                         HapticsManager.triggerImpact(style: .light)
@@ -222,9 +222,9 @@ private struct OfficerActionItemsRow: View {
                 )
 
                 OfficerActionCard(
-                    title: "Ready to Send",
+                    title: "Manager Desk",
                     value: "\(viewModel.sentToManagerApps.count)",
-                    icon: "paperplane.fill",
+                    icon: "briefcase.fill",
                     tint: viewModel.sentToManagerApps.isEmpty ? LMSColors.emerald : LMSColors.coral,
                     action: {
                         HapticsManager.triggerImpact(style: .light)
@@ -1016,9 +1016,9 @@ private struct LoanOfficerPipelineDetailsSheet: View {
                     )
                 } else {
                     List {
-                        PipelineSection(title: "Pending Action", applications: pendingApps, icon: "clock.fill", tint: LMSColors.amber)
+                        PipelineSection(title: "Open Cases", applications: pendingApps, icon: "tray.full.fill", tint: LMSColors.amber)
                         PipelineSection(title: "In Review", applications: underReviewApps, icon: "magnifyingglass", tint: LMSColors.actionBlue)
-                        PipelineSection(title: "Submitted", applications: sentToManagerApps, icon: "paperplane.fill", tint: Color.purple)
+                        PipelineSection(title: "Manager Desk", applications: sentToManagerApps, icon: "briefcase.fill", tint: Color.purple)
                         PipelineSection(title: "Completed", applications: completedApps, icon: "checkmark.seal.fill", tint: LMSColors.emerald)
                     }
                     .listStyle(.insetGrouped)

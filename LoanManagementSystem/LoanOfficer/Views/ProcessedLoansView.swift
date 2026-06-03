@@ -10,7 +10,7 @@ struct ProcessedLoansView: View {
 
             HStack {
                 HStack(spacing: 8) {
-                    Text("Sent to Manager")
+                    Text("Manager Desk")
                         .font(.system(.subheadline, design: .rounded).bold())
                         .foregroundStyle(LMSColors.textPrimary)
 
@@ -32,9 +32,9 @@ struct ProcessedLoansView: View {
                 let items = viewModel.sentToManagerApps
                 if items.isEmpty {
                     ContentUnavailableView(
-                        "No Applications Sent",
-                        systemImage: "paperplane.fill",
-                        description: Text("Forward verified loans to the manager for disbursement approval.")
+                        "No Manager Desk Items",
+                        systemImage: "briefcase.fill",
+                        description: Text("Forward verified loans for manager approval.")
                     )
                     .frame(height: 140)
                 } else {
@@ -148,5 +148,4 @@ struct ProcessedLoanRow: View {
         .accessibilityLabel("\(app.borrowerName), \(app.loanType.rawValue) for \(CurrencyFormatter.shared.format(app.requestedAmount)). Manager status is \(app.managerStatus?.rawValue ?? "unknown").")
     }
 }
-
 
