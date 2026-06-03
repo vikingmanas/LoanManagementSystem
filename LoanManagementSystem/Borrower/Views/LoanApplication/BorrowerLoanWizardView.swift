@@ -542,10 +542,10 @@ struct BorrowerLoanWizardView: View {
             )
             prepareWizardState()
         }
-        .onChange(of: signatureImage) {
-            guard let signatureImage, let data = signatureImage.jpegData(compressionQuality: 0.8) else { return }
+        .onChange(of: signatureImage) { _, newImage in
+            guard let newImage, let data = newImage.jpegData(compressionQuality: 0.8), let profileId = viewModel.profile?.id else { return }
             Task { @MainActor in
-                let path = "\(viewModel.profile.id)/signature-\(UUID().uuidString).jpg"
+                let path = "\(profileId)/signature-\(UUID().uuidString).jpg"
                 do {
                     let url = try await StorageService.shared.uploadDocument(data: data, bucket: "signatureImageData", path: path)
                     viewModel.formData.signatureImageData = url.absoluteString
