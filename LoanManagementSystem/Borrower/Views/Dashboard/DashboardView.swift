@@ -1054,7 +1054,7 @@ struct PayEMIWorkflowView: View {
     @State private var successTransactionID: String?
     @State private var successAmount: Double = 0
     @State private var successPenalty: Double = 0
-    @State private var gatewayItem: EMIGatewayItem?
+    @State private var window: UIWindow?
 
     private var selectedAccount: BankAccount? {
         guard let selectedLoan else { return nil }
@@ -1093,10 +1093,14 @@ struct PayEMIWorkflowView: View {
     }
 
     var body: some View {
-        Form {
-            workflowHeader
-            stepContent
-        }
+        Group {
+            if let transactionID = successTransactionID {
+                successScreen(transactionID: transactionID)
+            } else {
+                Form {
+                    workflowHeader
+                    stepContent
+                }
         .scrollContentBackground(.hidden)
         .background(LMSColors.background)
         .navigationTitle("Pay EMI")
@@ -1122,23 +1126,9 @@ struct PayEMIWorkflowView: View {
                 stickyCTA
             }
         }
-        .fullScreenCover(item: $gatewayItem) { item in
-            EMIRazorpayPaymentSimulationView(
-                item: item,
-                onCancel: {
-                    gatewayItem = nil
-                    isProcessing = false
-                },
-                onPaymentAuthorized: {
-                    completePayment()
-                },
-                onDone: {
-                    gatewayItem = nil
-                    successTransactionID = nil
-                    dismiss()
-                }
-            )
+        } // End Group
         }
+        .withWindowAccessor(window: $window)
     }
 
     @ViewBuilder
@@ -1287,14 +1277,61 @@ struct PayEMIWorkflowView: View {
 
     private func confirmPayment() {
         guard let selectedLoan else { return }
-        gatewayItem = EMIGatewayItem(
-            loan: selectedLoan,
-            amount: selectedTotalDebit,
-            emiAmount: selectedLoan.totalEMI,
-            penalty: selectedEMIPenalty,
-            accountSuffix: String((selectedAccount?.accountNumber ?? selectedLoan.accountNumber).suffix(4)),
-            paymentDate: paymentOption == .schedule ? scheduledDate : Date()
+        
+        guard let rootVC = window?.rootViewController else {
+            print("No window found")
+            return
+        }
+        
+        isProcessing = true
+        
+        RazorpayPaymentManager.shared.onPaymentSuccess = { paymentId in
+            isProcessing = false
+            let _ = completePayment()
+            successTransactionID = paymentId
+        }
+        
+        RazorpayPaymentManager.shared.onPaymentFailure = { error in
+            isProcessing = false
+        }
+        
+        RazorpayPaymentManager.shared.presentPayment(
+            amountInINR: selectedTotalDebit,
+            receiptId: "receipt_\(UUID().uuidString.prefix(8))",
+            from: rootVC.topMostViewController
         )
+    }
+
+    private func successScreen(transactionID: String) -> some View {
+        VStack(spacing: 24) {
+            Spacer()
+            ZStack {
+                Circle().fill(LMSColors.emerald.opacity(0.12)).frame(width: 100, height: 100)
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 60))
+                    .foregroundStyle(LMSColors.emerald)
+            }
+            VStack(spacing: 8) {
+                Text("Payment Successful")
+                    .font(.title2.bold())
+                Text("Your EMI has been paid successfully.")
+                    .font(.subheadline)
+                    .foregroundStyle(LMSColors.textSecondary)
+                Text("TXN: \(transactionID)")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(LMSColors.textTertiary)
+                    .padding(.top, 4)
+            }
+            Spacer()
+            DashboardFilledButton(title: "Done") {
+                successTransactionID = nil
+                dismiss()
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
+        }
+        .frame(maxWidth: .infinity)
+        .background(LMSColors.background)
     }
 
     private func completePayment() -> EMIGatewayResult? {
