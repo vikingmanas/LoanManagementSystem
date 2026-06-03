@@ -282,6 +282,42 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         }
     }
 
+    /// Lightweight refresh that only fetches messages — used by chat tab timer
+    /// to avoid the heavy fetchDashboardData() call every polling interval.
+    func refreshMessagesOnly() async {
+        guard let officerId = self.officerProfile?.id else { return }
+        do {
+            if let dbMessages = try? await DatabaseService.shared.fetchMessages(for: officerId) {
+                var newActivityItems: [ActivityFeedItem] = []
+                let repoApps = CentralLoanRepository.shared.applications
+                for msg in dbMessages {
+                    let matchedApp = repoApps.first(where: { $0.id == msg.applicationId })
+                    let borrowerName = matchedApp?.formData.fullName.isEmpty == false ? matchedApp!.formData.fullName : "Borrower"
+                    let appDisplayId = matchedApp?.applicationId ?? matchedApp?.displayIdentifier ?? "APP-\(msg.applicationId?.uuidString.prefix(6).uppercased() ?? "UNKNOWN")"
+                    let loanType = matchedApp?.product.type.title ?? "Loan Clarification"
+                    
+                    let isRead = msg.receiverId == officerId ? msg.isRead : true
+                    
+                    let feedItem = ActivityFeedItem(
+                        id: msg.messageId,
+                        borrowerName: borrowerName,
+                        applicationId: appDisplayId,
+                        loanType: loanType,
+                        eventType: .queryRaised,
+                        eventDescription: msg.content,
+                        timestamp: msg.sentAt,
+                        isRead: isRead,
+                        requiresAction: !isRead,
+                        actionType: .replyQuery
+                    )
+                    newActivityItems.append(feedItem)
+                }
+                self.activityFeed = newActivityItems.sorted { $0.timestamp > $1.timestamp }
+            }
+            updateUnreadCount()
+        }
+    }
+
     func refreshFromRepository() {
         guard let officerProfile else {
             // Keep the queue safe and empty until the profile is successfully loaded from the DB

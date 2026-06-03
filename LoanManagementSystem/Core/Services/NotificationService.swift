@@ -143,7 +143,7 @@ final class NotificationService {
     func fetchNotifications(userId: UUID) async throws -> [DBNotification] {
         let notifications: [DBNotification] = try await client
             .from("notifications")
-            .select()
+            .select("notification_id, user_id, notif_type, title, message, is_read, created_at")
             .eq("user_id", value: userId.uuidString)
             .order("created_at", ascending: false)
             .limit(100)
@@ -154,9 +154,12 @@ final class NotificationService {
     
     /// Returns the count of unread notifications for the given user.
     func unreadCount(userId: UUID) async throws -> Int {
-        let notifications: [DBNotification] = try await client
+        struct NotificationIdOnly: Codable {
+            let notificationId: UUID
+        }
+        let notifications: [NotificationIdOnly] = try await client
             .from("notifications")
-            .select()
+            .select("notification_id")
             .eq("user_id", value: userId.uuidString)
             .eq("is_read", value: false)
             .execute()

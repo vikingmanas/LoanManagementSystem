@@ -118,7 +118,7 @@ public final class NotificationViewModel: ObservableObject {
     
     private func startPolling() {
         pollingTimer?.invalidate()
-        pollingTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: true) { [weak self] _ in
+        pollingTimer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 await self?.loadNotifications()
             }

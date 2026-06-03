@@ -13,7 +13,7 @@ import Combine
 struct BorrowerChatView: View {
     @StateObject private var viewModel = BorrowerChatViewModel()
     @State private var searchText = ""
-    private let refreshTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
+    private let refreshTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     private var filteredConversations: [BorrowerConversation] {
         if searchText.isEmpty {
@@ -182,7 +182,7 @@ private struct BorrowerMessageThreadView: View {
     @State private var messageText = ""
     @State private var messages: [DBMessage] = []
     @FocusState private var isComposerFocused: Bool
-    private let refreshTimer = Timer.publish(every: 4, on: .main, in: .common).autoconnect()
+    private let refreshTimer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
 
     /// The officer's user ID for this conversation (derived from message participants).
     private var officerUserId: UUID? {

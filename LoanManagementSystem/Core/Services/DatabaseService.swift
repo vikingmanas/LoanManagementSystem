@@ -879,6 +879,20 @@ final class DatabaseService {
             .value
     }
 
+    /// Batch-fetch documents for multiple application IDs in a single query.
+    /// Replaces the N+1 pattern of calling fetchDocuments(applicationId:) per app.
+    func fetchDocumentsBatch(applicationIds: [UUID]) async throws -> [UUID: [DBDocument]] {
+        guard !applicationIds.isEmpty else { return [:] }
+        let idStrings = applicationIds.map(\.uuidString)
+        let allDocs: [DBDocument] = try await client
+            .from("documents")
+            .select()
+            .in("application_id", values: idStrings)
+            .execute()
+            .value
+        return Dictionary(grouping: allDocs, by: \.applicationId!)
+    }
+
     // MARK: - Supabase Repayment & Account Operations
 
     func insertLoanAccount(_ account: DBLoanAccount) async throws {
