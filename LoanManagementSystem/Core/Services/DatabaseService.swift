@@ -271,14 +271,24 @@ private struct DBLinkedBankAccount: Codable {
         case odSanctionLimit = "od_sanction_limit"
     }
 
-    init(_ account: LinkedBankAccount) {
+    init?(_ account: LinkedBankAccount, fallbackCustomerId: String? = nil) {
+        let resolvedCustomerId: String
+        if UUID(uuidString: account.customerId.trimmingCharacters(in: .whitespacesAndNewlines)) != nil {
+            resolvedCustomerId = account.customerId
+        } else if let fallbackCustomerId,
+                  UUID(uuidString: fallbackCustomerId.trimmingCharacters(in: .whitespacesAndNewlines)) != nil {
+            resolvedCustomerId = fallbackCustomerId
+        } else {
+            return nil
+        }
+
         self.id = account.id
         self.bankName = account.bankName
         self.accountNumber = account.accountNumber
         self.ifscCode = account.ifscCode
         self.balance = account.balance
         self.branch = account.branch
-        self.customerId = account.customerId
+        self.customerId = resolvedCustomerId
         self.accountHolderName = account.accountHolderName
         self.accountKind = account.accountKind.rawValue
         self.linkedLoanApplicationId = account.linkedLoanApplicationId
@@ -635,7 +645,7 @@ final class DatabaseService {
                 .upsert(dbProfile)
                 .execute()
             print("UPDATED RESPONSE - Table: profiles, Status: Success ✅")
-            await syncLinkedBankAccounts(profile.linkedAccounts ?? [])
+            await syncLinkedBankAccounts(profile.linkedAccounts ?? [], ownerProfileId: profile.id)
         } catch {
             print("EXACT SUPABASE ERROR - Table: profiles, Error: \(error)")
             print("EXACT SUPABASE ERROR - Table: profiles, Localized: \(error.localizedDescription)")
@@ -648,14 +658,16 @@ final class DatabaseService {
         var customerIds = Set(
             cachedAccounts
                 .map(\.customerId)
-                .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                .filter(Self.isValidUUIDString)
         )
 
         if let existingCustomerId = profile.existingCustomerId,
-           !existingCustomerId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+           Self.isValidUUIDString(existingCustomerId) {
             customerIds.insert(existingCustomerId)
         }
-        customerIds.insert(profile.id)
+        if Self.isValidUUIDString(profile.id) {
+            customerIds.insert(profile.id)
+        }
 
         for customerId in customerIds {
             do {
@@ -685,10 +697,10 @@ final class DatabaseService {
         return dbAccounts.map { $0.toLinkedBankAccount() }
     }
 
-    private func syncLinkedBankAccounts(_ accounts: [LinkedBankAccount]) async {
+    private func syncLinkedBankAccounts(_ accounts: [LinkedBankAccount], ownerProfileId: String) async {
         guard !accounts.isEmpty else { return }
         do {
-            try await upsertLinkedBankAccounts(accounts)
+            try await upsertLinkedBankAccounts(accounts, ownerProfileId: ownerProfileId)
             print("[DatabaseService] Synced \(accounts.count) linked bank account(s) to Supabase.")
         } catch {
             print("EXACT SUPABASE ERROR - Table: bank_accounts, Error: \(error)")
@@ -696,12 +708,22 @@ final class DatabaseService {
         }
     }
 
-    func upsertLinkedBankAccounts(_ accounts: [LinkedBankAccount]) async throws {
-        let dbAccounts = accounts.map(DBLinkedBankAccount.init)
+    func upsertLinkedBankAccounts(_ accounts: [LinkedBankAccount], ownerProfileId: String? = nil) async throws {
+        let dbAccounts = accounts.compactMap { account in
+            DBLinkedBankAccount(account, fallbackCustomerId: ownerProfileId)
+        }
+        guard !dbAccounts.isEmpty else {
+            print("[DatabaseService] Skipping bank_accounts sync: no UUID customer_id available.")
+            return
+        }
         try await client
             .from("bank_accounts")
             .upsert(dbAccounts)
             .execute()
+    }
+
+    private static func isValidUUIDString(_ value: String) -> Bool {
+        UUID(uuidString: value.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
     }
 
 

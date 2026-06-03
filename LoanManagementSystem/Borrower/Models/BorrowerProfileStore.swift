@@ -35,6 +35,15 @@ public class BorrowerProfileStore: ObservableObject {
         let cleanedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
         if let current = profile, current.email == cleanedEmail {
+            self.currentEmail = cleanedEmail
+            Task {
+                await refreshAuthenticatedProfile(
+                    email: cleanedEmail,
+                    name: name,
+                    phone: phone,
+                    alternatePhone: alternatePhone
+                )
+            }
             return current
         }
 
@@ -85,6 +94,33 @@ public class BorrowerProfileStore: ObservableObject {
         }
 
         return placeholderProfile
+    }
+
+    private func refreshAuthenticatedProfile(email: String, name: String?, phone: String?, alternatePhone: String?) async {
+        if let currentUser = AuthManager.shared.currentUser,
+           currentUser.email?.lowercased() == email {
+            await fetchProfileFromSupabase(
+                uid: currentUser.uid,
+                email: email,
+                name: name,
+                phone: phone,
+                alternatePhone: alternatePhone
+            )
+            return
+        }
+
+        if let session = try? await SupabaseManager.shared.client.auth.session {
+            let user = session.user
+            if user.email?.lowercased() == email {
+                await fetchProfileFromSupabase(
+                    uid: user.id.uuidString,
+                    email: email,
+                    name: name,
+                    phone: phone,
+                    alternatePhone: alternatePhone
+                )
+            }
+        }
     }
 
     func fetchProfileFromSupabase(uid: String, email: String, name: String? = nil, phone: String? = nil, alternatePhone: String? = nil) async {
