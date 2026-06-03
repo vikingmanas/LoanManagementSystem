@@ -90,9 +90,31 @@ struct ChangePasswordSheet: View {
         isSubmitting = false
         
         if success {
+            if let email = authManager.userEmail {
+                sendEmailConfirmation(email: email)
+            }
             showSuccessAlert = true
         } else {
             errorMessage = authManager.errorMessage ?? "Failed to update password."
         }
+    }
+    
+    private func sendEmailConfirmation(email: String) {
+        guard let url = URL(string: "http://localhost:3000/api/send-reset-email") else { return }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = ["userEmail": email]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("Error sending email: \(error.localizedDescription)")
+                return
+            }
+            print("Email requested successfully!")
+        }.resume()
     }
 }

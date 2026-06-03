@@ -47,23 +47,38 @@ struct SignInView: View {
                             }
                             .pickerStyle(.segmented)
 
-                            CustomTextField(
-                                icon: "envelope",
-                                placeholder: "Email Address",
-                                text: $viewModel.emailOrPhone,
-                                isError: !viewModel.emailError.isEmpty,
-                                errorMessage: viewModel.emailError,
-                                keyboardType: .emailAddress
-                            )
-
-                            if viewModel.signInMode == .password {
-                                SecureInputField(
-                                    placeholder: "Password",
-                                    text: $viewModel.password,
-                                    isError: !viewModel.passwordError.isEmpty,
-                                    errorMessage: viewModel.passwordError
+                            if viewModel.signInMode == .password && viewModel.is2FAInputActive {
+                                CustomTextField(
+                                    icon: "number",
+                                    placeholder: "6-digit 2FA OTP",
+                                    text: $viewModel.otpCode,
+                                    isError: !viewModel.otpError.isEmpty,
+                                    errorMessage: viewModel.otpError,
+                                    keyboardType: .numberPad
                                 )
-                            } else if viewModel.isOTPSent {
+                                
+                                Text("A 6-digit code has been sent to your email.")
+                                    .font(LMSFont.caption)
+                                    .foregroundStyle(LMSColors.textSecondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            } else {
+                                CustomTextField(
+                                    icon: "envelope",
+                                    placeholder: "Email Address",
+                                    text: $viewModel.emailOrPhone,
+                                    isError: !viewModel.emailError.isEmpty,
+                                    errorMessage: viewModel.emailError,
+                                    keyboardType: .emailAddress
+                                )
+
+                                if viewModel.signInMode == .password {
+                                    SecureInputField(
+                                        placeholder: "Password",
+                                        text: $viewModel.password,
+                                        isError: !viewModel.passwordError.isEmpty,
+                                        errorMessage: viewModel.passwordError
+                                    )
+                                } else if viewModel.isOTPSent {
                                 CustomTextField(
                                     icon: "number",
                                     placeholder: "6-digit OTP",
@@ -93,6 +108,7 @@ struct SignInView: View {
                                 .padding(LMSSpacing.lg)
                                 .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
                             }
+                            }
                         }
                         Spacer()
                             .frame(width:0,height:7)
@@ -118,7 +134,11 @@ struct SignInView: View {
                                 Task {
                                     switch viewModel.signInMode {
                                     case .password:
-                                        await viewModel.signIn(authManager: authManager, appState: appState)
+                                        if viewModel.is2FAInputActive {
+                                            viewModel.verify2FAOTP(authManager: authManager, appState: appState)
+                                        } else {
+                                            await viewModel.signIn(authManager: authManager, appState: appState)
+                                        }
                                     case .emailOTP:
                                         if viewModel.isOTPSent {
                                             await viewModel.verifyEmailOTP(authManager: authManager, appState: appState)
@@ -188,7 +208,7 @@ struct SignInView: View {
     private var primaryButtonTitle: String {
         switch viewModel.signInMode {
         case .password:
-            return "Sign In"
+            return viewModel.is2FAInputActive ? "Verify 2FA" : "Sign In"
         case .emailOTP:
             return viewModel.isOTPSent ? "Verify OTP" : "Send OTP"
         }

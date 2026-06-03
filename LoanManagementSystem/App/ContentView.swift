@@ -160,8 +160,9 @@ struct ContentView: View {
     }
 
     private var isCurrentRoleAuthenticated: Bool {
-        // Block dashboard routing while user is in the password reset flow
+        // Block dashboard routing while user is in the password reset flow or 2FA flow
         guard !authManager.isResettingPassword else { return false }
+        guard !authManager.isPending2FA else { return false }
         
         if appState.selectedRole == .customer {
             return authManager.isAuthenticated

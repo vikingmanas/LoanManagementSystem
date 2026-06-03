@@ -53,6 +53,9 @@ final class AuthManager: ObservableObject {
     /// When true, ContentView should NOT route to the dashboard.
     @Published var isResettingPassword: Bool = false
 
+    /// True while the user has entered correct password but needs to complete 2FA OTP.
+    @Published var isPending2FA: Bool = false
+
     // MARK: - Init
 
     init() {}
