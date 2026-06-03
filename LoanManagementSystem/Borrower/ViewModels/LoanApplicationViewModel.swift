@@ -9,7 +9,7 @@ final class LoanApplicationViewModel: ObservableObject {
     @Published var selectedProductCategory: LoanProductCategoryFilter = .all
     @Published var searchQuery: String = ""
     
-    @Published var products: [BorrowerLoanProduct] = BorrowerLoanProduct.sampleProducts
+    @Published var products: [BorrowerLoanProduct] = []
     @Published var applications: [BorrowerLoanApplication] = []
     
     @Published var selectedProductID: UUID?
@@ -120,14 +120,6 @@ final class LoanApplicationViewModel: ObservableObject {
         
         if let type = selectedProductCategory.productType {
             result = result.filter { $0.type == type }
-        }
-        
-        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !query.isEmpty {
-            result = result.filter { product in
-                product.type.title.localizedCaseInsensitiveContains(query) ||
-                product.shortDescription.localizedCaseInsensitiveContains(query)
-            }
         }
         
         return result

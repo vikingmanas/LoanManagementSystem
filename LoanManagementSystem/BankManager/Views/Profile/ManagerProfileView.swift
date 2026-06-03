@@ -7,6 +7,7 @@ struct ManagerProfileView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
     @AppStorage("isDarkMode") private var isDarkMode = false
+    @State private var showChangePassword = false
 
     private var profile: ManagerStaffProfile {
         viewModel.managerProfile
@@ -88,13 +89,13 @@ struct ManagerProfileView: View {
                     .foregroundStyle(Color(.label))
 
                     Button {
-                        HapticsManager.triggerImpact(style: .medium)
-                        NotificationCenter.default.post(name: NSNotification.Name("SwitchRoleToBorrower"), object: nil)
-                        dismiss()
+                        showChangePassword = true
                     } label: {
-                        Label("Switch to Borrower Mode", systemImage: "person.2.circle.fill")
+                        Label("Change Password", systemImage: "lock.fill")
                     }
-                    .foregroundStyle(LMSColors.actionBlue)
+                    .foregroundStyle(Color(.label))
+
+
                 }
 
                 // Logout Section
@@ -122,6 +123,9 @@ struct ManagerProfileView: View {
                         .bold()
                 }
             }
+        }
+        .sheet(isPresented: $showChangePassword) {
+            ChangePasswordSheet()
         }
         .preferredColorScheme(isDarkMode ? .dark : .light)
     }
@@ -223,7 +227,3 @@ private struct ManagerStatBox: View {
     }
 }
 
-#Preview {
-    ManagerProfileView(viewModel: PreviewSupport.managerViewModel)
-        .previewManagerEnvironment()
-}

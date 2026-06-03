@@ -97,13 +97,4 @@ struct ActivityFeedView: View {
     }
 }
 
-#Preview {
-    ActivityFeedView(
-        viewModel: PreviewSupport.loanOfficerViewModel,
-        onActionTriggered: { _, _ in },
-        onViewAllPressed: {}
-    )
-    .padding()
-    .previewLoanOfficerEnvironment()
-}
 

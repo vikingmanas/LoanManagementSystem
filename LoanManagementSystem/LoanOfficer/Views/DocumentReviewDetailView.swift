@@ -25,6 +25,20 @@ struct DocumentReviewDetailView: View {
     var documentDetails: LoanDocument? {
         loanDetails?.documents.first { $0.id == item.id }
     }
+
+    private var canReviewDocument: Bool {
+        guard let loanDetails else { return false }
+        let currentDocumentStatus = documentDetails?.status ?? item.status
+        let officerReviewStatuses: Set<OfficerApplicationStatus> = [
+            .pending,
+            .applied,
+            .documentsPending,
+            .documentsRejected,
+            .underReview
+        ]
+
+        return officerReviewStatuses.contains(loanDetails.status) && currentDocumentStatus != .verified
+    }
     
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -32,7 +46,9 @@ struct DocumentReviewDetailView: View {
                 borrowerSection
                 documentPreviewSection
                 documentMetadataSection
-                actionsSection
+                if canReviewDocument {
+                    actionsSection
+                }
             }
             .padding(.horizontal, LMSSpacing.screenHorizontal)
             .padding(.top, 18)
@@ -307,186 +323,5 @@ private struct DocumentDetailRow: View {
 
     private var displayValue: String {
         value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Not provided" : value
-    }
-}
-
-// Graphic preview mockups simulating scanner screenshots
-struct DocumentGraphicMockView: View {
-    typealias DocumentType = OfficerDocumentType
-    let docType: DocumentType
-    let borrowerName: String
-    
-    var body: some View {
-        switch docType {
-        case .aadhaar:
-            aadhaarPreview
-        case .salarySlip:
-            salarySlipPreview
-        case .bankStatement:
-            bankStatementPreview
-        case .gstCertificate:
-            gstPreview
-        default:
-            genericPreview
-        }
-    }
-    
-    private var aadhaarPreview: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "building.columns.fill")
-                    .foregroundStyle(.orange)
-                Text("GOVERNMENT OF INDIA")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.primary)
-                Spacer()
-            }
-            
-            HStack(alignment: .top, spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.primary.opacity(0.08))
-                        .frame(width: 60, height: 75)
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 30))
-                        .foregroundStyle(.secondary.opacity(0.5))
-                }
-                
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(borrowerName.uppercased())
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                    Text("DOB/Year: 1994")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
-                    Text("Gender: M/F")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
-                    Text("Address: Verified Resident")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-            }
-            
-            Spacer()
-            
-            Text("XXXX XXXX 9847")
-                .font(.system(size: 16, weight: .bold, design: .monospaced))
-                .foregroundStyle(.primary)
-                .padding(8)
-                .frame(maxWidth: .infinity)
-                .background(Color.primary.opacity(0.04))
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-        }
-        .padding(16)
-    }
-    
-    private var salarySlipPreview: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("CROWN INDUSTRIES PVT. LTD.")
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-            Text("SALARY SLIP · MONTH: MAY 2026")
-                .font(.system(size: 8))
-                .foregroundStyle(.secondary)
-            
-            Divider()
-            
-            VStack(spacing: 5) {
-                ledgerRow("Basic Pay", "₹ 85,000.00")
-                ledgerRow("HRA Allowance", "₹ 15,000.00")
-                ledgerRow("PF Deductions", "- ₹ 5,500.00", isDebit: true)
-                Divider()
-                ledgerRow("NET DISBURSED AMOUNT", "₹ 94,500.00", isBold: true, creditColor: LMSColors.emerald)
-            }
-            .font(.system(size: 9, design: .monospaced))
-        }
-        .padding(16)
-    }
-    
-    private var bankStatementPreview: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Image(systemName: "building.columns.fill")
-                    .foregroundStyle(LMSColors.actionBlue)
-                Text("SECURE HDFC BANK STATEMENT")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                Spacer()
-            }
-            
-            Text("Statement Period: 01 Apr to 30 Apr")
-                .font(.system(size: 8))
-                .foregroundStyle(.secondary)
-            
-            Divider()
-            
-            VStack(spacing: 6) {
-                ledgerRow("12 Apr · UPI Credit", "+ ₹ 12,000", creditColor: LMSColors.emerald)
-                ledgerRow("15 Apr · AutoDebit EMI", "- ₹ 8,500", isDebit: true)
-                ledgerRow("28 Apr · Salary Credited", "+ ₹ 94,500", creditColor: LMSColors.emerald)
-                Divider()
-                ledgerRow("CLOSING ACCOUNT BALANCE", "₹ 1,12,300.00", isBold: true)
-            }
-            .font(.system(size: 9, design: .monospaced))
-        }
-        .padding(16)
-    }
-    
-    private var gstPreview: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 26))
-                .foregroundStyle(LMSColors.emerald)
-            
-            Text("FORM GST REG-06")
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-            Text("GOVERNMENT OF INDIA FINANCE DEPT")
-                .font(.system(size: 8))
-                .foregroundStyle(.secondary)
-            
-            Divider()
-            
-            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 4) {
-                GridRow {
-                    Text("Legal Name:")
-                    Text(borrowerName.uppercased())
-                }
-                GridRow {
-                    Text("Trade Name:")
-                    Text("Vibrant Retailers")
-                }
-                GridRow {
-                    Text("GSTIN No:")
-                    Text("27AAACV9847K1Z3")
-                }
-            }
-            .font(.system(size: 8, design: .monospaced))
-        }
-        .padding(16)
-    }
-    
-    private var genericPreview: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "doc.text.fill")
-                .font(.system(size: 40))
-                .foregroundStyle(LMSColors.actionBlue)
-            
-            Text("Uploaded Document Scan")
-                .font(.subheadline.weight(.semibold))
-            Text("File Name: \(docType.rawValue.lowercased())_signed.pdf")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .padding(20)
-    }
-    
-    private func ledgerRow(_ label: String, _ value: String, isDebit: Bool = false, isBold: Bool = false, creditColor: Color? = nil) -> some View {
-        HStack {
-            Text(label)
-                .fontWeight(isBold ? .bold : .regular)
-            Spacer()
-            Text(value)
-                .fontWeight(isBold ? .bold : .regular)
-                .foregroundStyle(isDebit ? .red : (creditColor ?? .primary))
-        }
     }
 }

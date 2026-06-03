@@ -336,8 +336,4 @@ struct DateGroup: Identifiable {
     let transactions: [Transaction]
 }
 
-#Preview {
-    HistoryTabView(viewModel: PreviewSupport.dashboardViewModel)
-        .previewBorrowerEnvironment()
-}
 

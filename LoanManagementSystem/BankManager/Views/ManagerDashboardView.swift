@@ -214,7 +214,3 @@ private struct ManagerSearchSheet: View {
     }
 }
 
-#Preview {
-    ManagerDashboardView()
-        .previewManagerEnvironment()
-}

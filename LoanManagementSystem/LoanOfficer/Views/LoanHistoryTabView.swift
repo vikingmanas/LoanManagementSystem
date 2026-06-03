@@ -13,8 +13,7 @@ struct LoanHistoryTabView: View {
                 if viewModel.filteredApplications.isEmpty {
                     ContentUnavailableView(
                         "No \(viewModel.historyFilter.title) Applications",
-                        systemImage: "tray.full",
-                        description: Text("No records found matching this status.")
+                        systemImage: "tray.full"
                     )
                 } else {
                     ForEach(viewModel.filteredApplications) { app in
@@ -52,7 +51,7 @@ struct LoanHistoryTabView: View {
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Registry")
-        .searchable(text: $viewModel.historySearchQuery, placement: .navigationBarDrawer(displayMode: .always), prompt: "Borrower, ID, branch")
+        .searchable(text: $viewModel.historySearchQuery, placement: .navigationBarDrawer(displayMode: .always), prompt: "Borrower or ID")
         .refreshable { await viewModel.fetchDashboardData() }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {

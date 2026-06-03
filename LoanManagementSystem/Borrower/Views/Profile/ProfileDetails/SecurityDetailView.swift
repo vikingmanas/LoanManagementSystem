@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SecurityDetailView: View {
-    @AppStorage("biometricEnabled") private var biometricEnabled = true
+    @AppStorage("biometricEnabled") private var biometricEnabled = false
     @AppStorage("doubleAuthEnabled") private var doubleAuthEnabled = false
     @EnvironmentObject private var authManager: AuthManager
     @StateObject private var localSecurity = LocalSecurityService.shared

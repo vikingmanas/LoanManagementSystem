@@ -668,11 +668,3 @@ private struct OfficerMiniStat: View {
 
 // MARK: - Preview
 
-#Preview {
-    ApplicationAssignmentSheet(
-        applicant: PreviewSupport.sampleManagerApplicant,
-        officers:  PreviewSupport.managerViewModel.officers,
-        onAssign:  { _ in }
-    )
-    .previewManagerEnvironment()
-}

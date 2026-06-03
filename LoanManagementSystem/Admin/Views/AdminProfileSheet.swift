@@ -5,7 +5,7 @@ struct AdminProfileSheet: View {
     @EnvironmentObject private var appState: AppStateManager
     @Environment(\.dismiss) private var dismiss
     
-    @AppStorage("biometricEnabled") private var biometricEnabled = true
+    @AppStorage("biometricEnabled") private var biometricEnabled = false
     @StateObject private var localSecurity = LocalSecurityService.shared
     
     var body: some View {

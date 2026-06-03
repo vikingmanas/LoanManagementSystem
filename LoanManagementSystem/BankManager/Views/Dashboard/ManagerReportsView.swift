@@ -117,7 +117,7 @@ private struct ManagerInsightCard: View {
             return "\(highRisk.applicationId) needs closer risk review before branch clearance."
         }
         if viewModel.pendingApplicants.isEmpty {
-            return "Approval queue is clear for \(viewModel.branchOverview.name)."
+            return "Approval request is clear for \(viewModel.branchOverview.name)."
         }
         return "\(viewModel.pendingApplicants.count) application\(viewModel.pendingApplicants.count == 1 ? "" : "s") awaiting manager decision."
     }
@@ -622,10 +622,3 @@ struct ManagerAuditLogSheet: View {
     }
 }
 
-#Preview {
-    ScrollView {
-        ManagerReportsView(viewModel: PreviewSupport.managerViewModel)
-    }
-    .padding()
-    .previewManagerEnvironment()
-}

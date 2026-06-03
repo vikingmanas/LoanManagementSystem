@@ -10,23 +10,13 @@ struct LoansMarketplaceView: View {
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: LMSSpacing.xl) {
-                VStack(alignment: .leading, spacing: LMSSpacing.xs) {
-                    Text("Find the right financing for your needs")
-                        .font(LMSFont.subheadline)
-                        .foregroundStyle(LMSColors.textSecondary)
-
-                    Text("\(viewModel.filteredProducts.count) products available")
-                        .font(LMSFont.caption)
-                        .foregroundStyle(LMSColors.textTertiary)
-                }
-                .padding(.horizontal, LMSSpacing.screenHorizontal)
-
+            VStack(alignment: .leading, spacing: LMSSpacing.lg) {
                 LoansSearchBar(text: $viewModel.searchQuery)
                     .padding(.horizontal, LMSSpacing.screenHorizontal)
+                    .padding(.top, LMSSpacing.sm)
 
                 if viewModel.filteredProducts.isEmpty {
-                    LoansEmptySearchState(query: viewModel.searchQuery)
+                    LoansEmptyState()
                         .padding(.horizontal, LMSSpacing.screenHorizontal)
                         .padding(.top, LMSSpacing.lg)
                 } else {
@@ -46,43 +36,6 @@ struct LoansMarketplaceView: View {
             }
             .padding(.bottom, LMSSpacing.xxxl)
         }
-    }
-}
-
-// MARK: - Search
-
-private struct LoansSearchBar: View {
-    @Binding var text: String
-
-    var body: some View {
-        HStack(spacing: LMSSpacing.sm) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(LMSColors.textTertiary)
-
-            TextField("Search loan products", text: $text)
-                .font(LMSFont.body)
-                .foregroundStyle(LMSColors.textPrimary)
-                .autocorrectionDisabled()
-
-            if !text.isEmpty {
-                Button {
-                    text = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(LMSColors.textTertiary)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, LMSSpacing.md)
-        .padding(.vertical, LMSSpacing.md)
-        .background(LMSColors.surfaceElevated, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
-                .stroke(LMSColors.separatorLight, lineWidth: 0.5)
-        )
-        .shadow(color: .black.opacity(0.025), radius: 8, x: 0, y: 3)
     }
 }
 
@@ -447,12 +400,12 @@ private struct GovernmentSchemeCard: View {
     let onLearnMore: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             HStack(alignment: .top) {
                 Image(systemName: scheme.icon)
-                    .font(.system(size: 22, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(.white)
-                    .frame(width: 48, height: 48)
+                    .frame(width: 44, height: 44)
                     .background(.white.opacity(0.16), in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
@@ -478,19 +431,19 @@ private struct GovernmentSchemeCard: View {
                     .font(LMSFont.headline.weight(.bold))
                     .foregroundStyle(.white)
                     .lineLimit(2)
-                    .frame(height: 52, alignment: .topLeading)
+                    .frame(height: 46, alignment: .topLeading)
                 Text(scheme.description)
                     .font(LMSFont.caption)
                     .foregroundStyle(.white.opacity(0.76))
                     .lineLimit(2)
-                    .frame(height: 42, alignment: .topLeading)
+                    .frame(height: 38, alignment: .topLeading)
             }
 
             VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                 SchemeInfoPill(label: "Eligibility", value: scheme.eligibility)
                 SchemeInfoPill(label: "Key Benefit", value: scheme.benefit)
             }
-            .frame(height: 108, alignment: .top)
+            .frame(height: 96, alignment: .top)
 
             Spacer(minLength: 0)
 
@@ -506,8 +459,8 @@ private struct GovernmentSchemeCard: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(LMSSpacing.lg)
-        .frame(width: 280, height: 420, alignment: .topLeading)
+        .padding(LMSSpacing.md)
+        .frame(width: 270, height: 360, alignment: .topLeading)
         .background(
             LinearGradient(
                 colors: [scheme.theme, scheme.theme.opacity(0.72), Color(hex: "111827")],
@@ -518,7 +471,7 @@ private struct GovernmentSchemeCard: View {
         )
         .overlay(alignment: .bottomTrailing) {
             Image(systemName: scheme.icon)
-                .font(.system(size: 96, weight: .semibold))
+                .font(.system(size: 86, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.08))
                 .offset(x: 20, y: 16)
         }
@@ -548,7 +501,7 @@ private struct SchemeInfoPill: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 50, alignment: .leading)
         .padding(.horizontal, LMSSpacing.sm)
-        .padding(.vertical, 7)
+        .padding(.vertical, 6)
         .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous))
     }
 }
@@ -728,20 +681,16 @@ private extension View {
     }
 }
 
-private struct LoansEmptySearchState: View {
-    let query: String
-
+private struct LoansEmptyState: View {
     var body: some View {
         VStack(spacing: LMSSpacing.md) {
-            Image(systemName: "magnifyingglass")
+            Image(systemName: "tray")
                 .font(.system(size: 36, weight: .semibold))
                 .foregroundStyle(LMSColors.brandNavy.opacity(0.7))
             Text("No loan products found")
                 .font(LMSFont.headline)
                 .foregroundStyle(LMSColors.textPrimary)
-            Text(query.isEmpty
-                 ? "Try a different category filter."
-                 : "No results for \"\(query)\". Try Personal, Home, or Education.")
+            Text("Try a different category filter.")
                 .font(LMSFont.footnote)
                 .foregroundStyle(LMSColors.textSecondary)
                 .multilineTextAlignment(.center)
@@ -749,5 +698,29 @@ private struct LoansEmptySearchState: View {
         .frame(maxWidth: .infinity)
         .padding(LMSSpacing.xxl)
         .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
+    }
+}
+
+// Private Search bar
+private struct LoansSearchBar: View {
+    @Binding var text: String
+
+    var body: some View {
+        HStack(spacing: LMSSpacing.sm) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(LMSColors.textTertiary)
+
+            TextField("Search loan products", text: $text)
+                .font(LMSFont.body)
+                .foregroundStyle(LMSColors.textPrimary)
+        }
+        .padding(.horizontal, LMSSpacing.md)
+        .frame(height: 48)
+        .background(LMSColors.surfaceElevated, in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
+                .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+        )
     }
 }
