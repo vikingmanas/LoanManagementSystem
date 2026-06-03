@@ -27,9 +27,11 @@ struct LoanManagementSystemApp: App {
             ContentView()
                 .environmentObject(authManager)
                 .preferredColorScheme(isDarkMode ? .dark : .light)
-                .environment(\.legibilityWeight, forceBoldText ? .bold : .regular)
+                .bold(forceBoldText)
+                .contrast(forceHighContrast ? 1.2 : 1.0)
                 .transaction { transaction in
                     if reduceMotion {
+                        transaction.disablesAnimations = true
                         transaction.animation = nil
                     }
                 }

@@ -466,9 +466,7 @@ public final class DashboardViewModel: ObservableObject {
         }
         
         // Trigger haptic feedback
-        let feedback = UIImpactFeedbackGenerator(style: .medium)
-        feedback.prepare()
-        feedback.impactOccurred()
+        HapticsManager.triggerImpact(style: .medium)
         
         guard let repaymentAccount = emiRepaymentAccount(),
               repaymentAccount.availableBalance >= emi.amount else {
@@ -538,9 +536,7 @@ public final class DashboardViewModel: ObservableObject {
             return (false, nil, 0, 0)
         }
 
-        let feedback = UIImpactFeedbackGenerator(style: .medium)
-        feedback.prepare()
-        feedback.impactOccurred()
+        HapticsManager.triggerImpact(style: .medium)
 
         let account = ensureRepaymentAccount(for: loan)
         let principalComponent = min(loan.principalOutstanding, loan.totalEMI)
@@ -605,8 +601,7 @@ public final class DashboardViewModel: ObservableObject {
     }
     
     public func topUpAccount(amount: Double, to account: BankAccount? = nil) {
-        let feedback = UIImpactFeedbackGenerator(style: .light)
-        feedback.impactOccurred()
+        HapticsManager.triggerImpact(style: .light)
         
         withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
             let destinationID = account?.id ?? bankAccount.id
