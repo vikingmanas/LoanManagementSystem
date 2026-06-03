@@ -29,12 +29,12 @@ struct ProcessedLoansView: View {
 
 
             VStack(spacing: 0) {
-                let items = viewModel.sentToManagerApps
+                let items = viewModel.pendingManagerActionApps
                 if items.isEmpty {
                     ContentUnavailableView(
                         "No Manager Desk Items",
                         systemImage: "briefcase.fill",
-                        description: Text("Forward verified loans for manager approval.")
+                        description: Text("No applications are waiting for manager action.")
                     )
                     .frame(height: 140)
                 } else {
@@ -148,4 +148,3 @@ struct ProcessedLoanRow: View {
         .accessibilityLabel("\(app.borrowerName), \(app.loanType.rawValue) for \(CurrencyFormatter.shared.format(app.requestedAmount)). Manager status is \(app.managerStatus?.rawValue ?? "unknown").")
     }
 }
-

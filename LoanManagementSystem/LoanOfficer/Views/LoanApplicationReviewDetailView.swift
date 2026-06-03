@@ -54,16 +54,14 @@ struct LoanApplicationReviewDetailView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            if let currentApp = app {
-                applicationContent(currentApp)
-                    .onAppear {
-                        claimApplicationIfNeeded(currentApp)
-                        presentInitialDocumentIfNeeded(in: currentApp)
-                    }
-            } else {
-                ContentUnavailableView("Application Not Found", systemImage: "questionmark.circle")
-            }
+        if let currentApp = app {
+            applicationContent(currentApp)
+                .onAppear {
+                    claimApplicationIfNeeded(currentApp)
+                    presentInitialDocumentIfNeeded(in: currentApp)
+                }
+        } else {
+            ContentUnavailableView("Application Not Found", systemImage: "questionmark.circle")
         }
     }
 
