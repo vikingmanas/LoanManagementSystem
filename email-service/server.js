@@ -17,13 +17,17 @@ app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
 app.use(express.json());
 
 // Set up Nodemailer Transporter
+// Using explicit SMTP config instead of service:'gmail' to force IPv4 on Render
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    family: 4, // Force IPv4 — Render free tier blocks outbound IPv6
     auth: {
         user: process.env.EMAIL_USER,
-        pass: (process.env.EMAIL_PASS || '').replace(/\s+/g, '') // Remove spaces automatically
+        pass: (process.env.EMAIL_PASS || '').replace(/\s+/g, '')
     },
-    connectionTimeout: 10000, // 10 seconds
+    connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000
 });
