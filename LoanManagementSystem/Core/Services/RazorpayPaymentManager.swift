@@ -1,11 +1,17 @@
 import Foundation
 import UIKit
+#if canImport(RazorpayCheckout)
+import RazorpayCheckout
+#elseif canImport(Razorpay)
 import Razorpay
+#endif
 
-class RazorpayPaymentManager: NSObject, RazorpayPaymentCompletionProtocolWithData {
+class RazorpayPaymentManager: NSObject {
     static let shared = RazorpayPaymentManager()
     
+    #if canImport(RazorpayCheckout) || canImport(Razorpay)
     private var razorpay: RazorpayCheckout!
+    #endif
     
     // The user will replace this with their actual test key
     private let testAPIKey = "rzp_test_Sx4QQYFH2GpWM0"
@@ -18,6 +24,7 @@ class RazorpayPaymentManager: NSObject, RazorpayPaymentCompletionProtocolWithDat
     }
     
     func presentPayment(amountInINR: Double, receiptId: String, from viewController: UIViewController) {
+        #if canImport(RazorpayCheckout) || canImport(Razorpay)
         // Razorpay expects the amount in the smallest currency sub-unit (paise for INR)
         let amountInPaise = Int(amountInINR * 100)
         
@@ -35,7 +42,22 @@ class RazorpayPaymentManager: NSObject, RazorpayPaymentCompletionProtocolWithDat
         ]
         
         razorpay.open(options, displayController: viewController)
+        #else
+        DispatchQueue.main.async {
+            self.onPaymentFailure?("Razorpay SDK is not linked with this build.")
+            self.clearCallbacks()
+        }
+        #endif
     }
+    
+    private func clearCallbacks() {
+        onPaymentSuccess = nil
+        onPaymentFailure = nil
+    }
+}
+
+#if canImport(RazorpayCheckout) || canImport(Razorpay)
+extension RazorpayPaymentManager: RazorpayPaymentCompletionProtocolWithData {
     
     // MARK: - RazorpayPaymentCompletionProtocolWithData
     
@@ -52,12 +74,8 @@ class RazorpayPaymentManager: NSObject, RazorpayPaymentCompletionProtocolWithDat
             self.clearCallbacks()
         }
     }
-    
-    private func clearCallbacks() {
-        onPaymentSuccess = nil
-        onPaymentFailure = nil
-    }
 }
+#endif
 
 extension UIViewController {
     var topMostViewController: UIViewController {

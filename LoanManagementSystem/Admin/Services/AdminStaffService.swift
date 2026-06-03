@@ -8,6 +8,17 @@ final class AdminStaffService {
 
     private init() {}
 
+    enum AdminStaffServiceError: LocalizedError {
+        case missingServiceRoleKey
+
+        var errorDescription: String? {
+            switch self {
+            case .missingServiceRoleKey:
+                return "Admin user management is not configured. Move service-role operations to a secure backend or provide SUPABASE_SERVICE_ROLE_KEY outside the app bundle for local development."
+            }
+        }
+    }
+
 
     private struct DBUser: Codable {
         let id: UUID
@@ -158,15 +169,20 @@ final class AdminStaffService {
         return staffMembers.sorted { $0.fullName.localizedCaseInsensitiveCompare($1.fullName) == .orderedAscending }
     }
 
-    private var adminClient: SupabaseClient {
-        SupabaseClient(
+    private func makeAdminClient() throws -> SupabaseClient {
+        guard let serviceRoleKey = AppConfiguration.supabaseServiceRoleKey else {
+            throw AdminStaffServiceError.missingServiceRoleKey
+        }
+
+        return SupabaseClient(
             supabaseURL: AppConfiguration.supabaseURL,
-            supabaseKey: AppConfiguration.supabaseServiceRoleKey
+            supabaseKey: serviceRoleKey
         )
     }
 
 
     func createAdmin(name: String, email: String, phone: String, password: String) async throws {
+        let adminClient = try makeAdminClient()
         let attributes = AdminUserAttributes(
             email: email,
             emailConfirm: true,
@@ -198,13 +214,14 @@ final class AdminStaffService {
             ]
             try await adminClient.from("admins").upsert(adminInsert, onConflict: "user_id").execute()
         } catch {
-            try? await deleteStaffMember(userId: newUserId)
+            try? await deleteStaffMember(userId: newUserId, client: adminClient)
             throw error
         }
     }
 
 
     func createStaffMember(payload: CreateStaffPayload) async throws {
+        let adminClient = try makeAdminClient()
 
         let attributes = AdminUserAttributes(
             email: payload.email,
@@ -254,13 +271,18 @@ final class AdminStaffService {
             }
         } catch {
 
-            try? await deleteStaffMember(userId: newUserId)
+            try? await deleteStaffMember(userId: newUserId, client: adminClient)
             throw error
         }
     }
 
 
     func deleteStaffMember(userId: UUID) async throws {
+        let adminClient = try makeAdminClient()
+        try await deleteStaffMember(userId: userId, client: adminClient)
+    }
+
+    private func deleteStaffMember(userId: UUID, client adminClient: SupabaseClient) async throws {
         try await adminClient.auth.admin.deleteUser(id: userId)
     }
 
@@ -328,4 +350,3 @@ final class AdminStaffService {
             .execute()
     }
 }
-

@@ -30,12 +30,10 @@ struct AppConfiguration {
 
 
 
-    static var supabaseServiceRoleKey: String {
-        let fallbackKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1ZnJob3pqZm12dnVjc3dtdWRqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTQwODUyNywiZXhwIjoyMDk0OTg0NTI3fQ.4s7NAypvWIFMcncs72zdrnFlULVPNfpP98eNybX6Rno"
+    static var supabaseServiceRoleKey: String? {
         let key = ProcessInfo.processInfo.environment["SUPABASE_SERVICE_ROLE_KEY"]
             ?? Bundle.main.object(forInfoDictionaryKey: "SUPABASE_SERVICE_ROLE_KEY") as? String
-            ?? fallbackKey
-        return key.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedKey = key?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedKey?.isEmpty == false ? trimmedKey : nil
     }
 }
-
