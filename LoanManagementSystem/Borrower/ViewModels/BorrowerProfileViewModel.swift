@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import Supabase
 
 enum KYCDocumentType {
     case aadhaar, pan, addressProof
@@ -33,15 +34,38 @@ class BorrowerProfileViewModel: ObservableObject {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased() ?? ""
 
-        if !cleanedEmail.isEmpty {
-            _ = BorrowerProfileStore.shared.ensureProfile(
-                email: cleanedEmail,
-                name: displayName
-            )
-        }
+        Task { [weak self] in
+            var didRequestRemoteProfile = false
 
-        profile = BorrowerProfileStore.shared.profile
-        isLoading = false
+            if let session = try? await SupabaseManager.shared.client.auth.session {
+                let user = session.user
+                let sessionEmail = user.email?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .lowercased()
+                let resolvedEmail = sessionEmail ?? cleanedEmail
+
+                if cleanedEmail.isEmpty || sessionEmail == cleanedEmail {
+                    didRequestRemoteProfile = true
+                    await BorrowerProfileStore.shared.fetchProfileFromSupabase(
+                        uid: user.id.uuidString,
+                        email: resolvedEmail,
+                        name: displayName
+                    )
+                }
+            }
+
+            if !didRequestRemoteProfile, !cleanedEmail.isEmpty {
+                _ = BorrowerProfileStore.shared.ensureProfile(
+                    email: cleanedEmail,
+                    name: displayName
+                )
+            }
+
+            await MainActor.run {
+                self?.profile = BorrowerProfileStore.shared.profile
+                self?.isLoading = false
+            }
+        }
     }
     
     private var activeProfile: BorrowerProfile? {

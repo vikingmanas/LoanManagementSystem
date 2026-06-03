@@ -52,17 +52,17 @@ struct KPIGridView: View {
             
             // Card A3: Approval Queue
             KPICard(
-                symbol: "person.badge.shield.checkmark",
+                symbol: "briefcase.fill",
                 symbolColor: LMSColors.brandNavy,
                 value: "\(viewModel.sentToManagerApps.count)",
-                label: "Approval Queue",
-                sub: "Sent to Manager",
+                label: "Manager Desk",
+                sub: "Awaiting approval",
                 bottomContent: AnyView(
                     Text("Awaiting sign-off")
                         .font(.system(.caption2, design: .rounded).weight(.semibold))
                         .foregroundStyle(LMSColors.brandNavy)
                 ),
-                accessibilityLabel: "Approval Queue: \(viewModel.sentToManagerApps.count)."
+                accessibilityLabel: "Manager Desk: \(viewModel.sentToManagerApps.count)."
             )
             .onTapGesture {
                 HapticsManager.triggerImpact(style: .light)
@@ -147,4 +147,3 @@ struct KPICard: View {
         .accessibilityHint("Tap to view details in the history tab.")
     }
 }
-

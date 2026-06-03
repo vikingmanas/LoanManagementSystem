@@ -2,9 +2,8 @@ import Foundation
 import Supabase
 
 
-/// A database-safe representation of BorrowerProfile that exactly matches
-/// the Supabase `profiles` table schema. Fields like `linkedAccounts`,
-/// `gstNumber`, etc. that don't exist in the DB are excluded.
+/// A database-safe representation of BorrowerProfile that matches
+/// the Supabase `profiles` table schema.
 /// `profileImageData` is stored as a Base64-encoded string to match the `text` column.
 private struct DBProfile: Codable {
     let id: String
@@ -34,6 +33,8 @@ private struct DBProfile: Codable {
     var loanOverview: LoanOverview
 
     var profileImageData: String?  // Base64-encoded string — DB column is `text`
+    var linkedAccounts: [LinkedBankAccount]?
+    var gstNumber: String?
 
     var occupation: String
     var industry: String
@@ -55,7 +56,7 @@ private struct DBProfile: Codable {
     var nomineeRelationship: String
     var isOnboardingCompleted: Bool
 
-    init(id: String, fullName: String, email: String, mobileNumber: String, alternateNumber: String?, dateOfBirth: Date, gender: String, maritalStatus: String, nationality: String, aadhaarNumber: String, panNumber: String, isEmailVerified: Bool, isPhoneVerified: Bool, currentAddress: AddressInfo, permanentAddress: AddressInfo, employment: EmploymentInfo, income: IncomeInfo, bankDetails: BankDetails, kycVerification: KYCVerification, loanOverview: LoanOverview, profileImageData: String?, occupation: String, industry: String, yearsOfExperience: Int, hasExistingBankAccount: Bool, existingCustomerId: String?, preferredBranch: String, existingLoansCount: Int, existingCreditCardsCount: Int, bankingRelationshipDuration: String, averageMonthlyBalance: Double, emergencyContactName: String, emergencyContactNumber: String, emergencyContactAlternateNumber: String, emergencyContactAddress: String, emergencyContactRelationship: String, nomineeName: String, nomineeRelationship: String, isOnboardingCompleted: Bool) {
+    init(id: String, fullName: String, email: String, mobileNumber: String, alternateNumber: String?, dateOfBirth: Date, gender: String, maritalStatus: String, nationality: String, aadhaarNumber: String, panNumber: String, isEmailVerified: Bool, isPhoneVerified: Bool, currentAddress: AddressInfo, permanentAddress: AddressInfo, employment: EmploymentInfo, income: IncomeInfo, bankDetails: BankDetails, kycVerification: KYCVerification, loanOverview: LoanOverview, profileImageData: String?, linkedAccounts: [LinkedBankAccount]?, gstNumber: String?, occupation: String, industry: String, yearsOfExperience: Int, hasExistingBankAccount: Bool, existingCustomerId: String?, preferredBranch: String, existingLoansCount: Int, existingCreditCardsCount: Int, bankingRelationshipDuration: String, averageMonthlyBalance: Double, emergencyContactName: String, emergencyContactNumber: String, emergencyContactAlternateNumber: String, emergencyContactAddress: String, emergencyContactRelationship: String, nomineeName: String, nomineeRelationship: String, isOnboardingCompleted: Bool) {
         self.id = id
         self.fullName = fullName
         self.email = email
@@ -77,6 +78,8 @@ private struct DBProfile: Codable {
         self.kycVerification = kycVerification
         self.loanOverview = loanOverview
         self.profileImageData = profileImageData
+        self.linkedAccounts = linkedAccounts
+        self.gstNumber = gstNumber
         self.occupation = occupation
         self.industry = industry
         self.yearsOfExperience = yearsOfExperience
@@ -127,6 +130,8 @@ private struct DBProfile: Codable {
         loanOverview = try container.decodeIfPresent(LoanOverview.self, forKey: .loanOverview) ?? LoanOverview(activeLoans: 0, loanHistoryCount: 0, nextEmiDueDate: nil, remainingBalance: 0.0, currentLoanStatus: "None")
         
         profileImageData = try container.decodeIfPresent(String.self, forKey: .profileImageData)
+        linkedAccounts = try container.decodeIfPresent([LinkedBankAccount].self, forKey: .linkedAccounts)
+        gstNumber = try container.decodeIfPresent(String.self, forKey: .gstNumber)
         
         occupation = try container.decodeIfPresent(String.self, forKey: .occupation) ?? ""
         industry = try container.decodeIfPresent(String.self, forKey: .industry) ?? ""
@@ -174,6 +179,8 @@ private struct DBProfile: Codable {
             kycVerification: profile.kycVerification,
             loanOverview: profile.loanOverview,
             profileImageData: profile.profileImageData?.base64EncodedString(),
+            linkedAccounts: profile.linkedAccounts,
+            gstNumber: profile.gstNumber,
             occupation: profile.occupation,
             industry: profile.industry,
             yearsOfExperience: profile.yearsOfExperience,
@@ -198,6 +205,9 @@ private struct DBProfile: Codable {
     // MARK: - Mapping to BorrowerProfile
 
     func toBorrowerProfile(linkedAccounts: [LinkedBankAccount]? = nil, gstNumber: String? = nil) -> BorrowerProfile {
+        let resolvedLinkedAccounts = linkedAccounts ?? self.linkedAccounts
+        let resolvedGSTNumber = gstNumber ?? self.gstNumber
+
         return BorrowerProfile(
             id: id,
             fullName: fullName,
@@ -217,8 +227,8 @@ private struct DBProfile: Codable {
             employment: employment,
             income: income,
             bankDetails: bankDetails,
-            linkedAccounts: linkedAccounts,
-            gstNumber: gstNumber,
+            linkedAccounts: resolvedLinkedAccounts,
+            gstNumber: resolvedGSTNumber,
             kycVerification: kycVerification,
             loanOverview: loanOverview,
             profileImageData: profileImageData.flatMap { Data(base64Encoded: $0) },
@@ -592,9 +602,11 @@ final class DatabaseService {
             // Convert DB representation back to full BorrowerProfile,
             // preserving any locally-cached linkedAccounts/gstNumber
             let cached = loadProfileLocally(userId: userId)
+            let cachedLinkedAccounts = cached?.linkedAccounts?.isEmpty == false ? cached?.linkedAccounts : nil
+            let cachedGSTNumber = cached?.gstNumber?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? cached?.gstNumber : nil
             var profile = dbProfile.toBorrowerProfile(
-                linkedAccounts: cached?.linkedAccounts,
-                gstNumber: cached?.gstNumber
+                linkedAccounts: cachedLinkedAccounts,
+                gstNumber: cachedGSTNumber
             )
             profile.linkedAccounts = await mergedLinkedAccounts(
                 profile: profile,
@@ -641,8 +653,7 @@ final class DatabaseService {
             }
         }
 
-        // Convert to DB-safe struct that matches the profiles table schema exactly.
-        // This excludes fields like linkedAccounts, gstNumber that don't exist in the table.
+        // Convert to the DB-safe struct that matches the profiles table schema.
         let dbProfile = DBProfile.from(profileToSave)
         print("UPDATE REQUEST - Table: profiles, ID: \(profileToSave.id)")
         do {

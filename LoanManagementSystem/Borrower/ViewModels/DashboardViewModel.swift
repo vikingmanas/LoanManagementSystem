@@ -191,7 +191,12 @@ public final class DashboardViewModel: ObservableObject {
         if let email = BorrowerProfileStore.shared.currentEmail ?? BorrowerProfileStore.shared.profile?.email,
            !email.isEmpty,
            BorrowerProfileStore.shared.profile == nil {
-            _ = BorrowerProfileStore.shared.ensureProfile(email: email)
+            if let session = try? await SupabaseManager.shared.client.auth.session {
+                await BorrowerProfileStore.shared.fetchProfileFromSupabase(
+                    uid: session.user.id.uuidString,
+                    email: session.user.email ?? email
+                )
+            }
         }
         
         // Simulate a 0.8s network latency delay

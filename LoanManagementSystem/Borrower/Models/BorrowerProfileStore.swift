@@ -55,8 +55,14 @@ public class BorrowerProfileStore: ObservableObject {
             alternatePhone: alternatePhone,
             customerId: customerId
         )
-        self.profile = placeholderProfile
         self.currentEmail = cleanedEmail
+
+        let isAuthenticatedBorrowerEmail = AuthManager.shared.currentUser?.email?.lowercased() == cleanedEmail
+        if isAuthenticatedBorrowerEmail {
+            self.profile = nil
+        } else {
+            self.profile = placeholderProfile
+        }
 
         Task {
             if let currentUser = AuthManager.shared.currentUser,
