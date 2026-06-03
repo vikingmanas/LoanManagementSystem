@@ -2,7 +2,6 @@
 //  AuthService.swift
 //  LoanManagementSystem
 //
-//  Created by Antigravity on 22/05/26.
 //
 
 import Foundation

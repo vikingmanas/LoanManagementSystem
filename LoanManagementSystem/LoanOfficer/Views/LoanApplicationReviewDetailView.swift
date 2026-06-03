@@ -9,6 +9,7 @@ private struct DocumentRejectionPrompt: Identifiable {
 struct LoanApplicationReviewDetailView: View {
     typealias LoanApplication = OfficerLoanApplication
     let applicationId: String
+    let initialDocumentId: UUID?
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) var dismiss
     
@@ -24,6 +25,15 @@ struct LoanApplicationReviewDetailView: View {
     @State private var escalationReason = ""
     @State private var showingEscalationAlert = false
     @State private var escalationAlertMessage = ""
+    @State private var showingApplicationRejectPrompt = false
+    @State private var applicationRejectReason = ""
+    @State private var hasPresentedInitialDocument = false
+
+    init(applicationId: String, initialDocumentId: UUID? = nil, viewModel: LoanOfficerDashboardViewModel) {
+        self.applicationId = applicationId
+        self.initialDocumentId = initialDocumentId
+        self.viewModel = viewModel
+    }
     
     var app: LoanApplication? {
         viewModel.applications.first { $0.applicationId == applicationId }
@@ -44,25 +54,34 @@ struct LoanApplicationReviewDetailView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            if let currentApp = app {
-                applicationContent(currentApp)
-                    .onAppear {
-                        claimApplicationIfNeeded(currentApp)
-                    }
-            } else {
-                ContentUnavailableView("Application Not Found", systemImage: "questionmark.circle")
-            }
+        if let currentApp = app {
+            applicationContent(currentApp)
+                .onAppear {
+                    claimApplicationIfNeeded(currentApp)
+                    presentInitialDocumentIfNeeded(in: currentApp)
+                }
+        } else {
+            ContentUnavailableView("Application Not Found", systemImage: "questionmark.circle")
         }
     }
 
     private func claimApplicationIfNeeded(_ app: LoanApplication) {
         guard let officerId = viewModel.officerProfile?.id,
               let officerName = viewModel.officerProfile?.fullName,
-              let source = CentralLoanRepository.shared.applications.first(where: { $0.id == app.id }),
-              CentralLoanRepository.shared.isLoanUnassigned(source) else { return }
+              CentralLoanRepository.shared.isLoanUnassigned(applicationId: app.id) else { return }
         CentralLoanRepository.shared.assignOfficer(userId: officerId, name: officerName, toApplicationId: app.id)
         viewModel.refreshFromRepository()
+    }
+
+    private func presentInitialDocumentIfNeeded(in app: LoanApplication) {
+        guard !hasPresentedInitialDocument,
+              let initialDocumentId,
+              let document = app.documents.first(where: { $0.id == initialDocumentId }) else { return }
+
+        hasPresentedInitialDocument = true
+        DispatchQueue.main.async {
+            selectedDocForPreview = document
+        }
     }
     
     // MARK: - Main Content
@@ -130,6 +149,26 @@ struct LoanApplicationReviewDetailView: View {
             }
         } message: {
             Text("Add a reason for the borrower and audit trail.")
+        }
+        .alert("Reject Application", isPresented: $showingApplicationRejectPrompt) {
+            TextField("Reason for borrower", text: $applicationRejectReason)
+            Button("Reject Application", role: .destructive) {
+                let reason = applicationRejectReason.trimmingCharacters(in: .whitespacesAndNewlines)
+                if viewModel.rejectApplication(applicationId: currentApp.applicationId, reason: reason) {
+                    HapticsManager.triggerNotification(type: .success)
+                    applicationRejectReason = ""
+                    dismiss()
+                } else {
+                    applicationRejectReason = ""
+                    escalationAlertMessage = "Could not reject this application right now."
+                    showingEscalationAlert = true
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                applicationRejectReason = ""
+            }
+        } message: {
+            Text("This rejects the complete loan application, not just one document. The borrower will be notified.")
         }
         .task {
             await viewModel.refreshDocuments(for: currentApp.applicationId)
@@ -446,8 +485,7 @@ struct LoanApplicationReviewDetailView: View {
                     OfficerDocumentReviewCard(
                         doc: doc,
                         borrowerName: app.borrowerName,
-                        onPreview: { selectedDocForPreview = doc },
-                        onAction: { showingActionSheetForDoc = doc }
+                        onPreview: { selectedDocForPreview = doc }
                     )
                 }
             }
@@ -488,32 +526,51 @@ struct LoanApplicationReviewDetailView: View {
     
     // MARK: - Approval
     
+    @ViewBuilder
     private func approvalSection(_ app: LoanApplication) -> some View {
-        Section {
-            if isReadyForFinalApproval {
-                Button {
-                    HapticsManager.triggerImpact(style: .heavy)
-                    viewModel.sendForFinalApproval(applicationId: app.applicationId)
-                    dismiss()
-                } label: {
-                    Text("Send for Final Approval")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.blue)
+        if shouldShowOfficerActions(for: app) {
+            Section {
+                if canSendForFinalApproval(app) {
+                    Button {
+                        HapticsManager.triggerImpact(style: .heavy)
+                        viewModel.sendForFinalApproval(applicationId: app.applicationId)
+                        dismiss()
+                    } label: {
+                        Text("Send for Final Approval")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.blue)
+                            .frame(maxWidth: .infinity)
+                            .multilineTextAlignment(.center)
+                    }
+                } else {
+                    HStack {
+                        Spacer()
+                        Label("Verification incomplete - resolve all documents first.", systemImage: "lock.fill")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .padding(.vertical, 4)
+                }
+
+                if canRejectCompleteApplication(app) {
+                    Button(role: .destructive) {
+                        HapticsManager.triggerImpact(style: .medium)
+                        applicationRejectReason = ""
+                        showingApplicationRejectPrompt = true
+                    } label: {
+                        VStack(spacing: 3) {
+                            Text("Reject Application")
+                                .font(.body.weight(.semibold))
+                            Text("Rejects the complete application")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                         .frame(maxWidth: .infinity)
                         .multilineTextAlignment(.center)
+                    }
                 }
-            } else {
-                HStack {
-                    Spacer()
-                    Label("Verification incomplete — resolve all documents first.", systemImage: "lock.fill")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                .padding(.vertical, 4)
-            }
 
-            if app.status != .escalated && app.status != .approved && app.status != .rejected && app.status != .disbursed {
                 TextField("Escalation reason for branch manager", text: $escalationReason, axis: .vertical)
                     .lineLimit(2...4)
 
@@ -539,15 +596,32 @@ struct LoanApplicationReviewDetailView: View {
                         .multilineTextAlignment(.center)
                 }
             }
-        }
-        .alert("Escalation", isPresented: $showingEscalationAlert) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(escalationAlertMessage)
+            .alert("Escalation", isPresented: $showingEscalationAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(escalationAlertMessage)
+            }
         }
     }
     
     // MARK: - Helpers
+
+    private func shouldShowOfficerActions(for app: LoanApplication) -> Bool {
+        switch app.status {
+        case .approved, .rejected, .disbursed, .sentToManager, .finalApprovalPending:
+            return false
+        default:
+            return true
+        }
+    }
+
+    private func canSendForFinalApproval(_ app: LoanApplication) -> Bool {
+        isReadyForFinalApproval && [.underReview, .verificationCompleted].contains(app.status)
+    }
+
+    private func canRejectCompleteApplication(_ app: LoanApplication) -> Bool {
+        [.pending, .applied, .documentsPending, .documentsRejected, .underReview, .verificationCompleted].contains(app.status)
+    }
     
     private func runAIAudit() {
         HapticsManager.triggerImpact(style: .medium)
@@ -693,58 +767,99 @@ private struct OfficerDocumentReviewCard: View {
     let doc: LoanDocument
     let borrowerName: String
     var onPreview: () -> Void
-    var onAction: () -> Void
+
+    private var statusLabel: String {
+        doc.status.rawValue.replacingOccurrences(of: " ✓", with: "")
+    }
+
+    private var ocrTint: Color {
+        doc.ocrStatus.localizedCaseInsensitiveContains("pending") ? LMSColors.amber : LMSColors.actionBlue
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                OfficerDocumentThumb(doc: doc, borrowerName: borrowerName)
-                    .frame(width: 54, height: 54)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 12) {
+                Button(action: onPreview) {
+                    ZStack(alignment: .bottomTrailing) {
+                        OfficerDocumentThumb(doc: doc, borrowerName: borrowerName)
+                            .frame(width: 58, height: 58)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(doc.docType.rawValue)
-                        .font(.body.weight(.semibold))
-                    Text("Uploaded: \(doc.uploadedDate?.formattedAsDDMMMYYYY() ?? "Not available")")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("OCR: \(doc.ocrStatus)")
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(LMSColors.actionBlue)
+                        Image(systemName: "eye.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 24, height: 24)
+                            .background(.black.opacity(0.55), in: Circle())
+                            .overlay(Circle().stroke(.white, lineWidth: 1.5))
+                            .offset(x: 4, y: 4)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Preview \(doc.docType.rawValue)")
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Text(doc.docType.rawValue)
+                            .font(.system(.body, design: .rounded).weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                            .lineLimit(1)
+
+                        if doc.status == .verified {
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(LMSColors.emerald)
+                                .accessibilityLabel("Verified")
+                        }
+                    }
+
+                    Label(doc.uploadedDate?.formattedAsDDMMMYYYY() ?? "Date unavailable", systemImage: "calendar")
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(LMSColors.textSecondary)
+                        .lineLimit(1)
                 }
 
-                Spacer()
-
-                Text(doc.status.rawValue)
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(doc.status.themeColor)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(doc.status.themeColor.opacity(0.12), in: Capsule())
+                Spacer(minLength: 8)
             }
 
-            HStack {
-                Button(action: onPreview) {
-                    Label("Preview", systemImage: "eye.fill")
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+            if doc.status != .verified {
+                HStack(spacing: 8) {
+                    DocumentStatusChip(
+                        title: statusLabel,
+                        systemImage: "doc.badge.clock",
+                        tint: doc.status.themeColor
+                    )
 
-                Spacer()
-
-                Button(action: onAction) {
-                    Label("Review", systemImage: "checklist.checked")
+                    Spacer(minLength: 0)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+                .padding(.leading, 70)
             }
 
             if let reason = doc.rejectionReason, !reason.isEmpty {
-                Text(reason)
-                    .font(.caption)
+                Label(reason, systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(.caption, design: .rounded))
                     .foregroundStyle(LMSColors.coral)
+                    .lineLimit(2)
+                    .padding(.leading, 70)
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
+    }
+}
+
+private struct DocumentStatusChip: View {
+    let title: String
+    let systemImage: String
+    let tint: Color
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(.system(.caption2, design: .rounded).weight(.semibold))
+            .foregroundStyle(tint)
+            .lineLimit(1)
+            .minimumScaleFactor(0.85)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(tint.opacity(0.12), in: Capsule())
     }
 }
 

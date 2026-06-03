@@ -91,7 +91,11 @@ struct DashboardTabView: View {
             PortfolioMetricsSheet(viewModel: viewModel)
         }
         .navigationDestination(item: $selectedDocumentForReview) { docItem in
-            DocumentReviewDetailView(item: docItem, viewModel: viewModel)
+            LoanApplicationReviewDetailView(
+                applicationId: docItem.applicationId,
+                initialDocumentId: docItem.id,
+                viewModel: viewModel
+            )
         }
     }
 }

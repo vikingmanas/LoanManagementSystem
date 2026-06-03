@@ -1,5 +1,4 @@
 import SwiftUI
-import CoreImage.CIFilterBuiltins
 import UIKit
 
 // MARK: - Navigation Destinations
@@ -13,7 +12,6 @@ public enum DashboardRoute: Hashable {
     case linkedBankAccounts
     case profileInfo
     case notifications
-    case transactionHistory
     case payEMI
     case repaymentSchedule(DashboardLoanAccount?)
     case emiCalculator
@@ -189,7 +187,7 @@ public struct DashboardView: View {
     public var body: some View {
         NavigationStack(path: $navigationPath) {
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: LMSSpacing.xxl) {
+                VStack(spacing: LMSSpacing.xl) {
                     if shouldShowProfileCompletionCard {
                         ProfileCompletionCardSection(
                             percentage: viewModel.profileCompletionPercentage,
@@ -226,14 +224,6 @@ public struct DashboardView: View {
                         },
                         onApplyLoan: {
                             tabRouter.select(.loans)
-                        }
-                    )
-
-                    TransactionHistorySection(
-                        transactions: viewModel.recentTransactions,
-                        accounts: viewModel.bankAccounts,
-                        onViewAll: {
-                            navigationPath.append(.transactionHistory)
                         }
                     )
 
@@ -289,8 +279,6 @@ public struct DashboardView: View {
                     ProfileInfoDetailView(viewModel: profileViewModel)
                 case .notifications:
                     NotificationsDetailView(notificationViewModel: viewModel.notificationViewModel)
-                case .transactionHistory:
-                    TransactionHistoryFullScreen(viewModel: viewModel)
                 case .payEMI:
                     PayEMIWorkflowView(viewModel: viewModel)
                 case .repaymentSchedule(let loan):
@@ -300,11 +288,9 @@ public struct DashboardView: View {
                 case .statement:
                     StatementWorkflowView(viewModel: viewModel)
                 case .topUp:
-                    TopUpWorkflowView(viewModel: viewModel) {
-                        navigationPath.append(.linkedBankAccounts)
-                    }
+                    TopUpWorkflowView(viewModel: viewModel)
                 case .foreclosure:
-                    ForeclosureSheet(viewModel: viewModel)
+                    CloseLoanSheet(viewModel: viewModel)
                 case .support:
                     HelpSupportDetailView()
                 }
@@ -810,7 +796,7 @@ private struct EMICalculatorView: View {
     private var resultHeader: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "function")
+                Image(systemName: "plus.forwardslash.minus")
                     .font(.system(size: 24, weight: .semibold))
                     .foregroundStyle(LMSColors.brandNavy)
                     .frame(width: 46, height: 46)
@@ -1037,12 +1023,11 @@ private struct EMICalculatorView: View {
 // MARK: - Quick Action Action Sheets
 
 private enum EMIPaymentStep: Int, CaseIterable {
-    case selectLoan, details, account, options, confirm
+    case selectLoan, details, options, confirm
     var title: String {
         switch self {
         case .selectLoan: return "Select Loan"
         case .details: return "EMI Details"
-        case .account: return "Deduction Account"
         case .options: return "Payment Options"
         case .confirm: return "Confirm Payment"
         }
@@ -1063,23 +1048,47 @@ struct PayEMIWorkflowView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var step: EMIPaymentStep = .selectLoan
     @State private var selectedLoan: DashboardLoanAccount?
-    @State private var selectedAccountID: UUID?
     @State private var paymentOption: EMIPaymentOption = .payNow
     @State private var scheduledDate = Date()
     @State private var isProcessing = false
     @State private var successTransactionID: String?
+    @State private var successAmount: Double = 0
+    @State private var successPenalty: Double = 0
+    @State private var gatewayItem: EMIGatewayItem?
 
     private var selectedAccount: BankAccount? {
-        viewModel.bankAccounts.first { $0.id == selectedAccountID } ?? viewModel.bankAccounts.first
+        guard let selectedLoan else { return nil }
+        return viewModel.linkedRepaymentAccount(for: selectedLoan)
+    }
+
+    private var selectedAccountBalance: Double {
+        selectedAccount?.availableBalance ?? 0
+    }
+
+    private var selectedEMIPenalty: Double {
+        guard let selectedLoan else { return 0 }
+        return selectedAccountBalance < selectedLoan.totalEMI ? DashboardViewModel.emiShortfallPenalty : 0
+    }
+
+    private var selectedTotalDebit: Double {
+        guard let selectedLoan else { return 0 }
+        return selectedLoan.totalEMI + selectedEMIPenalty
+    }
+
+    private var selectedBalanceAfterPayment: Double {
+        selectedAccountBalance - selectedTotalDebit
+    }
+
+    private var hasNotEnoughAmount: Bool {
+        selectedEMIPenalty > 0
     }
 
     private var canContinue: Bool {
         switch step {
         case .selectLoan: return selectedLoan != nil
         case .details: return selectedLoan != nil
-        case .account: return selectedAccount.map { account in selectedLoan.map { account.availableBalance >= $0.totalEMI } ?? false } ?? false
         case .options: return true
-        case .confirm: return selectedLoan != nil && selectedAccount != nil
+        case .confirm: return selectedLoan != nil
         }
     }
 
@@ -1092,11 +1101,20 @@ struct PayEMIWorkflowView: View {
         .background(LMSColors.background)
         .navigationTitle("Pay EMI")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
-            if step != .selectLoan && successTransactionID == nil {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Back") { withAnimation(.smooth(duration: 0.22)) { step = step.previous } }
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    handleBack()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(LMSColors.brandNavy)
+                        .frame(width: 44, height: 44)
+                        .background(LMSColors.surfaceElevated, in: Circle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(step == .selectLoan ? "Back to dashboard" : "Previous step")
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -1104,17 +1122,22 @@ struct PayEMIWorkflowView: View {
                 stickyCTA
             }
         }
-        .fullScreenCover(item: Binding(
-            get: { successTransactionID.map { EMISuccessItem(id: $0, loan: selectedLoan, amount: selectedLoan?.totalEMI ?? 0) } },
-            set: { if $0 == nil { successTransactionID = nil } }
-        )) { item in
-            EMIPaymentSuccessView(item: item) {
-                successTransactionID = nil
-                dismiss()
-            }
-        }
-        .onAppear {
-            selectedAccountID = selectedAccountID ?? viewModel.bankAccounts.first?.id
+        .fullScreenCover(item: $gatewayItem) { item in
+            EMIRazorpayPaymentSimulationView(
+                item: item,
+                onCancel: {
+                    gatewayItem = nil
+                    isProcessing = false
+                },
+                onPaymentAuthorized: {
+                    completePayment()
+                },
+                onDone: {
+                    gatewayItem = nil
+                    successTransactionID = nil
+                    dismiss()
+                }
+            )
         }
     }
 
@@ -1123,7 +1146,6 @@ struct PayEMIWorkflowView: View {
         switch step {
         case .selectLoan: loanSelection
         case .details: emiDetails
-        case .account: accountSelection
         case .options: paymentOptions
         case .confirm: confirmation
         }
@@ -1179,8 +1201,14 @@ struct PayEMIWorkflowView: View {
                     }
                     LabeledContent("Penalty if overdue", value: "₹0")
                     LabeledContent("Remaining tenure", value: "\(loan.tenureRemainingMonths) months")
+                    LabeledContent("Linked loan account", value: selectedAccount.map { "••\($0.accountNumber.suffix(4))" } ?? "••\(loan.accountNumber.suffix(4))")
+                    LabeledContent("Available balance", value: selectedAccountBalance.formattedAsINR())
                 } header: {
                     Text("EMI Details")
+                } footer: {
+                    if hasNotEnoughAmount {
+                        Text("Not enough amount. You can still continue, but ₹500 penalty will be added and the linked loan account balance will go negative.")
+                    }
                 }
 
                 Section {
@@ -1189,38 +1217,6 @@ struct PayEMIWorkflowView: View {
                 } header: {
                     Text("Upcoming EMI Breakdown")
                 }
-            }
-        }
-    }
-
-    private var accountSelection: some View {
-        Section {
-            if viewModel.bankAccounts.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("No linked bank account", systemImage: "building.columns")
-                        .font(.headline)
-                    Text("Add a bank account to pay EMI from this app.")
-                        .font(.subheadline)
-                        .foregroundStyle(LMSColors.textSecondary)
-                }
-                .padding(.vertical, 8)
-            } else {
-                ForEach(viewModel.bankAccounts) { account in
-                    SelectableBankAccountCard(
-                        account: account,
-                        isSelected: selectedAccountID == account.id,
-                        warning: selectedLoan.map { account.availableBalance < $0.totalEMI } ?? false
-                    ) {
-                        selectedAccountID = account.id
-                        HapticsManager.triggerImpact(style: .light)
-                    }
-                }
-            }
-        } header: {
-            Text("Select Deduction Account")
-        } footer: {
-            if selectedAccount.map({ account in selectedLoan.map { account.availableBalance < $0.totalEMI } ?? false }) == true {
-                Text("Insufficient balance. Select another account or use Top Up before paying.")
             }
         }
     }
@@ -1244,15 +1240,21 @@ struct PayEMIWorkflowView: View {
 
     private var confirmation: some View {
         Group {
-            if let loan = selectedLoan, let account = selectedAccount {
+            if let loan = selectedLoan {
                 Section {
                     LabeledContent("Loan account", value: "ACC ••\(loan.accountNumber.suffix(4))")
                     LabeledContent("EMI amount", value: loan.totalEMI.formattedAsINR())
-                    LabeledContent("Deduction account", value: "••\(account.accountNumber.suffix(4))")
+                    LabeledContent("Deduction account", value: selectedAccount.map { "••\($0.accountNumber.suffix(4))" } ?? "••\(loan.accountNumber.suffix(4))")
                     LabeledContent("Payment date", value: (paymentOption == .schedule ? scheduledDate : Date()).formattedAsDDMMMYYYY())
-                    LabeledContent("Charges", value: "₹0")
+                    LabeledContent("Penalty", value: selectedEMIPenalty.formattedAsINR())
+                    LabeledContent("Total debit", value: selectedTotalDebit.formattedAsINR())
+                    LabeledContent("Balance after payment", value: selectedBalanceAfterPayment.formattedAsINR())
                 } header: {
                     Text("Confirm Payment")
+                } footer: {
+                    if hasNotEnoughAmount {
+                        Text("Not enough amount. Continuing will add ₹500 penalty and show the account balance as negative across the app.")
+                    }
                 }
             }
         }
@@ -1284,13 +1286,41 @@ struct PayEMIWorkflowView: View {
     }
 
     private func confirmPayment() {
-        guard let selectedLoan, let selectedAccount else { return }
-        isProcessing = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-            if viewModel.payEMI(for: selectedLoan, from: selectedAccount, scheduledDate: paymentOption == .schedule ? scheduledDate : Date()) {
-                successTransactionID = "TXN\(Int.random(in: 1000000...9999999))"
+        guard let selectedLoan else { return }
+        gatewayItem = EMIGatewayItem(
+            loan: selectedLoan,
+            amount: selectedTotalDebit,
+            emiAmount: selectedLoan.totalEMI,
+            penalty: selectedEMIPenalty,
+            accountSuffix: String((selectedAccount?.accountNumber ?? selectedLoan.accountNumber).suffix(4)),
+            paymentDate: paymentOption == .schedule ? scheduledDate : Date()
+        )
+    }
+
+    private func completePayment() -> EMIGatewayResult? {
+        guard let selectedLoan else { return nil }
+        let result = viewModel.payEMI(for: selectedLoan, scheduledDate: paymentOption == .schedule ? scheduledDate : Date())
+        guard result.success, let reference = result.reference else { return nil }
+        successAmount = result.totalDebited
+        successPenalty = result.penalty
+        successTransactionID = reference
+        isProcessing = false
+        return EMIGatewayResult(
+            transactionID: reference,
+            amount: result.totalDebited,
+            emiAmount: selectedLoan.totalEMI,
+            penalty: result.penalty
+        )
+    }
+
+    private func handleBack() {
+        guard successTransactionID == nil else { return }
+        if step == .selectLoan {
+            dismiss()
+        } else {
+            withAnimation(.smooth(duration: 0.22)) {
+                step = step.previous
             }
-            isProcessing = false
         }
     }
 }
@@ -1299,6 +1329,325 @@ private struct EMISuccessItem: Identifiable {
     let id: String
     let loan: DashboardLoanAccount?
     let amount: Double
+    let emiAmount: Double
+    let penalty: Double
+}
+
+private struct EMIGatewayItem: Identifiable {
+    let id = UUID()
+    let loan: DashboardLoanAccount
+    let amount: Double
+    let emiAmount: Double
+    let penalty: Double
+    let accountSuffix: String
+    let paymentDate: Date
+}
+
+private struct EMIGatewayResult {
+    let transactionID: String
+    let amount: Double
+    let emiAmount: Double
+    let penalty: Double
+}
+
+private enum EMIGatewayStage {
+    case connecting
+    case pin
+    case processing
+    case success
+}
+
+private struct EMIRazorpayPaymentSimulationView: View {
+    let item: EMIGatewayItem
+    let onCancel: () -> Void
+    let onPaymentAuthorized: () -> EMIGatewayResult?
+    let onDone: () -> Void
+
+    @State private var stage: EMIGatewayStage = .connecting
+    @State private var upiPin = ""
+    @State private var result: EMIGatewayResult?
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [LMSColors.background, LMSColors.surfaceElevated.opacity(0.72)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            VStack(spacing: 0) {
+                gatewayHeader
+                Group {
+                    switch stage {
+                    case .connecting:
+                        connectingView
+                    case .pin:
+                        upiPinView
+                    case .processing:
+                        processingView
+                    case .success:
+                        successView
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.15) {
+                guard stage == .connecting else { return }
+                withAnimation(.smooth(duration: 0.25)) {
+                    stage = .pin
+                }
+            }
+        }
+    }
+
+    private var gatewayHeader: some View {
+        HStack {
+            Button {
+                onCancel()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .frame(width: 42, height: 42)
+                    .background(LMSColors.surface, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .opacity(stage == .success ? 0 : 1)
+            .disabled(stage == .success || stage == .processing)
+
+            Spacer()
+            VStack(spacing: 2) {
+                Text("Razorpay")
+                    .font(.headline.weight(.bold))
+                Text("Secure UPI Checkout")
+                    .font(.caption)
+                    .foregroundStyle(LMSColors.textSecondary)
+            }
+            Spacer()
+            Image(systemName: "lock.shield.fill")
+                .font(.title3)
+                .foregroundStyle(LMSColors.emerald)
+                .frame(width: 42, height: 42)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .padding(.bottom, 10)
+    }
+
+    private var connectingView: some View {
+        VStack(spacing: 28) {
+            Spacer()
+            ZStack {
+                Circle()
+                    .stroke(LMSColors.emerald.opacity(0.18), lineWidth: 14)
+                    .frame(width: 132, height: 132)
+                ProgressView()
+                    .scaleEffect(1.6)
+                    .tint(LMSColors.emerald)
+                Image(systemName: "indianrupeesign")
+                    .font(.title.bold())
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .offset(y: -52)
+            }
+
+            VStack(spacing: 8) {
+                Text("Connecting to Bank")
+                    .font(.title2.bold())
+                Text("Creating a secure UPI payment request for your EMI.")
+                    .font(.subheadline)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(LMSColors.textSecondary)
+            }
+
+            gatewaySummaryCard
+            Spacer()
+        }
+        .padding(24)
+    }
+
+    private var upiPinView: some View {
+        VStack(spacing: 22) {
+            VStack(spacing: 8) {
+                Text("Enter UPI PIN")
+                    .font(.title2.bold())
+                Text("Approve payment of \(item.amount.formattedAsINR()) from account ••\(item.accountSuffix).")
+                    .font(.subheadline)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(LMSColors.textSecondary)
+            }
+            .padding(.top, 18)
+
+            HStack(spacing: 12) {
+                ForEach(0..<6, id: \.self) { index in
+                    Circle()
+                        .fill(index < upiPin.count ? LMSColors.brandNavy : LMSColors.textTertiary.opacity(0.22))
+                        .frame(width: 14, height: 14)
+                }
+            }
+            .padding(.vertical, 8)
+
+            gatewaySummaryCard
+
+            Spacer()
+
+            VStack(spacing: 12) {
+                ForEach([[1, 2, 3], [4, 5, 6], [7, 8, 9]], id: \.self) { row in
+                    HStack(spacing: 18) {
+                        ForEach(row, id: \.self) { number in
+                            pinKey("\(number)")
+                        }
+                    }
+                }
+                HStack(spacing: 18) {
+                    pinKey("", systemImage: "delete.left.fill") {
+                        if !upiPin.isEmpty {
+                            upiPin.removeLast()
+                        }
+                    }
+                    pinKey("0")
+                    pinKey("", systemImage: "checkmark") {
+                        submitPIN()
+                    }
+                    .disabled(upiPin.count < 4)
+                    .opacity(upiPin.count < 4 ? 0.45 : 1)
+                }
+            }
+            .padding(.bottom, 18)
+        }
+        .padding(.horizontal, 24)
+    }
+
+    private var processingView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            ProgressView()
+                .scaleEffect(1.8)
+                .tint(LMSColors.emerald)
+            Text("Processing Payment")
+                .font(.title2.bold())
+            Text("Please wait while your bank confirms the EMI payment.")
+                .font(.subheadline)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(LMSColors.textSecondary)
+            Spacer()
+        }
+        .padding(24)
+    }
+
+    private var successView: some View {
+        VStack(spacing: 22) {
+            Spacer()
+            ZStack {
+                Circle()
+                    .fill(LMSColors.emerald.opacity(0.12))
+                    .frame(width: 118, height: 118)
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 86))
+                    .foregroundStyle(LMSColors.emerald)
+            }
+
+            VStack(spacing: 8) {
+                Text("Payment Successful")
+                    .font(.title2.bold())
+                Text("Your EMI payment was completed securely.")
+                    .font(.subheadline)
+                    .foregroundStyle(LMSColors.textSecondary)
+            }
+
+            VStack(spacing: 12) {
+                LabeledContent("Paid amount", value: (result?.amount ?? item.amount).formattedAsINR())
+                if (result?.penalty ?? item.penalty) > 0 {
+                    LabeledContent("Penalty included", value: (result?.penalty ?? item.penalty).formattedAsINR())
+                }
+                LabeledContent("Loan account", value: "ACC ••\(item.loan.accountNumber.suffix(4))")
+                LabeledContent("UPI Ref ID", value: result?.transactionID ?? "Processing")
+                LabeledContent("Payment date", value: item.paymentDate.formattedAsDDMMMYYYY())
+            }
+            .font(.subheadline)
+            .padding(18)
+            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+            Spacer()
+
+            Button("Done", action: onDone)
+                .font(.headline)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 15)
+                .background(LMSColors.brandNavy, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .padding(24)
+    }
+
+    private var gatewaySummaryCard: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text("EMI amount")
+                Spacer()
+                Text(item.emiAmount.formattedAsINR())
+            }
+            if item.penalty > 0 {
+                Divider()
+                HStack {
+                    Text("Penalty")
+                    Spacer()
+                    Text(item.penalty.formattedAsINR())
+                }
+            }
+            Divider()
+            HStack {
+                Text("Total debit")
+                    .fontWeight(.bold)
+                Spacer()
+                Text(item.amount.formattedAsINR())
+                    .fontWeight(.bold)
+            }
+        }
+        .font(.subheadline)
+        .foregroundStyle(LMSColors.textPrimary)
+        .padding(18)
+        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func pinKey(_ text: String, systemImage: String? = nil, action: (() -> Void)? = nil) -> some View {
+        Button {
+            if let action {
+                action()
+            } else if upiPin.count < 6 {
+                upiPin.append(text)
+            }
+            HapticsManager.triggerImpact(style: .light)
+        } label: {
+            Group {
+                if let systemImage {
+                    Image(systemName: systemImage)
+                        .font(.title3.weight(.semibold))
+                } else {
+                    Text(text)
+                        .font(.title2.weight(.semibold))
+                }
+            }
+            .foregroundStyle(LMSColors.brandNavy)
+            .frame(width: 74, height: 58)
+            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func submitPIN() {
+        guard upiPin.count >= 4 else { return }
+        withAnimation(.smooth(duration: 0.2)) {
+            stage = .processing
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            result = onPaymentAuthorized()
+            withAnimation(.smooth(duration: 0.25)) {
+                stage = .success
+            }
+        }
+    }
 }
 
 private struct EMIPaymentSuccessView: View {
@@ -1316,7 +1665,10 @@ private struct EMIPaymentSuccessView: View {
             VStack(spacing: 12) {
                 LabeledContent("Transaction ID", value: item.id)
                 LabeledContent("Paid amount", value: item.amount.formattedAsINR())
-                LabeledContent("Remaining balance", value: max(0, (item.loan?.principalOutstanding ?? 0) - item.amount * 0.73).formattedAsINR())
+                if item.penalty > 0 {
+                    LabeledContent("Penalty included", value: item.penalty.formattedAsINR())
+                }
+                LabeledContent("Remaining balance", value: max(0, (item.loan?.principalOutstanding ?? 0) - item.emiAmount).formattedAsINR())
                 LabeledContent("Next EMI date", value: Calendar.current.date(byAdding: .month, value: 1, to: item.loan?.nextEMIDate ?? Date())?.formattedAsDDMMMYYYY() ?? "-")
             }
             .padding()
@@ -1439,22 +1791,8 @@ struct StatementWorkflowView: View {
         }
     }
 
-    private var bankStatementAccounts: [StatementAccountOption] {
-        viewModel.bankAccounts.map {
-            StatementAccountOption(
-                id: "bank-\($0.id.uuidString)",
-                title: $0.bankName.isEmpty ? $0.accountType.rawValue : $0.bankName,
-                subtitle: "****\($0.accountNumber.suffix(4))",
-                detail: "Available: \($0.availableBalance.formattedAsINR())",
-                icon: "building.columns.fill",
-                loan: nil,
-                bank: $0
-            )
-        }
-    }
-
     private var allStatementAccounts: [StatementAccountOption] {
-        loanStatementAccounts + bankStatementAccounts
+        loanStatementAccounts
     }
 
     private var selectedAccount: StatementAccountOption? {
@@ -1479,25 +1817,6 @@ struct StatementWorkflowView: View {
                         .foregroundStyle(LMSColors.textSecondary)
                 } header: {
                     Text("Loan Accounts")
-                }
-            }
-
-            if !bankStatementAccounts.isEmpty {
-                Section {
-                    ForEach(bankStatementAccounts) { account in
-                        StatementAccountOptionRow(account: account, isSelected: selectedAccount?.id == account.id) {
-                            selectedAccountID = account.id
-                        }
-                    }
-                } header: {
-                    Text("Linked Bank Accounts")
-                }
-            } else {
-                Section {
-                    Text("No linked bank account")
-                        .foregroundStyle(LMSColors.textSecondary)
-                } header: {
-                    Text("Linked Bank Accounts")
                 }
             }
 
@@ -1651,34 +1970,21 @@ private enum TopUpStep: Int, CaseIterable {
 
 private enum TopUpMode {
     case addMoney
-    case transfer
-}
-
-private enum TopUpDestinationType: String, CaseIterable, Identifiable {
-    case loan = "Own Loan Account"
-    case savings = "Own Savings Account"
-    case linked = "Another Linked Account"
-    case qr = "QR Transfer"
-    var id: String { rawValue }
 }
 
 struct TopUpWorkflowView: View {
     @ObservedObject var viewModel: DashboardViewModel
-    let onAddAccount: () -> Void
+    @Environment(\.dismiss) private var dismiss
     @State private var step: TopUpStep = .home
     @State private var mode: TopUpMode?
-    @State private var sourceAccountID: UUID?
-    @State private var destinationType: TopUpDestinationType = .loan
     @State private var destinationAccountID: UUID?
     @State private var destinationLoanID: UUID?
     @State private var amountText = "5000"
     @State private var mpin = ""
-    @State private var scannedReceiver: QRReceiver?
-    @State private var showQRScanner = false
     @State private var showSuccess = false
+    @State private var topUpGatewayItem: TopUpGatewayItem?
 
     private var amount: Double { Double(amountText.filter { $0.isNumber }) ?? 0 }
-    private var sourceAccount: BankAccount? { viewModel.bankAccounts.first { $0.id == sourceAccountID } ?? viewModel.bankAccounts.first }
     private var destinationAccount: BankAccount? {
         if mode == .addMoney {
             if destinationLoanID != nil && destinationAccountID == nil { return nil }
@@ -1687,19 +1993,18 @@ struct TopUpWorkflowView: View {
         return viewModel.bankAccounts.first { $0.id == destinationAccountID }
     }
     private var destinationLoan: DashboardLoanAccount? { viewModel.loanAccounts.first { $0.id == destinationLoanID } ?? viewModel.loanAccounts.first }
+    private var currentDestinationBalance: Double {
+        destinationLoan.map { viewModel.currentAccountBalance(for: $0) } ?? 0
+    }
 
     private var canContinue: Bool {
         switch step {
         case .home: return mode != nil
-        case .source: return mode == .addMoney || sourceAccount != nil
+        case .source: return true
         case .destination:
-            if mode == .addMoney { return destinationAccount != nil || destinationLoan != nil }
-            if destinationType == .qr { return scannedReceiver != nil }
-            if destinationType == .loan { return destinationLoan != nil }
-            return destinationAccount != nil
+            return destinationLoan != nil
         case .amount:
-            if mode == .addMoney { return amount > 0 }
-            return amount > 0 && (sourceAccount?.availableBalance ?? 0) >= amount
+            return amount > 0
         case .review: return true
         case .authorize: return mpin.count >= 4
         }
@@ -1714,20 +2019,20 @@ struct TopUpWorkflowView: View {
         .background(LMSColors.background)
         .navigationTitle("Top Up")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
-            if step != .home {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Back") {
-                        withAnimation(.smooth(duration: 0.22)) {
-                            if mode == .addMoney && step == .destination {
-                                step = .home
-                                mode = nil
-                            } else {
-                                step = step.previous
-                            }
-                        }
-                    }
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    handleBack()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(LMSColors.brandNavy)
+                        .frame(width: 44, height: 44)
+                        .background(LMSColors.surfaceElevated, in: Circle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(step == .home ? "Back to dashboard" : "Previous step")
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -1736,15 +2041,22 @@ struct TopUpWorkflowView: View {
             }
         }
         .onAppear {
-            sourceAccountID = sourceAccountID ?? viewModel.bankAccounts.first?.id
-            destinationAccountID = destinationAccountID ?? viewModel.bankAccounts.first?.id
             destinationLoanID = destinationLoanID ?? viewModel.loanAccounts.first?.id
         }
-        .sheet(isPresented: $showQRScanner) {
-            QRScannerMockView {
-                scannedReceiver = QRReceiver(name: "Akash Kumar", handle: "akash@upi", bank: "HDFC Bank")
-                showQRScanner = false
-            }
+        .fullScreenCover(item: $topUpGatewayItem) { item in
+            TopUpGatewaySimulationView(
+                item: item,
+                onCancel: {
+                    topUpGatewayItem = nil
+                },
+                onPaymentAuthorized: {
+                    completeTopUp()
+                },
+                onDone: {
+                    topUpGatewayItem = nil
+                    dismiss()
+                }
+            )
         }
         .fullScreenCover(isPresented: $showSuccess) {
             TopUpSuccessView(amount: amount) {
@@ -1753,11 +2065,26 @@ struct TopUpWorkflowView: View {
         }
     }
 
+    private func handleBack() {
+        if step == .home {
+            dismiss()
+        } else {
+            withAnimation(.smooth(duration: 0.22)) {
+                if mode == .addMoney && step == .destination {
+                    step = .home
+                    mode = nil
+                } else {
+                    step = step.previous
+                }
+            }
+        }
+    }
+
     @ViewBuilder
     private var topUpContent: some View {
         switch step {
         case .home: topUpHomeSection
-        case .source: sourceSection
+        case .source: destinationSection
         case .destination: destinationSection
         case .amount: amountSection
         case .review: reviewSection
@@ -1771,7 +2098,7 @@ struct TopUpWorkflowView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(step.title).font(.title3.bold())
-                        Text(mode == .transfer ? "Move funds between active accounts." : "Add money or transfer between accounts.")
+                        Text("Add funds to your loan OD account.")
                             .font(.caption)
                             .foregroundStyle(LMSColors.textSecondary)
                     }
@@ -1798,19 +2125,6 @@ struct TopUpWorkflowView: View {
                     subtitle: "Add funds into your account.",
                     icon: "plus.circle.fill",
                     tint: LMSColors.emerald
-                )
-            }
-            .buttonStyle(LMSPressableStyle())
-
-            Button {
-                mode = .transfer
-                withAnimation(.smooth(duration: 0.22)) { step = .source }
-            } label: {
-                topUpModeCard(
-                    title: "Transfer Money",
-                    subtitle: "Move funds between linked accounts.",
-                    icon: "arrow.left.arrow.right.circle.fill",
-                    tint: LMSColors.brandNavy
                 )
             }
             .buttonStyle(LMSPressableStyle())
@@ -1842,106 +2156,28 @@ struct TopUpWorkflowView: View {
         .padding(.vertical, 8)
     }
 
-    private var sourceSection: some View {
+    private var destinationSection: some View {
         Section {
-            if viewModel.bankAccounts.isEmpty {
+            let activeLoans = viewModel.loanAccounts.filter { $0.principalOutstanding > 0 }
+            if activeLoans.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    Label("No linked bank account", systemImage: "building.columns")
+                    Label("No loan account", systemImage: "building.columns")
                         .font(.headline)
-                        .foregroundStyle(LMSColors.textPrimary)
-                    Text("Add a bank account to transfer funds.")
+                    Text("Loan accounts are created automatically after approval and disbursement.")
                         .font(.subheadline)
                         .foregroundStyle(LMSColors.textSecondary)
-                    Button {
-                        onAddAccount()
-                    } label: {
-                        Label("Add Bank Account", systemImage: "plus.circle.fill")
-                    }
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(LMSColors.brandNavy)
                 }
                 .padding(.vertical, 8)
             } else {
-                ForEach(viewModel.bankAccounts) { account in
-                    SelectableBankAccountCard(account: account, isSelected: sourceAccountID == account.id, warning: false) {
-                        sourceAccountID = account.id
+                ForEach(activeLoans) { loan in
+                    SelectableLoanPaymentCard(loan: loan, isSelected: destinationLoanID == loan.id && destinationAccountID == nil) {
+                        destinationLoanID = loan.id
+                        destinationAccountID = nil
                     }
                 }
             }
         } header: {
-            Text("Select Source Account")
-        }
-    }
-
-    private var destinationSection: some View {
-        Section {
-            if mode == .addMoney {
-                if viewModel.bankAccounts.isEmpty && viewModel.loanAccounts.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Label("No destination account", systemImage: "building.columns")
-                            .font(.headline)
-                        Text("Add a bank account to receive funds.")
-                            .font(.subheadline)
-                            .foregroundStyle(LMSColors.textSecondary)
-                        Button {
-                            onAddAccount()
-                        } label: {
-                            Label("Add Bank Account", systemImage: "plus.circle.fill")
-                        }
-                    }
-                    .padding(.vertical, 8)
-                } else {
-                    ForEach(viewModel.bankAccounts) { account in
-                        SelectableBankAccountCard(account: account, isSelected: destinationAccountID == account.id, warning: false) {
-                            destinationAccountID = account.id
-                            destinationLoanID = nil
-                        }
-                    }
-                    ForEach(viewModel.loanAccounts.filter { $0.principalOutstanding > 0 }) { loan in
-                        SelectableLoanPaymentCard(loan: loan, isSelected: destinationLoanID == loan.id && destinationAccountID == nil) {
-                            destinationLoanID = loan.id
-                            destinationAccountID = nil
-                        }
-                    }
-                }
-            } else {
-                Picker("Destination", selection: $destinationType) {
-                    ForEach(TopUpDestinationType.allCases) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.inline)
-
-                if destinationType == .loan {
-                    ForEach(viewModel.loanAccounts.filter { $0.principalOutstanding > 0 }) { loan in
-                        SelectableLoanPaymentCard(loan: loan, isSelected: destinationLoanID == loan.id) {
-                            destinationLoanID = loan.id
-                        }
-                    }
-                } else if destinationType == .savings || destinationType == .linked {
-                    ForEach(viewModel.bankAccounts.filter { $0.id != sourceAccountID }) { account in
-                        SelectableBankAccountCard(account: account, isSelected: destinationAccountID == account.id, warning: false) {
-                            destinationAccountID = account.id
-                        }
-                    }
-                    if viewModel.bankAccounts.filter({ $0.id != sourceAccountID }).isEmpty {
-                        Text("Add another active account before transferring between accounts.")
-                            .font(.subheadline)
-                            .foregroundStyle(LMSColors.textSecondary)
-                    }
-                } else {
-                    Button {
-                        showQRScanner = true
-                    } label: {
-                        Label(scannedReceiver == nil ? "Scan QR Code" : "QR Scanned", systemImage: "qrcode.viewfinder")
-                    }
-                    if let scannedReceiver {
-                        LabeledContent("Receiver", value: scannedReceiver.name)
-                        LabeledContent("UPI ID", value: scannedReceiver.handle)
-                        LabeledContent("Bank", value: scannedReceiver.bank)
-                    }
-                }
-            }
-        } header: {
-            Text(mode == .addMoney ? "Select Destination Account" : "Select Destination")
+            Text("Select Loan Account")
         }
     }
 
@@ -1956,28 +2192,16 @@ struct TopUpWorkflowView: View {
                         .buttonStyle(.bordered)
                 }
             }
-            if (sourceAccount?.availableBalance ?? 0) < amount {
-                Label("Insufficient source balance", systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(LMSColors.coral)
-            }
-        } header: {
-            Text(mode == .addMoney ? "Add Money" : "Enter Amount")
-        }
+        } header: { Text("Add Money") }
     }
 
     private var reviewSection: some View {
         Section {
-            if mode == .transfer {
-                LabeledContent("From", value: sourceAccount.map { "\($0.bankName.isEmpty ? $0.accountType.rawValue : $0.bankName) ••\($0.accountNumber.suffix(4))" } ?? "-")
-            }
             LabeledContent("To", value: destinationLabel)
             LabeledContent("Amount", value: amount.formattedAsINR())
-            if mode == .transfer {
-                LabeledContent("Balance after transfer", value: max(0, (sourceAccount?.availableBalance ?? 0) - amount).formattedAsINR())
-            }
-        } header: {
-            Text(mode == .addMoney ? "Review Add Money" : "Review Transfer")
-        }
+            LabeledContent("Current balance", value: currentDestinationBalance.formattedAsINR())
+            LabeledContent("Balance after top up", value: (currentDestinationBalance + amount).formattedAsINR())
+        } header: { Text("Review Add Money") }
     }
 
     private var authSection: some View {
@@ -1994,7 +2218,7 @@ struct TopUpWorkflowView: View {
 
     private var topUpCTA: some View {
         Button {
-            if step == .authorize {
+            if step == .review {
                 confirmTopUp()
             } else {
                 let nextStep: TopUpStep
@@ -2002,15 +2226,13 @@ struct TopUpWorkflowView: View {
                     nextStep = .amount
                 } else if mode == .addMoney && step == .amount {
                     nextStep = .review
-                } else if mode == .addMoney && step == .review {
-                    nextStep = .authorize
                 } else {
                     nextStep = step.next
                 }
                 withAnimation(.smooth(duration: 0.22)) { step = nextStep }
             }
         } label: {
-            Text(step == .authorize ? (mode == .addMoney ? "Add Money" : "Transfer Now") : "Continue")
+            Text(step == .review ? "Proceed to Pay" : "Continue")
                 .font(.headline)
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
@@ -2024,72 +2246,334 @@ struct TopUpWorkflowView: View {
     }
 
     private var destinationLabel: String {
-        if mode == .addMoney {
-            if let destinationAccount {
-                return "\(destinationAccount.bankName.isEmpty ? destinationAccount.accountType.rawValue : destinationAccount.bankName) ••\(destinationAccount.accountNumber.suffix(4))"
-            }
-            return destinationLoan.map { "\($0.loanType) Linked Account ••\($0.accountNumber.suffix(4))" } ?? "-"
-        }
-
-        switch destinationType {
-        case .loan:
-            return destinationLoan.map { "\($0.loanType) Linked Account ••\($0.accountNumber.suffix(4))" } ?? "-"
-        case .savings, .linked:
-            return destinationAccount.map { "\($0.bankName.isEmpty ? $0.accountType.rawValue : $0.bankName) ••\($0.accountNumber.suffix(4))" } ?? "-"
-        case .qr:
-            return scannedReceiver.map { "\($0.name) \($0.handle)" } ?? "-"
-        }
+        destinationLoan.map { "\($0.loanType) OD Account ••\($0.accountNumber.suffix(4))" } ?? "-"
     }
 
     private func confirmTopUp() {
-        if mode == .addMoney {
-            if let destinationAccount {
-                viewModel.topUpAccount(amount: amount, to: destinationAccount)
-            } else if let destinationLoan {
-                viewModel.topUpLoanLinkedAccount(amount: amount, to: destinationLoan)
-            }
-            HapticsManager.triggerNotification(type: .success)
-            showSuccess = true
-            return
-        }
+        guard mode == .addMoney, let destinationLoan else { return }
+        topUpGatewayItem = TopUpGatewayItem(
+            loan: destinationLoan,
+            amount: amount,
+            accountSuffix: String(destinationLoan.accountNumber.suffix(4)),
+            balanceBefore: currentDestinationBalance
+        )
+    }
 
-        guard let sourceAccount else { return }
-        switch destinationType {
-        case .loan:
-            if let destinationLoan { viewModel.transferFundsToLoan(amount: amount, from: sourceAccount, to: destinationLoan) }
-        case .savings, .linked:
-            if let destinationAccount { viewModel.transferFunds(amount: amount, from: sourceAccount, to: destinationAccount) }
-        case .qr:
-            viewModel.transferToExternalReceiver(amount: amount, from: sourceAccount, receiverName: scannedReceiver?.name ?? "QR Receiver")
-        }
+    private func completeTopUp() -> TopUpGatewayResult? {
+        guard let destinationLoan else { return nil }
+        let balanceBefore = topUpGatewayItem?.balanceBefore ?? currentDestinationBalance
+        viewModel.topUpLoanLinkedAccount(amount: amount, to: destinationLoan)
         HapticsManager.triggerNotification(type: .success)
-        showSuccess = true
+        return TopUpGatewayResult(
+            transactionID: "TOP\(Int.random(in: 1000000...9999999))",
+            amount: amount,
+            balanceAfter: balanceBefore + amount
+        )
     }
 }
 
-private struct QRReceiver {
-    let name: String
-    let handle: String
-    let bank: String
+private struct TopUpGatewayItem: Identifiable {
+    let id = UUID()
+    let loan: DashboardLoanAccount
+    let amount: Double
+    let accountSuffix: String
+    let balanceBefore: Double
 }
 
-private struct QRScannerMockView: View {
-    let onScan: () -> Void
-    @Environment(\.dismiss) private var dismiss
+private struct TopUpGatewayResult {
+    let transactionID: String
+    let amount: Double
+    let balanceAfter: Double
+}
+
+private struct TopUpGatewaySimulationView: View {
+    let item: TopUpGatewayItem
+    let onCancel: () -> Void
+    let onPaymentAuthorized: () -> TopUpGatewayResult?
+    let onDone: () -> Void
+
+    @State private var stage: EMIGatewayStage = .connecting
+    @State private var upiPin = ""
+    @State private var result: TopUpGatewayResult?
+
     var body: some View {
-        VStack(spacing: 18) {
-            Image(systemName: "qrcode.viewfinder")
-                .font(.system(size: 84))
-            Text("Scan QR")
-                .font(.title2.bold())
-            Text("Camera QR scanning placeholder. Tap below to simulate a secure QR scan.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(LMSColors.textSecondary)
-            Button("Simulate Scan", action: onScan)
-                .buttonStyle(.borderedProminent)
-            Button("Cancel") { dismiss() }
+        ZStack {
+            LMSColors.background.ignoresSafeArea()
+            VStack(spacing: 0) {
+                gatewayHeader
+                Group {
+                    switch stage {
+                    case .connecting: connectingView
+                    case .pin: upiPinView
+                    case .processing: processingView
+                    case .success: successView
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) {
+                guard stage == .connecting else { return }
+                withAnimation(.smooth(duration: 0.25)) { stage = .pin }
+            }
+        }
+    }
+
+    private var gatewayHeader: some View {
+        HStack {
+            Button(action: onCancel) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .frame(width: 42, height: 42)
+                    .background(LMSColors.surface, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .opacity(stage == .success ? 0 : 1)
+            .disabled(stage == .success || stage == .processing)
+            Spacer()
+            VStack(spacing: 5) {
+                HStack(spacing: 6) {
+                    Text("Razorpay")
+                        .font(.headline.weight(.bold))
+                    Text("UPI")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(LMSColors.brandNavy, in: Capsule())
+                }
+                Text(stage == .success ? "Transfer complete" : "Secured by bank")
+                    .font(.caption)
+                    .foregroundStyle(LMSColors.textSecondary)
+            }
+            Spacer()
+            Image(systemName: "lock.shield.fill")
+                .font(.title3)
+                .foregroundStyle(LMSColors.emerald)
+                .frame(width: 42, height: 42)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .padding(.bottom, 10)
+    }
+
+    private var connectingView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            amountHero(status: "Connecting to bank")
+            ZStack {
+                Circle()
+                    .stroke(LMSColors.emerald.opacity(0.16), lineWidth: 12)
+                    .frame(width: 96, height: 96)
+                ProgressView()
+                    .scaleEffect(1.45)
+                    .tint(LMSColors.emerald)
+            }
+            summaryCard
+            Spacer()
         }
         .padding(24)
+    }
+
+    private var upiPinView: some View {
+        VStack(spacing: 18) {
+            amountHero(status: "Enter UPI PIN")
+                .padding(.top, 8)
+            pinDots
+            summaryCard
+            Spacer()
+            keypadPanel
+        }
+        .padding(.horizontal, 24)
+    }
+
+    private var processingView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            amountHero(status: "Processing top up")
+            ProgressView()
+                .scaleEffect(1.8)
+                .tint(LMSColors.emerald)
+            Text("Please wait while your bank confirms the transfer.")
+                .font(.subheadline)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(LMSColors.textSecondary)
+            Spacer()
+        }
+        .padding(24)
+    }
+
+    private var successView: some View {
+        VStack(spacing: 22) {
+            Spacer()
+            ZStack {
+                Circle()
+                    .fill(LMSColors.emerald.opacity(0.12))
+                    .frame(width: 120, height: 120)
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 84))
+                    .foregroundStyle(LMSColors.emerald)
+            }
+            VStack(spacing: 6) {
+                Text("Top Up Successful")
+                    .font(.title2.bold())
+                Text((result?.amount ?? item.amount).formattedAsINR())
+                    .font(.system(size: 38, weight: .bold, design: .rounded))
+                    .foregroundStyle(LMSColors.brandNavy)
+            }
+            VStack(spacing: 12) {
+                LabeledContent("Loan account", value: "ACC ••\(item.loan.accountNumber.suffix(4))")
+                LabeledContent("UPI Ref ID", value: result?.transactionID ?? "Processing")
+                LabeledContent("Updated balance", value: (result?.balanceAfter ?? (item.balanceBefore + item.amount)).formattedAsINR())
+            }
+            .font(.subheadline)
+            .padding(18)
+            .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            Spacer()
+            Button("Done", action: onDone)
+                .font(.headline)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 15)
+                .background(LMSColors.brandNavy, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .padding(24)
+    }
+
+    private var summaryCard: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: "building.columns.fill")
+                    .font(.headline)
+                    .foregroundStyle(LMSColors.brandNavy)
+                    .frame(width: 36, height: 36)
+                    .background(LMSColors.brandNavy.opacity(0.10), in: Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.loan.loanType)
+                        .font(.subheadline.weight(.semibold))
+                    Text("OD account ••\(item.accountSuffix)")
+                        .font(.caption)
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+                Spacer()
+            }
+            Divider()
+            LabeledContent("Current balance", value: item.balanceBefore.formattedAsINR())
+            LabeledContent("After top up", value: (item.balanceBefore + item.amount).formattedAsINR())
+        }
+        .font(.subheadline)
+        .padding(16)
+        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(LMSColors.separatorLight, lineWidth: 0.6)
+        )
+        .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 6)
+    }
+
+    private func amountHero(status: String) -> some View {
+        VStack(spacing: 10) {
+            Text(status)
+                .font(.headline)
+                .foregroundStyle(LMSColors.textSecondary)
+            Text(item.amount.formattedAsINR())
+                .font(.system(size: 42, weight: .bold, design: .rounded))
+                .foregroundStyle(LMSColors.brandNavy)
+            Text("Top up to account ••\(item.accountSuffix)")
+                .font(.subheadline)
+                .foregroundStyle(LMSColors.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var pinDots: some View {
+        HStack(spacing: 12) {
+            ForEach(0..<6, id: \.self) { index in
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(index < upiPin.count ? LMSColors.brandNavy : LMSColors.textTertiary.opacity(0.20))
+                    .frame(width: 16, height: 16)
+                    .scaleEffect(index < upiPin.count ? 1.05 : 1)
+                    .animation(.smooth(duration: 0.15), value: upiPin.count)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var keypadPanel: some View {
+        VStack(spacing: 12) {
+            Text("Bank UPI PIN")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(LMSColors.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 6)
+            ForEach([[1, 2, 3], [4, 5, 6], [7, 8, 9]], id: \.self) { row in
+                HStack(spacing: 14) {
+                    ForEach(row, id: \.self) { number in
+                        pinKey("\(number)")
+                    }
+                }
+            }
+            HStack(spacing: 14) {
+                pinKey("", systemImage: "delete.left.fill") {
+                    if !upiPin.isEmpty { upiPin.removeLast() }
+                }
+                pinKey("0")
+                pinKey("", systemImage: "checkmark") {
+                    submitPIN()
+                }
+                .disabled(upiPin.count < 4)
+                .opacity(upiPin.count < 4 ? 0.45 : 1)
+            }
+        }
+        .padding(16)
+        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(LMSColors.separatorLight, lineWidth: 0.6)
+        )
+        .shadow(color: .black.opacity(0.05), radius: 14, x: 0, y: 8)
+        .padding(.bottom, 10)
+    }
+
+    private func pinKey(_ text: String, systemImage: String? = nil, action: (() -> Void)? = nil) -> some View {
+        Button {
+            if let action {
+                action()
+            } else if upiPin.count < 6 {
+                upiPin.append(text)
+            }
+            HapticsManager.triggerImpact(style: .light)
+        } label: {
+            Group {
+                if let systemImage {
+                    Image(systemName: systemImage)
+                        .font(.title3.weight(.semibold))
+                } else {
+                    Text(text)
+                        .font(.title2.weight(.semibold))
+                }
+            }
+            .foregroundStyle(LMSColors.brandNavy)
+            .frame(maxWidth: .infinity)
+            .frame(height: 58)
+            .background(LMSColors.surfaceElevated, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func submitPIN() {
+        guard upiPin.count >= 4 else { return }
+        withAnimation(.smooth(duration: 0.2)) { stage = .processing }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            result = onPaymentAuthorized()
+            withAnimation(.smooth(duration: 0.25)) { stage = .success }
+        }
     }
 }
 
@@ -2366,7 +2850,7 @@ struct StatementSheet: View {
     }
 }
 
-struct ForeclosureSheet: View {
+struct CloseLoanSheet: View {
     @ObservedObject var viewModel: DashboardViewModel
     @State private var selectedLoan: DashboardLoanAccount?
     @State private var acceptedClosure = false
@@ -2375,7 +2859,8 @@ struct ForeclosureSheet: View {
     @State private var showingPaymentSuccess = false
 
     private var loans: [DashboardLoanAccount] {
-        viewModel.loanAccounts.sorted { $0.principalOutstanding > $1.principalOutstanding }
+        viewModel.loanAccounts.filter { $0.principalOutstanding > 0 }
+            .sorted { $0.principalOutstanding > $1.principalOutstanding }
     }
 
     private var selectedRequest: ForeclosureRequest? {
@@ -2396,8 +2881,8 @@ struct ForeclosureSheet: View {
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: LMSSpacing.lg) {
-                headerCard
                 loanSelectionSection
+
                 if let selectedLoan {
                     if let request = selectedRequest {
                         requestStatusSection(request)
@@ -2416,60 +2901,65 @@ struct ForeclosureSheet: View {
             .padding(.bottom, LMSSpacing.xxxl)
         }
         .background(LMSColors.background)
-        .navigationTitle("Foreclosure")
+        .navigationTitle("Close Loan Early")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             selectedLoan = selectedLoan ?? loans.first
             selectedPaymentAccountID = selectedPaymentAccountID ?? viewModel.bankAccounts.first?.id
         }
-        .alert("Foreclosure Request Submitted", isPresented: $showingSubmissionSuccess) {
-            Button("View Status", role: .cancel) {}
+        .alert("Request Submitted", isPresented: $showingSubmissionSuccess) {
+            Button("OK", role: .cancel) {}
         } message: {
-            Text("Your request is now visible for loan officer review and bank manager approval.")
+            Text("Your request to close the loan is now under review by the bank.")
         }
         .alert("Loan Closed", isPresented: $showingPaymentSuccess) {
             Button("Done", role: .cancel) {}
         } message: {
-            Text("Foreclosure payment is complete. Future EMIs and auto-debit have been stopped.")
+            Text("Your loan has been successfully closed. All future payments have been stopped.")
         }
     }
 
     private var headerCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label("Loan Foreclosure", systemImage: "lock.open.shield.fill")
-                .font(.title3.bold())
-                .foregroundStyle(LMSColors.textPrimary)
-            Text("Request closure, track approval, pay the final amount, and receive closure documents.")
-                .font(.subheadline)
-                .foregroundStyle(LMSColors.textSecondary)
-            HStack(spacing: 8) {
-                ForEach(["Request", "Officer Review", "Manager Approval", "Payment", "Closed"], id: \.self) { item in
-                    Text(item)
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(Color.orange)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(Color.orange.opacity(0.10), in: Capsule())
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.title2)
+                    .foregroundStyle(Color.orange)
+                    .frame(width: 44, height: 44)
+                    .background(Color.orange.opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Prepay & Close Loan")
+                        .font(.headline)
+                        .foregroundStyle(LMSColors.textPrimary)
+                    Text("Pay off your loan before the tenure ends")
+                        .font(.caption)
+                        .foregroundStyle(LMSColors.textSecondary)
                 }
             }
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-    }
 
+            Divider().padding(.vertical, 4)
+
+            Text("Process: Submit request • Bank review • Final payment • Get closure certificate")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(LMSColors.textSecondary)
+                .lineLimit(2)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
     private var loanSelectionSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Loan Details")
+            Text("Select Loan to Close")
                 .font(.headline)
                 .foregroundStyle(LMSColors.textPrimary)
+
             if loans.isEmpty {
-                ContentUnavailableView("No loan accounts", systemImage: "building.columns", description: Text("Foreclosure can be requested after loan disbursement."))
+                ContentUnavailableView("No active loans", systemImage: "building.columns", description: Text("You don't have any active loans available for closure."))
             } else {
                 ForEach(loans) { loan in
-                    ForeclosureLoanCard(loan: loan, isSelected: selectedLoan?.id == loan.id) {
+                    CloseLoanCard(loan: loan, isSelected: selectedLoan?.id == loan.id) {
                         selectedLoan = loan
                     }
                 }
@@ -2479,29 +2969,37 @@ struct ForeclosureSheet: View {
 
     private func requestSection(_ loan: DashboardLoanAccount) -> some View {
         let summary = DashboardViewModel.foreclosureAmountSummary(for: loan)
-        return VStack(alignment: .leading, spacing: 14) {
-            Text("Request Foreclosure")
+        return VStack(alignment: .leading, spacing: 16) {
+            Text("Closure Estimate")
                 .font(.headline)
-                .foregroundStyle(LMSColors.textPrimary)
 
-            VStack(spacing: 10) {
-                foreclosureAmountRow("Outstanding Principal", summary.principal)
-                foreclosureAmountRow("Accrued Interest", summary.interest)
-                foreclosureAmountRow("Estimated Foreclosure Charges", summary.charges)
-                foreclosureAmountRow("Estimated Closure Amount", summary.total, isTotal: true)
+            VStack(spacing: 12) {
+                closeLoanAmountRow("Principal Outstanding", summary.principal)
+                closeLoanAmountRow("Interest till date", summary.interest)
+                closeLoanAmountRow("Early closure charges", summary.charges)
+                Divider()
+                closeLoanAmountRow("Total closure amount", summary.total, isTotal: true)
             }
             .padding(16)
             .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
 
-            Toggle("I understand that foreclosure will permanently close this loan account.", isOn: $acceptedClosure)
-                .font(.subheadline.weight(.semibold))
+            VStack(alignment: .leading, spacing: 12) {
+                Toggle(isOn: $acceptedClosure) {
+                    Text("I confirm that I want to close this loan account permanently.")
+                        .font(.footnote)
+                        .foregroundStyle(LMSColors.textPrimary)
+                }
+                .toggleStyle(SwitchToggleStyle(tint: LMSColors.brandNavy))
+            }
+            .padding(12)
+            .background(Color.orange.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))
 
             Button {
                 _ = viewModel.submitForeclosureRequest(for: loan)
                 HapticsManager.triggerNotification(type: .success)
                 showingSubmissionSuccess = true
             } label: {
-                Text("Submit Foreclosure Request")
+                Text("Submit Request")
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -2509,14 +3007,13 @@ struct ForeclosureSheet: View {
                     .background(acceptedClosure ? LMSColors.brandNavy : LMSColors.textTertiary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
             .disabled(!acceptedClosure)
-            .buttonStyle(LMSPressableStyle())
         }
     }
 
     private func requestStatusSection(_ request: ForeclosureRequest) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("View Foreclosure Status")
+                Text("Request Status")
                     .font(.headline)
                 Spacer()
                 Text(request.status.rawValue)
@@ -2526,31 +3023,48 @@ struct ForeclosureSheet: View {
                     .padding(.vertical, 6)
                     .background(statusTint(request.status).opacity(0.12), in: Capsule())
             }
-            VStack(spacing: 10) {
-                LabeledContent("Request ID", value: request.requestID)
-                LabeledContent("Submitted", value: request.submittedAt.formattedAsDDMMMYYYY())
-                LabeledContent("Loan Officer", value: request.officerRecommendation ?? "Pending review")
-                LabeledContent("Bank Manager", value: request.managerDecision ?? "Pending approval")
-                LabeledContent("Final Amount", value: request.totalPayable.formattedAsINR())
+
+            VStack(spacing: 12) {
+                statusRow("Request ID", request.requestID.prefix(8).uppercased())
+                statusRow("Submitted On", request.submittedAt.formattedAsDDMMMYYYY())
+                statusRow("Final Amount", request.totalPayable.formattedAsINR())
             }
-            .font(.subheadline)
+            .padding(16)
+            .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 14))
         }
         .padding(16)
         .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
+    private func statusRow(_ title: String, _ value: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.footnote)
+                .foregroundStyle(LMSColors.textSecondary)
+            Spacer()
+            Text(value)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(LMSColors.textPrimary)
+        }
+    }
+
     private func paymentSection(_ request: ForeclosureRequest) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Pay Foreclosure Amount")
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Final Payment")
                 .font(.headline)
-            VStack(spacing: 10) {
-                foreclosureAmountRow("Outstanding Principal", request.outstandingPrincipal)
-                foreclosureAmountRow("Interest Due", request.accruedInterest)
-                foreclosureAmountRow("Foreclosure Charges", request.foreclosureCharges)
-                foreclosureAmountRow("Total Payable", request.totalPayable, isTotal: true)
+
+            VStack(spacing: 12) {
+                closeLoanAmountRow("Outstanding Amount", request.outstandingPrincipal + request.accruedInterest)
+                closeLoanAmountRow("Closure Charges", request.foreclosureCharges)
+                Divider()
+                closeLoanAmountRow("Amount to Pay", request.totalPayable, isTotal: true)
             }
             .padding(16)
             .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+            Text("Select Payment Account")
+                .font(.subheadline.weight(.semibold))
+                .padding(.top, 4)
 
             if viewModel.bankAccounts.isEmpty {
                 ContentUnavailableView("No payment source", systemImage: "building.columns", description: Text("Add a linked account to pay and close this loan."))
@@ -2568,7 +3082,7 @@ struct ForeclosureSheet: View {
                     showingPaymentSuccess = true
                 }
             } label: {
-                Text("Pay & Close Loan")
+                Text("Confirm Payment & Close Loan")
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -2576,36 +3090,59 @@ struct ForeclosureSheet: View {
                     .background(canPay ? LMSColors.brandNavy : LMSColors.textTertiary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
             .disabled(!canPay)
-            .buttonStyle(LMSPressableStyle())
         }
     }
 
     private func closureDocumentsSection(_ request: ForeclosureRequest) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Closure Documents")
-                .font(.headline)
-            Label("Loan Closure Certificate", systemImage: "doc.badge.checkmark")
-            Label("Foreclosure Receipt", systemImage: "receipt")
-            Label("Final Account Statement", systemImage: "doc.text.magnifyingglass")
-            Text("These documents are now available in Statements, Documents, and Loan Details.")
-                .font(.caption)
-                .foregroundStyle(LMSColors.textSecondary)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Loan Successfully Closed")
+                        .font(.headline)
+                        .foregroundStyle(LMSColors.emerald)
+                    Text("Download your documents below")
+                        .font(.caption)
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+                Spacer()
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title)
+                    .foregroundStyle(LMSColors.emerald)
+            }
+
+            VStack(spacing: 12) {
+                documentDownloadRow("Closure Certificate", icon: "doc.badge.checkmark")
+                documentDownloadRow("Payment Receipt", icon: "receipt")
+                documentDownloadRow("Final Statement", icon: "doc.text.magnifyingglass")
+            }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(LMSColors.emerald.opacity(0.10), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(18)
+        .background(LMSColors.emerald.opacity(0.06), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(LMSColors.emerald.opacity(0.15), lineWidth: 1))
     }
 
-    private func foreclosureAmountRow(_ title: String, _ amount: Double, isTotal: Bool = false) -> some View {
+    private func documentDownloadRow(_ title: String, icon: String) -> some View {
+        HStack {
+            Label(title, systemImage: icon)
+                .font(.subheadline)
+            Spacer()
+            Image(systemName: "arrow.down.circle.fill")
+                .foregroundStyle(LMSColors.brandNavy)
+        }
+        .padding(12)
+        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func closeLoanAmountRow(_ title: String, _ amount: Double, isTotal: Bool = false) -> some View {
         HStack {
             Text(title)
+                .font(isTotal ? .subheadline.weight(.semibold) : .footnote)
                 .foregroundStyle(isTotal ? LMSColors.textPrimary : LMSColors.textSecondary)
             Spacer()
             Text(amount.formattedAsINR())
-                .fontWeight(isTotal ? .bold : .semibold)
+                .font(isTotal ? .headline : .subheadline.weight(.semibold))
                 .foregroundStyle(LMSColors.textPrimary)
         }
-        .font(isTotal ? .headline : .subheadline)
     }
 
     private func statusTint(_ status: ForeclosureRequestStatus) -> Color {
@@ -2616,140 +3153,9 @@ struct ForeclosureSheet: View {
         default: return LMSColors.brandNavy
         }
     }
-
 }
 
-private enum ForeclosureStep: Int, CaseIterable {
-    case selectLoan
-    case details
-    case reason
-    case documents
-    case authorization
-    case review
-
-    var title: String {
-        switch self {
-        case .selectLoan: return "Select Loan Account"
-        case .details: return "Foreclosure Details"
-        case .reason: return "Reason for Closure"
-        case .documents: return "Required Documents"
-        case .authorization: return "Signature & Authorization"
-        case .review: return "Review & Submit"
-        }
-    }
-
-    var subtitle: String {
-        switch self {
-        case .selectLoan: return "Choose the active loan account you want to close."
-        case .details: return "Review the estimated payable amount and closure impact."
-        case .reason: return "Tell us why you are closing this loan."
-        case .documents: return "Upload the required foreclosure images."
-        case .authorization: return "Add your signature and legal consent."
-        case .review: return "Confirm all details before submission."
-        }
-    }
-
-    var next: ForeclosureStep {
-        ForeclosureStep(rawValue: min(rawValue + 1, ForeclosureStep.allCases.count - 1)) ?? self
-    }
-
-    var previous: ForeclosureStep {
-        ForeclosureStep(rawValue: max(rawValue - 1, 0)) ?? self
-    }
-}
-
-private struct ForeclosureAmountSummary {
-    let principal: Double
-    let interestDue: Double
-    let charges: Double
-    let gst: Double
-
-    init(loan: DashboardLoanAccount) {
-        principal = loan.principalOutstanding
-        interestDue = max(loan.totalEMI * 0.18, loan.principalOutstanding * 0.002)
-        charges = loan.principalOutstanding * 0.015
-        gst = charges * 0.18
-    }
-
-    var total: Double {
-        principal + interestDue + charges + gst
-    }
-
-    static let notices = [
-        "Loan account will be permanently closed",
-        "Credit history may be updated",
-        "Some foreclosure charges may apply",
-        "Pre-approved offers linked to this loan may end",
-        "Closure process may take 3-7 working days"
-    ]
-}
-
-private enum ForeclosureReason: String, CaseIterable, Identifiable {
-    case financiallyStable = "Financially stable now"
-    case movingBank = "Moving to another bank"
-    case highInterest = "High interest rate"
-    case sellingAsset = "Selling property/asset"
-    case businessClosure = "Business closure"
-    case noLongerNeeded = "Loan no longer needed"
-    case other = "Other"
-
-    var id: String { rawValue }
-}
-
-private enum ForeclosureUploadTarget {
-    case document(UUID)
-    case signature
-}
-
-private enum ForeclosureDocumentStatus {
-    case pending, pendingVerification, uploaded, rejected
-
-    var title: String {
-        switch self {
-        case .pending: return "Pending Upload"
-        case .pendingVerification: return "Pending Verification"
-        case .uploaded: return "Uploaded"
-        case .rejected: return "Rejected"
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .pending: return "clock"
-        case .pendingVerification: return "viewfinder"
-        case .uploaded: return "checkmark.seal.fill"
-        case .rejected: return "xmark.octagon.fill"
-        }
-    }
-
-    var tint: Color {
-        switch self {
-        case .pending, .pendingVerification: return LMSColors.amber
-        case .uploaded: return LMSColors.emerald
-        case .rejected: return LMSColors.coral
-        }
-    }
-}
-
-private struct ForeclosureDocument: Identifiable {
-    let id = UUID()
-    let title: String
-    let isRequired: Bool
-    let filePrefix: String
-    var status: ForeclosureDocumentStatus = .pending
-    var fileName = "Not uploaded"
-    var fileSize = "-"
-    var thumbnail: UIImage?
-
-    static let defaultDocuments = [
-        ForeclosureDocument(title: "Identity proof", isRequired: true, filePrefix: "identity-proof"),
-        ForeclosureDocument(title: "Foreclosure request letter", isRequired: true, filePrefix: "foreclosure-request-letter"),
-        ForeclosureDocument(title: "Latest loan statement", isRequired: true, filePrefix: "latest-loan-statement"),
-        ForeclosureDocument(title: "Supporting proof", isRequired: false, filePrefix: "supporting-proof")
-    ]
-}
-
-private struct ForeclosureLoanCard: View {
+private struct CloseLoanCard: View {
     let loan: DashboardLoanAccount
     let isSelected: Bool
     let action: () -> Void
@@ -2762,7 +3168,7 @@ private struct ForeclosureLoanCard: View {
                         Text(loan.loanType)
                             .font(.headline)
                             .foregroundStyle(LMSColors.textPrimary)
-                        Text("ACC ••\(loan.accountNumber.suffix(4))")
+                        Text("••\(loan.accountNumber.suffix(4))")
                             .font(.caption)
                             .foregroundStyle(LMSColors.textSecondary)
                     }
@@ -2772,186 +3178,36 @@ private struct ForeclosureLoanCard: View {
                         .font(.title3)
                 }
 
-                VStack(spacing: 8) {
-                    detailRow("Outstanding", loan.principalOutstanding.formattedAsINR())
-                    detailRow("EMI", loan.totalEMI.formattedAsINR())
-                    detailRow("Remaining", "\(loan.tenureRemainingMonths) months")
-                    detailRow("Status", loan.principalOutstanding > 0 ? "Active" : "Closed")
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Outstanding")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(LMSColors.textSecondary)
+                            .textCase(.uppercase)
+                        Text(loan.principalOutstanding.formattedAsINR())
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("EMI")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(LMSColors.textSecondary)
+                            .textCase(.uppercase)
+                        Text(loan.totalEMI.formattedAsINR())
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                    }
                 }
             }
-            .padding(14)
+            .padding(16)
             .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(isSelected ? Color.orange : LMSColors.separatorLight, lineWidth: isSelected ? 1.4 : 0.6)
+                    .stroke(isSelected ? Color.orange : LMSColors.separatorLight, lineWidth: isSelected ? 1.5 : 0.5)
             )
-            .shadow(color: isSelected ? Color.orange.opacity(0.18) : .black.opacity(0.03), radius: isSelected ? 14 : 6, x: 0, y: 6)
         }
-        .buttonStyle(LMSPressableStyle())
-    }
-
-    private func detailRow(_ title: String, _ value: String) -> some View {
-        HStack {
-            Text(title)
-                .foregroundStyle(LMSColors.textSecondary)
-            Spacer()
-            Text(value)
-                .foregroundStyle(LMSColors.textPrimary)
-                .fontWeight(.semibold)
-        }
-        .font(.caption)
-    }
-}
-
-private struct ForeclosureDocumentRow: View {
-    let document: ForeclosureDocument
-    let onUpload: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Group {
-                if let thumbnail = document.thumbnail {
-                    Image(uiImage: thumbnail)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Image(systemName: "doc.text.image.fill")
-                        .font(.title3)
-                        .foregroundStyle(document.status.tint)
-                        .background(document.status.tint.opacity(0.10))
-                }
-            }
-            .frame(width: 48, height: 56)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 4) {
-                    Text(document.title)
-                        .font(.subheadline.weight(.semibold))
-                    if !document.isRequired {
-                        Text("Optional")
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(LMSColors.textSecondary)
-                    }
-                }
-                Text(document.fileName)
-                    .font(.caption)
-                    .foregroundStyle(LMSColors.textSecondary)
-                    .lineLimit(1)
-                Text(document.fileSize)
-                    .font(.caption2)
-                    .foregroundStyle(LMSColors.textTertiary)
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 8) {
-                Label(document.status.title, systemImage: document.status.icon)
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(document.status.tint)
-                Button(document.status == .pending ? "Upload" : "Replace", action: onUpload)
-                    .font(.caption.weight(.bold))
-            }
-        }
-        .padding(.vertical, 4)
-    }
-}
-
-private struct ForeclosureSuccessView: View {
-    let requestID: String
-    let onTrack: () -> Void
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 22) {
-                Spacer()
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 72))
-                    .foregroundStyle(LMSColors.emerald)
-
-                VStack(spacing: 8) {
-                    Text("Foreclosure Request Submitted")
-                        .font(.title2.bold())
-                        .multilineTextAlignment(.center)
-                    Text("Your request has been queued for verification and closure processing.")
-                        .font(.subheadline)
-                        .foregroundStyle(LMSColors.textSecondary)
-                        .multilineTextAlignment(.center)
-                }
-
-                VStack(spacing: 12) {
-                    LabeledContent("Request ID", value: requestID)
-                    LabeledContent("Timeline", value: "3-7 working days")
-                    LabeledContent("Support", value: "1800-123-LOAN")
-                    Button {
-                        HapticsManager.triggerImpact(style: .light)
-                    } label: {
-                        Label("Download acknowledgement", systemImage: "square.and.arrow.down")
-                    }
-                    .font(.subheadline.weight(.bold))
-                }
-                .padding(16)
-                .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-
-                Spacer()
-
-                Button("Track Request", action: onTrack)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(LMSColors.brandNavy, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .buttonStyle(LMSPressableStyle())
-            }
-            .padding(24)
-            .background(LMSColors.background)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done", action: onTrack)
-                }
-            }
-        }
-    }
-}
-
-private struct ForeclosureImagePicker: UIViewControllerRepresentable {
-    let onImagePicked: (UIImage) -> Void
-    let onCancel: () -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(onImagePicked: onImagePicked, onCancel: onCancel)
-    }
-
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .photoLibrary
-        picker.mediaTypes = ["public.image"]
-        picker.delegate = context.coordinator
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-
-    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
-        let onImagePicked: (UIImage) -> Void
-        let onCancel: () -> Void
-
-        init(onImagePicked: @escaping (UIImage) -> Void, onCancel: @escaping () -> Void) {
-            self.onImagePicked = onImagePicked
-            self.onCancel = onCancel
-        }
-
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            if let image = info[.originalImage] as? UIImage {
-                onImagePicked(image)
-            } else {
-                onCancel()
-            }
-        }
-
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            onCancel()
-        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -3005,7 +3261,6 @@ struct TopUpSheet: View {
     @ObservedObject var viewModel: DashboardViewModel
     @Environment(\.dismiss) var dismiss
     @State private var topUpAmount = 10000.0
-    @State private var sourceAccountID: UUID?
     @State private var destinationAccountID: UUID?
     @State private var successMessage = ""
     @State private var showSuccessAlert = false
@@ -3015,12 +3270,9 @@ struct TopUpSheet: View {
         viewModel.bankAccounts.filter { account in
             !account.accountNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
             account.accountNumber != "XXXX 0000" &&
-            account.bankName != "Default Bank"
+            account.bankName != "Default Bank" &&
+            account.accountType == .overdraft
         }
-    }
-
-    private var sourceAccount: BankAccount? {
-        linkedAccounts.first { $0.id == sourceAccountID }
     }
 
     private var destinationAccount: BankAccount? {
@@ -3028,15 +3280,7 @@ struct TopUpSheet: View {
     }
 
     private var canConfirmTransfer: Bool {
-        if linkedAccounts.count == 1 { return true }
-        guard linkedAccounts.count > 1,
-              let sourceAccount,
-              let destinationAccount else {
-            return false
-        }
-
-        return sourceAccount.id != destinationAccount.id &&
-               sourceAccount.availableBalance >= topUpAmount
+        destinationAccount != nil
     }
     
     var body: some View {
@@ -3046,10 +3290,8 @@ struct TopUpSheet: View {
 
                 if linkedAccounts.isEmpty {
                     noAccountSection
-                } else if linkedAccounts.count == 1 {
-                    qrReceiveSection(account: linkedAccounts[0])
                 } else {
-                    transferSection
+                    loanODAccountSection
                 }
 
                 if !linkedAccounts.isEmpty {
@@ -3084,7 +3326,7 @@ struct TopUpSheet: View {
                     .foregroundStyle(linkedAccounts.isEmpty ? LMSColors.brandNavy : LMSColors.emerald)
 
                 VStack(spacing: 4) {
-                    Text(linkedAccounts.count > 1 ? "Transfer Amount" : "Top-Up Amount")
+                    Text("Top-Up Amount")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
@@ -3106,92 +3348,29 @@ struct TopUpSheet: View {
     private var noAccountSection: some View {
         Section {
             VStack(alignment: .leading, spacing: 14) {
-                Label("No linked bank account found", systemImage: "exclamationmark.circle.fill")
+                Label("No loan OD account found", systemImage: "exclamationmark.circle.fill")
                     .font(.headline)
                     .foregroundStyle(LMSColors.textPrimary)
 
-                Text("Add and verify a bank account before adding funds.")
+                Text("Loan OD accounts are created automatically after loan approval and disbursement.")
                     .font(.subheadline)
                     .foregroundStyle(LMSColors.textSecondary)
-
-                Button {
-                    onAddAccount()
-                } label: {
-                    HStack {
-                        Spacer()
-                        Label("Add Account", systemImage: "building.columns.fill")
-                            .fontWeight(.bold)
-                        Spacer()
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(LMSColors.brandNavy)
             }
             .padding(.vertical, 8)
         }
     }
 
-    private func qrReceiveSection(account: BankAccount) -> some View {
+    private var loanODAccountSection: some View {
         Section {
-            VStack(spacing: 16) {
-                QRCodeView(payload: qrPayload(for: account))
-                    .frame(width: 170, height: 170)
-                    .padding(12)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-
-                VStack(spacing: 4) {
-                    Text("Scan to add funds")
-                        .font(.headline)
-                        .foregroundStyle(LMSColors.textPrimary)
-
-                    Text("\(account.bankName.isEmpty ? "Linked Account" : account.bankName) \(maskedAccountNumber(account.accountNumber))")
-                        .font(.subheadline)
-                        .foregroundStyle(LMSColors.textSecondary)
-                        .multilineTextAlignment(.center)
+            ForEach(linkedAccounts) { account in
+                SelectableBankAccountCard(account: account, isSelected: destinationAccountID == account.id, warning: false) {
+                    destinationAccountID = account.id
                 }
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-        } header: {
-            Text("Receive to Account")
-        } footer: {
-            Text("Scan this QR from any payment app, then confirm once the payment is completed.")
-        }
-    }
-
-    private var transferSection: some View {
-        Section {
-            Picker("From Account", selection: Binding(
-                get: { sourceAccountID ?? linkedAccounts.first?.id },
-                set: { sourceAccountID = $0 }
-            )) {
-                ForEach(linkedAccounts) { account in
-                    Text(accountPickerTitle(account)).tag(Optional(account.id))
-                }
-            }
-
-            Picker("To Account", selection: Binding(
-                get: { destinationAccountID ?? linkedAccounts.dropFirst().first?.id ?? linkedAccounts.first?.id },
-                set: { destinationAccountID = $0 }
-            )) {
-                ForEach(linkedAccounts) { account in
-                    Text(accountPickerTitle(account)).tag(Optional(account.id))
-                }
-            }
-
-            if let sourceAccount, sourceAccount.availableBalance < topUpAmount {
-                Label("Insufficient balance in source account", systemImage: "exclamationmark.triangle.fill")
-                    .font(.footnote)
-                    .foregroundStyle(LMSColors.coral)
-            } else if sourceAccountID == destinationAccountID {
-                Label("Choose a different destination account", systemImage: "arrow.left.arrow.right")
-                    .font(.footnote)
-                    .foregroundStyle(LMSColors.amber)
             }
         } header: {
-            Text("Transfer Details")
+            Text("Loan OD Accounts")
         } footer: {
-            Text("Move money from one linked account to another.")
+            Text("Only loan overdraft accounts are shown here.")
         }
     }
 
@@ -3202,7 +3381,7 @@ struct TopUpSheet: View {
             } label: {
                 HStack {
                     Spacer()
-                    Text(linkedAccounts.count > 1 ? "Confirm Transfer" : "Confirm Deposit")
+                    Text("Confirm Deposit")
                         .fontWeight(.bold)
                         .foregroundStyle(.white)
                     Spacer()
@@ -3219,21 +3398,13 @@ struct TopUpSheet: View {
 
     private func configureDefaultAccounts() {
         guard !linkedAccounts.isEmpty else { return }
-        sourceAccountID = sourceAccountID ?? linkedAccounts.first?.id
-        destinationAccountID = destinationAccountID ?? (linkedAccounts.dropFirst().first?.id ?? linkedAccounts.first?.id)
+        destinationAccountID = destinationAccountID ?? linkedAccounts.first?.id
     }
 
     private func confirmFunds() {
-        if linkedAccounts.count == 1, let account = linkedAccounts.first {
-            viewModel.topUpAccount(amount: topUpAmount, to: account)
-            successMessage = "Your amount \(topUpAmount.formattedAsINR()) is credited in the bank account \(maskedAccountNumber(account.accountNumber))."
-            showSuccessAlert = true
-            return
-        }
-
-        guard let sourceAccount, let destinationAccount else { return }
-        viewModel.transferFunds(amount: topUpAmount, from: sourceAccount, to: destinationAccount)
-        successMessage = "Your amount \(topUpAmount.formattedAsINR()) is credited in the bank account \(maskedAccountNumber(destinationAccount.accountNumber))."
+        guard let destinationAccount else { return }
+        viewModel.topUpAccount(amount: topUpAmount, to: destinationAccount)
+        successMessage = "Your amount \(topUpAmount.formattedAsINR()) is credited in the loan OD account \(maskedAccountNumber(destinationAccount.accountNumber))."
         showSuccessAlert = true
     }
 
@@ -3242,42 +3413,6 @@ struct TopUpSheet: View {
         return "•••• \(suffix)"
     }
 
-    private func accountPickerTitle(_ account: BankAccount) -> String {
-        let name = account.bankName.isEmpty ? account.accountType.rawValue : account.bankName
-        return "\(name) \(maskedAccountNumber(account.accountNumber))"
-    }
-
-    private func qrPayload(for account: BankAccount) -> String {
-        "lms://add-funds?account=\(account.accountNumber)&amount=\(Int(topUpAmount))"
-    }
-}
-
-private struct QRCodeView: View {
-    let payload: String
-    private let context = CIContext()
-    private let filter = CIFilter.qrCodeGenerator()
-
-    var body: some View {
-        if let image = makeQRCode() {
-            Image(uiImage: image)
-                .interpolation(.none)
-                .resizable()
-                .scaledToFit()
-        } else {
-            Image(systemName: "qrcode")
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(LMSColors.textPrimary)
-        }
-    }
-
-    private func makeQRCode() -> UIImage? {
-        filter.message = Data(payload.utf8)
-        guard let outputImage = filter.outputImage else { return nil }
-        let scaledImage = outputImage.transformed(by: CGAffineTransform(scaleX: 10, y: 10))
-        guard let cgImage = context.createCGImage(scaledImage, from: scaledImage.extent) else { return nil }
-        return UIImage(cgImage: cgImage)
-    }
 }
 
 // MARK: - Premium Detail Views

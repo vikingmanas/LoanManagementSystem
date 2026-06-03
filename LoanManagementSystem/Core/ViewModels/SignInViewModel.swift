@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import Supabase
 
 enum BorrowerSignInMode: String, CaseIterable, Identifiable {
     case password = "Password"
@@ -143,10 +144,15 @@ class SignInViewModel: ObservableObject {
 
         if appState.selectedRole == .customer {
             appState.requiresBorrowerOnboarding = false
-            BorrowerProfileStore.shared.ensureProfile(
-                email: email,
-                name: authManager.userDisplayName
-            )
+            Task {
+                if let session = try? await SupabaseManager.shared.client.auth.session {
+                    await BorrowerProfileStore.shared.fetchProfileFromSupabase(
+                        uid: session.user.id.uuidString,
+                        email: session.user.email ?? email,
+                        name: authManager.userDisplayName
+                    )
+                }
+            }
         }
 
         showSuccess = true

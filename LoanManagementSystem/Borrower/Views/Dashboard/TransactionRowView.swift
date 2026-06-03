@@ -132,8 +132,7 @@ public struct TransactionRowSkeleton: View {
 }
 
 #Preview("Transaction Row") {
-    TransactionRowView(transaction: MockData.sampleTransactions[0])
-        .padding()
+    EmptyView()
 }
 
 #Preview("Transaction Skeleton") {

@@ -35,6 +35,17 @@ struct ManagerBranchTabView: View {
         .filter { $0.amount > 0 }
     }
 
+    private func assignedCount(for summary: ManagerOfficerPerformanceSummary) -> Int {
+        viewModel.applicants(for: summary.officer).count
+    }
+
+    private func disbursedAmount(for summary: ManagerOfficerPerformanceSummary) -> Double {
+        let officerId = summary.officer.id
+        return snapshot.officerRows.first { row in
+            row.officer.id == officerId
+        }?.disbursedAmount ?? 0
+    }
+
     private var statusChartData: [BranchChartSlice] {
         let approved = viewModel.applicants.filter { $0.status == .approved || $0.status == .disbursed }.count
         let pending = viewModel.pendingApplicants.count
@@ -45,7 +56,7 @@ struct ManagerBranchTabView: View {
             BranchChartSlice(id: "approved", label: "Approved", value: Double(approved), color: LMSColors.emerald),
             BranchChartSlice(id: "pending", label: "Pending", value: Double(pending), color: LMSColors.amber),
             BranchChartSlice(id: "rejected", label: "Rejected", value: Double(rejected), color: LMSColors.coral),
-            BranchChartSlice(id: "escalated", label: "Escalated", value: Double(escalated), color: Color.purple)
+            BranchChartSlice(id: "escalated", label: "Manager Review", value: Double(escalated), color: Color.purple)
         ]
         .filter { $0.value > 0 }
     }
@@ -164,7 +175,7 @@ struct ManagerBranchTabView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Loan Officer Performance")
                                 .font(.body.weight(.semibold))
-                            Text("Escalations, ratings, and officer-wise loan book")
+                            Text("Manager reviews, ratings, and officer-wise loan book")
                                 .font(.caption)
                                 .foregroundStyle(LMSColors.textSecondary)
                         }
@@ -180,8 +191,8 @@ struct ManagerBranchTabView: View {
                         .foregroundStyle(LMSColors.textSecondary)
                 } else {
                     ForEach(viewModel.officerPerformanceSummaries.prefix(5)) { summary in
-                        let assignedCount = viewModel.applicants(for: summary.officer).count
-                        let disbursedAmount = snapshot.officerRows.first(where: { $0.officer.id == summary.officer.id })?.disbursedAmount ?? 0
+                        let assignedCount = assignedCount(for: summary)
+                        let disbursedAmount = disbursedAmount(for: summary)
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
                                 Text(summary.officer.name)
@@ -198,7 +209,7 @@ struct ManagerBranchTabView: View {
                             HStack {
                                 Text("\(assignedCount) assigned")
                                 Text("·")
-                                Text("\(summary.officerEscalationCount) escalated")
+                                Text("\(summary.officerEscalationCount) reviewed")
                                 Text("·")
                                 Text(CurrencyFormatter.shared.format(disbursedAmount))
                             }
@@ -364,8 +375,3 @@ private struct BranchOfficerChartItem: Identifiable {
     let amount: Double
 }
 
-#Preview {
-    NavigationStack {
-        ManagerBranchTabView(viewModel: PreviewSupport.managerViewModel)
-    }
-}

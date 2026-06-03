@@ -161,9 +161,3 @@ struct ManagerLoanProductPricingDetailView: View {
     }
 }
 
-#Preview {
-    NavigationStack {
-        ManagerLoanProductConfigurationView()
-    }
-    .previewManagerEnvironment()
-}

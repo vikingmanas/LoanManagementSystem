@@ -43,6 +43,7 @@ final class ManagerDashboardViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var currentManagerUserId: UUID?
     private var databaseMessages: [DBMessage] = []
+    private var allApplicants: [ManagerApplicant] = []
 
     enum ApplicantSortOrder: String, CaseIterable {
         case dateDesc = "Newest First"
@@ -65,10 +66,23 @@ final class ManagerDashboardViewModel: ObservableObject {
             }
             .sink { [weak self] mappedApplicants in
                 guard let self else { return }
-                self.applicants = mappedApplicants
-                self.rebuildDerivedDashboardState()
+                self.allApplicants = mappedApplicants
+                self.filterApplicantsByManagerBranch()
             }
             .store(in: &cancellables)
+    }
+
+    func filterApplicantsByManagerBranch() {
+        let managerBranch = managerProfile.branchName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        if managerBranch.isEmpty || managerBranch == "assigned branch" {
+            self.applicants = allApplicants
+        } else {
+            self.applicants = allApplicants.filter { applicant in
+                let applicantBranch = applicant.branchName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                return applicantBranch == managerBranch || applicantBranch.contains(managerBranch) || managerBranch.contains(applicantBranch)
+            }
+        }
+        self.rebuildDerivedDashboardState()
     }
 
     var unreadNotificationCount: Int {
@@ -578,7 +592,7 @@ final class ManagerDashboardViewModel: ObservableObject {
             )
         }
 
-        rebuildDerivedDashboardState(keepStaff: true)
+        self.filterApplicantsByManagerBranch()
     }
 
     private func loadMessageThreads() async {
@@ -655,7 +669,7 @@ final class ManagerDashboardViewModel: ObservableObject {
                 rating: storedRating ?? autoRating,
                 managerRating: storedRating,
                 performance: apps.isEmpty ? 0 : min(1, approvalRate / 100),
-                loansProcessedYTD: apps.count,
+                loansProcessedYTD: completed,
                 approvalRate: approvalRate
             )
         }
@@ -738,7 +752,7 @@ final class ManagerDashboardViewModel: ObservableObject {
     }
 
     private func rebuildConversations() {
-        let existing = Dictionary(uniqueKeysWithValues: conversations.map { ($0.id, $0) })
+        let existing = Dictionary(conversations.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         conversations = officers.map { officer in
             let id = stableId(for: "conversation-\(officer.id.uuidString)")
             let threadMessages = databaseMessages

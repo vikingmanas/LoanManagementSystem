@@ -90,11 +90,6 @@ enum ManagerLoanType: String, CaseIterable, Codable, Hashable {
 }
 
 
-enum ManagerOfficerAssignment {
-    static let unassignedOfficerId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
-    static let unassignedOfficerName = "Unassigned"
-}
-
 struct ManagerApplicant: Identifiable, Hashable {
     let id: UUID
     var applicationId: String
@@ -114,11 +109,11 @@ struct ManagerApplicant: Identifiable, Hashable {
     var verificationProgress: Double
     var tenure: Int
     var interestRate: Double
+    var branchName: String
     var escalatedAt: Date? = nil
 
     var isAssignedToOfficer: Bool {
-        assignedOfficerId != ManagerOfficerAssignment.unassignedOfficerId
-            && assignedOfficer != ManagerOfficerAssignment.unassignedOfficerName
+        assignedOfficerId != id && !assignedOfficer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
 
@@ -156,31 +151,6 @@ enum ManagerDocStatus: String, CaseIterable, Codable, Hashable {
 }
 
 
-struct ManagerOfficerEscalation: Identifiable, Hashable {
-    let id: UUID
-    var applicationId: String
-    var borrowerName: String
-    var loanType: ManagerLoanType
-    var requestedAmount: Double
-    var escalatedAt: Date
-    var reason: String
-    var riskLevel: ManagerRiskLevel
-}
-
-struct ManagerOfficerPerformanceSummary: Identifiable, Hashable {
-    var id: UUID { officer.id }
-    let officer: ManagerOfficer
-    let escalations: [ManagerOfficerEscalation]
-    let managerRating: Double?
-    let suggestedRating: Double
-
-    var displayRating: Double {
-        managerRating ?? suggestedRating
-    }
-
-    var officerEscalationCount: Int { escalations.count }
-}
-
 struct ManagerOfficer: Identifiable, Hashable {
     let id: UUID
     var name: String
@@ -210,6 +180,28 @@ struct ManagerOfficer: Identifiable, Hashable {
         if capacityPercentage > 0.60 { return LMSColors.amber }
         return LMSColors.emerald
     }
+}
+
+struct ManagerOfficerEscalation: Identifiable, Hashable {
+    let id: UUID
+    var applicationId: String
+    var borrowerName: String
+    var loanType: ManagerLoanType
+    var requestedAmount: Double
+    var escalatedAt: Date
+    var reason: String
+    var riskLevel: ManagerRiskLevel
+}
+
+struct ManagerOfficerPerformanceSummary: Identifiable, Hashable {
+    var officer: ManagerOfficer
+    var escalations: [ManagerOfficerEscalation]
+    var managerRating: Double?
+    var suggestedRating: Double
+
+    var id: UUID { officer.id }
+    var officerEscalationCount: Int { escalations.count }
+    var displayRating: Double { managerRating ?? suggestedRating }
 }
 
 struct ManagerStaffProfile: Hashable {

@@ -13,14 +13,7 @@ struct EditAdditionalInfoView: View {
     @State private var nomineeName: String
     @State private var nomineeRelationship: String
     private let relationships = ["Spouse", "Mother", "Father", "Brother", "Sister", "Child"]
-    private let branches = [
-        "Mumbai Main Branch",
-        "Andheri Tech Park Branch",
-        "Mindspace Malad Branch",
-        "Bandra Kurla Complex Branch",
-        "Delhi Connaught Place Branch",
-        "Bengaluru Whitefield Branch"
-    ]
+    @State private var branchesList: [BranchInfo] = []
 
     @State private var showAlert = false
     @State private var alertMessage = ""
@@ -33,7 +26,7 @@ struct EditAdditionalInfoView: View {
         _occupation = State(initialValue: p?.occupation ?? "")
         _hasExistingBankAccount = State(initialValue: p?.hasExistingBankAccount ?? false)
         _existingCustomerId = State(initialValue: p?.existingCustomerId ?? "")
-        _preferredBranch = State(initialValue: p?.preferredBranch ?? "Mumbai Main Branch")
+        _preferredBranch = State(initialValue: p?.preferredBranch ?? "")
         _emergencyContactName = State(initialValue: p?.emergencyContactName ?? "")
         _emergencyContactNumber = State(initialValue: p?.emergencyContactNumber ?? "")
         _nomineeName = State(initialValue: p?.nomineeName ?? "")
@@ -110,8 +103,11 @@ struct EditAdditionalInfoView: View {
                     }
 
                     Picker("Preferred Home Branch", selection: $preferredBranch) {
-                        ForEach(branches, id: \.self) { branch in
-                            Text(branch).tag(branch)
+                        if branchesList.isEmpty {
+                            Text("No branches available").tag("")
+                        }
+                        ForEach(branchesList, id: \.id) { branch in
+                            Text(branch.name).tag(branch.name)
                         }
                     }
                     .font(Font.AppTheme.body)
@@ -120,6 +116,7 @@ struct EditAdditionalInfoView: View {
             }
             .navigationTitle("Edit Preferences & Refs")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear { loadBranches() }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
@@ -189,6 +186,22 @@ struct EditAdditionalInfoView: View {
         alertTitle = "Validation Error"
         alertMessage = message
         showAlert = true
+    }
+
+    private func loadBranches() {
+        Task {
+            do {
+                let fetched = try await DatabaseService.shared.fetchBranches()
+                await MainActor.run {
+                    self.branchesList = fetched
+                    if preferredBranch.isEmpty, let first = fetched.first {
+                        self.preferredBranch = first.name
+                    }
+                }
+            } catch {
+                print("Error loading branches in EditAdditionalInfoView: \(error)")
+            }
+        }
     }
 }
 

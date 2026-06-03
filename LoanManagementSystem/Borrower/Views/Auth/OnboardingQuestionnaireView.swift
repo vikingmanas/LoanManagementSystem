@@ -28,10 +28,11 @@ struct OnboardingQuestionnaireView: View {
     @State private var emergencyContactAlternateNumber = ""
     @State private var emergencyContactAddress = ""
     @State private var existingCustomerId = ""
-    @State private var preferredBranch = "Main Branch"
+    @State private var preferredBranch = "Headquarters Branch"
     @State private var showInsightCard = false
     @State private var linkedAccountsList: [LinkedBankAccount] = []
     @State private var isShowingAddAccountForm = false
+    @State private var branchesList: [BranchInfo] = []
     
     // Loading & validation state
     @State private var isLoading = false
@@ -41,7 +42,7 @@ struct OnboardingQuestionnaireView: View {
     // Lists of Options
     private let employmentTypes = ["Salaried", "Self-Employed", "Business Owner"]
     private let relationships = ["Spouse", "Parent", "Sibling", "Friend", "Relative", "Other"]
-    private let branches = ["Main Branch", "Downtown", "Uptown", "East Side", "West Side"]
+
     
     var body: some View {
         NavigationStack {
@@ -112,6 +113,7 @@ struct OnboardingQuestionnaireView: View {
             }
             .onAppear {
                 prepopulateFieldsIfPossible()
+                loadBranches()
             }
             .onChange(of: profileStore.profile) {
                 prepopulateFieldsIfPossible()
@@ -254,8 +256,11 @@ struct OnboardingQuestionnaireView: View {
                     }
                     
                     Picker("Select Branch", selection: $preferredBranch) {
-                        ForEach(branches, id: \.self) {
-                            Text($0)
+                        if branchesList.isEmpty {
+                            Text("No branches available").tag("")
+                        }
+                        ForEach(branchesList, id: \.id) { branch in
+                            Text(branch.name).tag(branch.name)
                         }
                     }
                     
@@ -443,15 +448,10 @@ struct OnboardingQuestionnaireView: View {
         showValidationError = false
         
         do {
-            let fetchedAccounts: [LinkedBankAccount]? = try await SupabaseManager.shared.client
-                .from("bank_accounts")
-                .select()
-                .eq("customer_id", value: trimmedId)
-                .execute()
-                .value
+            let fetchedAccounts = try await DatabaseService.shared.fetchLinkedBankAccounts(customerId: trimmedId)
             
             let verifiedAcc: LinkedBankAccount
-            if let account = fetchedAccounts?.first {
+            if let account = fetchedAccounts.first {
                 verifiedAcc = account
             } else {
                 let bankNames = ["HDFC Bank", "ICICI Bank", "State Bank of India", "Axis Bank", "Kotak Mahindra Bank"]
@@ -618,6 +618,22 @@ struct OnboardingQuestionnaireView: View {
                 await MainActor.run {
                     isLoading = false
                 }
+            }
+        }
+    }
+
+    private func loadBranches() {
+        Task {
+            do {
+                let fetched = try await DatabaseService.shared.fetchBranches()
+                await MainActor.run {
+                    self.branchesList = fetched
+                    if let first = fetched.first {
+                        self.preferredBranch = first.name
+                    }
+                }
+            } catch {
+                print("Error loading branches in onboarding questionnaire: \(error)")
             }
         }
     }

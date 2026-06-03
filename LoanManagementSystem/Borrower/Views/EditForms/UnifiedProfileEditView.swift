@@ -37,14 +37,7 @@ struct UnifiedProfileEditContentView: View {
     private let maritalStatuses = ["Single", "Married", "Divorced", "Widowed"]
     private let nationalities = ["Indian", "Non-Resident Indian (NRI)", "Other"]
     private let relationships = ["Spouse", "Mother", "Father", "Brother", "Sister", "Child"]
-    private let branches = [
-        "Mumbai Main Branch",
-        "Andheri Tech Park Branch",
-        "Mindspace Malad Branch",
-        "Bandra Kurla Complex Branch",
-        "Delhi Connaught Place Branch",
-        "Bengaluru Whitefield Branch"
-    ]
+    @State private var branchesList: [BranchInfo] = []
     
     var isKYCVerified: Bool {
         viewModel.profile?.isKYCVerified ?? false
@@ -183,13 +176,21 @@ struct UnifiedProfileEditContentView: View {
                     TextField("Customer ID", text: $existingCustomerId)
                 }
                 Picker("Preferred Branch", selection: $preferredBranch) {
-                    ForEach(branches, id: \.self) { Text($0).tag($0) }
+                    if branchesList.isEmpty {
+                        Text("No branches available").tag("")
+                    }
+                    ForEach(branchesList, id: \.id) { branch in
+                        Text(branch.name).tag(branch.name)
+                    }
                 }
             } header: {
                 Text("Bank Preferences")
             }
         }
-        .onAppear(perform: loadInitialData)
+        .onAppear {
+            loadInitialData()
+            loadBranches()
+        }
         .onDisappear(perform: saveChanges)
     }
     
@@ -294,6 +295,22 @@ struct UnifiedProfileEditContentView: View {
         
         // Single save — all fields preserved
         BorrowerProfileStore.shared.updateProfile(updatedProfile)
+    }
+
+    private func loadBranches() {
+        Task {
+            do {
+                let fetched = try await DatabaseService.shared.fetchBranches()
+                await MainActor.run {
+                    self.branchesList = fetched
+                    if preferredBranch.isEmpty, let first = fetched.first {
+                        self.preferredBranch = first.name
+                    }
+                }
+            } catch {
+                print("Error loading branches in UnifiedProfileEditContentView: \(error)")
+            }
+        }
     }
 }
 

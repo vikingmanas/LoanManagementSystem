@@ -9,7 +9,7 @@ final class LoanApplicationViewModel: ObservableObject {
     @Published var selectedProductCategory: LoanProductCategoryFilter = .all
     @Published var searchQuery: String = ""
     
-    @Published var products: [BorrowerLoanProduct] = BorrowerLoanProduct.sampleProducts
+    @Published var products: [BorrowerLoanProduct] = []
     @Published var applications: [BorrowerLoanApplication] = []
     
     @Published var selectedProductID: UUID?
@@ -27,6 +27,7 @@ final class LoanApplicationViewModel: ObservableObject {
     
     @Published var verificationComplete: Bool = false
     @Published var showVerificationResult: Bool = false
+    @Published var branchesList: [BranchInfo] = []
     
     private var cancellables = Set<AnyCancellable>()
     
@@ -91,6 +92,7 @@ final class LoanApplicationViewModel: ObservableObject {
             .assign(to: &$applications)
         
         loadProducts()
+        loadBranches()
     }
     
     /// Loads active loan products dynamically from the Supabase database.
@@ -100,20 +102,24 @@ final class LoanApplicationViewModel: ObservableObject {
             self.products = fetchedProducts
         }
     }
+
+    /// Loads active branches dynamically from the Supabase database.
+    func loadBranches() {
+        Task {
+            do {
+                let fetchedBranches = try await DatabaseService.shared.fetchBranches()
+                self.branchesList = fetchedBranches
+            } catch {
+                print("❌ [LoanApplicationViewModel] Error fetching branches: \(error)")
+            }
+        }
+    }
     
     var filteredProducts: [BorrowerLoanProduct] {
         var result = products
         
         if let type = selectedProductCategory.productType {
             result = result.filter { $0.type == type }
-        }
-        
-        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !query.isEmpty {
-            result = result.filter { product in
-                product.type.title.localizedCaseInsensitiveContains(query) ||
-                product.shortDescription.localizedCaseInsensitiveContains(query)
-            }
         }
         
         return result
@@ -884,7 +890,7 @@ final class LoanApplicationViewModel: ObservableObject {
                 nextStage = application.formData.creditScoreValue < CentralLoanRepository.shared.globalRules.minCibilScore ? .rejected : .approved
             case .approved:
                 nextStage = .disbursed
-            case .draft, .escalated, .rejected, .disbursed:
+            case .draft, .rejected, .disbursed, .escalated:
                 nextStage = nil
             }
             

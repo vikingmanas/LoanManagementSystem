@@ -649,12 +649,3 @@ private struct ReassignOfficerSheet: View {
     }
 }
 
-#Preview {
-    NavigationStack {
-        ManagerApplicantDetailView(
-            applicant: PreviewSupport.sampleManagerApplicant,
-            viewModel: PreviewSupport.managerViewModel
-        )
-    }
-    .previewManagerEnvironment()
-}

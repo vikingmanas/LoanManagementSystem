@@ -48,9 +48,4 @@ struct EditLoanOverviewView: View {
     }
 }
 
-#Preview {
-    NavigationStack {
-        EditLoanOverviewView(viewModel: PreviewSupport.borrowerProfileViewModel)
-    }
-}
 

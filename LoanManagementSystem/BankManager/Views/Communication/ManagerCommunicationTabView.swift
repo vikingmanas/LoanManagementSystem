@@ -286,7 +286,3 @@ private struct BroadcastAnnouncementSheet: View {
     }
 }
 
-#Preview {
-    ManagerCommunicationTabView(viewModel: PreviewSupport.managerViewModel)
-        .previewManagerEnvironment()
-}

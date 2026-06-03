@@ -40,6 +40,11 @@ struct LoanDisbursementEvent: Identifiable, Hashable {
 /// Centralized repository serving as the single source of truth for all loan applications.
 /// Bridges real-time state updates across the Customer, Loan Officer, and Manager portals.
 @MainActor
+struct ManagerOfficerAssignment {
+    static let unassignedOfficerName = "Unassigned"
+    static let unassignedOfficerId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+}
+
 final class CentralLoanRepository: ObservableObject {
     static let shared = CentralLoanRepository()
     
@@ -51,6 +56,7 @@ final class CentralLoanRepository: ObservableObject {
     private var officerRecordIdByUserId: [UUID: UUID] = [:]
     private var officerUserIdByRecordId: [UUID: UUID] = [:]
     private var officerNameByUserId: [UUID: String] = [:]
+    private var officerBranchNameByUserId: [UUID: String] = [:]
     
     private init() {
         loadPersistedState()
@@ -93,9 +99,13 @@ final class CentralLoanRepository: ObservableObject {
         officerRecordIdByUserId.removeAll()
         officerUserIdByRecordId.removeAll()
         officerNameByUserId.removeAll()
+        officerBranchNameByUserId.removeAll()
 
         for member in staff where member.role == .loanOfficer {
             officerNameByUserId[member.id] = member.fullName
+            if let branch = member.branchName {
+                officerBranchNameByUserId[member.id] = branch
+            }
             if let recordId = member.loanOfficerRecordId {
                 officerRecordIdByUserId[member.id] = recordId
                 officerUserIdByRecordId[recordId] = member.id
@@ -121,9 +131,14 @@ final class CentralLoanRepository: ObservableObject {
         return false
     }
 
+    func isLoanUnassigned(applicationId: UUID) -> Bool {
+        guard let app = applications.first(where: { $0.id == applicationId }) else { return false }
+        return isLoanUnassigned(app)
+    }
+
     func isVisibleToOfficer(_ app: BorrowerLoanApplication, userId: UUID) -> Bool {
         guard app.currentStage != .draft else { return false }
-        if isLoanUnassigned(app) { return true }
+        // Officer can only see applications explicitly assigned to them
         return resolvedOfficerUserId(for: app) == userId
     }
 
@@ -358,7 +373,8 @@ final class CentralLoanRepository: ObservableObject {
                 }
                 
                 let app = dbApp.toBorrowerApplication(product: product, documents: docs)
-                mappedApps.append(await enrichAssignedOfficerIfNeeded(app))
+                let enrichedApp = await enrichAssignedOfficerIfNeeded(app)
+                mappedApps.append(enrichedApp)
             }
             
             var hasChanges = false
@@ -434,7 +450,8 @@ final class CentralLoanRepository: ObservableObject {
                 
                 var app = dbApp.toBorrowerApplication(product: product, documents: docs)
                 app = normalizeOfficerAssignment(app)
-                mappedApps.append(await enrichAssignedOfficerIfNeeded(app))
+                let enrichedApp = await enrichAssignedOfficerIfNeeded(app)
+                mappedApps.append(enrichedApp)
             }
             
             var hasChanges = false
@@ -481,105 +498,6 @@ final class CentralLoanRepository: ObservableObject {
         } catch {
             print("[CentralLoanRepository] Failed to fetch all submitted applications: \(error.localizedDescription)")
         }
-    }
-
-    func assignOfficerIfNeeded(applicationId: UUID) async {
-        guard let index = applications.firstIndex(where: { $0.id == applicationId }) else { return }
-        guard applications[index].assignedOfficer == nil else { return }
-
-        var app = applications[index]
-        let branchName = borrowerBranchName(for: app)
-
-        do {
-            guard let officer = try await DatabaseService.shared.assignLoanOfficer(forBranchName: branchName) else {
-                app.assignedQueue = "Loan Officer Assignment Pending"
-                app.stageHistory.append(
-                    BorrowerStageEntry(
-                        stage: app.currentStage,
-                        timestamp: Date(),
-                        note: "No active loan officer is currently available for \(branchName)."
-                    )
-                )
-                applications[index] = app
-                persistState()
-                syncApplicationToSupabase(app)
-                return
-            }
-
-            app.assignedOfficer = officer
-            app.assignedOfficerId = officer.officerId
-            app.assignedQueue = officer.fullName
-            app.updatedAt = Date()
-            app.stageHistory.append(
-                BorrowerStageEntry(
-                    stage: app.currentStage,
-                    timestamp: Date(),
-                    note: "Assigned to \(officer.fullName) using same-branch workload balancing."
-                )
-            )
-            applications[index] = app
-            persistState()
-            syncApplicationToSupabase(app)
-
-            if let borrowerId = app.borrowerId {
-                await NotificationService.shared.insertNotification(
-                    userId: borrowerId,
-                    title: "Loan Officer Assigned",
-                    message: "Your application has been assigned to \(officer.fullName)."
-                )
-            }
-
-            await NotificationService.shared.insertNotification(
-                userId: officer.userId,
-                title: "New application assigned for review",
-                message: "\(app.formData.fullName.isEmpty ? "A borrower" : app.formData.fullName) submitted \(app.displayIdentifier)."
-            )
-        } catch {
-            print("[CentralLoanRepository] Officer assignment failed for \(app.displayIdentifier): \(error.localizedDescription)")
-        }
-    }
-
-    private func enrichAssignedOfficerIfNeeded(_ app: BorrowerLoanApplication) async -> BorrowerLoanApplication {
-        guard app.assignedOfficer == nil else { return app }
-        guard let officerId = app.assignedOfficerId else {
-            return app
-        }
-
-        do {
-            guard let officer = try await DatabaseService.shared.fetchLoanOfficerAssignment(officerId: officerId) else {
-                return app
-            }
-            var enriched = app
-            enriched.assignedOfficer = officer
-            enriched.assignedOfficerId = officer.officerId
-            enriched.assignedQueue = officer.fullName
-            return enriched
-        } catch {
-            return app
-        }
-    }
-
-    private func borrowerBranchName(for app: BorrowerLoanApplication) -> String {
-        let applicationBranch = app.formData.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !applicationBranch.isEmpty {
-            return applicationBranch
-        }
-
-        let email = app.formData.emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let profile = BorrowerProfileStore.shared.borrowerProfile(matchingEmail: email)
-            ?? BorrowerProfileStore.shared.profile
-
-        let preferredBranch = profile?.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if !preferredBranch.isEmpty {
-            return preferredBranch
-        }
-
-        if let accountBranch = profile?.linkedAccounts?.first?.branch.trimmingCharacters(in: .whitespacesAndNewlines),
-           !accountBranch.isEmpty {
-            return accountBranch
-        }
-
-        return "Main Branch"
     }
 
     func refreshDocumentsForApplication(id: UUID) async {
@@ -1310,7 +1228,7 @@ final class CentralLoanRepository: ObservableObject {
                 }
             },
             notes: app.formData.loanPurpose.isEmpty ? "General financing requirement" : app.formData.loanPurpose,
-            branch: "Main Branch",
+            branch: "",
             cibilScore: app.formData.creditScoreValue > 0 ? app.formData.creditScoreValue : 750,
             sentToManagerDate: sentToManagerDate,
             managerStatus: managerStatus,
@@ -1387,6 +1305,7 @@ final class CentralLoanRepository: ObservableObject {
             verificationProgress: app.documents.isEmpty ? 0 : Double(app.documents.filter { $0.status == .verified }.count) / Double(app.documents.count),
             tenure: app.formData.preferredTenureMonths,
             interestRate: 10.5,
+            branchName: app.formData.preferredBranch,
             escalatedAt: app.stageHistory.last(where: { $0.stage == .escalated })?.timestamp
         )
     }
@@ -1464,6 +1383,105 @@ final class CentralLoanRepository: ObservableObject {
     private func persistState() {
         LoanApplicationPersistence.saveApplications(applications)
         LoanApplicationPersistence.saveDisbursements(disbursementEvents)
+    }
+
+    func assignOfficerIfNeeded(applicationId: UUID) async {
+        guard let index = applications.firstIndex(where: { $0.id == applicationId }) else { return }
+        guard applications[index].assignedOfficer == nil else { return }
+
+        var app = applications[index]
+        let branchName = borrowerBranchName(for: app)
+
+        do {
+            guard let officer = try await DatabaseService.shared.assignLoanOfficer(forBranchName: branchName) else {
+                app.assignedQueue = "Loan Officer Assignment Pending"
+                app.stageHistory.append(
+                    BorrowerStageEntry(
+                        stage: app.currentStage,
+                        timestamp: Date(),
+                        note: "No active loan officer is currently available for \(branchName)."
+                    )
+                )
+                applications[index] = app
+                persistState()
+                syncApplicationToSupabase(app)
+                return
+            }
+
+            app.assignedOfficer = officer
+            app.assignedOfficerId = officer.officerId
+            app.assignedQueue = officer.fullName
+            app.updatedAt = Date()
+            app.stageHistory.append(
+                BorrowerStageEntry(
+                    stage: app.currentStage,
+                    timestamp: Date(),
+                    note: "Assigned to \(officer.fullName) using same-branch workload balancing."
+                )
+            )
+            applications[index] = app
+            persistState()
+            syncApplicationToSupabase(app)
+
+            if let borrowerId = app.borrowerId {
+                await NotificationService.shared.insertNotification(
+                    userId: borrowerId,
+                    title: "Loan Officer Assigned",
+                    message: "Your application has been assigned to \(officer.fullName)."
+                )
+            }
+
+            await NotificationService.shared.insertNotification(
+                userId: officer.userId,
+                title: "New application assigned for review",
+                message: "\(app.formData.fullName.isEmpty ? "A borrower" : app.formData.fullName) submitted \(app.displayIdentifier)."
+            )
+        } catch {
+            print("[CentralLoanRepository] Officer assignment failed for \(app.displayIdentifier): \(error.localizedDescription)")
+        }
+    }
+
+    func enrichAssignedOfficerIfNeeded(_ app: BorrowerLoanApplication) async -> BorrowerLoanApplication {
+        guard app.assignedOfficer == nil else { return app }
+        guard let officerId = app.assignedOfficerId else {
+            return app
+        }
+
+        do {
+            guard let officer = try await DatabaseService.shared.fetchLoanOfficerAssignment(officerId: officerId) else {
+                return app
+            }
+            var enriched = app
+            enriched.assignedOfficer = officer
+            enriched.assignedOfficerId = officer.officerId
+            enriched.assignedQueue = officer.fullName
+            return enriched
+        } catch {
+            return app
+        }
+    }
+
+    private func borrowerBranchName(for app: BorrowerLoanApplication) -> String {
+        let applicationBranch = app.formData.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !applicationBranch.isEmpty {
+            return applicationBranch
+        }
+
+        let email = app.formData.emailAddress.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let profile = BorrowerProfileStore.shared.borrowerProfile(matchingEmail: email)
+            ?? BorrowerProfileStore.shared.profile
+
+        let preferredBranch = profile?.preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !preferredBranch.isEmpty {
+            return preferredBranch
+        }
+
+        if let accountBranch = profile?.linkedAccounts?.first?.branch.trimmingCharacters(in: .whitespacesAndNewlines),
+           !accountBranch.isEmpty {
+            return accountBranch
+        }
+
+        return ""
     }
 
     func clearState() {
