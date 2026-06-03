@@ -6,7 +6,6 @@ struct ChatsFeedTabView: View {
     @State private var searchText = ""
     @State private var showUnreadOnly = false
     @State private var showingCompose = false
-    private let refreshTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     private var conversations: [OfficerConversation] {
         OfficerConversation.make(from: viewModel.activityFeed)
@@ -90,11 +89,6 @@ struct ChatsFeedTabView: View {
                 }
             }
             .refreshable { await viewModel.fetchDashboardData() }
-            .onReceive(refreshTimer) { _ in
-                Task {
-                    await viewModel.fetchDashboardData()
-                }
-            }
             .sheet(isPresented: $showingCompose) {
                 OfficerComposeMessageSheet(viewModel: viewModel)
             }
@@ -202,7 +196,6 @@ private struct OfficerMessageThreadView: View {
     @State private var messageText = ""
     @State private var messages: [OfficerThreadMessage]
     @FocusState private var isComposerFocused: Bool
-    private let refreshTimer = Timer.publish(every: 4, on: .main, in: .common).autoconnect()
 
     init(conversation: OfficerConversation, viewModel: LoanOfficerDashboardViewModel) {
         self.conversation = conversation
@@ -247,11 +240,6 @@ private struct OfficerMessageThreadView: View {
         }
         .onAppear {
             conversation.items.forEach { viewModel.markActivityRead($0.id) }
-            Task {
-                await loadMessages()
-            }
-        }
-        .onReceive(refreshTimer) { _ in
             Task {
                 await loadMessages()
             }

@@ -13,7 +13,6 @@ import Combine
 struct BorrowerChatView: View {
     @StateObject private var viewModel = BorrowerChatViewModel()
     @State private var searchText = ""
-    private let refreshTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     private var filteredConversations: [BorrowerConversation] {
         if searchText.isEmpty {
@@ -43,11 +42,6 @@ struct BorrowerChatView: View {
             }
             .task {
                 await viewModel.fetchConversations()
-            }
-            .onReceive(refreshTimer) { _ in
-                Task {
-                    await viewModel.fetchConversations()
-                }
             }
         }
     }
@@ -182,7 +176,6 @@ private struct BorrowerMessageThreadView: View {
     @State private var messageText = ""
     @State private var messages: [DBMessage] = []
     @FocusState private var isComposerFocused: Bool
-    private let refreshTimer = Timer.publish(every: 4, on: .main, in: .common).autoconnect()
 
     /// The officer's user ID for this conversation (derived from message participants).
     private var officerUserId: UUID? {
@@ -240,15 +233,6 @@ private struct BorrowerMessageThreadView: View {
                     messages = freshMsgs
                 }
                 await viewModel.markMessagesAsRead(messages: messages)
-            }
-        }
-        .onReceive(refreshTimer) { _ in
-            Task {
-                let freshMsgs = await viewModel.fetchMessagesForThread(applicationId: conversation.applicationId)
-                if freshMsgs != messages {
-                    messages = freshMsgs
-                    await viewModel.markMessagesAsRead(messages: messages)
-                }
             }
         }
         .toolbar(.hidden, for: .tabBar)
