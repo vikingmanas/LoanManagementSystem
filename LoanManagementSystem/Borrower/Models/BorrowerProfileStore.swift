@@ -21,65 +21,11 @@ public class BorrowerProfileStore: ObservableObject {
     @Published var currentEmail: String?
 
     private init() {
-        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
-            setupDefaultAccount()
-        }
+        setupDefaultAccount()
     }
 
     private func setupDefaultAccount() {
-                let rahulProfile = BorrowerProfile(
-            id: "C-109482",
-            fullName: "Rahul Sharma",
-            email: "rahul.sharma@example.com",
-            mobileNumber: "+91 98765 43210",
-            alternateNumber: "",
-            dateOfBirth: Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date(),
-            gender: "",
-            maritalStatus: "",
-            nationality: "",
-            aadhaarNumber: "",
-            panNumber: "",
-            isEmailVerified: true,
-            isPhoneVerified: true,
-            currentAddress: AddressInfo(streetAddress: "", city: "", state: "", zipCode: "", country: "India", isSameAsCurrent: true),
-            permanentAddress: AddressInfo(streetAddress: "", city: "", state: "", zipCode: "", country: "India", isSameAsCurrent: true),
-            employment: EmploymentInfo(employmentType: "Salaried", companyName: "", designation: "", workExperienceYears: 0, employerAddress: ""),
-            income: IncomeInfo(monthlyIncome: 0.0, annualIncome: 0.0, existingEMIs: 0.0, creditScore: 750, incomeSource: ""),
-            bankDetails: BankDetails(bankName: "", accountHolderName: "", accountNumber: "", ifscCode: "", upiID: nil, isVerified: false),
-            kycVerification: KYCVerification(aadhaarStatus: .pending, panStatus: .pending, addressProofStatus: .pending, selfieStatus: .pending, aadhaarFileName: nil, panFileName: nil, addressProofFileName: nil),
-            loanOverview: LoanOverview(activeLoans: 0, loanHistoryCount: 0, nextEmiDueDate: nil, remainingBalance: 0.0, currentLoanStatus: "Active"),
-            profileImageData: nil,
-            occupation: "",
-            industry: "",
-            yearsOfExperience: 0,
-            hasExistingBankAccount: false,
-            existingCustomerId: "C-109482",
-            preferredBranch: "",
-            existingLoansCount: 0,
-            existingCreditCardsCount: 0,
-            bankingRelationshipDuration: "",
-            averageMonthlyBalance: 0,
-            emergencyContactName: "",
-            emergencyContactNumber: "",
-            emergencyContactAlternateNumber: "",
-            emergencyContactAddress: "",
-            emergencyContactRelationship: "",
-            nomineeName: "",
-            nomineeRelationship: "",
-            isOnboardingCompleted: true
-        )
-
-        let rahulAccount = UserAccount(
-            email: "rahul.sharma@example.com",
-            passwordHash: "password",
-            customerId: "C-109482",
-            fullName: "Rahul Sharma",
-            mobile: "+91 98765 43210",
-            isOnboardingCompleted: true,
-            profile: rahulProfile
-        )
-
-        self.accounts = [rahulAccount]
+        self.accounts = []
     }
 
 
@@ -89,6 +35,15 @@ public class BorrowerProfileStore: ObservableObject {
         let cleanedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
         if let current = profile, current.email == cleanedEmail {
+            self.currentEmail = cleanedEmail
+            Task {
+                await refreshAuthenticatedProfile(
+                    email: cleanedEmail,
+                    name: name,
+                    phone: phone,
+                    alternatePhone: alternatePhone
+                )
+            }
             return current
         }
 
@@ -100,8 +55,14 @@ public class BorrowerProfileStore: ObservableObject {
             alternatePhone: alternatePhone,
             customerId: customerId
         )
-        self.profile = placeholderProfile
         self.currentEmail = cleanedEmail
+
+        let isAuthenticatedBorrowerEmail = AuthManager.shared.currentUser?.email?.lowercased() == cleanedEmail
+        if isAuthenticatedBorrowerEmail {
+            self.profile = nil
+        } else {
+            self.profile = placeholderProfile
+        }
 
         Task {
             if let currentUser = AuthManager.shared.currentUser,
@@ -139,6 +100,33 @@ public class BorrowerProfileStore: ObservableObject {
         }
 
         return placeholderProfile
+    }
+
+    private func refreshAuthenticatedProfile(email: String, name: String?, phone: String?, alternatePhone: String?) async {
+        if let currentUser = AuthManager.shared.currentUser,
+           currentUser.email?.lowercased() == email {
+            await fetchProfileFromSupabase(
+                uid: currentUser.uid,
+                email: email,
+                name: name,
+                phone: phone,
+                alternatePhone: alternatePhone
+            )
+            return
+        }
+
+        if let session = try? await SupabaseManager.shared.client.auth.session {
+            let user = session.user
+            if user.email?.lowercased() == email {
+                await fetchProfileFromSupabase(
+                    uid: user.id.uuidString,
+                    email: email,
+                    name: name,
+                    phone: phone,
+                    alternatePhone: alternatePhone
+                )
+            }
+        }
     }
 
     func fetchProfileFromSupabase(uid: String, email: String, name: String? = nil, phone: String? = nil, alternatePhone: String? = nil) async {
@@ -228,7 +216,9 @@ public class BorrowerProfileStore: ObservableObject {
         if let existingIndex = linkedAccounts.firstIndex(where: {
             $0.linkedLoanApplicationId == applicationId && $0.isOverdraftAccount
         }) {
-            linkedAccounts[existingIndex].balance = max(linkedAccounts[existingIndex].balance, sanctionedAmount)
+            if linkedAccounts[existingIndex].balance == 0 {
+                linkedAccounts[existingIndex].balance = sanctionedAmount
+            }
             linkedAccounts[existingIndex].odSanctionLimit = max(
                 linkedAccounts[existingIndex].odSanctionLimit ?? 0,
                 sanctionedAmount

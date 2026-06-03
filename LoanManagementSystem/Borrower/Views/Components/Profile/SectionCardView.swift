@@ -46,10 +46,5 @@ struct SectionCardView<Content: View>: View {
 }
 
 #Preview {
-    SectionCardView(title: "Personal Info", icon: "person.fill") {
-        Text("Rahul Sharma")
-        Text("rahul@example.com")
-    }
-    .padding()
+    EmptyView()
 }
-

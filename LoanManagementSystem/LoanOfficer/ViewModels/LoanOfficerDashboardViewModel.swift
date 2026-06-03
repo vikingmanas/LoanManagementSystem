@@ -296,12 +296,15 @@ class LoanOfficerDashboardViewModel: ObservableObject {
 
     @discardableResult
     func escalateApplication(applicationId: String, reason: String) -> Bool {
-        guard let uuid = UUID(uuidString: applicationId), let officerProfile = officerProfile else { return false }
-        let officerName = officerProfile.fullName
+        guard let officerProfile,
+              let app = applications.first(where: { $0.applicationId == applicationId }) else {
+            return false
+        }
+
         let didEscalate = CentralLoanRepository.shared.escalateApplicationByOfficer(
-            id: uuid,
+            id: app.id,
             officerId: officerProfile.id,
-            officerName: officerName,
+            officerName: officerProfile.fullName,
             reason: reason
         )
         if didEscalate {
@@ -367,7 +370,7 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }),
            let doc = applications[idx].documents.first(where: { $0.id == docId }) {
             let docName = doc.docType.rawValue
-            let officerName = officerProfile?.fullName ?? "Officer Arjun"
+            let officerName = officerProfile?.fullName ?? "Loan Officer"
             logActivity(
                 borrowerName: applications[idx].borrowerName,
                 applicationId: applicationId,
@@ -405,7 +408,7 @@ class LoanOfficerDashboardViewModel: ObservableObject {
               app.documents.allSatisfy({ $0.status == .verified }) else {
             return
         }
-        let officerName = officerProfile?.fullName ?? "Officer Arjun"
+        let officerName = officerProfile?.fullName ?? "Loan Officer"
         CentralLoanRepository.shared.sendForFinalApproval(applicationId: applicationId, officerName: officerName)
         refreshFromRepository()
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }) {

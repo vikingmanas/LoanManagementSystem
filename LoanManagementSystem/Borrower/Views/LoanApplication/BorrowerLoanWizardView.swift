@@ -28,10 +28,11 @@ private struct DocumentOCRResult {
     let address: String?
 }
 
-private struct DocumentPreviewImage: Identifiable {
+private struct DocumentPreviewItem: Identifiable {
     let id = UUID()
     let title: String
-    let image: UIImage
+    let image: UIImage?
+    let url: URL?
 }
 
 private struct MobileNumberValidator {
@@ -327,7 +328,7 @@ struct BorrowerLoanWizardView: View {
     @State private var showDocumentImagePicker = false
     @State private var showDocumentFileImporter = false
     @State private var imagePickerSourceType: UIImagePickerController.SourceType = .photoLibrary
-    @State private var previewImage: DocumentPreviewImage?
+    @State private var previewImage: DocumentPreviewItem?
     
     // Step 7 OCR Extracted Editable Data -> Repurposed for Nominee / Photo
     @State private var ocrPANNumber: String = ""
@@ -347,6 +348,7 @@ struct BorrowerLoanWizardView: View {
     @State private var liveVerificationCompleted = false
     @State private var liveVerificationReference: String?
     @State private var showLiveVerification = false
+    @State private var showSignaturePhotoPicker = false
     
     // Step 8 Verification Alerts Overrides
     @State private var showVerificationResolutionSheet = false
@@ -412,9 +414,6 @@ struct BorrowerLoanWizardView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: LMSSpacing.lg) {
-                // New compact Loan Context Chip below navigation bar
-                LoanContextChip(product: product, amount: desiredAmount, interestRate: product.interestRateRange)
-                
                 stepContent
                 inlineContinueCTA
             }
@@ -481,20 +480,59 @@ struct BorrowerLoanWizardView: View {
             }
             .ignoresSafeArea()
         }
+        .fullScreenCover(isPresented: $showSignaturePhotoPicker) {
+            DocumentImagePicker(sourceType: .photoLibrary) { image in
+                signatureImage = image
+                isSignatureEmpty = false
+                showSignaturePhotoPicker = false
+            } onCancel: {
+                showSignaturePhotoPicker = false
+            }
+            .ignoresSafeArea()
+        }
         .sheet(item: $previewImage) { preview in
             NavigationStack {
-                Image(uiImage: preview.image)
-                    .resizable()
-                    .scaledToFit()
-                    .padding()
-                    .background(Color.black.opacity(0.92))
-                    .navigationTitle(preview.title)
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { previewImage = nil }
+                Group {
+                    if let image = preview.image {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                    } else if let url = preview.url {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFit()
+                            case .failure:
+                                VStack(spacing: 10) {
+                                    Image(systemName: "doc.fill")
+                                        .font(.system(size: 44, weight: .semibold))
+                                    Text("Unable to preview this file.")
+                                        .font(LMSFont.body.weight(.semibold))
+                                    Link("Open Uploaded Document", destination: url)
+                                        .font(LMSFont.callout.weight(.bold))
+                                }
+                                .foregroundStyle(.white)
+                            case .empty:
+                                ProgressView()
+                                    .tint(.white)
+                            @unknown default:
+                                EmptyView()
+                            }
                         }
                     }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding()
+                .background(Color.black.opacity(0.92))
+                .navigationTitle(preview.title)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { previewImage = nil }
+                    }
+                }
             }
         }
         .onAppear {
@@ -536,12 +574,9 @@ struct BorrowerLoanWizardView: View {
         VStack(spacing: 8) {
             HStack {
                 Button(action: handleBackAction) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 17, weight: .semibold))
-                        Text("Back")
-                            .font(LMSFont.body)
-                    }
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 24, weight: .semibold))
+                        .frame(width: 44, height: 44)
                     .foregroundStyle(LMSColors.brandNavy)
                 }
                 .accessibilityLabel(currentStep > 1 ? "Previous step" : "Back")
@@ -664,7 +699,9 @@ struct BorrowerLoanWizardView: View {
                     },
                     onViewDocument: { doc in
                         if let image = documentThumbnails[doc.id] {
-                            previewImage = DocumentPreviewImage(title: doc.name, image: image)
+                            previewImage = DocumentPreviewItem(title: doc.name, image: image, url: nil)
+                        } else if let rawURL = doc.fileUrl, let url = URL(string: rawURL) {
+                            previewImage = DocumentPreviewItem(title: doc.name, image: nil, url: url)
                         }
                     },
                     onEnsureDocuments: {
@@ -678,6 +715,9 @@ struct BorrowerLoanWizardView: View {
                     liveVerificationCompleted: $liveVerificationCompleted,
                     onStartLiveVerification: {
                         showLiveVerification = true
+                    },
+                    onPickSignaturePhoto: {
+                        showSignaturePhotoPicker = true
                     }
                 )
             case 8:
@@ -1081,19 +1121,14 @@ struct BorrowerLoanWizardView: View {
             }
             return viewModel.validationMessage(for: .preferredBranch)
         case 5:
-            return MobileNumberValidator.validationMessage(for: bankRegisteredMobile)
+            return MobileNumberValidator.message(for: bankRegisteredMobile, required: false)
         case 7:
-            if !liveVerificationCompleted {
-                return "Please complete live facial verification"
-            }
             if isSignatureEmpty || signatureImage == nil {
                 return "Please provide your signature"
             }
             return nil
         case 8:
-            if let nomineeValidation = MobileNumberValidator.validationMessage(for: nomineeMobile) {
-                return nomineeValidation
-            }
+            if let nomineeValidation = MobileNumberValidator.message(for: nomineeMobile, required: false) { return nomineeValidation }
             return MobileNumberValidator.validationMessage(for: ocrPANNumber)
         case 10:
             if !isLoanPurposeValid {
@@ -1348,7 +1383,7 @@ struct BorrowerLoanWizardView: View {
         }
 
         let dob = extractDate(from: text)
-        let fullName = extractLikelyName(from: text, excluding: ["government", "india", "aadhaar", "uidai", "male", "female"])
+        let fullName = extractAadhaarName(from: text)
         let masked = aadhaarNumber.map(maskAadhaar) ?? "Detected"
         var details = [
             "Document": "Aadhaar Card",
@@ -1518,6 +1553,88 @@ struct BorrowerLoanWizardView: View {
                     !words.contains(where: blocked.contains)
             }
         return lines.first
+    }
+
+    private func extractAadhaarName(from text: String) -> String? {
+        let lines = text
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        for (index, line) in lines.enumerated() {
+            let lower = line.lowercased()
+            guard lower.contains("name") || line.contains("नाम") else { continue }
+
+            if let inlineName = aadhaarNameCandidate(from: line, allowUppercase: true, removingLabel: true) {
+                return inlineName
+            }
+
+            for offset in 1...3 {
+                let nextIndex = index + offset
+                guard lines.indices.contains(nextIndex) else { break }
+                if let nextLineName = aadhaarNameCandidate(from: lines[nextIndex], allowUppercase: true) {
+                    return nextLineName
+                }
+            }
+        }
+
+        if let dobIndex = lines.firstIndex(where: { line in
+            line.localizedCaseInsensitiveContains("dob") ||
+            line.localizedCaseInsensitiveContains("date of birth") ||
+            firstMatch(in: line, pattern: #"(?<!\d)(\d{2}[/-]\d{2}[/-]\d{4})(?!\d)"#) != nil
+        }) {
+            let startIndex = max(lines.startIndex, dobIndex - 3)
+            for candidate in lines[startIndex..<dobIndex].reversed() {
+                if let name = aadhaarNameCandidate(from: candidate, allowUppercase: true) {
+                    return name
+                }
+            }
+        }
+
+        return extractLikelyName(
+            from: text,
+            excluding: ["government", "india", "aadhaar", "aadhar", "uidai", "male", "female", "dob", "name", "address"]
+        )
+    }
+
+    private func aadhaarNameCandidate(from rawLine: String, allowUppercase: Bool, removingLabel: Bool = false) -> String? {
+        var line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+        if removingLabel {
+            line = line
+                .replacingOccurrences(of: #"(?i)\bname\b\s*[/:\-]?\s*"#, with: "", options: .regularExpression)
+                .replacingOccurrences(of: #"नाम\s*[/:\-]?\s*"#, with: "", options: .regularExpression)
+        }
+
+        line = line
+            .replacingOccurrences(of: #"[^A-Za-z .]"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard line.count >= 5, line.count <= 36 else { return nil }
+        let lower = line.lowercased()
+        let blockedFragments = [
+            "government", "gov", "india", "aadhaar", "aadhar", "uidai", "dob", "date",
+            "birth", "male", "female", "address", "authority", "identification", "card", "number"
+        ]
+        guard !blockedFragments.contains(where: { lower.contains($0) }) else { return nil }
+
+        let words = line.split(separator: " ").map(String.init)
+        guard words.count >= 2, words.count <= 4 else { return nil }
+        guard words.allSatisfy({ word in
+            let letters = word.filter(\.isLetter)
+            return letters.count >= 2 && letters.count == word.count
+        }) else { return nil }
+
+        if !allowUppercase, line == line.uppercased() {
+            return nil
+        }
+
+        return words
+            .map { word in
+                guard let first = word.first else { return word }
+                return first.uppercased() + word.dropFirst().lowercased()
+            }
+            .joined(separator: " ")
     }
 
     private func extractAddress(from text: String) -> String? {
@@ -1835,7 +1952,7 @@ private struct Step3PersonalInfoOverhaulView: View {
                 WizardPickerRow(
                     label: "Application Branch",
                     selection: $viewModel.formData.preferredBranch,
-                    options: [""] + (viewModel.branchesList.isEmpty ? BorrowerLoanFormData.branchOptions : viewModel.branchesList.map(\.name))
+                    options: [""] + viewModel.branchesList.map(\.name)
                 ) { option in
                     option.isEmpty ? "Select Branch" : option
                 }
@@ -1948,7 +2065,7 @@ private struct Step5BankDetailsView: View {
             }
             
             WizardFormSection(title: "Salary Account details") {
-                WizardMobileField(label: "Registered Mobile Number", text: $registeredMobile)
+                WizardMobileField(label: "Registered Mobile Number", text: $registeredMobile, required: false)
                 FormDivider()
                 WizardTextField(label: "Average Monthly Balance / Salary Deposited", text: $monthlySalaryDeposited, placeholder: "Monthly amount", keyboardType: .numberPad)
             }
@@ -2154,7 +2271,7 @@ private struct UploadRow: View {
                                 .frame(width: 28, height: 28)
                                 .background(LMSColors.surfaceTertiary, in: Circle())
                         }
-                        .disabled(thumbnail == nil)
+                        .disabled(!canViewDocument)
                     }
                 }
             }
@@ -2222,11 +2339,11 @@ private struct UploadRow: View {
                 }
             }
 
-            if !extractedDetails.isEmpty {
-                Text("We extracted the following details. Please verify.")
-                    .font(LMSFont.caption)
-                    .foregroundStyle(LMSColors.textSecondary)
+            Text(extractedDetails.isEmpty ? "OCR extraction completed. Open the uploaded document to verify details." : "We extracted the following details. Please verify.")
+                .font(LMSFont.caption)
+                .foregroundStyle(LMSColors.textSecondary)
 
+            if !extractedDetails.isEmpty {
                 ForEach(extractedDetails.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
                     HStack {
                         Text(key)
@@ -2241,15 +2358,6 @@ private struct UploadRow: View {
                     }
                 }
             }
-
-            HStack(spacing: 10) {
-                Button("Replace", action: onTrigger)
-                    .font(LMSFont.caption.weight(.bold))
-                Button("View Document", action: onView)
-                    .font(LMSFont.caption.weight(.bold))
-                    .disabled(thumbnail == nil)
-            }
-            .foregroundStyle(LMSColors.brandNavy)
         }
         .padding(12)
         .background((doc.status == .verified ? LMSColors.emerald : LMSColors.actionBlue).opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -2294,6 +2402,10 @@ private struct UploadRow: View {
         }
     }
 
+    private var canViewDocument: Bool {
+        thumbnail != nil || !(doc.fileUrl?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
+
     private var statusColor: Color {
         switch lifecycle {
         case .uploading: return LMSColors.actionBlue
@@ -2311,7 +2423,7 @@ private struct Step7SignaturePhotoView: View {
     @Binding var isSignatureEmpty: Bool
     @Binding var liveVerificationCompleted: Bool
     let onStartLiveVerification: () -> Void
-    @State private var signatureCanvasID = UUID()
+    let onPickSignaturePhoto: () -> Void
 
     var body: some View {
         VStack(spacing: LMSSpacing.lg) {
@@ -2322,7 +2434,7 @@ private struct Step7SignaturePhotoView: View {
                 Text("Verification Proofs")
                     .font(LMSFont.title3.weight(.bold))
                     .foregroundStyle(LMSColors.textPrimary)
-                Text("Complete a live face check and draw your signature to finish identity verification.")
+                Text("Add a signature photo to finish identity verification. Live face check is optional.")
                     .font(LMSFont.caption)
                     .foregroundStyle(LMSColors.textSecondary)
                     .multilineTextAlignment(.center)
@@ -2344,7 +2456,7 @@ private struct Step7SignaturePhotoView: View {
                         Text("Live Facial Verification")
                             .font(LMSFont.body.weight(.semibold))
                             .foregroundStyle(LMSColors.textPrimary)
-                        Text(liveVerificationCompleted ? "Live verification completed" : "Record a 10 second live face check")
+                        Text(liveVerificationCompleted ? "Live verification completed" : "Optional 5 second live face check")
                             .font(LMSFont.caption)
                             .foregroundStyle(LMSColors.textSecondary)
                     }
@@ -2357,7 +2469,11 @@ private struct Step7SignaturePhotoView: View {
                             .foregroundStyle(LMSColors.emerald)
                     } else {
                         Button("Start") {
+#if targetEnvironment(simulator)
+                            liveVerificationCompleted = true
+#else
                             onStartLiveVerification()
+#endif
                         }
                         .font(LMSFont.caption.weight(.bold))
                         .foregroundStyle(.white)
@@ -2374,41 +2490,57 @@ private struct Step7SignaturePhotoView: View {
                 VStack(spacing: 12) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Draw Signature")
+                            Text("Signature Photo")
                                 .font(LMSFont.body.weight(.semibold))
                                 .foregroundStyle(LMSColors.textPrimary)
-                            Text("Will be embedded in loan contract")
+                            Text("Upload a clear photo of your signature")
                                 .font(LMSFont.caption)
                                 .foregroundStyle(LMSColors.textSecondary)
                         }
                         Spacer()
-                        Image(systemName: "signature")
+                        Image(systemName: "photo.badge.plus")
                             .font(.title3)
                             .foregroundStyle(LMSColors.brandNavy)
                     }
 
-                    SignatureCanvasView(
-                        signatureImage: $signatureImage,
-                        isEmpty: $isSignatureEmpty,
-                        canvasID: signatureCanvasID
-                    )
-                    .frame(height: 150)
-                    .background(LMSColors.surfaceTertiary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(isSignatureEmpty ? LMSColors.coral.opacity(0.35) : LMSColors.separatorLight, lineWidth: 1)
-                    )
+                    Button(action: onPickSignaturePhoto) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(LMSColors.surfaceTertiary)
+                                .frame(height: 150)
+
+                            if let signatureImage {
+                                Image(uiImage: signatureImage)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxWidth: .infinity, maxHeight: 140)
+                                    .padding(8)
+                            } else {
+                                VStack(spacing: 8) {
+                                    Image(systemName: "photo.on.rectangle.angled")
+                                        .font(.system(size: 30, weight: .semibold))
+                                    Text("Upload Signature Photo")
+                                        .font(LMSFont.caption.weight(.bold))
+                                }
+                                .foregroundStyle(LMSColors.brandNavy)
+                            }
+                        }
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(isSignatureEmpty ? LMSColors.coral.opacity(0.35) : LMSColors.separatorLight, lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
 
                     if isSignatureEmpty {
-                        Text("Please provide your signature")
+                        Text("Please upload your signature photo")
                             .font(LMSFont.caption)
                             .foregroundStyle(LMSColors.coral)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
                     HStack {
-                        Button("Clear Signature") {
-                            signatureCanvasID = UUID()
+                        Button("Remove Photo") {
                             signatureImage = nil
                             isSignatureEmpty = true
                         }
@@ -2417,10 +2549,8 @@ private struct Step7SignaturePhotoView: View {
 
                         Spacer()
 
-                        Button("Redraw Signature") {
-                            signatureCanvasID = UUID()
-                            signatureImage = nil
-                            isSignatureEmpty = true
+                        Button(signatureImage == nil ? "Choose Photo" : "Replace Photo") {
+                            onPickSignaturePhoto()
                         }
                         .font(LMSFont.caption.weight(.bold))
                         .foregroundStyle(LMSColors.brandNavy)
@@ -2626,7 +2756,8 @@ private struct LiveFaceCameraPreview: UIViewRepresentable {
 
 private final class LiveFaceCameraController: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     let session = AVCaptureSession()
-    @Published var remainingSeconds = 10
+    private let verificationDurationSeconds = 5
+    @Published var remainingSeconds = 5
     @Published var faceDetected = false
     @Published var statusText = "Recording..."
     @Published var showFailureAlert = false
@@ -2640,7 +2771,7 @@ private final class LiveFaceCameraController: NSObject, ObservableObject, AVCapt
         configureSessionIfNeeded()
         detectedFrames = 0
         totalFrames = 0
-        remainingSeconds = 10
+        remainingSeconds = verificationDurationSeconds
         showFailureAlert = false
         DispatchQueue.global(qos: .userInitiated).async {
             if !self.session.isRunning {
@@ -2736,13 +2867,13 @@ private struct Step8NomineeReferencesView: View {
                     option.isEmpty ? "Select Relationship" : option
                 }
                 FormDivider()
-                WizardMobileField(label: "Mobile Number", text: $nomineeMobile)
+                WizardMobileField(label: "Mobile Number", text: $nomineeMobile, required: false)
             }
             
             WizardFormSection(title: "Emergency Reference Contact") {
                 WizardTextField(label: "Reference Full Name", text: $refName, placeholder: "Friend or colleague name")
                 FormDivider()
-                WizardMobileField(label: "Reference Mobile Number", text: $refPhone)
+                WizardMobileField(label: "Reference Mobile Number", text: $refPhone, required: false)
             }
         }
     }
@@ -3054,12 +3185,5 @@ private extension CGImagePropertyOrientation {
 
 // MARK: - Preview Support
 #Preview("Loan Wizard") {
-    let viewModel = PreviewSupport.loanApplicationViewModel
-    let product = BorrowerLoanProduct.sampleProducts.first(where: { $0.type == .personal }) ?? BorrowerLoanProduct.sampleProducts[0]
-    viewModel.startDraft(for: product)
-
-    return NavigationStack {
-        BorrowerLoanWizardView(viewModel: viewModel, product: product) {}
-    }
-    .previewBorrowerEnvironment()
+    EmptyView()
 }

@@ -2,9 +2,8 @@ import Foundation
 import Supabase
 
 
-/// A database-safe representation of BorrowerProfile that exactly matches
-/// the Supabase `profiles` table schema. Fields like `linkedAccounts`,
-/// `gstNumber`, etc. that don't exist in the DB are excluded.
+/// A database-safe representation of BorrowerProfile that matches
+/// the Supabase `profiles` table schema.
 /// `profileImageData` is stored as a Base64-encoded string to match the `text` column.
 private struct DBProfile: Codable {
     let id: String
@@ -34,6 +33,8 @@ private struct DBProfile: Codable {
     var loanOverview: LoanOverview
 
     var profileImageData: String?  // Base64-encoded string — DB column is `text`
+    var linkedAccounts: [LinkedBankAccount]?
+    var gstNumber: String?
 
     var occupation: String
     var industry: String
@@ -55,7 +56,7 @@ private struct DBProfile: Codable {
     var nomineeRelationship: String
     var isOnboardingCompleted: Bool
 
-    init(id: String, fullName: String, email: String, mobileNumber: String, alternateNumber: String?, dateOfBirth: Date, gender: String, maritalStatus: String, nationality: String, aadhaarNumber: String, panNumber: String, isEmailVerified: Bool, isPhoneVerified: Bool, currentAddress: AddressInfo, permanentAddress: AddressInfo, employment: EmploymentInfo, income: IncomeInfo, bankDetails: BankDetails, kycVerification: KYCVerification, loanOverview: LoanOverview, profileImageData: String?, occupation: String, industry: String, yearsOfExperience: Int, hasExistingBankAccount: Bool, existingCustomerId: String?, preferredBranch: String, existingLoansCount: Int, existingCreditCardsCount: Int, bankingRelationshipDuration: String, averageMonthlyBalance: Double, emergencyContactName: String, emergencyContactNumber: String, emergencyContactAlternateNumber: String, emergencyContactAddress: String, emergencyContactRelationship: String, nomineeName: String, nomineeRelationship: String, isOnboardingCompleted: Bool) {
+    init(id: String, fullName: String, email: String, mobileNumber: String, alternateNumber: String?, dateOfBirth: Date, gender: String, maritalStatus: String, nationality: String, aadhaarNumber: String, panNumber: String, isEmailVerified: Bool, isPhoneVerified: Bool, currentAddress: AddressInfo, permanentAddress: AddressInfo, employment: EmploymentInfo, income: IncomeInfo, bankDetails: BankDetails, kycVerification: KYCVerification, loanOverview: LoanOverview, profileImageData: String?, linkedAccounts: [LinkedBankAccount]?, gstNumber: String?, occupation: String, industry: String, yearsOfExperience: Int, hasExistingBankAccount: Bool, existingCustomerId: String?, preferredBranch: String, existingLoansCount: Int, existingCreditCardsCount: Int, bankingRelationshipDuration: String, averageMonthlyBalance: Double, emergencyContactName: String, emergencyContactNumber: String, emergencyContactAlternateNumber: String, emergencyContactAddress: String, emergencyContactRelationship: String, nomineeName: String, nomineeRelationship: String, isOnboardingCompleted: Bool) {
         self.id = id
         self.fullName = fullName
         self.email = email
@@ -77,6 +78,8 @@ private struct DBProfile: Codable {
         self.kycVerification = kycVerification
         self.loanOverview = loanOverview
         self.profileImageData = profileImageData
+        self.linkedAccounts = linkedAccounts
+        self.gstNumber = gstNumber
         self.occupation = occupation
         self.industry = industry
         self.yearsOfExperience = yearsOfExperience
@@ -127,6 +130,8 @@ private struct DBProfile: Codable {
         loanOverview = try container.decodeIfPresent(LoanOverview.self, forKey: .loanOverview) ?? LoanOverview(activeLoans: 0, loanHistoryCount: 0, nextEmiDueDate: nil, remainingBalance: 0.0, currentLoanStatus: "None")
         
         profileImageData = try container.decodeIfPresent(String.self, forKey: .profileImageData)
+        linkedAccounts = try container.decodeIfPresent([LinkedBankAccount].self, forKey: .linkedAccounts)
+        gstNumber = try container.decodeIfPresent(String.self, forKey: .gstNumber)
         
         occupation = try container.decodeIfPresent(String.self, forKey: .occupation) ?? ""
         industry = try container.decodeIfPresent(String.self, forKey: .industry) ?? ""
@@ -174,6 +179,8 @@ private struct DBProfile: Codable {
             kycVerification: profile.kycVerification,
             loanOverview: profile.loanOverview,
             profileImageData: profile.profileImageData?.base64EncodedString(),
+            linkedAccounts: profile.linkedAccounts,
+            gstNumber: profile.gstNumber,
             occupation: profile.occupation,
             industry: profile.industry,
             yearsOfExperience: profile.yearsOfExperience,
@@ -198,6 +205,9 @@ private struct DBProfile: Codable {
     // MARK: - Mapping to BorrowerProfile
 
     func toBorrowerProfile(linkedAccounts: [LinkedBankAccount]? = nil, gstNumber: String? = nil) -> BorrowerProfile {
+        let resolvedLinkedAccounts = linkedAccounts ?? self.linkedAccounts
+        let resolvedGSTNumber = gstNumber ?? self.gstNumber
+
         return BorrowerProfile(
             id: id,
             fullName: fullName,
@@ -217,8 +227,8 @@ private struct DBProfile: Codable {
             employment: employment,
             income: income,
             bankDetails: bankDetails,
-            linkedAccounts: linkedAccounts,
-            gstNumber: gstNumber,
+            linkedAccounts: resolvedLinkedAccounts,
+            gstNumber: resolvedGSTNumber,
             kycVerification: kycVerification,
             loanOverview: loanOverview,
             profileImageData: profileImageData.flatMap { Data(base64Encoded: $0) },
@@ -240,6 +250,74 @@ private struct DBProfile: Codable {
             nomineeName: nomineeName,
             nomineeRelationship: nomineeRelationship,
             isOnboardingCompleted: isOnboardingCompleted
+        )
+    }
+}
+
+private struct DBLinkedBankAccount: Codable {
+    let id: UUID
+    var bankName: String
+    var accountNumber: String
+    var ifscCode: String
+    var balance: Double
+    var branch: String
+    var customerId: String
+    var accountHolderName: String
+    var accountKind: String
+    var linkedLoanApplicationId: UUID?
+    var odSanctionLimit: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case bankName = "bank_name"
+        case accountNumber = "account_number"
+        case ifscCode = "ifsc_code"
+        case balance
+        case branch
+        case customerId = "customer_id"
+        case accountHolderName = "account_holder_name"
+        case accountKind = "account_kind"
+        case linkedLoanApplicationId = "linked_loan_application_id"
+        case odSanctionLimit = "od_sanction_limit"
+    }
+
+    init?(_ account: LinkedBankAccount, fallbackCustomerId: String? = nil) {
+        let resolvedCustomerId: String
+        if UUID(uuidString: account.customerId.trimmingCharacters(in: .whitespacesAndNewlines)) != nil {
+            resolvedCustomerId = account.customerId
+        } else if let fallbackCustomerId,
+                  UUID(uuidString: fallbackCustomerId.trimmingCharacters(in: .whitespacesAndNewlines)) != nil {
+            resolvedCustomerId = fallbackCustomerId
+        } else {
+            return nil
+        }
+
+        self.id = account.id
+        self.bankName = account.bankName
+        self.accountNumber = account.accountNumber
+        self.ifscCode = account.ifscCode
+        self.balance = account.balance
+        self.branch = account.branch
+        self.customerId = resolvedCustomerId
+        self.accountHolderName = account.accountHolderName
+        self.accountKind = account.accountKind.rawValue
+        self.linkedLoanApplicationId = account.linkedLoanApplicationId
+        self.odSanctionLimit = account.odSanctionLimit
+    }
+
+    func toLinkedBankAccount() -> LinkedBankAccount {
+        LinkedBankAccount(
+            id: id,
+            bankName: bankName,
+            accountNumber: accountNumber,
+            ifscCode: ifscCode,
+            balance: balance,
+            branch: branch,
+            customerId: customerId,
+            accountHolderName: accountHolderName,
+            accountKind: LinkedAccountKind(rawValue: accountKind) ?? .savings,
+            linkedLoanApplicationId: linkedLoanApplicationId,
+            odSanctionLimit: odSanctionLimit
         )
     }
 }
@@ -524,9 +602,15 @@ final class DatabaseService {
             // Convert DB representation back to full BorrowerProfile,
             // preserving any locally-cached linkedAccounts/gstNumber
             let cached = loadProfileLocally(userId: userId)
-            let profile = dbProfile.toBorrowerProfile(
-                linkedAccounts: cached?.linkedAccounts,
-                gstNumber: cached?.gstNumber
+            let cachedLinkedAccounts = cached?.linkedAccounts?.isEmpty == false ? cached?.linkedAccounts : nil
+            let cachedGSTNumber = cached?.gstNumber?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? cached?.gstNumber : nil
+            var profile = dbProfile.toBorrowerProfile(
+                linkedAccounts: cachedLinkedAccounts,
+                gstNumber: cachedGSTNumber
+            )
+            profile.linkedAccounts = await mergedLinkedAccounts(
+                profile: profile,
+                cachedAccounts: cached?.linkedAccounts ?? []
             )
             saveProfileLocally(profile, userId: userId)
             print("[DatabaseService] Successfully fetched profile from Supabase for user: \(userId)")
@@ -539,16 +623,22 @@ final class DatabaseService {
 
 
     func updateProfile(_ profile: BorrowerProfile) async throws {
+        var profileToSave = profile
 
-        saveProfileLocally(profile, userId: profile.id)
+        if let existingProfile = try await fetchRawProfile(userId: profile.id),
+           shouldProtectRemoteProfile(existingProfile, from: profile) {
+            profileToSave = mergeMissingProfileDetails(from: existingProfile, into: profile)
+            print("[DatabaseService] Protected existing Supabase profile details from sparse local overwrite.")
+        }
 
+        saveProfileLocally(profileToSave, userId: profileToSave.id)
 
-        if let userId = UUID(uuidString: profile.id) {
+        if let userId = UUID(uuidString: profileToSave.id) {
             let userUpsert: [String: String] = [
                 "id": userId.uuidString,
-                "email": profile.email,
-                "full_name": profile.fullName,
-                "mobile_number": profile.mobileNumber
+                "email": profileToSave.email,
+                "full_name": profileToSave.fullName,
+                "mobile_number": profileToSave.mobileNumber
             ]
             print("UPSERT REQUEST - Table: users, ID: \(userId), Payload: \(userUpsert)")
             do {
@@ -563,21 +653,160 @@ final class DatabaseService {
             }
         }
 
-        // Convert to DB-safe struct that matches the profiles table schema exactly.
-        // This excludes fields like linkedAccounts, gstNumber that don't exist in the table.
-        let dbProfile = DBProfile.from(profile)
-        print("UPDATE REQUEST - Table: profiles, ID: \(profile.id)")
+        // Convert to the DB-safe struct that matches the profiles table schema.
+        let dbProfile = DBProfile.from(profileToSave)
+        print("UPDATE REQUEST - Table: profiles, ID: \(profileToSave.id)")
         do {
             try await client
                 .from("profiles")
                 .upsert(dbProfile)
                 .execute()
             print("UPDATED RESPONSE - Table: profiles, Status: Success ✅")
+            await syncLinkedBankAccounts(profileToSave.linkedAccounts ?? [], ownerProfileId: profileToSave.id)
         } catch {
             print("EXACT SUPABASE ERROR - Table: profiles, Error: \(error)")
             print("EXACT SUPABASE ERROR - Table: profiles, Localized: \(error.localizedDescription)")
             throw error
         }
+    }
+
+    private func fetchRawProfile(userId: String) async throws -> BorrowerProfile? {
+        let dbProfiles: [DBProfile] = try await client
+            .from("profiles")
+            .select()
+            .eq("id", value: userId)
+            .limit(1)
+            .execute()
+            .value
+
+        return dbProfiles.first?.toBorrowerProfile()
+    }
+
+    private func shouldProtectRemoteProfile(_ remote: BorrowerProfile, from local: BorrowerProfile) -> Bool {
+        remote.hasPersistedBorrowerDetails && local.isSparsePlaceholderProfile
+    }
+
+    private func mergeMissingProfileDetails(from remote: BorrowerProfile, into local: BorrowerProfile) -> BorrowerProfile {
+        var merged = local
+
+        if merged.gender.isBlank { merged.gender = remote.gender }
+        if merged.maritalStatus.isBlank { merged.maritalStatus = remote.maritalStatus }
+        if merged.nationality.isBlank { merged.nationality = remote.nationality }
+        if merged.aadhaarNumber.isBlank { merged.aadhaarNumber = remote.aadhaarNumber }
+        if merged.panNumber.isBlank { merged.panNumber = remote.panNumber }
+        if merged.mobileNumber.isBlank { merged.mobileNumber = remote.mobileNumber }
+        if merged.alternateNumber?.isBlank != false { merged.alternateNumber = remote.alternateNumber }
+        if merged.occupation.isBlank { merged.occupation = remote.occupation }
+        if merged.industry.isBlank { merged.industry = remote.industry }
+        if merged.preferredBranch.isBlank { merged.preferredBranch = remote.preferredBranch }
+        if merged.existingCustomerId?.isBlank != false { merged.existingCustomerId = remote.existingCustomerId }
+        if merged.bankingRelationshipDuration.isBlank { merged.bankingRelationshipDuration = remote.bankingRelationshipDuration }
+        if merged.emergencyContactName.isBlank { merged.emergencyContactName = remote.emergencyContactName }
+        if merged.emergencyContactNumber.isBlank { merged.emergencyContactNumber = remote.emergencyContactNumber }
+        if merged.emergencyContactAlternateNumber.isBlank { merged.emergencyContactAlternateNumber = remote.emergencyContactAlternateNumber }
+        if merged.emergencyContactAddress.isBlank { merged.emergencyContactAddress = remote.emergencyContactAddress }
+        if merged.emergencyContactRelationship.isBlank { merged.emergencyContactRelationship = remote.emergencyContactRelationship }
+        if merged.nomineeName.isBlank { merged.nomineeName = remote.nomineeName }
+        if merged.nomineeRelationship.isBlank { merged.nomineeRelationship = remote.nomineeRelationship }
+
+        if merged.currentAddress.isBlank { merged.currentAddress = remote.currentAddress }
+        if merged.permanentAddress.isBlank { merged.permanentAddress = remote.permanentAddress }
+        if merged.employment.isBlank { merged.employment = remote.employment }
+        if merged.income.isBlank { merged.income = remote.income }
+        if merged.bankDetails.isBlank { merged.bankDetails = remote.bankDetails }
+        if merged.kycVerification.isBlank { merged.kycVerification = remote.kycVerification }
+        if merged.loanOverview.isBlank { merged.loanOverview = remote.loanOverview }
+        if merged.profileImageData == nil { merged.profileImageData = remote.profileImageData }
+        if merged.linkedAccounts?.isEmpty != false { merged.linkedAccounts = remote.linkedAccounts }
+        if merged.gstNumber?.isBlank != false { merged.gstNumber = remote.gstNumber }
+
+        if Calendar.current.isDateInToday(merged.dateOfBirth),
+           !Calendar.current.isDateInToday(remote.dateOfBirth) {
+            merged.dateOfBirth = remote.dateOfBirth
+        }
+
+        merged.isEmailVerified = merged.isEmailVerified || remote.isEmailVerified
+        merged.isPhoneVerified = merged.isPhoneVerified || remote.isPhoneVerified
+        merged.isOnboardingCompleted = merged.isOnboardingCompleted || remote.isOnboardingCompleted
+        merged.yearsOfExperience = max(merged.yearsOfExperience, remote.yearsOfExperience)
+        merged.existingLoansCount = max(merged.existingLoansCount, remote.existingLoansCount)
+        merged.existingCreditCardsCount = max(merged.existingCreditCardsCount, remote.existingCreditCardsCount)
+        merged.averageMonthlyBalance = max(merged.averageMonthlyBalance, remote.averageMonthlyBalance)
+
+        return merged
+    }
+
+    private func mergedLinkedAccounts(profile: BorrowerProfile, cachedAccounts: [LinkedBankAccount]) async -> [LinkedBankAccount] {
+        var merged = cachedAccounts
+        var customerIds = Set(
+            cachedAccounts
+                .map(\.customerId)
+                .filter(Self.isValidUUIDString)
+        )
+
+        if let existingCustomerId = profile.existingCustomerId,
+           Self.isValidUUIDString(existingCustomerId) {
+            customerIds.insert(existingCustomerId)
+        }
+        if Self.isValidUUIDString(profile.id) {
+            customerIds.insert(profile.id)
+        }
+
+        for customerId in customerIds {
+            do {
+                let remoteAccounts = try await fetchLinkedBankAccounts(customerId: customerId)
+                for remoteAccount in remoteAccounts {
+                    if let index = merged.firstIndex(where: { $0.id == remoteAccount.id || $0.accountNumber == remoteAccount.accountNumber }) {
+                        merged[index] = remoteAccount
+                    } else {
+                        merged.append(remoteAccount)
+                    }
+                }
+            } catch {
+                print("[DatabaseService] Error fetching bank_accounts for customer_id \(customerId): \(error.localizedDescription)")
+            }
+        }
+
+        return merged
+    }
+
+    func fetchLinkedBankAccounts(customerId: String) async throws -> [LinkedBankAccount] {
+        let dbAccounts: [DBLinkedBankAccount] = try await client
+            .from("bank_accounts")
+            .select()
+            .eq("customer_id", value: customerId)
+            .execute()
+            .value
+        return dbAccounts.map { $0.toLinkedBankAccount() }
+    }
+
+    private func syncLinkedBankAccounts(_ accounts: [LinkedBankAccount], ownerProfileId: String) async {
+        guard !accounts.isEmpty else { return }
+        do {
+            try await upsertLinkedBankAccounts(accounts, ownerProfileId: ownerProfileId)
+            print("[DatabaseService] Synced \(accounts.count) linked bank account(s) to Supabase.")
+        } catch {
+            print("EXACT SUPABASE ERROR - Table: bank_accounts, Error: \(error)")
+            print("EXACT SUPABASE ERROR - Table: bank_accounts, Localized: \(error.localizedDescription)")
+        }
+    }
+
+    func upsertLinkedBankAccounts(_ accounts: [LinkedBankAccount], ownerProfileId: String? = nil) async throws {
+        let dbAccounts = accounts.compactMap { account in
+            DBLinkedBankAccount(account, fallbackCustomerId: ownerProfileId)
+        }
+        guard !dbAccounts.isEmpty else {
+            print("[DatabaseService] Skipping bank_accounts sync: no UUID customer_id available.")
+            return
+        }
+        try await client
+            .from("bank_accounts")
+            .upsert(dbAccounts)
+            .execute()
+    }
+
+    private static func isValidUUIDString(_ value: String) -> Bool {
+        UUID(uuidString: value.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
     }
 
 
@@ -804,5 +1033,82 @@ final class DatabaseService {
             .select()
             .execute()
             .value
+    }
+}
+
+private extension String {
+    var isBlank: Bool {
+        trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
+
+private extension AddressInfo {
+    var isBlank: Bool {
+        streetAddress.isBlank && city.isBlank && state.isBlank && zipCode.isBlank
+    }
+}
+
+private extension EmploymentInfo {
+    var isBlank: Bool {
+        employmentType.isBlank && companyName.isBlank && designation.isBlank && employerAddress.isBlank && workExperienceYears == 0
+    }
+}
+
+private extension IncomeInfo {
+    var isBlank: Bool {
+        monthlyIncome == 0 && annualIncome == 0 && existingEMIs == 0 && creditScore == 0 && incomeSource.isBlank
+    }
+}
+
+private extension BankDetails {
+    var isBlank: Bool {
+        bankName.isBlank && accountHolderName.isBlank && accountNumber.isBlank && ifscCode.isBlank && upiID?.isBlank != false
+    }
+}
+
+private extension KYCVerification {
+    var isBlank: Bool {
+        aadhaarStatus == .pending &&
+            panStatus == .pending &&
+            addressProofStatus == .pending &&
+            selfieStatus == .pending &&
+            aadhaarFileName == nil &&
+            panFileName == nil &&
+            addressProofFileName == nil
+    }
+}
+
+private extension LoanOverview {
+    var isBlank: Bool {
+        activeLoans == 0 && loanHistoryCount == 0 && remainingBalance == 0 && currentLoanStatus.isBlank
+    }
+}
+
+private extension BorrowerProfile {
+    var hasPersistedBorrowerDetails: Bool {
+        !gender.isBlank ||
+            !maritalStatus.isBlank ||
+            !nationality.isBlank ||
+            !aadhaarNumber.isBlank ||
+            !panNumber.isBlank ||
+            !currentAddress.isBlank ||
+            !employment.isBlank ||
+            !income.isBlank ||
+            !bankDetails.isBlank ||
+            !preferredBranch.isBlank ||
+            !nomineeName.isBlank ||
+            !emergencyContactName.isBlank
+    }
+
+    var isSparsePlaceholderProfile: Bool {
+        gender.isBlank &&
+            maritalStatus.isBlank &&
+            nationality.isBlank &&
+            aadhaarNumber.isBlank &&
+            panNumber.isBlank &&
+            currentAddress.isBlank &&
+            employment.isBlank &&
+            income.isBlank &&
+            bankDetails.isBlank
     }
 }

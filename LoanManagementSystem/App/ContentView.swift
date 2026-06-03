@@ -1,4 +1,5 @@
 import SwiftUI
+import Supabase
 
 // MARK: - ContentView (Auth Router)
 /// Root view that switches between authentication and dashboard flows
@@ -175,10 +176,15 @@ struct ContentView: View {
             return
         }
 
-        profileStore.ensureProfile(
-            email: email,
-            name: authManager.userDisplayName
-        )
+        Task {
+            if let session = try? await SupabaseManager.shared.client.auth.session {
+                await profileStore.fetchProfileFromSupabase(
+                    uid: session.user.id.uuidString,
+                    email: session.user.email ?? email,
+                    name: authManager.userDisplayName
+                )
+            }
+        }
     }
 
     // MARK: - Splash View
@@ -187,7 +193,7 @@ struct ContentView: View {
             
             LinearGradient(
                 colors: [
-                    Color.brandNavy,
+                    LMSColors.brandNavy,
                     Color(hex: "#2E3B84")
                 ],
                 startPoint: .topLeading,
