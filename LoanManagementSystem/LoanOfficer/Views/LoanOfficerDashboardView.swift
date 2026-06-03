@@ -489,7 +489,7 @@ private struct OfficerAnalyticsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
-            Text("Case Pipeline")
+            Text("Application Status")
                 .font(.system(.title3, design: .rounded).bold())
                 .foregroundStyle(LMSColors.textPrimary)
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
@@ -500,17 +500,18 @@ private struct OfficerAnalyticsSection: View {
             }) {
                 VStack(alignment: .leading, spacing: LMSSpacing.md) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Current Caseload")
+                        Text("Assigned Cases")
                             .font(.system(.headline, design: .rounded).bold())
                             .foregroundStyle(LMSColors.textPrimary)
-                        Text("Breakdown of all applications assigned to you")
+                        Text("Status of applications assigned to you")
                             .font(.system(.subheadline, design: .rounded))
                             .foregroundStyle(LMSColors.textSecondary)
                     }
                     
-                    OfficerPipelineChart(stats: stats)
+                    OfficerPipelineBars(stats: stats)
                 }
-                .padding(LMSSpacing.lg)
+                .padding(.horizontal, LMSSpacing.lg)
+                .padding(.vertical, LMSSpacing.xl)
                 .background(LMSColors.surfaceElevated)
                 .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
                 .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
@@ -524,7 +525,7 @@ private struct OfficerAnalyticsSection: View {
     }
 }
 
-private struct OfficerPipelineChart: View {
+private struct OfficerPipelineBars: View {
     let stats: (pending: Int, underReview: Int, sentToManager: Int, completed: Int)
     @State private var animated = false
 
@@ -536,89 +537,100 @@ private struct OfficerPipelineChart: View {
         max(Double(totalCount), 1)
     }
 
+    private var rows: [(label: String, count: Int, color: Color, icon: String)] {
+        [
+            ("Docs Needed", stats.pending, LMSColors.amber, "doc.text.fill"),
+            ("Under Review", stats.underReview, LMSColors.actionBlue, "magnifyingglass"),
+            ("With Manager", stats.sentToManager, Color.purple, "briefcase.fill"),
+            ("Closed", stats.completed, LMSColors.emerald, "checkmark.seal.fill")
+        ]
+    }
+
     var body: some View {
-        HStack(spacing: LMSSpacing.xl) {
-            ZStack {
-                Circle()
-                    .stroke(LMSColors.separatorLight, lineWidth: 11)
-                    .frame(width: 96, height: 96)
-
-                Circle()
-                    .trim(from: 0, to: animated ? Double(stats.pending) / chartTotal : 0)
-                    .stroke(LMSColors.amber, style: StrokeStyle(lineWidth: 11, lineCap: .round))
-                    .frame(width: 96, height: 96)
-                    .rotationEffect(.degrees(-90))
-
-                Circle()
-                    .trim(from: Double(stats.pending) / chartTotal, to: animated ? Double(stats.pending + stats.underReview) / chartTotal : Double(stats.pending) / chartTotal)
-                    .stroke(LMSColors.actionBlue, style: StrokeStyle(lineWidth: 11, lineCap: .round))
-                    .frame(width: 96, height: 96)
-                    .rotationEffect(.degrees(-90))
-                    
-                Circle()
-                    .trim(from: Double(stats.pending + stats.underReview) / chartTotal, to: animated ? Double(stats.pending + stats.underReview + stats.sentToManager) / chartTotal : Double(stats.pending + stats.underReview) / chartTotal)
-                    .stroke(Color.purple, style: StrokeStyle(lineWidth: 11, lineCap: .round))
-                    .frame(width: 96, height: 96)
-                    .rotationEffect(.degrees(-90))
-
-                Circle()
-                    .trim(
-                        from: Double(stats.pending + stats.underReview + stats.sentToManager) / chartTotal,
-                        to: animated ? Double(totalCount) / chartTotal : Double(stats.pending + stats.underReview + stats.sentToManager) / chartTotal
-                    )
-                    .stroke(LMSColors.emerald, style: StrokeStyle(lineWidth: 11, lineCap: .round))
-                    .frame(width: 96, height: 96)
-                    .rotationEffect(.degrees(-90))
-
-                VStack(spacing: 2) {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("\(totalCount)")
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
                         .foregroundStyle(LMSColors.textPrimary)
-                    Text("Total")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    Text("Total cases")
+                        .font(.system(.caption, design: .rounded).weight(.semibold))
                         .foregroundStyle(LMSColors.textSecondary)
                 }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(LMSColors.textTertiary)
+                    .padding(.top, 6)
             }
-            
-            VStack(alignment: .leading, spacing: 10) {
-                ChartLegendRow(color: LMSColors.amber, label: "Pending Docs", count: stats.pending)
-                ChartLegendRow(color: LMSColors.actionBlue, label: "In Review", count: stats.underReview)
-                ChartLegendRow(color: Color.purple, label: "Manager Auth", count: stats.sentToManager)
-                ChartLegendRow(color: LMSColors.emerald, label: "Completed", count: stats.completed)
+
+            VStack(spacing: 12) {
+                ForEach(rows, id: \.label) { row in
+                    PipelineBarRow(
+                        label: row.label,
+                        count: row.count,
+                        total: chartTotal,
+                        color: row.color,
+                        icon: row.icon,
+                        animated: animated
+                    )
+                }
             }
-            
-            Spacer(minLength: 0)
-            
-            Image(systemName: "chevron.right")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(LMSColors.textTertiary)
         }
         .onAppear {
-            withAnimation(.easeOut(duration: 0.8).delay(0.2)) {
+            withAnimation(.easeOut(duration: 0.65).delay(0.15)) {
                 animated = true
             }
         }
     }
 }
 
-private struct ChartLegendRow: View {
-    let color: Color
+private struct PipelineBarRow: View {
     let label: String
     let count: Int
-    
+    let total: Double
+    let color: Color
+    let icon: String
+    let animated: Bool
+
+    private var progress: Double {
+        guard total > 0 else { return 0 }
+        return min(max(Double(count) / total, 0), 1)
+    }
+
     var body: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(color)
-                .frame(width: 8, height: 8)
-            Text(label)
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(LMSColors.textSecondary)
-                .lineLimit(1)
-            Spacer()
-            Text("\(count)")
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(LMSColors.textPrimary)
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(color)
+                    .frame(width: 18)
+
+                Text(label)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LMSColors.textPrimary)
+                    .lineLimit(1)
+
+                Spacer()
+
+                Text("\(count)")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(LMSColors.textPrimary)
+            }
+
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(LMSColors.separatorLight)
+
+                    Capsule()
+                        .fill(color)
+                        .frame(width: animated ? max(proxy.size.width * progress, count == 0 ? 0 : 8) : 0)
+                }
+            }
+            .frame(height: 8)
         }
     }
 }
@@ -1016,10 +1028,10 @@ private struct LoanOfficerPipelineDetailsSheet: View {
                     )
                 } else {
                     List {
-                        PipelineSection(title: "Open Cases", applications: pendingApps, icon: "tray.full.fill", tint: LMSColors.amber)
-                        PipelineSection(title: "In Review", applications: underReviewApps, icon: "magnifyingglass", tint: LMSColors.actionBlue)
-                        PipelineSection(title: "Manager Desk", applications: sentToManagerApps, icon: "briefcase.fill", tint: Color.purple)
-                        PipelineSection(title: "Completed", applications: completedApps, icon: "checkmark.seal.fill", tint: LMSColors.emerald)
+                        PipelineSection(title: "Docs Needed", applications: pendingApps, icon: "doc.text.fill", tint: LMSColors.amber)
+                        PipelineSection(title: "Under Review", applications: underReviewApps, icon: "magnifyingglass", tint: LMSColors.actionBlue)
+                        PipelineSection(title: "With Manager", applications: sentToManagerApps, icon: "briefcase.fill", tint: Color.purple)
+                        PipelineSection(title: "Closed", applications: completedApps, icon: "checkmark.seal.fill", tint: LMSColors.emerald)
                     }
                     .listStyle(.insetGrouped)
                 }
@@ -1239,18 +1251,12 @@ struct OfficerApplicationReviewCard: View {
             // Nested documents list
             VStack(spacing: 8) {
                 ForEach(matchingDocuments) { doc in
-                    let item = DocumentQueueItem(
-                        id: doc.id,
-                        borrowerName: application.borrowerName,
-                        docType: doc.docType,
-                        status: doc.status,
-                        submittedDate: doc.uploadedDate ?? application.submittedDate,
-                        applicationId: application.applicationId,
-                        fileURL: doc.fileURL
-                    )
-                    
                     NavigationLink {
-                        DocumentReviewDetailView(item: item, viewModel: viewModel)
+                        LoanApplicationReviewDetailView(
+                            applicationId: application.applicationId,
+                            initialDocumentId: doc.id,
+                            viewModel: viewModel
+                        )
                     } label: {
                         HStack(spacing: 10) {
                             ZStack {
