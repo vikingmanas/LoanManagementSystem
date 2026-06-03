@@ -4,6 +4,10 @@ const nodemailer = require('nodemailer');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const dns = require('dns');
+
+// Force IPv4 resolution to prevent Nodemailer from hanging on Render's IPv6 connections
+dns.setDefaultResultOrder('ipv4first');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
