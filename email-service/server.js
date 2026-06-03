@@ -6,8 +6,21 @@ const fs = require('fs');
 const path = require('path');
 const dns = require('dns');
 
-// Force IPv4 resolution to prevent Nodemailer from hanging on Render's IPv6 connections
-dns.setDefaultResultOrder('ipv4first');
+// NUCLEAR FIX: Monkey-patch dns.lookup to ALWAYS resolve IPv4
+// Render's free tier cannot make outbound IPv6 connections,
+// and Nodemailer ignores both dns.setDefaultResultOrder and family:4
+const originalLookup = dns.lookup;
+dns.lookup = function(hostname, options, callback) {
+    if (typeof options === 'function') {
+        callback = options;
+        options = { family: 4 };
+    } else if (typeof options === 'number') {
+        options = { family: 4 };
+    } else {
+        options = Object.assign({}, options, { family: 4 });
+    }
+    return originalLookup.call(this, hostname, options, callback);
+};
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,19 +30,17 @@ app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
 app.use(express.json());
 
 // Set up Nodemailer Transporter
-// Port 587 with STARTTLS — Render free tier blocks port 465
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 587,
-    secure: false, // use STARTTLS
-    family: 4,     // Force IPv4 — Render blocks outbound IPv6
+    secure: false,
     auth: {
         user: process.env.EMAIL_USER,
         pass: (process.env.EMAIL_PASS || '').replace(/\s+/g, '')
     },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000
 });
 
 // Verify connection configuration
