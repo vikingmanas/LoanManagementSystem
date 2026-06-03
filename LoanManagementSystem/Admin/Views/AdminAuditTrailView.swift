@@ -23,6 +23,7 @@ struct AdminAuditTrailView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Image(systemName: entry.displayIcon)
+                                .symbolVariant(.fill)
                                 .foregroundStyle(entry.displayColor)
                             
                             Text(entry.action)

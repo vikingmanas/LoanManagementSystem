@@ -77,6 +77,14 @@ struct AuditLogEntry: Identifiable, Codable, Hashable {
     }
     
     var displayColor: Color {
+        if type == .loanAction {
+            if action.lowercased().contains("disburs") {
+                return LMSColors.emerald
+            }
+            if action.lowercased().contains("approv") {
+                return LMSColors.actionBlue
+            }
+        }
         return LMSColors.textPrimary
     }
 }

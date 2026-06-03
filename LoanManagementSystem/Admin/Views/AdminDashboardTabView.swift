@@ -12,6 +12,13 @@ struct AdminDashboardTabView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: LMSSpacing.sectionGap) {
+                    // Custom title to avoid SwiftUI large-title padding bug on first launch
+                    Text("Dashboard")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .foregroundStyle(LMSColors.textPrimary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
                     if let errorMessage = viewModel.errorMessage {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -53,10 +60,12 @@ struct AdminDashboardTabView: View {
                     auditPreviewSection
                 }
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
-                .padding(.vertical, LMSSpacing.md)
+                .padding(.top, LMSSpacing.sm)
+                .padding(.bottom, LMSSpacing.md)
             }
             .background(LMSColors.background.ignoresSafeArea())
-            .navigationTitle("Dashboard")
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -103,6 +112,7 @@ struct AdminDashboardTabView: View {
                 } label: {
                     HStack(alignment: .center, spacing: 10) {
                         Image(systemName: kpi.icon)
+                            .symbolVariant(.fill)
                             .font(.title3)
                             .foregroundStyle(kpi.themeColor)
                             .frame(width: 28, height: 28)
@@ -160,10 +170,8 @@ struct AdminDashboardTabView: View {
                     ForEach(visibleLogs) { log in
                         HStack(spacing: 12) {
                             ZStack {
-                                Circle()
-                                    .fill(log.displayColor.opacity(0.1))
-                                
                                 Image(systemName: log.displayIcon)
+                                    .symbolVariant(.fill)
                                     .font(.title3)
                                     .foregroundStyle(log.displayColor)
                             }
@@ -196,4 +204,29 @@ struct AdminDashboardTabView: View {
             .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg))
         }
     }
+}
+
+// MARK: - Preview
+#Preview {
+    // Build a mock view model with static data so Xcode canvas works offline
+    let vm = AdminDashboardViewModel()
+    vm.kpis = [
+        AdminKPI(title: "Total Applications", value: "12",  icon: "square.stack.3d.up",      trend:  8.0,  themeColor: LMSColors.textPrimary),
+        AdminKPI(title: "Active Loans",        value: "2",   icon: "chart.line.uptrend.xyaxis", trend:  5.0,  themeColor: LMSColors.textPrimary),
+        AdminKPI(title: "Pending Approvals",   value: "5",   icon: "hourglass",                trend: -2.0,  themeColor: LMSColors.amber),
+        AdminKPI(title: "Total Disbursed",     value: "₹12.25 L", icon: "indianrupeesign.circle", trend: 14.0, themeColor: LMSColors.textPrimary)
+    ]
+    vm.recentAuditLogs = [
+        AuditLogEntry(id: UUID(), userId: UUID(), userName: "ADI BM", action: "Disbursed Funds",          entityType: "Loan",     entityId: "APP-862AE4", timestamp: Date(timeIntervalSinceNow: -86400), details: "", type: .loanAction),
+        AuditLogEntry(id: UUID(), userId: UUID(), userName: "User",   action: "Created Staff User",       entityType: "Staff",    entityId: "APP-7D9AC2", timestamp: Date(timeIntervalSinceNow: -86400), details: "", type: .userAction),
+        AuditLogEntry(id: UUID(), userId: UUID(), userName: "User",   action: "Rejected Document",        entityType: "Document", entityId: "APP-23EBC3", timestamp: Date(timeIntervalSinceNow: -86400), details: "", type: .documentAction),
+        AuditLogEntry(id: UUID(), userId: UUID(), userName: "User",   action: "Approved Loan Application", entityType: "Loan",    entityId: "APP-6014C9", timestamp: Date(timeIntervalSinceNow: -86400), details: "", type: .loanAction)
+    ]
+
+    // Mock AuthManager with a display name so initials render correctly
+    let auth = AuthManager()
+    auth.currentUser = AuthSessionUser(uid: "preview", email: "admin@lms.com", displayName: "US Admin")
+
+    return AdminDashboardTabView(viewModel: vm, showingProfile: .constant(false))
+        .environmentObject(auth)
 }
