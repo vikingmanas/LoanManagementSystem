@@ -203,12 +203,16 @@ final class ManagerDashboardViewModel: ObservableObject {
             if let authManager {
                 configureProfileFromAuth(authManager)
                 await loadStaffContext(userId: authManager.currentUser?.uid)
+                await loadMessageThreads()
             } else {
                 rebuildDerivedDashboardState()
             }
 
-        await generateDueReportsIfNeeded()
         isLoading = false
+
+        Task {
+            await generateDueReportsIfNeeded()
+        }
     }
 
     func refreshData() async {
@@ -217,12 +221,16 @@ final class ManagerDashboardViewModel: ObservableObject {
         await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
         if currentManagerUserId != nil {
             await loadStaffContext(userId: currentManagerUserId?.uuidString)
+            await loadMessageThreads()
             rebuildDerivedDashboardState(keepStaff: !officers.isEmpty)
         } else {
             rebuildDerivedDashboardState(keepStaff: !officers.isEmpty)
         }
-        await generateDueReportsIfNeeded()
         isRefreshing = false
+
+        Task {
+            await generateDueReportsIfNeeded()
+        }
     }
 
     @discardableResult
