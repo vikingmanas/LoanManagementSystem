@@ -1,36 +1,9 @@
 // ============================================================
-// MUST BE FIRST: Force ALL DNS resolution to IPv4
-// Render's free tier cannot make outbound IPv6 connections.
-// This MUST run before require('nodemailer') so Nodemailer
-// picks up the patched dns.lookup.
-// ============================================================
-const dns = require('dns');
-const net = require('net');
-
-const originalLookup = dns.lookup;
-dns.lookup = function(hostname, options, callback) {
-    if (typeof options === 'function') {
-        callback = options;
-        options = { family: 4 };
-    } else if (typeof options === 'number') {
-        options = { family: 4 };
-    } else {
-        options = Object.assign({}, options, { family: 4 });
-    }
-    return originalLookup.call(this, hostname, options, callback);
-};
-
-// Disable Happy Eyeballs (Node 20+) which tries IPv6 in parallel
-if (typeof net.setDefaultAutoSelectFamily === 'function') {
-    net.setDefaultAutoSelectFamily(false);
-}
-
-// ============================================================
-// NOW load everything else
+// Email Service for LoanManagementSystem
+// Uses Resend HTTP API instead of SMTP (Render blocks SMTP)
 // ============================================================
 require('dotenv').config();
 const express = require('express');
-const nodemailer = require('nodemailer');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
@@ -42,30 +15,46 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
 app.use(express.json());
 
-// Set up Nodemailer Transporter
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: (process.env.EMAIL_PASS || '').replace(/\s+/g, '')
-    },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 20000
-});
-
-// Verify connection configuration
-transporter.verify(function (error, success) {
-    if (error) {
-        console.log('Transporter configuration error:', error);
-    } else {
-        console.log('Server is ready to take our messages');
+// Helper: Send email via Resend HTTP API
+async function sendEmail({ to, subject, html }) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+        throw new Error('RESEND_API_KEY is not set in environment variables');
     }
-});
 
-// Send Email Route
+    const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            from: `Loan Management App <${process.env.RESEND_FROM || 'onboarding@resend.dev'}>`,
+            to: [to],
+            subject: subject,
+            html: html
+        })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        console.error('Resend API error:', data);
+        throw new Error(data.message || 'Failed to send email via Resend');
+    }
+
+    return data;
+}
+
+// Verify configuration on startup
+console.log('Email service starting...');
+if (process.env.RESEND_API_KEY) {
+    console.log('✅ RESEND_API_KEY is set — email sending is ready');
+} else {
+    console.log('⚠️  RESEND_API_KEY is NOT set — emails will fail');
+}
+
+// Send Email Route (Password Reset)
 app.post('/api/send-reset-email', async (req, res) => {
     const { userEmail } = req.body;
 
@@ -74,7 +63,6 @@ app.post('/api/send-reset-email', async (req, res) => {
     }
 
     try {
-        // Use the reset-password.html file from your project
         const templatePath = path.join(__dirname, '../LoanManagementSystem/reset-password.html');
         let htmlContent = '';
         if (fs.existsSync(templatePath)) {
@@ -83,19 +71,16 @@ app.post('/api/send-reset-email', async (req, res) => {
             htmlContent = `<b>Click the link below to reset your password.</b>`;
         }
 
-        const mailOptions = {
-            from: `"Loan Management App" <${process.env.EMAIL_USER}>`,
+        const result = await sendEmail({
             to: userEmail,
             subject: 'Password Reset Request',
             html: htmlContent
-        };
+        });
 
-        const info = await transporter.sendMail(mailOptions);
-        console.log('Message sent: %s', info.messageId);
-        
-        res.status(200).json({ message: 'Email sent successfully!', messageId: info.messageId });
+        console.log('Reset email sent:', result.id);
+        res.status(200).json({ message: 'Email sent successfully!', messageId: result.id });
     } catch (error) {
-        console.error('Error sending email:', error);
+        console.error('Error sending email:', error.message);
         res.status(500).json({ error: 'Failed to send email' });
     }
 });
@@ -118,19 +103,16 @@ app.post('/api/send-2fa-otp', async (req, res) => {
             </div>
         `;
 
-        const mailOptions = {
-            from: `"Loan Management App" <${process.env.EMAIL_USER}>`,
+        const result = await sendEmail({
             to: userEmail,
             subject: 'Your Login Verification Code',
             html: htmlContent
-        };
+        });
 
-        const info = await transporter.sendMail(mailOptions);
-        console.log('2FA Message sent: %s', info.messageId);
-        
-        res.status(200).json({ message: '2FA OTP sent successfully!', messageId: info.messageId });
+        console.log('2FA OTP sent:', result.id);
+        res.status(200).json({ message: '2FA OTP sent successfully!', messageId: result.id });
     } catch (error) {
-        console.error('Error sending 2FA OTP email:', error);
+        console.error('Error sending 2FA OTP email:', error.message);
         res.status(500).json({ error: 'Failed to send 2FA OTP' });
     }
 });
