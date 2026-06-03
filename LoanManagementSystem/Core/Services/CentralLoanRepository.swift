@@ -45,6 +45,7 @@ struct ManagerOfficerAssignment {
     static let unassignedOfficerId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
 }
 
+@MainActor
 final class CentralLoanRepository: ObservableObject {
     static let shared = CentralLoanRepository()
     
