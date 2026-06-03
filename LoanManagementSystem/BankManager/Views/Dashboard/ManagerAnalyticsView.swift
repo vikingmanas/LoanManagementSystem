@@ -105,7 +105,7 @@ struct ManagerAnalyticsView: View {
     
                             if escalationsCount > 0 {
                                 RiskMetricCard(
-                                    title: "Escalations",
+                                    title: "Manager Review",
                                     value: "\(escalationsCount)",
                                     icon: "arrow.up.forward.circle.fill",
                                     tint: Color.purple,
@@ -153,7 +153,7 @@ struct ManagerAnalyticsView: View {
         }
         .sheet(isPresented: $showEscalationsSheet) {
             ManagerApplicantListSheet(
-                title: "Escalations",
+                title: "Manager Review",
                 systemImage: "arrow.up.circle.fill",
                 description: "No escalated applications.",
                 applicants: viewModel.officerEscalatedApplicants,

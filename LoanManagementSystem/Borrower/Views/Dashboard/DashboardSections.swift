@@ -33,8 +33,7 @@ struct ProfileCompletionCardSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             DashboardSectionHeader(
-                title: "Profile",
-                subtitle: "Complete verification to unlock all services"
+                title: "Profile"
             )
 
             DashboardSectionCard {
@@ -106,10 +105,9 @@ struct LoanPortfolioSummarySection: View {
     @ObservedObject var viewModel: DashboardViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             DashboardSectionHeader(
-                title: "Loan Portfolio",
-                subtitle: "Your financial overview"
+                title: "Loan Portfolio"
             )
 
             if viewModel.isLoading {
@@ -200,12 +198,9 @@ struct ActiveLoanAccountsSection: View {
     let onApplyLoan: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             DashboardSectionHeader(
-                title: "Active Loan Accounts",
-                subtitle: viewModel.loanAccounts.isEmpty
-                    ? "Approved loans appear here automatically"
-                    : "\(viewModel.loanAccounts.count) account\(viewModel.loanAccounts.count == 1 ? "" : "s")"
+                title: "Active Loan Accounts"
             )
 
             if viewModel.isLoading {
@@ -343,10 +338,9 @@ struct UpcomingPaymentSection: View {
     var onSchedule: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             DashboardSectionHeader(
                 title: "Upcoming Payment",
-                subtitle: "Your next repayment",
                 actionTitle: viewModel.pendingEMIs.count > 1 ? "View All" : nil,
                 action: viewModel.pendingEMIs.count > 1 ? onViewAll : nil
             )
@@ -432,17 +426,17 @@ struct DashboardQuickActionsSection: View {
         [
             DashboardQuickAction(title: "Pay EMI", subtitle: "Due payments", icon: "indianrupeesign", tint: LMSColors.emerald, action: onPayEMI),
             DashboardQuickAction(title: "Top Up", subtitle: "Add funds", icon: "plus.circle.fill", tint: LMSColors.coral, action: onTopUp),
-            DashboardQuickAction(title: "Calculator", subtitle: "Plan EMI", icon: "function", tint: LMSColors.brandNavy, action: onCalculator),
+            DashboardQuickAction(title: "Calculator", subtitle: "Plan EMI", icon: "plus.forwardslash.minus", tint: LMSColors.brandNavy, action: onCalculator),
             DashboardQuickAction(title: "Apply Loan", subtitle: "New request", icon: "doc.badge.plus", tint: LMSColors.teal, action: onApplyLoan),
             DashboardQuickAction(title: "Statements", subtitle: "Download", icon: "doc.text.fill", tint: LMSColors.actionBlue, action: onStatement),
             DashboardQuickAction(title: "Support", subtitle: "Get help", icon: "headphones", tint: LMSColors.amber, action: onSupport),
-            DashboardQuickAction(title: "Foreclosure", subtitle: "Close your loan early", icon: "lock.open.fill", tint: Color.orange, action: onForeclosure)
+            DashboardQuickAction(title: "Close Loan", subtitle: "Prepay & settle", icon: "checkmark.seal.fill", tint: Color.orange, action: onForeclosure)
         ]
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
-            DashboardSectionHeader(title: "Quick Actions", subtitle: "Fast banking shortcuts")
+            DashboardSectionHeader(title: "Quick Actions")
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -555,7 +549,6 @@ struct TransactionHistorySection: View {
         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             DashboardSectionHeader(
                 title: "Transaction History",
-                subtitle: "Recent account activity",
                 actionTitle: transactions.isEmpty ? nil : "View All",
                 action: transactions.isEmpty ? nil : onViewAll
             )
@@ -1065,10 +1058,9 @@ struct DashboardNotificationsSection: View {
     var onNotificationTap: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             DashboardSectionHeader(
                 title: "Notifications",
-                subtitle: "Important alerts",
                 actionTitle: notifications.isEmpty ? nil : "View All",
                 action: notifications.isEmpty ? nil : onViewAll
             )

@@ -10,7 +10,7 @@ struct ManagerApprovalQueueView: View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
 
             HStack {
-                Text("Approval Queue")
+                Text("Approval Request")
                     .font(.system(.title3, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
 

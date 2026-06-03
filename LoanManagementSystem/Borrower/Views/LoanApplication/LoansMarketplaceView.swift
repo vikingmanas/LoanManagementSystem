@@ -10,20 +10,10 @@ struct LoansMarketplaceView: View {
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: LMSSpacing.xl) {
-                VStack(alignment: .leading, spacing: LMSSpacing.xs) {
-                    Text("Find the right financing for your needs")
-                        .font(LMSFont.subheadline)
-                        .foregroundStyle(LMSColors.textSecondary)
-
-                    Text("\(viewModel.filteredProducts.count) products available")
-                        .font(LMSFont.caption)
-                        .foregroundStyle(LMSColors.textTertiary)
-                }
-                .padding(.horizontal, LMSSpacing.screenHorizontal)
-
+            VStack(alignment: .leading, spacing: LMSSpacing.lg) {
                 LoansSearchBar(text: $viewModel.searchQuery)
                     .padding(.horizontal, LMSSpacing.screenHorizontal)
+                    .padding(.top, LMSSpacing.sm)
 
                 if viewModel.filteredProducts.isEmpty {
                     LoansEmptySearchState(query: viewModel.searchQuery)

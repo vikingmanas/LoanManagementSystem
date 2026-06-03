@@ -128,7 +128,7 @@ struct ManagerSettingsView: View {
                     Text("Approval Requests")
                 }
                 Toggle(isOn: $notifEscalations) {
-                    Text("Escalation Alerts")
+                    Text("Review Alerts")
                 }
                 Toggle(isOn: $notifReports) {
                     Text("Weekly Reports")
@@ -142,7 +142,7 @@ struct ManagerSettingsView: View {
                     PermissionRow(label: "Loan Approval", value: "Up to ₹1 Cr", color: LMSColors.emerald)
                     PermissionRow(label: "Staff Reassignment", value: "Branch Level", color: LMSColors.actionBlue)
                     PermissionRow(label: "Report Export", value: "Full Access", color: LMSColors.teal)
-                    PermissionRow(label: "Admin Escalation", value: "Enabled", color: Color.purple)
+                    PermissionRow(label: "Admin Review", value: "Enabled", color: Color.purple)
                 }
             } header: {
                 Label("Permissions Overview", systemImage: "key.fill")

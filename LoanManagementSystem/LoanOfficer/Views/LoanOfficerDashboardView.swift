@@ -178,9 +178,9 @@ private struct LoanOfficerTodayView: View {
         }
         .navigationDestination(isPresented: $showingReadyToSendApps) {
             OfficerPushApplicationListView(
-                title: "Ready to Send",
+                title: "Send for Approval",
                 systemImage: "paperplane.fill",
-                description: "No applications ready to send.",
+                description: "No applications ready to send for approval.",
                 applications: viewModel.sentToManagerApps,
                 viewModel: viewModel
             )
@@ -203,7 +203,7 @@ private struct OfficerActionItemsRow: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             Text("Action Items")
                 .font(.system(.title3, design: .rounded).bold())
                 .foregroundStyle(LMSColors.textPrimary)
@@ -211,7 +211,7 @@ private struct OfficerActionItemsRow: View {
 
             HStack(spacing: LMSSpacing.md) {
                 OfficerActionCard(
-                    title: "Pending Apps",
+                    title: "Pending Applications",
                     value: "\(pendingAppsCount)",
                     icon: "doc.text.badge.clock",
                     tint: pendingAppsCount == 0 ? LMSColors.emerald : LMSColors.actionBlue,
@@ -222,7 +222,7 @@ private struct OfficerActionItemsRow: View {
                 )
 
                 OfficerActionCard(
-                    title: "Ready to Send",
+                    title: "Send for Approval",
                     value: "\(viewModel.sentToManagerApps.count)",
                     icon: "paperplane.fill",
                     tint: viewModel.sentToManagerApps.isEmpty ? LMSColors.emerald : LMSColors.coral,
@@ -284,7 +284,7 @@ private struct OfficerActionCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                 ZStack {
                     RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous)
                         .fill(tint.opacity(0.12))
@@ -322,7 +322,7 @@ private struct OfficerNextActionCard: View {
     @Binding var selectedApp: OfficerLoanApplication?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             Text("Next Best Action")
                 .font(.system(.title3, design: .rounded).bold())
                 .foregroundStyle(LMSColors.textPrimary)
@@ -379,9 +379,9 @@ private struct OfficerReviewSnapshotView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             HStack {
-                Text("Today's Review Queue")
+                Text("Today's approval")
                     .font(.system(.title3, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
 
@@ -406,9 +406,8 @@ private struct OfficerReviewSnapshotView: View {
 
             if appsWithPendingDocsToday.isEmpty {
                 ContentUnavailableView(
-                    "Queue Clear",
-                    systemImage: "checkmark.circle.fill",
-                    description: Text("No documents currently require your review today.")
+                    "All caught up",
+                    systemImage: "checkmark.circle.fill"
                 )
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, LMSSpacing.xl)
@@ -444,7 +443,7 @@ private struct OfficerEscalationsSection: View {
         let needsClarification = viewModel.sentToManagerApps.filter { $0.managerStatus == .needsClarification }
 
         if !needsClarification.isEmpty {
-            VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                 Text("Escalations")
                     .font(.system(.title3, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
@@ -488,8 +487,8 @@ private struct OfficerAnalyticsSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
-            Text("Case Pipeline")
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
+            Text("Assigned applications")
                 .font(.system(.title3, design: .rounded).bold())
                 .foregroundStyle(LMSColors.textPrimary)
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
@@ -498,16 +497,7 @@ private struct OfficerAnalyticsSection: View {
                 HapticsManager.triggerImpact(style: .medium)
                 showPipelineDetails = true
             }) {
-                VStack(alignment: .leading, spacing: LMSSpacing.md) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Current Caseload")
-                            .font(.system(.headline, design: .rounded).bold())
-                            .foregroundStyle(LMSColors.textPrimary)
-                        Text("Breakdown of all applications assigned to you")
-                            .font(.system(.subheadline, design: .rounded))
-                            .foregroundStyle(LMSColors.textSecondary)
-                    }
-                    
+                VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                     OfficerPipelineChart(stats: stats)
                 }
                 .padding(LMSSpacing.lg)
@@ -624,7 +614,7 @@ private struct ChartLegendRow: View {
 }
 
 
-// MARK: - Today's Review Queue List
+// MARK: - Today's approval List
 
 private struct OfficerTodayReviewQueueListView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
@@ -643,9 +633,8 @@ private struct OfficerTodayReviewQueueListView: View {
             LazyVStack(spacing: LMSSpacing.md) {
                 if todayApplications.isEmpty {
                     ContentUnavailableView(
-                        "Queue Clear",
-                        systemImage: "checkmark.circle.fill",
-                        description: Text("No documents currently require your review today.")
+                        "All caught up",
+                        systemImage: "checkmark.circle.fill"
                     )
                     .padding(.top, 40)
                 } else {
@@ -662,7 +651,7 @@ private struct OfficerTodayReviewQueueListView: View {
             .padding(.vertical, LMSSpacing.md)
         }
         .background(LMSColors.background)
-        .navigationTitle("Today's Review Queue")
+        .navigationTitle("Today's approval")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
