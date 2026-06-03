@@ -1,6 +1,6 @@
 # 💰 Loan Management System (LMS) iOS App
 
-A modern and secure Loan Management System built with **SwiftUI**, designed to simplify loan application, approval, disbursement, repayment tracking, and customer support for borrowers, loan officers, and administrators.
+A modern, highly secure, and role-based Loan Management System built with **SwiftUI** and powered by **Supabase**. Designed to digitize the entire lending lifecycle—from application and document verification to final disbursement, repayment tracking, and auditing—for Borrowers, Loan Officers, Bank Managers, and Admins.
 
 <p align="center">
   <img src="docs/images/app-banner.png" alt="Loan Management System Banner" width="100%">
@@ -9,161 +9,78 @@ A modern and secure Loan Management System built with **SwiftUI**, designed to s
 ![Platform](https://img.shields.io/badge/platform-iOS-blue)
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-Latest-green)
+![Backend](https://img.shields.io/badge/Backend-Supabase-emerald)
+![Payments](https://img.shields.io/badge/Payments-Razorpay-blue)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 ---
 
 ## 📖 Overview
 
-The Loan Management System (LMS) provides a complete digital lending experience, enabling users to apply for loans, track application status, manage repayments, raise complaints, and receive real-time updates.
+The Loan Management System (LMS) is a complete, scalable digital lending platform. By adopting a strict **Role-Based Access Control (RBAC)** model, it securely delegates tasks across different staff members while providing borrowers with a beautifully designed, intuitive portal to track their financial health.
 
-Built with SwiftUI and MVVM architecture, the application delivers a secure, scalable, and user-friendly financial management solution.
+Built with **SwiftUI**, **MVVM Architecture**, and **Supabase (PostgreSQL, Auth, Storage, Realtime)**, the application ensures high performance, real-time data sync, and enterprise-grade security.
 
 ### 🎯 Key Objectives
 
-* Simplify loan application processes
-* Improve approval workflow efficiency
-* Enable seamless repayment tracking
-* Enhance customer experience
-* Provide secure and transparent loan management
+* **Zero-Paper Workflow**: 100% digital KYC and document processing.
+* **Role-Specific Dashboards**: Tailored UI/UX for Borrowers, Officers, Managers, and Admins.
+* **Real-time Pipeline**: Live tracking of applications as they move through underwriting.
+* **Integrated Payments**: Seamless EMI repayment gateway using Razorpay.
+* **Data-Driven Insights**: Advanced analytics and CSV report generation for management.
 
 ---
 
-## ✨ Features
+## ✨ Features by Role
 
-### 👤 Customer Features
+### 👤 Customer (Borrower)
+* **Onboarding & Auth**: Secure login, Biometric (Face ID) app lock, and dynamic KYC onboarding.
+* **Loan Wizard**: Multi-step, interactive loan application flow with form validation.
+* **Document Vault**: Securely upload and manage KYC, income proofs, and property documents.
+* **Repayment Dashboard**: Real-time EMI tracking, upcoming dues, and Razorpay-powered instant payments.
+* **Support Hub**: Real-time chat with assigned Loan Officers.
+* **Push Notifications**: Live updates on application status and payment reminders.
 
-* User Registration & Login
-* Profile Management
-* KYC Verification
-* Apply for New Loans
-* Upload Required Documents
-* Track Application Status
-* View Loan Details
-* EMI Schedule Tracking
-* Repayment History
-* Raise Complaints & Support Requests
-* Push Notifications
+### 💼 Loan Officer
+* **Action-Oriented Dashboard**: Prioritized daily task lists and pipeline metrics.
+* **Document Verification**: In-app document viewer (PDF/Images) with one-tap approve/reject flagging.
+* **Borrower Communication**: Direct chat interface to request missing documents or clarify details.
+* **Application Routing**: Forward verified applications to Bank Managers or escalate edge cases.
+* **Inline EMI Calculators**: Quick tools to calculate affordability during borrower consultations.
 
-### 🏦 Loan Officer Features
+### 🏦 Bank Manager
+* **Approval Workflow**: Final review authority with complete audit trails of Officer actions.
+* **Team Monitoring**: Track performance metrics across the Loan Officer team (disbursed vs. rejected).
+* **Advanced Analytics**: Visual charts for portfolio health, NPA analysis, and branch performance.
+* **Report Generation**: Export live system data to CSV for external audits.
 
-* Review Loan Applications
-* Verify Documents
-* Approve or Reject Applications
-* Customer Verification
-* Manage Assigned Cases
-* Track Loan Processing Progress
-
-### 👨‍💼 Admin Features
-
-* User Management
-* Loan Product Management
-* Complaint Management
-* Analytics Dashboard
-* Audit Logs
-* System Configuration
+### 👨‍💻 System Administrator
+* **Global Configuration**: Manage system-wide loan rules (min CIBIL, max DTI, max LTV).
+* **Product Management**: Dynamically create and adjust loan products (Home, Auto, Personal) and their interest rates.
+* **Staff Management**: Provision new Loan Officers and Managers and assign branch access.
 
 ---
 
-## 📱 Screenshots
+## 🏗️ Architecture & Tech Stack
 
-| Dashboard                               | Loan Details                          | Repayment Tracking                      |
-| --------------------------------------- | ------------------------------------- | --------------------------------------- |
-| ![Dashboard](docs/images/dashboard.png) | ![Loan](docs/images/loan-details.png) | ![Repayment](docs/images/repayment.png) |
+The application strictly adheres to the **MVVM (Model-View-ViewModel)** architectural pattern, ensuring separation of concerns and high testability.
 
----
+### Frontend (iOS)
+* **Framework**: SwiftUI (iOS 17+)
+* **Concurrency**: Swift Async/Await & Actors (`@MainActor`)
+* **State Management**: Combine (`@Published`, `ObservableObject`), `@EnvironmentObject`
+* **UI/UX**: Custom Glassmorphism, Micro-animations, SF Symbols, Charts framework.
+* **Intents**: AppIntents integration for Siri and Spotlight search.
 
-## 🏗️ Architecture
+### Backend (Supabase)
+* **Database**: PostgreSQL with strict Row Level Security (RLS).
+* **Auth**: Supabase Auth (Email/Password) with JWTs.
+* **Storage**: Supabase Storage for secure PDF and Image document hosting.
+* **Realtime**: WebSockets for live chat and instant notification delivery.
 
-The application follows the **MVVM (Model-View-ViewModel)** architecture pattern.
-
-```text
-┌────────────────────┐
-│      SwiftUI       │
-│       Views        │
-└──────────┬─────────┘
-           │
-           ▼
-┌────────────────────┐
-│    View Models     │
-│  Business Logic    │
-└──────────┬─────────┘
-           │
-           ▼
-┌────────────────────┐
-│      Services      │
-│ API & Data Layer   │
-└──────────┬─────────┘
-           │
-           ▼
-┌────────────────────┐
-│    Backend APIs    │
-└────────────────────┘
-```
-
----
-
-## 🛠️ Tech Stack
-
-### Frontend
-
-* SwiftUI
-* Combine
-* Async/Await
-* MVVM Architecture
-
-### Backend Integration
-
-* REST APIs
-* URLSession
-* JSON Decoding
-
-### Security
-
-* JWT Authentication
-* Secure Token Storage
-* Face ID / Touch ID Authentication
-* Keychain Storage
-
-### Storage
-
-* UserDefaults
-* Local Caching
-* Keychain
-
----
-
-## 📂 Project Structure
-
-```text
-LoanManagementSystem/
-│
-├── App/
-│
-├── Core/
-│   ├── Networking/
-│   ├── Authentication/
-│   ├── Utilities/
-│   └── Extensions/
-│
-├── Models/
-│
-├── Services/
-│
-├── ViewModels/
-│
-├── Views/
-│   ├── Authentication/
-│   ├── Dashboard/
-│   ├── Loans/
-│   ├── Repayments/
-│   ├── Complaints/
-│   └── Profile/
-│
-├── Resources/
-│
-└── Tests/
-```
+### Third-Party Integrations
+* **Payments**: Razorpay iOS SDK (Sandbox) for processing EMI transactions.
+* **Networking**: Native `URLSession` combined with `supabase-swift`.
 
 ---
 
@@ -171,206 +88,76 @@ LoanManagementSystem/
 
 ### Prerequisites
 
-Before running the project, ensure you have:
-
-* Xcode 15+
-* iOS 17+
-* Swift 5.9+
-* Apple Developer Account (Optional)
+* **Xcode**: Version 15.0 or higher
+* **iOS Target**: iOS 17.0+
+* **Swift**: Version 5.9+
+* **Supabase Project**: A configured Supabase backend.
+* **Razorpay Account**: Test API keys for the payment gateway.
 
 ### Installation
 
-#### Clone Repository
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/yourusername/loan-management-system.git
+   cd loan-management-system
+   ```
 
-```bash
-git clone https://github.com/yourusername/loan-management-system-ios.git
-```
+2. **Open the Project**
+   ```bash
+   open LoanManagementSystem.xcodeproj
+   ```
 
-#### Open Project
+3. **Configure Environment Variables**
+   Locate `AppConfiguration.swift` and update it with your Supabase and Razorpay credentials:
+   ```swift
+   enum AppConfiguration {
+       static let supabaseURL = URL(string: "https://YOUR_SUPABASE_PROJECT.supabase.co")!
+       static let supabaseAnonKey = "YOUR_ANON_KEY"
+       static let razorpayKey = "YOUR_RAZORPAY_TEST_KEY"
+   }
+   ```
 
-```bash
-cd loan-management-system-ios
-open LMS.xcodeproj
-```
+4. **Resolve Dependencies**
+   Xcode will automatically resolve Swift Package Manager (SPM) dependencies (Supabase, Razorpay).
 
-#### Configure API
-
-```swift
-enum AppConfig {
-    static let baseURL = "https://api.yourdomain.com"
-}
-```
-
-#### Run Application
-
-1. Select Simulator or Physical Device
-2. Press **⌘ + R**
-3. Launch the app
+5. **Build & Run**
+   Select your preferred Simulator or Physical Device and press **⌘ + R**.
 
 ---
 
-## 🔄 Loan Lifecycle
+## 🔄 Loan Processing Lifecycle
 
 ```text
-Loan Application
+Draft Application
         │
         ▼
-Document Submission
+Under Review (Officer) ───▶ Request Missing Docs ───▶ Back to Review
         │
         ▼
-Verification Process
+Manager Final Review
+        │
+        ├──▶ Rejected
         │
         ▼
-Approval / Rejection
+Approved & Disbursed
         │
         ▼
-Loan Disbursement
+Active Repayment (EMI via Razorpay)
         │
         ▼
-Repayment Tracking
-        │
-        ▼
-Loan Closure
+Loan Closed
 ```
 
 ---
 
-## 📊 Core Modules
+## 🔐 Security & Privacy
 
-### 📝 Loan Application
-
-* New Loan Requests
-* Loan Eligibility Checks
-* Document Uploads
-* Status Tracking
-
-### 💰 Loan Management
-
-* Active Loans
-* Loan Details
-* Interest Calculation
-* Outstanding Amount Tracking
-
-### 📅 EMI & Repayment
-
-* EMI Schedule
-* Payment History
-* Due Date Reminders
-* Outstanding Balance
-
-### 🎫 Complaint Management
-
-* Raise Complaints
-* Track Complaint Status
-* Customer Support Integration
-
-### 🔔 Notifications
-
-* Loan Approval Updates
-* EMI Reminders
-* Complaint Updates
-* System Announcements
-
----
-
-## 🔐 Authentication Flow
-
-```text
-Launch App
-     │
-     ▼
-Login / Register
-     │
-     ▼
-OTP Verification
-     │
-     ▼
-Dashboard
-     │
-     ├── Apply Loan
-     ├── Active Loans
-     ├── Repayments
-     ├── Complaints
-     └── Profile
-```
-
----
-
-## 🧪 Testing
-
-Run all tests:
-
-```bash
-⌘ + U
-```
-
-Testing Includes:
-
-* Unit Tests
-* ViewModel Tests
-* API Integration Tests
-* UI Tests
-
----
-
-## 📈 Roadmap
-
-### Upcoming Features
-
-* [ ] AI Loan Eligibility Assessment
-* [ ] Credit Score Integration
-* [ ] Digital Signature Support
-* [ ] Loan Calculator
-* [ ] Multi-language Support
-* [ ] Dark Mode
-* [ ] Advanced Analytics Dashboard
-* [ ] Chat Support Integration
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome.
-
-1. Fork the Repository
-2. Create a Feature Branch
-
-```bash
-git checkout -b feature/new-feature
-```
-
-3. Commit Changes
-
-```bash
-git commit -m "Add new feature"
-```
-
-4. Push Changes
-
-```bash
-git push origin feature/new-feature
-```
-
-5. Create a Pull Request
-
----
-
-## 📄 License
-
-Distributed under the MIT License.
-
-See `LICENSE` for more information.
+* **Row Level Security (RLS)**: Database tables are strictly protected so users can only access their own data, and officers can only access assigned cases.
+* **Main Thread Safety**: Robust implementation of `@MainActor` to prevent background UI crashes during heavy data syncs.
+* **On-Device Biometrics**: Optional Face ID / Touch ID gatekeeping upon app launch.
 
 ---
 
 ## 👨‍💻 Developed By
 
-**Loan Management System Team**
-
-Building secure, efficient, and user-friendly digital lending experiences.
-
----
-
-<p align="center">
-  Built with ❤️ using SwiftUI
-</p>
+Built to demonstrate advanced modern iOS development and robust backend-as-a-service integration.
