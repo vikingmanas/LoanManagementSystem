@@ -149,6 +149,14 @@ struct ManagerSettingsView: View {
             }
 
             Section {
+                NavigationLink(destination: AccessibilitySettingsView()) {
+                    Label("Accessibility", systemImage: "figure.walk.circle")
+                }
+            } header: {
+                Text("App Settings")
+            }
+
+            Section {
                 Button(action: {
                     Task { await saveBranchSettings() }
                 }) {
