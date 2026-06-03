@@ -82,7 +82,6 @@ private struct LoanOfficerTodayView: View {
     @State private var showingEscalationSheet = false
     @State private var showingPendingAppsList = false
     @State private var showingReadyToSendApps = false
-    @State private var showingCalculator = false
     
     private var pendingApps: [OfficerLoanApplication] {
         viewModel.applications.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending || $0.status == .documentsRejected }
@@ -103,8 +102,7 @@ private struct LoanOfficerTodayView: View {
                     selectedTab: $selectedTab,
                     showingEscalationSheet: $showingEscalationSheet,
                     showingPendingAppsList: $showingPendingAppsList,
-                    showingReadyToSendApps: $showingReadyToSendApps,
-                    showingCalculator: $showingCalculator
+                    showingReadyToSendApps: $showingReadyToSendApps
                 )
                 .padding(.top, LMSSpacing.md)
 
@@ -117,6 +115,8 @@ private struct LoanOfficerTodayView: View {
                     selectedTab: $selectedTab,
                     selectedApplication: $selectedApplication
                 )
+
+                OfficerInlineEMICalculatorView()
 
                 OfficerEscalationsSection(
                     viewModel: viewModel,
@@ -164,12 +164,9 @@ private struct LoanOfficerTodayView: View {
         .sheet(isPresented: $showingEscalationSheet) {
             OfficerEscalationSheet(viewModel: viewModel)
         }
-        .sheet(isPresented: $showingCalculator) {
-            OfficerCalculatorSheet()
-        }
         .navigationDestination(isPresented: $showingPendingAppsList) {
             OfficerPushApplicationListView(
-                title: "Open Cases",
+                title: "Pending Applications",
                 systemImage: "tray.full.fill",
                 description: "No open cases at the moment.",
                 applications: pendingApps,
@@ -178,10 +175,10 @@ private struct LoanOfficerTodayView: View {
         }
         .navigationDestination(isPresented: $showingReadyToSendApps) {
             OfficerPushApplicationListView(
-                title: "Manager Desk",
-                systemImage: "briefcase.fill",
-                description: "No applications are at the manager desk.",
-                applications: viewModel.sentToManagerApps,
+                title: "Send for Approval",
+                systemImage: "paperplane.fill",
+                description: "No applications ready to send for approval.",
+                applications: viewModel.pendingManagerActionApps,
                 viewModel: viewModel
             )
         }
@@ -196,14 +193,13 @@ private struct OfficerActionItemsRow: View {
     @Binding var showingEscalationSheet: Bool
     @Binding var showingPendingAppsList: Bool
     @Binding var showingReadyToSendApps: Bool
-    @Binding var showingCalculator: Bool
     
     private var pendingAppsCount: Int {
         viewModel.applications.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending || $0.status == .documentsRejected }.count
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             Text("Action Items")
                 .font(.system(.title3, design: .rounded).bold())
                 .foregroundStyle(LMSColors.textPrimary)
@@ -211,7 +207,7 @@ private struct OfficerActionItemsRow: View {
 
             HStack(spacing: LMSSpacing.md) {
                 OfficerActionCard(
-                    title: "Open Cases",
+                    title: "Pending Applications",
                     value: "\(pendingAppsCount)",
                     icon: "tray.full.fill",
                     tint: pendingAppsCount == 0 ? LMSColors.emerald : LMSColors.actionBlue,
@@ -222,10 +218,10 @@ private struct OfficerActionItemsRow: View {
                 )
 
                 OfficerActionCard(
-                    title: "Manager Desk",
-                    value: "\(viewModel.sentToManagerApps.count)",
+                    title: "Send for Approval",
+                    value: "\(viewModel.pendingManagerActionApps.count)",
                     icon: "briefcase.fill",
-                    tint: viewModel.sentToManagerApps.isEmpty ? LMSColors.emerald : LMSColors.coral,
+                    tint: viewModel.pendingManagerActionApps.isEmpty ? LMSColors.emerald : LMSColors.coral,
                     action: {
                         HapticsManager.triggerImpact(style: .light)
                         showingReadyToSendApps = true
@@ -235,42 +231,6 @@ private struct OfficerActionItemsRow: View {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, LMSSpacing.screenHorizontal)
 
-            Button {
-                HapticsManager.triggerImpact(style: .light)
-                showingCalculator = true
-            } label: {
-                HStack(alignment: .center, spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.purple.opacity(0.12))
-                            .frame(width: 44, height: 44)
-                        Image(systemName: "plus.slash.minus")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(Color.purple)
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("EMI Calculator")
-                            .font(.system(.body, design: .rounded).weight(.semibold))
-                            .foregroundStyle(LMSColors.textPrimary)
-                        Text("Quick loan EMI & interest calculation")
-                            .font(.system(.subheadline, design: .rounded))
-                            .foregroundStyle(LMSColors.textSecondary)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(.headline, design: .rounded).weight(.semibold))
-                        .foregroundStyle(LMSColors.textTertiary)
-                }
-                .padding(LMSSpacing.lg)
-                .background(LMSColors.surfaceElevated)
-                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, LMSSpacing.screenHorizontal)
         }
     }
 }
@@ -284,7 +244,7 @@ private struct OfficerActionCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                 ZStack {
                     RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous)
                         .fill(tint.opacity(0.12))
@@ -322,7 +282,7 @@ private struct OfficerNextActionCard: View {
     @Binding var selectedApp: OfficerLoanApplication?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             Text("Next Best Action")
                 .font(.system(.title3, design: .rounded).bold())
                 .foregroundStyle(LMSColors.textPrimary)
@@ -379,9 +339,9 @@ private struct OfficerReviewSnapshotView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             HStack {
-                Text("Today's Review Queue")
+                Text("Today's approval")
                     .font(.system(.title3, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
 
@@ -406,9 +366,8 @@ private struct OfficerReviewSnapshotView: View {
 
             if appsWithPendingDocsToday.isEmpty {
                 ContentUnavailableView(
-                    "Queue Clear",
-                    systemImage: "checkmark.circle.fill",
-                    description: Text("No documents currently require your review today.")
+                    "All caught up",
+                    systemImage: "checkmark.circle.fill"
                 )
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, LMSSpacing.xl)
@@ -434,6 +393,199 @@ private struct OfficerReviewSnapshotView: View {
     }
 }
 
+// MARK: - Inline EMI Calculator
+
+private struct OfficerInlineEMICalculatorView: View {
+    @State private var amountText = "2500000"
+    @State private var rateText = "8.65"
+    @State private var tenureText = "15"
+
+    private var principalAmount: Double {
+        parsedValue(amountText)
+    }
+
+    private var annualRate: Double {
+        parsedValue(rateText)
+    }
+
+    private var tenureYears: Double {
+        max(parsedValue(tenureText), 0)
+    }
+
+    private var totalMonths: Double {
+        tenureYears * 12
+    }
+
+    private var monthlyEMI: Double {
+        guard principalAmount > 0, totalMonths > 0 else { return 0 }
+
+        let monthlyRate = (annualRate / 100) / 12
+        if monthlyRate <= 0 {
+            return principalAmount / totalMonths
+        }
+
+        let compound = pow(1 + monthlyRate, totalMonths)
+        let emi = principalAmount * monthlyRate * compound / (compound - 1)
+        return emi.isFinite ? emi : 0
+    }
+
+    private var totalPayable: Double {
+        monthlyEMI * totalMonths
+    }
+
+    private var totalInterest: Double {
+        max(totalPayable - principalAmount, 0)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            Text("EMI Calculator")
+                .font(.system(.title3, design: .rounded).bold())
+                .foregroundStyle(LMSColors.textPrimary)
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+
+            VStack(alignment: .leading, spacing: LMSSpacing.lg) {
+                HStack(alignment: .top, spacing: LMSSpacing.md) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(LMSColors.brandNavy)
+                            .frame(width: 54, height: 54)
+
+                        Image(systemName: "plus.forwardslash.minus")
+                            .font(.system(size: 21, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Monthly EMI")
+                            .font(.system(.caption, design: .rounded).bold())
+                            .foregroundStyle(LMSColors.textSecondary)
+
+                        Text(CurrencyFormatter.shared.format(monthlyEMI))
+                            .font(.system(.title2, design: .rounded).bold())
+                            .foregroundStyle(LMSColors.textPrimary)
+                            .contentTransition(.numericText())
+                    }
+
+                    Spacer(minLength: 0)
+                }
+
+                HStack(spacing: LMSSpacing.sm) {
+                    CalculatorMetricChip(title: "Interest", value: CurrencyFormatter.shared.format(totalInterest))
+                    CalculatorMetricChip(title: "Total", value: CurrencyFormatter.shared.format(totalPayable))
+                }
+
+                VStack(spacing: LMSSpacing.md) {
+                    CalculatorInputRow(
+                        title: "Amount",
+                        value: $amountText,
+                        prefix: "Rs",
+                        suffix: nil,
+                        keyboard: .numberPad
+                    )
+
+                    CalculatorInputRow(
+                        title: "Rate",
+                        value: $rateText,
+                        prefix: nil,
+                        suffix: "%",
+                        keyboard: .decimalPad
+                    )
+
+                    CalculatorInputRow(
+                        title: "Time",
+                        value: $tenureText,
+                        prefix: nil,
+                        suffix: "Years",
+                        keyboard: .numberPad
+                    )
+                }
+            }
+            .padding(LMSSpacing.lg)
+            .background(LMSColors.surfaceElevated)
+            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                    .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
+        }
+    }
+
+    private func parsedValue(_ text: String) -> Double {
+        let sanitized = text.replacingOccurrences(of: ",", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return Double(sanitized) ?? 0
+    }
+}
+
+private struct CalculatorMetricChip: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(.caption2, design: .rounded).bold())
+                .foregroundStyle(LMSColors.textSecondary)
+            Text(value)
+                .font(.system(.caption, design: .rounded).bold())
+                .foregroundStyle(LMSColors.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, LMSSpacing.md)
+        .padding(.vertical, LMSSpacing.sm)
+        .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+private struct CalculatorInputRow: View {
+    let title: String
+    @Binding var value: String
+    let prefix: String?
+    let suffix: String?
+    let keyboard: UIKeyboardType
+
+    var body: some View {
+        HStack(spacing: LMSSpacing.md) {
+            Text(title)
+                .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                .foregroundStyle(LMSColors.textPrimary)
+                .frame(width: 58, alignment: .leading)
+
+            HStack(spacing: 8) {
+                if let prefix {
+                    Text(prefix)
+                        .font(.system(.caption, design: .rounded).bold())
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+
+                TextField("0", text: $value)
+                    .font(.system(.body, design: .rounded).weight(.semibold))
+                    .foregroundStyle(LMSColors.textPrimary)
+                    .keyboardType(keyboard)
+                    .multilineTextAlignment(.trailing)
+
+                if let suffix {
+                    Text(suffix)
+                        .font(.system(.caption, design: .rounded).bold())
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+            }
+            .padding(.horizontal, LMSSpacing.md)
+            .frame(height: 44)
+            .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+            )
+        }
+    }
+}
+
 // MARK: - Escalations Section
 
 private struct OfficerEscalationsSection: View {
@@ -444,7 +596,7 @@ private struct OfficerEscalationsSection: View {
         let needsClarification = viewModel.sentToManagerApps.filter { $0.managerStatus == .needsClarification }
 
         if !needsClarification.isEmpty {
-            VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                 Text("Escalations")
                     .font(.system(.title3, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
@@ -482,14 +634,14 @@ private struct OfficerAnalyticsSection: View {
     private var stats: (pending: Int, underReview: Int, sentToManager: Int, completed: Int) {
         let pending = viewModel.applications.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending || $0.status == .documentsRejected }.count
         let underReview = viewModel.applications.filter { $0.status == .underReview }.count
-        let sent = viewModel.applications.filter { $0.status == .verificationCompleted || $0.status == .sentToManager || $0.status == .finalApprovalPending }.count
+        let sent = viewModel.pendingManagerActionApps.count
         let completed = viewModel.applications.filter { $0.status == .approved || $0.status == .disbursed || $0.status == .rejected }.count
         return (pending, underReview, sent, completed)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
-            Text("Case Pipeline")
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
+            Text("Assigned applications")
                 .font(.system(.title3, design: .rounded).bold())
                 .foregroundStyle(LMSColors.textPrimary)
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
@@ -498,19 +650,11 @@ private struct OfficerAnalyticsSection: View {
                 HapticsManager.triggerImpact(style: .medium)
                 showPipelineDetails = true
             }) {
-                VStack(alignment: .leading, spacing: LMSSpacing.md) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Current Caseload")
-                            .font(.system(.headline, design: .rounded).bold())
-                            .foregroundStyle(LMSColors.textPrimary)
-                        Text("Breakdown of all applications assigned to you")
-                            .font(.system(.subheadline, design: .rounded))
-                            .foregroundStyle(LMSColors.textSecondary)
-                    }
-                    
-                    OfficerPipelineChart(stats: stats)
+                VStack(alignment: .leading, spacing: LMSSpacing.sm) {
+                    OfficerPipelineBars(stats: stats)
                 }
-                .padding(LMSSpacing.lg)
+                .padding(.horizontal, LMSSpacing.lg)
+                .padding(.vertical, LMSSpacing.xl)
                 .background(LMSColors.surfaceElevated)
                 .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
                 .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
@@ -524,7 +668,7 @@ private struct OfficerAnalyticsSection: View {
     }
 }
 
-private struct OfficerPipelineChart: View {
+private struct OfficerPipelineBars: View {
     let stats: (pending: Int, underReview: Int, sentToManager: Int, completed: Int)
     @State private var animated = false
 
@@ -536,95 +680,106 @@ private struct OfficerPipelineChart: View {
         max(Double(totalCount), 1)
     }
 
+    private var rows: [(label: String, count: Int, color: Color, icon: String)] {
+        [
+            ("Docs Needed", stats.pending, LMSColors.amber, "doc.text.fill"),
+            ("Under Review", stats.underReview, LMSColors.actionBlue, "magnifyingglass"),
+            ("With Manager", stats.sentToManager, Color.purple, "briefcase.fill"),
+            ("Closed", stats.completed, LMSColors.emerald, "checkmark.seal.fill")
+        ]
+    }
+
     var body: some View {
-        HStack(spacing: LMSSpacing.xl) {
-            ZStack {
-                Circle()
-                    .stroke(LMSColors.separatorLight, lineWidth: 11)
-                    .frame(width: 96, height: 96)
-
-                Circle()
-                    .trim(from: 0, to: animated ? Double(stats.pending) / chartTotal : 0)
-                    .stroke(LMSColors.amber, style: StrokeStyle(lineWidth: 11, lineCap: .round))
-                    .frame(width: 96, height: 96)
-                    .rotationEffect(.degrees(-90))
-
-                Circle()
-                    .trim(from: Double(stats.pending) / chartTotal, to: animated ? Double(stats.pending + stats.underReview) / chartTotal : Double(stats.pending) / chartTotal)
-                    .stroke(LMSColors.actionBlue, style: StrokeStyle(lineWidth: 11, lineCap: .round))
-                    .frame(width: 96, height: 96)
-                    .rotationEffect(.degrees(-90))
-                    
-                Circle()
-                    .trim(from: Double(stats.pending + stats.underReview) / chartTotal, to: animated ? Double(stats.pending + stats.underReview + stats.sentToManager) / chartTotal : Double(stats.pending + stats.underReview) / chartTotal)
-                    .stroke(Color.purple, style: StrokeStyle(lineWidth: 11, lineCap: .round))
-                    .frame(width: 96, height: 96)
-                    .rotationEffect(.degrees(-90))
-
-                Circle()
-                    .trim(
-                        from: Double(stats.pending + stats.underReview + stats.sentToManager) / chartTotal,
-                        to: animated ? Double(totalCount) / chartTotal : Double(stats.pending + stats.underReview + stats.sentToManager) / chartTotal
-                    )
-                    .stroke(LMSColors.emerald, style: StrokeStyle(lineWidth: 11, lineCap: .round))
-                    .frame(width: 96, height: 96)
-                    .rotationEffect(.degrees(-90))
-
-                VStack(spacing: 2) {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("\(totalCount)")
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
                         .foregroundStyle(LMSColors.textPrimary)
-                    Text("Total")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    Text("Total cases")
+                        .font(.system(.caption, design: .rounded).weight(.semibold))
                         .foregroundStyle(LMSColors.textSecondary)
                 }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(LMSColors.textTertiary)
+                    .padding(.top, 6)
             }
-            
-            VStack(alignment: .leading, spacing: 10) {
-                ChartLegendRow(color: LMSColors.amber, label: "Pending Docs", count: stats.pending)
-                ChartLegendRow(color: LMSColors.actionBlue, label: "In Review", count: stats.underReview)
-                ChartLegendRow(color: Color.purple, label: "Manager Auth", count: stats.sentToManager)
-                ChartLegendRow(color: LMSColors.emerald, label: "Completed", count: stats.completed)
+
+            VStack(spacing: 12) {
+                ForEach(rows, id: \.label) { row in
+                    PipelineBarRow(
+                        label: row.label,
+                        count: row.count,
+                        total: chartTotal,
+                        color: row.color,
+                        icon: row.icon,
+                        animated: animated
+                    )
+                }
             }
-            
-            Spacer(minLength: 0)
-            
-            Image(systemName: "chevron.right")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(LMSColors.textTertiary)
         }
         .onAppear {
-            withAnimation(.easeOut(duration: 0.8).delay(0.2)) {
+            withAnimation(.easeOut(duration: 0.65).delay(0.15)) {
                 animated = true
             }
         }
     }
 }
 
-private struct ChartLegendRow: View {
-    let color: Color
+private struct PipelineBarRow: View {
     let label: String
     let count: Int
-    
+    let total: Double
+    let color: Color
+    let icon: String
+    let animated: Bool
+
+    private var progress: Double {
+        guard total > 0 else { return 0 }
+        return min(max(Double(count) / total, 0), 1)
+    }
+
     var body: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(color)
-                .frame(width: 8, height: 8)
-            Text(label)
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(LMSColors.textSecondary)
-                .lineLimit(1)
-            Spacer()
-            Text("\(count)")
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(LMSColors.textPrimary)
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(color)
+                    .frame(width: 18)
+
+                Text(label)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LMSColors.textPrimary)
+                    .lineLimit(1)
+
+                Spacer()
+
+                Text("\(count)")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(LMSColors.textPrimary)
+            }
+
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(LMSColors.separatorLight)
+
+                    Capsule()
+                        .fill(color)
+                        .frame(width: animated ? max(proxy.size.width * progress, count == 0 ? 0 : 8) : 0)
+                }
+            }
+            .frame(height: 8)
         }
     }
 }
 
 
-// MARK: - Today's Review Queue List
+// MARK: - Today's approval List
 
 private struct OfficerTodayReviewQueueListView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
@@ -643,9 +798,8 @@ private struct OfficerTodayReviewQueueListView: View {
             LazyVStack(spacing: LMSSpacing.md) {
                 if todayApplications.isEmpty {
                     ContentUnavailableView(
-                        "Queue Clear",
-                        systemImage: "checkmark.circle.fill",
-                        description: Text("No documents currently require your review today.")
+                        "All caught up",
+                        systemImage: "checkmark.circle.fill"
                     )
                     .padding(.top, 40)
                 } else {
@@ -662,7 +816,7 @@ private struct OfficerTodayReviewQueueListView: View {
             .padding(.vertical, LMSSpacing.md)
         }
         .background(LMSColors.background)
-        .navigationTitle("Today's Review Queue")
+        .navigationTitle("Today's approval")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -998,7 +1152,7 @@ private struct LoanOfficerPipelineDetailsSheet: View {
     }
     
     private var sentToManagerApps: [OfficerLoanApplication] {
-        viewModel.applications.filter { $0.status == .verificationCompleted || $0.status == .sentToManager || $0.status == .finalApprovalPending }
+        viewModel.pendingManagerActionApps
     }
     
     private var completedApps: [OfficerLoanApplication] {
@@ -1016,10 +1170,10 @@ private struct LoanOfficerPipelineDetailsSheet: View {
                     )
                 } else {
                     List {
-                        PipelineSection(title: "Open Cases", applications: pendingApps, icon: "tray.full.fill", tint: LMSColors.amber)
-                        PipelineSection(title: "In Review", applications: underReviewApps, icon: "magnifyingglass", tint: LMSColors.actionBlue)
-                        PipelineSection(title: "Manager Desk", applications: sentToManagerApps, icon: "briefcase.fill", tint: Color.purple)
-                        PipelineSection(title: "Completed", applications: completedApps, icon: "checkmark.seal.fill", tint: LMSColors.emerald)
+                        PipelineSection(title: "Docs Needed", applications: pendingApps, icon: "doc.text.fill", tint: LMSColors.amber)
+                        PipelineSection(title: "Under Review", applications: underReviewApps, icon: "magnifyingglass", tint: LMSColors.actionBlue)
+                        PipelineSection(title: "With Manager", applications: sentToManagerApps, icon: "briefcase.fill", tint: Color.purple)
+                        PipelineSection(title: "Closed", applications: completedApps, icon: "checkmark.seal.fill", tint: LMSColors.emerald)
                     }
                     .listStyle(.insetGrouped)
                 }
@@ -1239,18 +1393,12 @@ struct OfficerApplicationReviewCard: View {
             // Nested documents list
             VStack(spacing: 8) {
                 ForEach(matchingDocuments) { doc in
-                    let item = DocumentQueueItem(
-                        id: doc.id,
-                        borrowerName: application.borrowerName,
-                        docType: doc.docType,
-                        status: doc.status,
-                        submittedDate: doc.uploadedDate ?? application.submittedDate,
-                        applicationId: application.applicationId,
-                        fileURL: doc.fileURL
-                    )
-                    
                     NavigationLink {
-                        DocumentReviewDetailView(item: item, viewModel: viewModel)
+                        LoanApplicationReviewDetailView(
+                            applicationId: application.applicationId,
+                            initialDocumentId: doc.id,
+                            viewModel: viewModel
+                        )
                     } label: {
                         HStack(spacing: 10) {
                             ZStack {

@@ -7,11 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		ADADD4982FC025D10072F8EF /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = ADADD4972FC025D10072F8EF /* Auth */; };
-		ADADD49A2FC025D10072F8EF /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = ADADD4992FC025D10072F8EF /* Functions */; };
-		ADADD49C2FC025D10072F8EF /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = ADADD49B2FC025D10072F8EF /* PostgREST */; };
-		ADADD49E2FC025D10072F8EF /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = ADADD49D2FC025D10072F8EF /* Realtime */; };
-		ADADD4A02FC025D10072F8EF /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = ADADD49F2FC025D10072F8EF /* Storage */; };
 		ADADD4A22FC025D10072F8EF /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = ADADD4A12FC025D10072F8EF /* Supabase */; };
 /* End PBXBuildFile section */
 
@@ -45,12 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ADADD49C2FC025D10072F8EF /* PostgREST in Frameworks */,
-				ADADD49A2FC025D10072F8EF /* Functions in Frameworks */,
 				ADADD4A22FC025D10072F8EF /* Supabase in Frameworks */,
-				ADADD4982FC025D10072F8EF /* Auth in Frameworks */,
-				ADADD4A02FC025D10072F8EF /* Storage in Frameworks */,
-				ADADD49E2FC025D10072F8EF /* Realtime in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -93,11 +83,6 @@
 			);
 			name = LoanManagementSystem;
 			packageProductDependencies = (
-				ADADD4972FC025D10072F8EF /* Auth */,
-				ADADD4992FC025D10072F8EF /* Functions */,
-				ADADD49B2FC025D10072F8EF /* PostgREST */,
-				ADADD49D2FC025D10072F8EF /* Realtime */,
-				ADADD49F2FC025D10072F8EF /* Storage */,
 				ADADD4A12FC025D10072F8EF /* Supabase */,
 			);
 			productName = LoanManagementSystem;
@@ -285,7 +270,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = Y9X497A5U4;
+DEVELOPMENT_TEAM = Y9X497A5U4;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -311,7 +296,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.3;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = galgotias.in.akash;
+PRODUCT_BUNDLE_IDENTIFIER = galgotias.in.akash;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -413,31 +398,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		ADADD4972FC025D10072F8EF /* Auth */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = ADADD4962FC025D10072F8EF /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Auth;
-		};
-		ADADD4992FC025D10072F8EF /* Functions */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = ADADD4962FC025D10072F8EF /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Functions;
-		};
-		ADADD49B2FC025D10072F8EF /* PostgREST */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = ADADD4962FC025D10072F8EF /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = PostgREST;
-		};
-		ADADD49D2FC025D10072F8EF /* Realtime */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = ADADD4962FC025D10072F8EF /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Realtime;
-		};
-		ADADD49F2FC025D10072F8EF /* Storage */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = ADADD4962FC025D10072F8EF /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Storage;
-		};
 		ADADD4A12FC025D10072F8EF /* Supabase */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = ADADD4962FC025D10072F8EF /* XCRemoteSwiftPackageReference "supabase-swift" */;

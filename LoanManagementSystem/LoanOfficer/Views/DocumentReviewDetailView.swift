@@ -25,6 +25,20 @@ struct DocumentReviewDetailView: View {
     var documentDetails: LoanDocument? {
         loanDetails?.documents.first { $0.id == item.id }
     }
+
+    private var canReviewDocument: Bool {
+        guard let loanDetails else { return false }
+        let currentDocumentStatus = documentDetails?.status ?? item.status
+        let officerReviewStatuses: Set<OfficerApplicationStatus> = [
+            .pending,
+            .applied,
+            .documentsPending,
+            .documentsRejected,
+            .underReview
+        ]
+
+        return officerReviewStatuses.contains(loanDetails.status) && currentDocumentStatus != .verified
+    }
     
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -32,7 +46,9 @@ struct DocumentReviewDetailView: View {
                 borrowerSection
                 documentPreviewSection
                 documentMetadataSection
-                actionsSection
+                if canReviewDocument {
+                    actionsSection
+                }
             }
             .padding(.horizontal, LMSSpacing.screenHorizontal)
             .padding(.top, 18)
@@ -309,4 +325,3 @@ private struct DocumentDetailRow: View {
         value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Not provided" : value
     }
 }
-

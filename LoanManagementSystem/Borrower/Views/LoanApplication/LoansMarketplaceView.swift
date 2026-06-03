@@ -10,17 +10,10 @@ struct LoansMarketplaceView: View {
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: LMSSpacing.xl) {
-                VStack(alignment: .leading, spacing: LMSSpacing.xs) {
-                    Text("Find the right financing for your needs")
-                        .font(LMSFont.subheadline)
-                        .foregroundStyle(LMSColors.textSecondary)
-
-                    Text("\(viewModel.filteredProducts.count) products available")
-                        .font(LMSFont.caption)
-                        .foregroundStyle(LMSColors.textTertiary)
-                }
-                .padding(.horizontal, LMSSpacing.screenHorizontal)
+            VStack(alignment: .leading, spacing: LMSSpacing.lg) {
+                LoansSearchBar(text: $viewModel.searchQuery)
+                    .padding(.horizontal, LMSSpacing.screenHorizontal)
+                    .padding(.top, LMSSpacing.sm)
 
                 if viewModel.filteredProducts.isEmpty {
                     LoansEmptyState()
@@ -705,5 +698,29 @@ private struct LoansEmptyState: View {
         .frame(maxWidth: .infinity)
         .padding(LMSSpacing.xxl)
         .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
+    }
+}
+
+// Private Search bar
+private struct LoansSearchBar: View {
+    @Binding var text: String
+
+    var body: some View {
+        HStack(spacing: LMSSpacing.sm) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(LMSColors.textTertiary)
+
+            TextField("Search loan products", text: $text)
+                .font(LMSFont.body)
+                .foregroundStyle(LMSColors.textPrimary)
+        }
+        .padding(.horizontal, LMSSpacing.md)
+        .frame(height: 48)
+        .background(LMSColors.surfaceElevated, in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
+                .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+        )
     }
 }

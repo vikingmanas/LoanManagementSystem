@@ -56,7 +56,7 @@ struct ManagerBranchTabView: View {
             BranchChartSlice(id: "approved", label: "Approved", value: Double(approved), color: LMSColors.emerald),
             BranchChartSlice(id: "pending", label: "Pending", value: Double(pending), color: LMSColors.amber),
             BranchChartSlice(id: "rejected", label: "Rejected", value: Double(rejected), color: LMSColors.coral),
-            BranchChartSlice(id: "escalated", label: "Escalated", value: Double(escalated), color: Color.purple)
+            BranchChartSlice(id: "escalated", label: "Manager Review", value: Double(escalated), color: Color.purple)
         ]
         .filter { $0.value > 0 }
     }
@@ -175,7 +175,7 @@ struct ManagerBranchTabView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Loan Officer Performance")
                                 .font(.body.weight(.semibold))
-                            Text("Escalations, ratings, and officer-wise loan book")
+                            Text("Manager reviews, ratings, and officer-wise loan book")
                                 .font(.caption)
                                 .foregroundStyle(LMSColors.textSecondary)
                         }
@@ -209,7 +209,7 @@ struct ManagerBranchTabView: View {
                             HStack {
                                 Text("\(assignedCount) assigned")
                                 Text("·")
-                                Text("\(summary.officerEscalationCount) escalated")
+                                Text("\(summary.officerEscalationCount) reviewed")
                                 Text("·")
                                 Text(CurrencyFormatter.shared.format(disbursedAmount))
                             }

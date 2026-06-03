@@ -94,6 +94,16 @@ class LoanOfficerDashboardViewModel: ObservableObject {
             .filter { $0.sentToManagerDate != nil }
             .sorted { ($0.sentToManagerDate ?? Date()) > ($1.sentToManagerDate ?? Date()) }
     }
+
+    var pendingManagerActionApps: [LoanApplication] {
+        applications
+            .filter { app in
+                let isAtManagerDesk = [.sentToManager, .finalApprovalPending].contains(app.status)
+                let isStillWaiting = app.managerStatus == nil || app.managerStatus == .underReview
+                return isAtManagerDesk && isStillWaiting
+            }
+            .sorted { ($0.sentToManagerDate ?? Date()) > ($1.sentToManagerDate ?? Date()) }
+    }
     
     var pendingDocumentCount: Int {
         // Sum all documents that are pending, uploaded, under review, or re-uploaded across all apps
@@ -164,7 +174,9 @@ class LoanOfficerDashboardViewModel: ObservableObject {
             case .underCheck:
                 return [.underReview, .verificationCompleted, .documentsPending, .documentsRejected, .onHold].contains(app.status)
             case .approvalQueue:
-                return [.sentToManager, .finalApprovalPending].contains(app.status) || app.sentToManagerDate != nil
+                let isAtManagerDesk = [.sentToManager, .finalApprovalPending].contains(app.status)
+                let isStillWaiting = app.managerStatus == nil || app.managerStatus == .underReview
+                return isAtManagerDesk && isStillWaiting
             case .completed:
                 return [.approved, .disbursed, .rejected].contains(app.status)
             }
@@ -420,6 +432,32 @@ class LoanOfficerDashboardViewModel: ObservableObject {
                 description: "Application verified & forwarded to Manager for final approval by \(officerName)."
             )
         }
+    }
+
+    @discardableResult
+    func rejectApplication(applicationId: String, reason: String) -> Bool {
+        guard let app = applications.first(where: { $0.applicationId == applicationId }) else {
+            return false
+        }
+
+        let officerName = officerProfile?.fullName ?? "Loan Officer"
+        let trimmedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rejectionNote = trimmedReason.isEmpty
+            ? "Rejected by \(officerName) after loan officer review."
+            : "\(trimmedReason) - Rejected by \(officerName)."
+
+        CentralLoanRepository.shared.rejectApplication(id: app.id, remarks: rejectionNote)
+        refreshFromRepository()
+
+        logActivity(
+            borrowerName: app.borrowerName,
+            applicationId: applicationId,
+            loanType: app.loanType.rawValue,
+            eventType: .queryRaised,
+            description: "Application rejected: \(rejectionNote)"
+        )
+
+        return true
     }
 
 

@@ -134,19 +134,23 @@ private struct OfficerConversationRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            // Unread indicator (Native iOS Messages style)
-            Circle()
-                .fill(conversation.unreadCount > 0 ? Color.blue : Color.clear)
-                .frame(width: 10, height: 10)
-            
             OfficerAvatar(name: conversation.borrowerName, tint: conversation.requiresAction ? .orange : .blue)
+                .overlay(alignment: .topTrailing) {
+                    if conversation.unreadCount > 0 {
+                        Circle()
+                            .fill(LMSColors.actionBlue)
+                            .frame(width: 9, height: 9)
+                            .overlay(Circle().stroke(LMSColors.surface, lineWidth: 1.5))
+                    }
+                }
 
             VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .top) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(conversation.borrowerName)
                         .font(.headline)
                         .foregroundStyle(.primary)
                         .lineLimit(1)
+                        .layoutPriority(1)
                     
                     Spacer()
                     
@@ -154,11 +158,9 @@ private struct OfficerConversationRow: View {
                         Text(RelativeDateFormatter.shared.relativeString(from: latest.timestamp))
                             .font(.subheadline)
                             .foregroundStyle(conversation.unreadCount > 0 ? .blue : .secondary)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
                     }
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(Color(UIColor.tertiaryLabel))
                 }
 
                 Text(conversation.latestItem?.eventDescription ?? "No recent message")
@@ -187,7 +189,7 @@ private struct OfficerConversationRow: View {
                 .padding(.top, 2)
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Conversation with \(conversation.borrowerName), \(conversation.unreadCount) unread messages")
     }

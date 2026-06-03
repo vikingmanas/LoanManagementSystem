@@ -95,14 +95,7 @@ struct ManagerProfileView: View {
                     }
                     .foregroundStyle(Color(.label))
 
-                    Button {
-                        HapticsManager.triggerImpact(style: .medium)
-                        NotificationCenter.default.post(name: NSNotification.Name("SwitchRoleToBorrower"), object: nil)
-                        dismiss()
-                    } label: {
-                        Label("Switch to Borrower Mode", systemImage: "person.2.circle.fill")
-                    }
-                    .foregroundStyle(LMSColors.actionBlue)
+
                 }
 
                 // Logout Section
