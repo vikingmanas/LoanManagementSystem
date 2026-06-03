@@ -52,7 +52,7 @@ struct LoanHistoryTabView: View {
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Registry")
-        .searchable(text: $viewModel.historySearchQuery, placement: .navigationBarDrawer(displayMode: .always), prompt: "Borrower, ID, branch")
+        .searchable(text: $viewModel.historySearchQuery, placement: .navigationBarDrawer(displayMode: .always), prompt: "Borrower or ID")
         .refreshable { await viewModel.fetchDashboardData() }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {

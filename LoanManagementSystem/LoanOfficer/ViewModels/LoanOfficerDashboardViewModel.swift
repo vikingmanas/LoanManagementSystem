@@ -422,6 +422,32 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         }
     }
 
+    @discardableResult
+    func rejectApplication(applicationId: String, reason: String) -> Bool {
+        guard let app = applications.first(where: { $0.applicationId == applicationId }) else {
+            return false
+        }
+
+        let officerName = officerProfile?.fullName ?? "Loan Officer"
+        let trimmedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rejectionNote = trimmedReason.isEmpty
+            ? "Rejected by \(officerName) after loan officer review."
+            : "\(trimmedReason) - Rejected by \(officerName)."
+
+        CentralLoanRepository.shared.rejectApplication(id: app.id, remarks: rejectionNote)
+        refreshFromRepository()
+
+        logActivity(
+            borrowerName: app.borrowerName,
+            applicationId: applicationId,
+            loanType: app.loanType.rawValue,
+            eventType: .queryRaised,
+            description: "Application rejected: \(rejectionNote)"
+        )
+
+        return true
+    }
+
 
     
     func logActivity(borrowerName: String, applicationId: String, loanType: String, eventType: ActivityEventType, description: String) {
