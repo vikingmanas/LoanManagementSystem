@@ -109,10 +109,6 @@ struct ProfileView: View {
                             Label("App Settings", systemImage: "gearshape")
                         }
                         
-                        NavigationLink(destination: AccessibilitySettingsView()) {
-                            Label("Accessibility", systemImage: "figure.walk.circle")
-                        }
-                        
                         NavigationLink(destination: HelpSupportDetailView()) {
                             Label("Help & Support", systemImage: "questionmark.circle")
                         }

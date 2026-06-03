@@ -411,19 +411,13 @@ struct RelativeDateFormatter {
 }
 
 struct HapticsManager {
-    static var isEnabled: Bool {
-        UserDefaults.standard.object(forKey: "enableHaptics") as? Bool ?? true
-    }
-
     static func triggerImpact(style: UIImpactFeedbackGenerator.FeedbackStyle) {
-        guard isEnabled else { return }
         let generator = UIImpactFeedbackGenerator(style: style)
         generator.prepare()
         generator.impactOccurred()
     }
 
     static func triggerNotification(type: UINotificationFeedbackGenerator.FeedbackType) {
-        guard isEnabled else { return }
         let generator = UINotificationFeedbackGenerator()
         generator.prepare()
         generator.notificationOccurred(type)

@@ -9,10 +9,20 @@ import Foundation
 import Combine
 import Supabase
 
+enum BorrowerSignInMode: String, CaseIterable, Identifiable {
+    case password = "Password"
+    case emailOTP = "Email OTP"
+
+    var id: String { rawValue }
+}
+
 @MainActor
 class SignInViewModel: ObservableObject {
     @Published var emailOrPhone: String = ""
     @Published var password: String = ""
+    @Published var otpCode: String = ""
+    @Published var signInMode: BorrowerSignInMode = .password
+    @Published var isOTPSent: Bool = false
     @Published var rememberMe: Bool = false
 
     @Published var emailError: String = ""
@@ -24,7 +34,12 @@ class SignInViewModel: ObservableObject {
     @Published var generalError: String = ""
 
     var isFormValid: Bool {
-        return !emailOrPhone.isEmpty && !password.isEmpty
+        switch signInMode {
+        case .password:
+            return !emailOrPhone.isEmpty && !password.isEmpty
+        case .emailOTP:
+            return !emailOrPhone.isEmpty && (!isOTPSent || !otpCode.isEmpty)
+        }
     }
 
     func signIn(authManager: AuthManager, appState: AppStateManager) async {
@@ -62,7 +77,56 @@ class SignInViewModel: ObservableObject {
         }
     }
 
+    func sendEmailOTP(authManager: AuthManager) async {
+        emailError = ""
+        otpError = ""
+        generalError = ""
 
+        let cleanedEmail = emailOrPhone.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard cleanedEmail.contains("@") else {
+            emailError = "Please enter your registered email address."
+            return
+        }
+
+        isLoading = true
+        let success = await authManager.sendEmailOTP(email: cleanedEmail)
+        isLoading = false
+
+        if success {
+            isOTPSent = true
+        } else {
+            generalError = authManager.errorMessage ?? "Unable to send OTP. Please try again."
+        }
+    }
+
+    func verifyEmailOTP(authManager: AuthManager, appState: AppStateManager) async {
+        emailError = ""
+        otpError = ""
+        generalError = ""
+
+        let cleanedEmail = emailOrPhone.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let token = otpCode.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard cleanedEmail.contains("@") else {
+            emailError = "Please enter your registered email address."
+            return
+        }
+
+        guard token.count >= 6 else {
+            otpError = "Enter the 6-digit OTP from your email."
+            return
+        }
+
+        isLoading = true
+        let result = await authManager.verifyEmailOTP(email: cleanedEmail, token: token)
+        isLoading = false
+
+        if result.success {
+            completeSuccessfulLogin(role: result.role, email: cleanedEmail, authManager: authManager, appState: appState)
+        } else {
+            generalError = authManager.errorMessage ?? "Invalid or expired OTP."
+        }
+    }
 
     private func completeSuccessfulLogin(role: String?, email: String, authManager: AuthManager, appState: AppStateManager) {
         if let role {

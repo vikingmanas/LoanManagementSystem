@@ -63,7 +63,6 @@
 		3F40F8822FD038C5009BDA18 /* razorpay-pod.debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "razorpay-pod.debug.xcconfig"; sourceTree = "<group>"; };
 		3F40F8832FD038C5009BDA18 /* razorpay-pod.release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "razorpay-pod.release.xcconfig"; sourceTree = "<group>"; };
 		3F40F8862FD038C5009BDA18 /* Manifest.lock */ = {isa = PBXFileReference; lastKnownFileType = text; path = Manifest.lock; sourceTree = "<group>"; };
-		3F40F8872FD038C5009BDA18 /* Pods.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Pods.xcodeproj; sourceTree = "<group>"; };
 		3F40F8892FD038C5009BDA18 /* package.xcworkspace */ = {isa = PBXFileReference; lastKnownFileType = wrapper.workspace; path = package.xcworkspace; sourceTree = "<group>"; };
 		3F40F88C2FD038C5009BDA18 /* RazorpayCheckout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RazorpayCheckout.swift; sourceTree = "<group>"; };
 		3F40F88F2FD038C5009BDA18 /* RazorpayCheckoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RazorpayCheckoutTests.swift; sourceTree = "<group>"; };
@@ -75,10 +74,6 @@
 		3F40F8982FD038C5009BDA18 /* CHANGELOG.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
 		3F40F8992FD038C5009BDA18 /* CODE_OF_CONDUCT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CODE_OF_CONDUCT.md; sourceTree = "<group>"; };
 		3F40F89A2FD038C5009BDA18 /* CONTRIBUTING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONTRIBUTING.md; sourceTree = "<group>"; };
-		3F40F89B2FD038C5009BDA18 /* Example */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = Example; sourceTree = "<group>"; };
-		3F40F89C2FD038C5009BDA18 /* Example.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Example.xcodeproj; sourceTree = "<group>"; };
-		3F40F89D2FD038C5009BDA18 /* Example.xcworkspace */ = {isa = PBXFileReference; lastKnownFileType = wrapper.workspace; path = Example.xcworkspace; sourceTree = "<group>"; };
-		3F40F89E2FD038C5009BDA18 /* ExampleTests */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = ExampleTests; sourceTree = "<group>"; };
 		3F40F89F2FD038C5009BDA18 /* ISSUE_TEMPLATE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ISSUE_TEMPLATE.md; sourceTree = "<group>"; };
 		3F40F8A02FD038C5009BDA18 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		3F40F8A12FD038C5009BDA18 /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
@@ -427,20 +422,6 @@
 			path = "razorpay-pod";
 			sourceTree = "<group>";
 		};
-		3F40F8AA2FD038C5009BDA18 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		3F40F8AC2FD038C5009BDA18 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -497,8 +478,6 @@
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 187149772FB5885F00D6F966 /* Products */;
 			projectDirPath = "";
-			projectReferences = (
-			);
 			projectRoot = "";
 			targets = (
 				187149752FB5885F00D6F966 /* LoanManagementSystem */,

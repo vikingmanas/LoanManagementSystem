@@ -157,11 +157,7 @@ final class ManagerDashboardViewModel: ObservableObject {
             result.sort { $0.requestedAmount < $1.requestedAmount }
         case .riskDesc:
             let order: [ManagerRiskLevel] = [.critical, .high, .medium, .low]
-            result.sort { 
-                let index0 = order.firstIndex(of: $0.riskLevel) ?? order.count
-                let index1 = order.firstIndex(of: $1.riskLevel) ?? order.count
-                return index0 < index1 
-            }
+            result.sort { order.firstIndex(of: $0.riskLevel)! < order.firstIndex(of: $1.riskLevel)! }
         }
 
         return result
