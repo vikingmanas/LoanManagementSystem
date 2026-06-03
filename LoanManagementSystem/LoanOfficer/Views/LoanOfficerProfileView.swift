@@ -5,7 +5,7 @@ struct LoanOfficerProfileView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
     
-    @AppStorage("biometricEnabled") private var biometricEnabled = true
+    @AppStorage("biometricEnabled") private var biometricEnabled = false
     @StateObject private var localSecurity = LocalSecurityService.shared
     @State private var showChangePassword = false
     
