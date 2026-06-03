@@ -278,7 +278,7 @@ public struct DashboardView: View {
                 case .profileInfo:
                     ProfileInfoDetailView(viewModel: profileViewModel)
                 case .notifications:
-                    NotificationsDetailView(notificationViewModel: viewModel.notificationViewModel)
+                    NotificationsDetailView(showSettings: false, showNotifications: true, notificationViewModel: viewModel.notificationViewModel)
                 case .payEMI:
                     PayEMIWorkflowView(viewModel: viewModel)
                 case .repaymentSchedule(let loan):
