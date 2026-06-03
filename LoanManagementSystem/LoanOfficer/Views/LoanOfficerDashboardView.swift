@@ -82,7 +82,6 @@ private struct LoanOfficerTodayView: View {
     @State private var showingEscalationSheet = false
     @State private var showingPendingAppsList = false
     @State private var showingReadyToSendApps = false
-    @State private var showingCalculator = false
     
     private var pendingApps: [OfficerLoanApplication] {
         viewModel.applications.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending || $0.status == .documentsRejected }
@@ -103,8 +102,7 @@ private struct LoanOfficerTodayView: View {
                     selectedTab: $selectedTab,
                     showingEscalationSheet: $showingEscalationSheet,
                     showingPendingAppsList: $showingPendingAppsList,
-                    showingReadyToSendApps: $showingReadyToSendApps,
-                    showingCalculator: $showingCalculator
+                    showingReadyToSendApps: $showingReadyToSendApps
                 )
                 .padding(.top, LMSSpacing.md)
 
@@ -117,6 +115,8 @@ private struct LoanOfficerTodayView: View {
                     selectedTab: $selectedTab,
                     selectedApplication: $selectedApplication
                 )
+
+                OfficerInlineEMICalculatorView()
 
                 OfficerEscalationsSection(
                     viewModel: viewModel,
@@ -164,9 +164,6 @@ private struct LoanOfficerTodayView: View {
         .sheet(isPresented: $showingEscalationSheet) {
             OfficerEscalationSheet(viewModel: viewModel)
         }
-        .sheet(isPresented: $showingCalculator) {
-            OfficerCalculatorSheet()
-        }
         .navigationDestination(isPresented: $showingPendingAppsList) {
             OfficerPushApplicationListView(
                 title: "Open Cases",
@@ -180,8 +177,8 @@ private struct LoanOfficerTodayView: View {
             OfficerPushApplicationListView(
                 title: "Manager Desk",
                 systemImage: "briefcase.fill",
-                description: "No applications are at the manager desk.",
-                applications: viewModel.sentToManagerApps,
+                description: "No applications are waiting for manager action.",
+                applications: viewModel.pendingManagerActionApps,
                 viewModel: viewModel
             )
         }
@@ -196,7 +193,6 @@ private struct OfficerActionItemsRow: View {
     @Binding var showingEscalationSheet: Bool
     @Binding var showingPendingAppsList: Bool
     @Binding var showingReadyToSendApps: Bool
-    @Binding var showingCalculator: Bool
     
     private var pendingAppsCount: Int {
         viewModel.applications.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending || $0.status == .documentsRejected }.count
@@ -223,9 +219,9 @@ private struct OfficerActionItemsRow: View {
 
                 OfficerActionCard(
                     title: "Manager Desk",
-                    value: "\(viewModel.sentToManagerApps.count)",
+                    value: "\(viewModel.pendingManagerActionApps.count)",
                     icon: "briefcase.fill",
-                    tint: viewModel.sentToManagerApps.isEmpty ? LMSColors.emerald : LMSColors.coral,
+                    tint: viewModel.pendingManagerActionApps.isEmpty ? LMSColors.emerald : LMSColors.coral,
                     action: {
                         HapticsManager.triggerImpact(style: .light)
                         showingReadyToSendApps = true
@@ -235,42 +231,6 @@ private struct OfficerActionItemsRow: View {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, LMSSpacing.screenHorizontal)
 
-            Button {
-                HapticsManager.triggerImpact(style: .light)
-                showingCalculator = true
-            } label: {
-                HStack(alignment: .center, spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.purple.opacity(0.12))
-                            .frame(width: 44, height: 44)
-                        Image(systemName: "plus.slash.minus")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(Color.purple)
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("EMI Calculator")
-                            .font(.system(.body, design: .rounded).weight(.semibold))
-                            .foregroundStyle(LMSColors.textPrimary)
-                        Text("Quick loan EMI & interest calculation")
-                            .font(.system(.subheadline, design: .rounded))
-                            .foregroundStyle(LMSColors.textSecondary)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(.headline, design: .rounded).weight(.semibold))
-                        .foregroundStyle(LMSColors.textTertiary)
-                }
-                .padding(LMSSpacing.lg)
-                .background(LMSColors.surfaceElevated)
-                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, LMSSpacing.screenHorizontal)
         }
     }
 }
@@ -434,6 +394,199 @@ private struct OfficerReviewSnapshotView: View {
     }
 }
 
+// MARK: - Inline EMI Calculator
+
+private struct OfficerInlineEMICalculatorView: View {
+    @State private var amountText = "2500000"
+    @State private var rateText = "8.65"
+    @State private var tenureText = "15"
+
+    private var principalAmount: Double {
+        parsedValue(amountText)
+    }
+
+    private var annualRate: Double {
+        parsedValue(rateText)
+    }
+
+    private var tenureYears: Double {
+        max(parsedValue(tenureText), 0)
+    }
+
+    private var totalMonths: Double {
+        tenureYears * 12
+    }
+
+    private var monthlyEMI: Double {
+        guard principalAmount > 0, totalMonths > 0 else { return 0 }
+
+        let monthlyRate = (annualRate / 100) / 12
+        if monthlyRate <= 0 {
+            return principalAmount / totalMonths
+        }
+
+        let compound = pow(1 + monthlyRate, totalMonths)
+        let emi = principalAmount * monthlyRate * compound / (compound - 1)
+        return emi.isFinite ? emi : 0
+    }
+
+    private var totalPayable: Double {
+        monthlyEMI * totalMonths
+    }
+
+    private var totalInterest: Double {
+        max(totalPayable - principalAmount, 0)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            Text("EMI Calculator")
+                .font(.system(.title3, design: .rounded).bold())
+                .foregroundStyle(LMSColors.textPrimary)
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+
+            VStack(alignment: .leading, spacing: LMSSpacing.lg) {
+                HStack(alignment: .top, spacing: LMSSpacing.md) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(LMSColors.brandNavy)
+                            .frame(width: 54, height: 54)
+
+                        Image(systemName: "plus.forwardslash.minus")
+                            .font(.system(size: 21, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Monthly EMI")
+                            .font(.system(.caption, design: .rounded).bold())
+                            .foregroundStyle(LMSColors.textSecondary)
+
+                        Text(CurrencyFormatter.shared.format(monthlyEMI))
+                            .font(.system(.title2, design: .rounded).bold())
+                            .foregroundStyle(LMSColors.textPrimary)
+                            .contentTransition(.numericText())
+                    }
+
+                    Spacer(minLength: 0)
+                }
+
+                HStack(spacing: LMSSpacing.sm) {
+                    CalculatorMetricChip(title: "Interest", value: CurrencyFormatter.shared.format(totalInterest))
+                    CalculatorMetricChip(title: "Total", value: CurrencyFormatter.shared.format(totalPayable))
+                }
+
+                VStack(spacing: LMSSpacing.md) {
+                    CalculatorInputRow(
+                        title: "Amount",
+                        value: $amountText,
+                        prefix: "Rs",
+                        suffix: nil,
+                        keyboard: .numberPad
+                    )
+
+                    CalculatorInputRow(
+                        title: "Rate",
+                        value: $rateText,
+                        prefix: nil,
+                        suffix: "%",
+                        keyboard: .decimalPad
+                    )
+
+                    CalculatorInputRow(
+                        title: "Time",
+                        value: $tenureText,
+                        prefix: nil,
+                        suffix: "Years",
+                        keyboard: .numberPad
+                    )
+                }
+            }
+            .padding(LMSSpacing.lg)
+            .background(LMSColors.surfaceElevated)
+            .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous)
+                    .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
+        }
+    }
+
+    private func parsedValue(_ text: String) -> Double {
+        let sanitized = text.replacingOccurrences(of: ",", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return Double(sanitized) ?? 0
+    }
+}
+
+private struct CalculatorMetricChip: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(.caption2, design: .rounded).bold())
+                .foregroundStyle(LMSColors.textSecondary)
+            Text(value)
+                .font(.system(.caption, design: .rounded).bold())
+                .foregroundStyle(LMSColors.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, LMSSpacing.md)
+        .padding(.vertical, LMSSpacing.sm)
+        .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+private struct CalculatorInputRow: View {
+    let title: String
+    @Binding var value: String
+    let prefix: String?
+    let suffix: String?
+    let keyboard: UIKeyboardType
+
+    var body: some View {
+        HStack(spacing: LMSSpacing.md) {
+            Text(title)
+                .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                .foregroundStyle(LMSColors.textPrimary)
+                .frame(width: 58, alignment: .leading)
+
+            HStack(spacing: 8) {
+                if let prefix {
+                    Text(prefix)
+                        .font(.system(.caption, design: .rounded).bold())
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+
+                TextField("0", text: $value)
+                    .font(.system(.body, design: .rounded).weight(.semibold))
+                    .foregroundStyle(LMSColors.textPrimary)
+                    .keyboardType(keyboard)
+                    .multilineTextAlignment(.trailing)
+
+                if let suffix {
+                    Text(suffix)
+                        .font(.system(.caption, design: .rounded).bold())
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+            }
+            .padding(.horizontal, LMSSpacing.md)
+            .frame(height: 44)
+            .background(LMSColors.background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(LMSColors.separatorLight, lineWidth: 0.5)
+            )
+        }
+    }
+}
+
 // MARK: - Escalations Section
 
 private struct OfficerEscalationsSection: View {
@@ -482,7 +635,7 @@ private struct OfficerAnalyticsSection: View {
     private var stats: (pending: Int, underReview: Int, sentToManager: Int, completed: Int) {
         let pending = viewModel.applications.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending || $0.status == .documentsRejected }.count
         let underReview = viewModel.applications.filter { $0.status == .underReview }.count
-        let sent = viewModel.applications.filter { $0.status == .verificationCompleted || $0.status == .sentToManager || $0.status == .finalApprovalPending }.count
+        let sent = viewModel.pendingManagerActionApps.count
         let completed = viewModel.applications.filter { $0.status == .approved || $0.status == .disbursed || $0.status == .rejected }.count
         return (pending, underReview, sent, completed)
     }
@@ -1010,7 +1163,7 @@ private struct LoanOfficerPipelineDetailsSheet: View {
     }
     
     private var sentToManagerApps: [OfficerLoanApplication] {
-        viewModel.applications.filter { $0.status == .verificationCompleted || $0.status == .sentToManager || $0.status == .finalApprovalPending }
+        viewModel.pendingManagerActionApps
     }
     
     private var completedApps: [OfficerLoanApplication] {

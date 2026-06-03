@@ -54,7 +54,7 @@ struct KPIGridView: View {
             KPICard(
                 symbol: "briefcase.fill",
                 symbolColor: LMSColors.brandNavy,
-                value: "\(viewModel.sentToManagerApps.count)",
+                value: "\(viewModel.pendingManagerActionApps.count)",
                 label: "Manager Desk",
                 sub: "Awaiting approval",
                 bottomContent: AnyView(
@@ -62,7 +62,7 @@ struct KPIGridView: View {
                         .font(.system(.caption2, design: .rounded).weight(.semibold))
                         .foregroundStyle(LMSColors.brandNavy)
                 ),
-                accessibilityLabel: "Manager Desk: \(viewModel.sentToManagerApps.count)."
+                accessibilityLabel: "Manager Desk: \(viewModel.pendingManagerActionApps.count)."
             )
             .onTapGesture {
                 HapticsManager.triggerImpact(style: .light)
