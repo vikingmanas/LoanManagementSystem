@@ -100,7 +100,7 @@ struct ChangePasswordSheet: View {
     }
     
     private func sendEmailConfirmation(email: String) {
-        guard let url = URL(string: "http://localhost:3000/api/send-reset-email") else { return }
+        guard let url = URL(string: "https://loanmanagementsystem-1kev.onrender.com/api/send-reset-email") else { return }
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"

@@ -123,7 +123,7 @@ class SignInViewModel: ObservableObject {
     }
     
     private func send2FAEmail(email: String, otp: String) async -> Bool {
-        guard let url = URL(string: "http://localhost:3000/api/send-2fa-otp") else { return false }
+        guard let url = URL(string: "https://loanmanagementsystem-1kev.onrender.com/api/send-2fa-otp") else { return false }
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
