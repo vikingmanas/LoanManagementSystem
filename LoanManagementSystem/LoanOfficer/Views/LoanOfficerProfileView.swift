@@ -6,6 +6,7 @@ struct LoanOfficerProfileView: View {
     @EnvironmentObject var authManager: AuthManager
     
     @AppStorage("biometricEnabled") private var biometricEnabled = false
+    @AppStorage("isDarkMode") private var isDarkMode = false
     @StateObject private var localSecurity = LocalSecurityService.shared
     @State private var showChangePassword = false
     
@@ -128,6 +129,10 @@ struct LoanOfficerProfileView: View {
                 
                 // 5. SYSTEM SETTINGS
                 Section("System Settings") {
+                    Toggle(isOn: $isDarkMode) {
+                        Label("Dark Mode", systemImage: "moon.fill")
+                    }
+                    
                     Toggle(isOn: $biometricEnabled) {
                         Label("\(localSecurity.biometricTypeName) Login", systemImage: "faceid")
                     }
@@ -138,6 +143,10 @@ struct LoanOfficerProfileView: View {
                         Label("Change Password", systemImage: "lock.fill")
                     }
                     .foregroundStyle(Color(.label))
+
+                    NavigationLink(destination: AccessibilitySettingsView()) {
+                        Label("Accessibility", systemImage: "figure.walk.circle")
+                    }
                 }
                 
                 // 6. LOGOUT BUTTON

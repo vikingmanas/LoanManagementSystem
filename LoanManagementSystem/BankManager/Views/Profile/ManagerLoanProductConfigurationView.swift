@@ -109,8 +109,35 @@ struct ManagerLoanProductPricingDetailView: View {
                 LabeledContent("Name", value: product.name)
                 LabeledContent("Type", value: product.loanType)
                 LabeledContent("Status", value: product.isActive ? "Active" : "Inactive")
-                LabeledContent("Max Amount", value: product.maxAmount.formattedAsCompactINR())
-                LabeledContent("Max Tenure", value: "\(product.maxTenure) months")
+            }
+
+            Section("Eligibility Criteria") {
+                LabeledContent {
+                    Stepper(value: $product.minAmount, in: 10000...10000000, step: 10000) {
+                        Text(product.minAmount.formattedAsCompactINR())
+                            .font(.body.monospacedDigit().weight(.semibold))
+                    }
+                } label: {
+                    Text("Min Amount")
+                }
+
+                LabeledContent {
+                    Stepper(value: $product.maxAmount, in: 50000...50000000, step: 50000) {
+                        Text(product.maxAmount.formattedAsCompactINR())
+                            .font(.body.monospacedDigit().weight(.semibold))
+                    }
+                } label: {
+                    Text("Max Amount")
+                }
+
+                LabeledContent {
+                    Stepper(value: $product.maxTenure, in: 6...360, step: 6) {
+                        Text("\(product.maxTenure) months")
+                            .font(.body.monospacedDigit().weight(.semibold))
+                    }
+                } label: {
+                    Text("Max Tenure")
+                }
             }
 
             Section {
@@ -134,7 +161,7 @@ struct ManagerLoanProductPricingDetailView: View {
             } header: {
                 Text("Branch Pricing")
             } footer: {
-                Text("These values are stored in the loan product catalog and used when borrowers review product terms. Only pricing fields can be changed here.")
+                Text("These values are stored in the loan product catalog. Pricing and eligibility criteria can be customized for your branch.")
             }
 
             Section("Borrower Preview") {

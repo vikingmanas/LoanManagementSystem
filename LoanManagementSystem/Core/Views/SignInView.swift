@@ -40,12 +40,7 @@ struct SignInView: View {
                         
                         // Fields
                         VStack(spacing: LMSSpacing.lg) {
-                            Picker("Sign In Mode", selection: $viewModel.signInMode) {
-                                ForEach(BorrowerSignInMode.allCases) { mode in
-                                    Text(mode.rawValue).tag(mode)
-                                }
-                            }
-                            .pickerStyle(.segmented)
+
 
                             CustomTextField(
                                 icon: "envelope",
@@ -56,43 +51,12 @@ struct SignInView: View {
                                 keyboardType: .emailAddress
                             )
 
-                            if viewModel.signInMode == .password {
-                                SecureInputField(
-                                    placeholder: "Password",
-                                    text: $viewModel.password,
-                                    isError: !viewModel.passwordError.isEmpty,
-                                    errorMessage: viewModel.passwordError
-                                )
-                            } else if viewModel.isOTPSent {
-                                CustomTextField(
-                                    icon: "number",
-                                    placeholder: "6-digit OTP",
-                                    text: $viewModel.otpCode,
-                                    isError: !viewModel.otpError.isEmpty,
-                                    errorMessage: viewModel.otpError,
-                                    keyboardType: .numberPad
-                                )
-
-                                Button {
-                                    Task { await viewModel.sendEmailOTP(authManager: authManager) }
-                                } label: {
-                                    Text("Resend OTP")
-                                        .font(LMSFont.footnote.weight(.semibold))
-                                        .foregroundStyle(LMSColors.brandNavy)
-                                }
-                                .frame(maxWidth: .infinity, alignment: .trailing)
-                            } else {
-                                HStack(spacing: 10) {
-                                    Image(systemName: "envelope.badge.shield.half.filled")
-                                        .foregroundStyle(LMSColors.brandNavy)
-                                    Text("We will send a Supabase OTP to your registered email.")
-                                        .font(LMSFont.caption)
-                                        .foregroundStyle(LMSColors.textSecondary)
-                                    Spacer()
-                                }
-                                .padding(LMSSpacing.lg)
-                                .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
-                            }
+                            SecureInputField(
+                                placeholder: "Password",
+                                text: $viewModel.password,
+                                isError: !viewModel.passwordError.isEmpty,
+                                errorMessage: viewModel.passwordError
+                            )
                         }
                         Spacer()
                             .frame(width:0,height:7)
@@ -111,21 +75,12 @@ struct SignInView: View {
 
                         // Sign In
                         PrimaryButton(
-                            title: primaryButtonTitle,
+                            title: "Sign In",
                             isLoading: viewModel.isLoading,
                             isDisabled: !viewModel.isFormValid,
                             action: {
                                 Task {
-                                    switch viewModel.signInMode {
-                                    case .password:
-                                        await viewModel.signIn(authManager: authManager, appState: appState)
-                                    case .emailOTP:
-                                        if viewModel.isOTPSent {
-                                            await viewModel.verifyEmailOTP(authManager: authManager, appState: appState)
-                                        } else {
-                                            await viewModel.sendEmailOTP(authManager: authManager)
-                                        }
-                                    }
+                                    await viewModel.signIn(authManager: authManager, appState: appState)
                                 }
                             }
                         )
@@ -182,15 +137,6 @@ struct SignInView: View {
                     appState.login()
                 }
             }
-        }
-    }
-
-    private var primaryButtonTitle: String {
-        switch viewModel.signInMode {
-        case .password:
-            return "Sign In"
-        case .emailOTP:
-            return viewModel.isOTPSent ? "Verify OTP" : "Send OTP"
         }
     }
 
