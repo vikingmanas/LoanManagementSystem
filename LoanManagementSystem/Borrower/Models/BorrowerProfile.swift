@@ -29,7 +29,7 @@ public struct BorrowerProfile: Codable, Equatable {
     public var kycVerification: KYCVerification
     public var loanOverview: LoanOverview
     
-    public var profileImageData: Data? = nil
+    public var profileImageData: String? = nil
     
     // New Onboarding Questionnaire Fields
     public var occupation: String

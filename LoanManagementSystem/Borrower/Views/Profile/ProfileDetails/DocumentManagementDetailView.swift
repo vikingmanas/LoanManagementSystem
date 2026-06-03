@@ -356,13 +356,25 @@ struct DocumentManagementDetailView: View {
     private func loadDocuments(keepLocalUploads: Bool = false) {
         let existing = keepLocalUploads ? Dictionary(uniqueKeysWithValues: documents.map { ($0.kind, $0) }) : [:]
         let kyc = viewModel.profile?.kycVerification
-        let profileImage = viewModel.profile?.profileImageData.flatMap(UIImage.init(data:))
-        documents = VaultDocument.seedDocuments(kyc: kyc, profileImage: profileImage).map { seeded in
+        documents = VaultDocument.seedDocuments(kyc: kyc, profileImage: nil).map { seeded in
             guard var local = existing[seeded.kind] else { return seeded }
             local.status = seeded.status == .pending && local.isUploaded ? local.status : seeded.status
             if seeded.fileName != "Not uploaded" { local.fileName = seeded.fileName }
             if seeded.thumbnail != nil { local.thumbnail = seeded.thumbnail }
             return local
+        }
+        
+        if let urlString = viewModel.profile?.profileImageData, let url = URL(string: urlString) {
+            Task { @MainActor in
+                if let (data, _) = try? await URLSession.shared.data(from: url), let image = UIImage(data: data) {
+                    if let index = self.documents.firstIndex(where: { $0.kind == .profilePhoto }) {
+                        self.documents[index].thumbnail = image
+                        self.documents[index].status = .verified
+                        self.documents[index].fileName = "Profile Photo"
+                        self.documents[index].fileSize = "Uploaded"
+                    }
+                }
+            }
         }
     }
 

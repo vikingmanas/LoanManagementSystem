@@ -542,6 +542,19 @@ struct BorrowerLoanWizardView: View {
             )
             prepareWizardState()
         }
+        .onChange(of: signatureImage) {
+            guard let signatureImage, let data = signatureImage.jpegData(compressionQuality: 0.8) else { return }
+            Task { @MainActor in
+                let path = "\(viewModel.profile.id)/signature-\(UUID().uuidString).jpg"
+                do {
+                    let url = try await StorageService.shared.uploadDocument(data: data, bucket: "signatureImageData", path: path)
+                    viewModel.formData.signatureImageData = url.absoluteString
+                    viewModel.autosaveDraft()
+                } catch {
+                    print("Failed to upload signature image: \(error)")
+                }
+            }
+        }
         .onChange(of: currentStep) { _, newStep in
             viewModel.updateDraftStep(newStep)
         }
@@ -944,10 +957,14 @@ struct BorrowerLoanWizardView: View {
         liveVerificationCompleted = viewModel.formData.liveVerificationCompleted
         liveVerificationReference = viewModel.formData.liveVerificationReference.isEmpty ? nil : viewModel.formData.liveVerificationReference
         if !viewModel.formData.signatureImageData.isEmpty,
-           let data = Data(base64Encoded: viewModel.formData.signatureImageData),
-           let image = UIImage(data: data) {
-            signatureImage = image
+           let url = URL(string: viewModel.formData.signatureImageData) {
             isSignatureEmpty = false
+            Task { @MainActor in
+                if let (data, _) = try? await URLSession.shared.data(from: url),
+                   let image = UIImage(data: data) {
+                    signatureImage = image
+                }
+            }
         }
     }
 
@@ -1020,10 +1037,7 @@ struct BorrowerLoanWizardView: View {
         viewModel.formData.emergencyContactMobile = ocrPANNumber
         viewModel.formData.liveVerificationCompleted = liveVerificationCompleted
         viewModel.formData.liveVerificationReference = liveVerificationReference ?? ""
-        if let signatureImage,
-           let data = signatureImage.pngData() {
-            viewModel.formData.signatureImageData = data.base64EncodedString()
-        }
+        // Signature image is uploaded via .onChange(of: signatureImage) to avoid blocking autosave
         viewModel.formData.acceptedTerms = acceptTerms
         viewModel.formData.acceptedBureauConsent = acceptBureau
         viewModel.formData.acceptedDebitConsent = acceptDebit
