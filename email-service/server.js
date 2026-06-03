@@ -17,12 +17,12 @@ app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
 app.use(express.json());
 
 // Set up Nodemailer Transporter
-// Using explicit SMTP config instead of service:'gmail' to force IPv4 on Render
+// Port 587 with STARTTLS — Render free tier blocks port 465
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    family: 4, // Force IPv4 — Render free tier blocks outbound IPv6
+    port: 587,
+    secure: false, // use STARTTLS
+    family: 4,     // Force IPv4 — Render blocks outbound IPv6
     auth: {
         user: process.env.EMAIL_USER,
         pass: (process.env.EMAIL_PASS || '').replace(/\s+/g, '')
