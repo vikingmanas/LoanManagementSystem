@@ -569,35 +569,56 @@ final class CentralLoanRepository: ObservableObject {
                 var finalDbApp = dbApp
                 
                 if finalDbApp.formData.signatureImageData.count > 1000,
-                   !finalDbApp.formData.signatureImageData.starts(with: "http"),
-                   let data = Data(base64Encoded: finalDbApp.formData.signatureImageData) {
-                    let path = "signatures/\(resolvedUUID.uuidString)_\(finalDbApp.applicationId.uuidString).png"
-                    if let publicUrl = try? await StorageService.shared.uploadDocument(data: data, bucket: "documents", path: path, contentType: "image/png") {
-                        var updatedFormData = finalDbApp.formData
-                        updatedFormData.signatureImageData = publicUrl.absoluteString
-                        
-                        finalDbApp = DBLoanApplication(
-                            applicationId: finalDbApp.applicationId,
-                            borrowerId: finalDbApp.borrowerId,
-                            officerId: finalDbApp.officerId,
-                            productId: finalDbApp.productId,
-                            amountRequested: finalDbApp.amountRequested,
-                            tenureMonths: finalDbApp.tenureMonths,
-                            purpose: finalDbApp.purpose,
-                            status: finalDbApp.status,
-                            formData: updatedFormData,
-                            stageHistory: finalDbApp.stageHistory,
-                            submittedAt: finalDbApp.submittedAt,
-                            updatedAt: finalDbApp.updatedAt
-                        )
-                        
-                        Task { @MainActor in
-                            if let idx = CentralLoanRepository.shared.applications.firstIndex(where: { $0.id == app.id }) {
-                                CentralLoanRepository.shared.applications[idx].formData.signatureImageData = publicUrl.absoluteString
-                                CentralLoanRepository.shared.persistState()
+                   !finalDbApp.formData.signatureImageData.starts(with: "http") {
+                   if let data = Data(base64Encoded: finalDbApp.formData.signatureImageData) {
+                        let path = "signatures/\(resolvedUUID.uuidString)_\(finalDbApp.applicationId.uuidString).png"
+                        if let publicUrl = try? await StorageService.shared.uploadDocument(data: data, bucket: "documents", path: path, contentType: "image/png") {
+                            var updatedFormData = finalDbApp.formData
+                            updatedFormData.signatureImageData = publicUrl.absoluteString
+                            
+                            finalDbApp = DBLoanApplication(
+                                applicationId: finalDbApp.applicationId,
+                                borrowerId: finalDbApp.borrowerId,
+                                officerId: finalDbApp.officerId,
+                                productId: finalDbApp.productId,
+                                amountRequested: finalDbApp.amountRequested,
+                                tenureMonths: finalDbApp.tenureMonths,
+                                purpose: finalDbApp.purpose,
+                                status: finalDbApp.status,
+                                formData: updatedFormData,
+                                stageHistory: finalDbApp.stageHistory,
+                                submittedAt: finalDbApp.submittedAt,
+                                updatedAt: finalDbApp.updatedAt
+                            )
+                            
+                            Task { @MainActor in
+                                if let idx = CentralLoanRepository.shared.applications.firstIndex(where: { $0.id == app.id }) {
+                                    CentralLoanRepository.shared.applications[idx].formData.signatureImageData = publicUrl.absoluteString
+                                    CentralLoanRepository.shared.persistState()
+                                }
                             }
+                        } else {
+                            print("❌ [CentralLoanRepository] Failed to upload signature image to Storage. Aborting DB sync.")
+                            throw NSError(domain: "CentralLoanRepository", code: 400, userInfo: [NSLocalizedDescriptionKey: "Failed to upload signature image. Please ensure the 'documents' storage bucket exists and has correct RLS policies."])
                         }
-                    }
+                   } else {
+                       var updatedFormData = finalDbApp.formData
+                       updatedFormData.signatureImageData = ""
+                       finalDbApp = DBLoanApplication(
+                           applicationId: finalDbApp.applicationId,
+                           borrowerId: finalDbApp.borrowerId,
+                           officerId: finalDbApp.officerId,
+                           productId: finalDbApp.productId,
+                           amountRequested: finalDbApp.amountRequested,
+                           tenureMonths: finalDbApp.tenureMonths,
+                           purpose: finalDbApp.purpose,
+                           status: finalDbApp.status,
+                           formData: updatedFormData,
+                           stageHistory: finalDbApp.stageHistory,
+                           submittedAt: finalDbApp.submittedAt,
+                           updatedAt: finalDbApp.updatedAt
+                       )
+                   }
                 }
                 
                 try await ApplicationService.shared.upsertApplication(finalDbApp)
