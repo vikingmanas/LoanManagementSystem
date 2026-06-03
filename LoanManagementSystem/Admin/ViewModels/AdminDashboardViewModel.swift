@@ -191,8 +191,8 @@ final class AdminDashboardViewModel: ObservableObject {
             kpis = [
                 AdminKPI(title: "Total Applications", value: formattedTotalApps, icon: "square.stack.3d.up", trend: data.totalApplicationsTrend, themeColor: LMSColors.textPrimary),
                 AdminKPI(title: "Active Loans", value: formattedActiveLoans, icon: "chart.line.uptrend.xyaxis", trend: data.activeLoansTrend, themeColor: LMSColors.textPrimary),
-                AdminKPI(title: "Pending Approvals", value: formattedPendingApprovals, icon: "hourglass", trend: data.pendingApprovalsTrend, themeColor: LMSColors.textPrimary),
-                AdminKPI(title: "Total Disbursed", value: formattedTotalDisbursed, icon: "indianrupeesign.circle", trend: data.totalDisbursedTrend, themeColor: LMSColors.textPrimary)
+                AdminKPI(title: "Pending Approvals", value: formattedPendingApprovals, icon: "hourglass", trend: data.pendingApprovalsTrend, themeColor: LMSColors.amber),
+                AdminKPI(title: "Total Disbursed", value: formattedTotalDisbursed, icon: "indianrupeesign.circle", trend: data.totalDisbursedTrend, themeColor: LMSColors.emerald)
             ]
             
             // 5. Set approval breakdown
