@@ -152,6 +152,32 @@ final class NotificationService {
         return notifications
     }
     
+    /// Subscribes to new notifications via Realtime.
+    func subscribeToNotifications(forUserId userId: UUID, onInsert: @escaping (DBNotification) -> Void) async -> RealtimeChannelV2 {
+        let channel = client.channel("notifications_user_\(userId.uuidString)")
+        
+        let stream = channel.postgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "notifications",
+            filter: "user_id=eq.\(userId.uuidString)"
+        )
+        
+        Task {
+            for await action in stream {
+                do {
+                    let notification = try action.record.decode(as: DBNotification.self, decoder: SupabaseManager.shared.defaultDecoder)
+                    onInsert(notification)
+                } catch {
+                    print("[NotificationService] Error decoding realtime notification: \(error)")
+                }
+            }
+        }
+        
+        await channel.subscribe()
+        return channel
+    }
+    
     /// Returns the count of unread notifications for the given user.
     func unreadCount(userId: UUID) async throws -> Int {
         struct NotificationIdOnly: Codable {

@@ -24,8 +24,16 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     @Published var hasError: Bool = false
     @Published var selectedTab: Int = 0              // 0=Dashboard, 1=History
     
+    private var realtimeChannel: RealtimeChannelV2?
     private var cancellables = Set<AnyCancellable>()
     private var isFetchingDashboardData = false
+    
+    deinit {
+        let channel = realtimeChannel
+        Task {
+            await channel?.unsubscribe()
+        }
+    }
     
     init() {
         refreshFromRepository()
@@ -380,6 +388,57 @@ class LoanOfficerDashboardViewModel: ObservableObject {
             }
         }
         applicationMessages = nextMessages
+    }
+    
+    // MARK: - Realtime
+    func setupRealtime() async {
+        guard let profileId = officerProfile?.id else { return }
+        
+        if let channel = realtimeChannel {
+            await channel.unsubscribe()
+        }
+        
+        realtimeChannel = await DatabaseService.shared.subscribeToAllMessages(forUserId: profileId) { [weak self] newMessage in
+            Task { @MainActor in
+                self?.handleNewRealtimeMessage(newMessage, profileId: profileId)
+            }
+        }
+    }
+    
+    private func handleNewRealtimeMessage(_ msg: DBMessage, profileId: UUID) {
+        guard let appId = msg.applicationId else { return }
+        
+        // Append message if not already present
+        var messagesForApp = applicationMessages[appId] ?? []
+        if !messagesForApp.contains(where: { $0.messageId == msg.messageId }) {
+            messagesForApp.append(msg)
+            applicationMessages[appId] = messagesForApp.sorted { $0.sentAt < $1.sentAt }
+            
+            // Add to activity feed if received
+            if msg.receiverId == profileId && !msg.isRead {
+                let borrowerName = applications.first(where: { $0.id == appId })?.borrowerName ?? "Borrower"
+                let appDisplayId = applications.first(where: { $0.id == appId })?.applicationId ?? "APP"
+                let loanType = applications.first(where: { $0.id == appId })?.loanType.rawValue ?? ""
+                
+                let feedItem = ActivityFeedItem(
+                    id: msg.messageId,
+                    borrowerName: borrowerName,
+                    applicationId: appDisplayId,
+                    loanType: loanType,
+                    eventType: .queryRaised,
+                    eventDescription: msg.content,
+                    timestamp: msg.sentAt,
+                    isRead: false,
+                    requiresAction: true,
+                    actionType: .replyQuery
+                )
+                
+                var currentItems = activityFeed
+                currentItems.append(feedItem)
+                activityFeed = currentItems.sorted { $0.timestamp > $1.timestamp }
+                updateUnreadCount()
+            }
+        }
     }
     
     func updateUnreadCount() {
