@@ -18,33 +18,10 @@ struct AdminBranchKPIView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: LMSSpacing.lg) {
-                // Search Bar
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(LMSColors.textSecondary)
-                    TextField("Search branch by name or code...", text: $searchText)
-                        .font(LMSFont.body)
-                    if !searchText.isEmpty {
-                        Button {
-                            searchText = ""
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(LMSColors.textTertiary)
-                        }
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.md))
-                
                 // Branch List
                 if filteredData.isEmpty {
-                    ContentUnavailableView(
-                        "No Branches Found",
-                        systemImage: "building.2.crop.circle.badge.xmark",
-                        description: Text("Try adjusting your search terms.")
-                    )
-                    .padding(.top, 40)
+                    ContentUnavailableView.search(text: searchText)
+                        .padding(.top, 40)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(Array(filteredData.enumerated()), id: \.element.id) { index, data in
@@ -61,6 +38,7 @@ struct AdminBranchKPIView: View {
             .padding(.horizontal, LMSSpacing.screenHorizontal)
             .padding(.vertical, LMSSpacing.md)
         }
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search branch by name or code…")
         .background(LMSColors.background.ignoresSafeArea())
         .navigationTitle(kpi.title)
         .navigationBarTitleDisplayMode(.inline)

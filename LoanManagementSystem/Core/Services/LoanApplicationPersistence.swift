@@ -30,6 +30,7 @@ struct StoredLoanFormData: Codable {
     var mobileNumber: String
     var emailAddress: String
     var address: String
+    var preferredBranch: String?
     var occupation: String
     var employmentType: String
     var employerName: String
@@ -164,6 +165,7 @@ enum LoanApplicationPersistence {
                 mobileNumber: app.formData.mobileNumber,
                 emailAddress: app.formData.emailAddress,
                 address: app.formData.address,
+                preferredBranch: app.formData.preferredBranch,
                 occupation: app.formData.occupation,
                 employmentType: app.formData.employmentType,
                 employerName: app.formData.employerName,
@@ -232,6 +234,96 @@ enum LoanApplicationPersistence {
     }
 
     private static func restoreApplication(_ stored: StoredLoanApplication) -> BorrowerLoanApplication? {
-        return nil
+        guard let productType = BorrowerLoanProductType(rawValue: stored.productType),
+              let currentStage = BorrowerApplicationStage(rawValue: stored.currentStage) else {
+            return nil
+        }
+        
+        let product = BorrowerLoanProduct.sampleProducts.first(where: { $0.type == productType }) ?? BorrowerLoanProduct.sampleProducts[0]
+        
+        let formData = BorrowerLoanFormData(
+            fullName: stored.formData.fullName,
+            dateOfBirth: stored.formData.dateOfBirth,
+            gender: stored.formData.gender ?? "",
+            mobileNumber: stored.formData.mobileNumber,
+            emailAddress: stored.formData.emailAddress,
+            address: stored.formData.address,
+            preferredBranch: stored.formData.preferredBranch ?? "",
+            occupation: stored.formData.occupation,
+            employmentType: stored.formData.employmentType,
+            employerName: stored.formData.employerName,
+            workExperienceYears: stored.formData.workExperienceYears,
+            monthlyIncome: stored.formData.monthlyIncome,
+            annualIncome: stored.formData.annualIncome,
+            existingLoans: stored.formData.existingLoans,
+            existingEMIs: stored.formData.existingEMIs,
+            creditCardObligations: stored.formData.creditCardObligations,
+            creditScore: stored.formData.creditScore,
+            loanAmountRequested: stored.formData.loanAmountRequested,
+            loanPurpose: stored.formData.loanPurpose,
+            repaymentPreference: stored.formData.repaymentPreference,
+            preferredTenureMonths: stored.formData.preferredTenureMonths,
+            hasCoApplicant: stored.formData.hasCoApplicant,
+            coApplicantDetails: stored.formData.coApplicantDetails,
+            hasGuarantor: stored.formData.hasGuarantor,
+            guarantorDetails: stored.formData.guarantorDetails,
+            gstNumber: stored.formData.gstNumber,
+            selectedIdentityDoc: stored.formData.selectedIdentityDoc ?? "",
+            selectedAddressDoc: stored.formData.selectedAddressDoc ?? "",
+            selectedIncomeDoc: stored.formData.selectedIncomeDoc ?? "",
+            draftStepIndex: stored.formData.draftStepIndex ?? 1,
+            bankName: stored.formData.bankName ?? "",
+            bankAccountNumber: stored.formData.bankAccountNumber ?? "",
+            bankIFSCCode: stored.formData.bankIFSCCode ?? "",
+            bankRegisteredMobile: stored.formData.bankRegisteredMobile ?? "",
+            monthlySalaryDeposited: stored.formData.monthlySalaryDeposited ?? "",
+            employmentJoiningDate: stored.formData.employmentJoiningDate,
+            creditCardLimit: stored.formData.creditCardLimit ?? "",
+            savingsInvestments: stored.formData.savingsInvestments ?? "",
+            coApplicantMobile: stored.formData.coApplicantMobile ?? "",
+            coApplicantPAN: stored.formData.coApplicantPAN ?? "",
+            coApplicantAadhaar: stored.formData.coApplicantAadhaar ?? "",
+            coApplicantIncome: stored.formData.coApplicantIncome ?? "",
+            autoDebitConsent: stored.formData.autoDebitConsent ?? false,
+            nomineeName: stored.formData.nomineeName ?? "",
+            nomineeRelation: stored.formData.nomineeRelation ?? "",
+            nomineeMobile: stored.formData.nomineeMobile ?? "",
+            referenceName: stored.formData.referenceName ?? "",
+            referenceMobile: stored.formData.referenceMobile ?? "",
+            emergencyContactName: stored.formData.emergencyContactName ?? "",
+            emergencyContactMobile: stored.formData.emergencyContactMobile ?? "",
+            signatureImageData: stored.formData.signatureImageData ?? "",
+            signatureVerificationStatus: stored.formData.signatureVerificationStatus ?? "",
+            liveVerificationCompleted: stored.formData.liveVerificationCompleted ?? false,
+            liveVerificationReference: stored.formData.liveVerificationReference ?? "",
+            selfieVerificationStatus: stored.formData.selfieVerificationStatus ?? "",
+            acceptedTerms: stored.formData.acceptedTerms ?? false,
+            acceptedBureauConsent: stored.formData.acceptedBureauConsent ?? false,
+            acceptedDebitConsent: stored.formData.acceptedDebitConsent ?? false
+        )
+        
+        let stageHistory = stored.stageHistory.compactMap { entry -> BorrowerStageEntry? in
+            guard let stage = BorrowerApplicationStage(rawValue: entry.stage) else { return nil }
+            return BorrowerStageEntry(stage: stage, timestamp: entry.timestamp, note: entry.note)
+        }
+        
+        return BorrowerLoanApplication(
+            id: stored.id,
+            applicationId: stored.applicationId,
+            borrowerId: nil,
+            product: product,
+            formData: formData,
+            documents: stored.documents ?? [],
+            currentStage: currentStage,
+            stageHistory: stageHistory,
+            draftStepIndex: stored.draftStepIndex ?? 1,
+            submittedAt: stored.submittedAt,
+            updatedAt: stored.updatedAt,
+            assignedQueue: stored.assignedQueue,
+            assignedOfficerId: stored.assignedOfficerId,
+            assignedOfficer: nil,
+            outstandingBalance: stored.outstandingBalance,
+            upcomingEMI: stored.upcomingEMI
+        )
     }
 }
