@@ -1,14 +1,12 @@
-require('dotenv').config();
-const express = require('express');
-const nodemailer = require('nodemailer');
-const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
+// ============================================================
+// MUST BE FIRST: Force ALL DNS resolution to IPv4
+// Render's free tier cannot make outbound IPv6 connections.
+// This MUST run before require('nodemailer') so Nodemailer
+// picks up the patched dns.lookup.
+// ============================================================
 const dns = require('dns');
+const net = require('net');
 
-// NUCLEAR FIX: Monkey-patch dns.lookup to ALWAYS resolve IPv4
-// Render's free tier cannot make outbound IPv6 connections,
-// and Nodemailer ignores both dns.setDefaultResultOrder and family:4
 const originalLookup = dns.lookup;
 dns.lookup = function(hostname, options, callback) {
     if (typeof options === 'function') {
@@ -21,6 +19,21 @@ dns.lookup = function(hostname, options, callback) {
     }
     return originalLookup.call(this, hostname, options, callback);
 };
+
+// Disable Happy Eyeballs (Node 20+) which tries IPv6 in parallel
+if (typeof net.setDefaultAutoSelectFamily === 'function') {
+    net.setDefaultAutoSelectFamily(false);
+}
+
+// ============================================================
+// NOW load everything else
+// ============================================================
+require('dotenv').config();
+const express = require('express');
+const nodemailer = require('nodemailer');
+const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -61,10 +74,7 @@ app.post('/api/send-reset-email', async (req, res) => {
     }
 
     try {
-        // Option 1: Using a simple HTML string
-        // const htmlContent = `<b>Click the link below to reset your password.</b>`;
-        
-        // Option 2: Using the reset-password.html file from your project
+        // Use the reset-password.html file from your project
         const templatePath = path.join(__dirname, '../LoanManagementSystem/reset-password.html');
         let htmlContent = '';
         if (fs.existsSync(templatePath)) {
@@ -74,10 +84,10 @@ app.post('/api/send-reset-email', async (req, res) => {
         }
 
         const mailOptions = {
-            from: `"Loan Management App" <${process.env.EMAIL_USER}>`, // sender address
-            to: userEmail,                                              // list of receivers
-            subject: 'Password Reset Request',                          // Subject line
-            html: htmlContent                                           // HTML body
+            from: `"Loan Management App" <${process.env.EMAIL_USER}>`,
+            to: userEmail,
+            subject: 'Password Reset Request',
+            html: htmlContent
         };
 
         const info = await transporter.sendMail(mailOptions);
