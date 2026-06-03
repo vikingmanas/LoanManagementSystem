@@ -307,13 +307,13 @@ enum BorrowerDocumentStatus: String, Codable, CaseIterable, Hashable {
         case .pendingUpload:
             return Color(.secondaryLabel)
         case .uploaded:
-            return Color.brandNavy
+            return LMSColors.brandNavy
         case .underVerification:
             return .orange
         case .verified:
-            return Color.brandEmerald
+            return LMSColors.emerald
         case .rejected:
-            return Color.brandCoral
+            return LMSColors.coral
         case .requiresResubmission:
             return .orange
         }
@@ -752,10 +752,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         .empty.mergedWithProfile(profile)
     }
 
-    static let branchOptions = [
-        "Headquarters Branch",
-        "Mysuru"
-    ]
+    static let branchOptions: [String] = []
 
     static func formattedAddress(from address: AddressInfo) -> String {
         var components: [String] = []
@@ -970,13 +967,13 @@ enum BorrowerApplicationStage: String, Codable, CaseIterable, Identifiable, Hash
         case .draft:
             return Color(.secondaryLabel)
         case .submitted, .underReview, .documentVerification, .loanOfficerReview, .bankManagerReview:
-            return Color.brandNavy
+            return LMSColors.brandNavy
         case .escalated:
             return Color.purple
         case .approved, .disbursed:
-            return Color.brandEmerald
+            return LMSColors.emerald
         case .rejected:
-            return Color.brandCoral
+            return LMSColors.coral
         }
     }
 
@@ -1163,214 +1160,22 @@ extension BorrowerLoanProduct {
 
     static let sampleProducts: [BorrowerLoanProduct] = [
         BorrowerLoanProduct(
-            id: UUID(uuidString: "a1d6518c-14d0-4f5b-85c4-3670f4a6ef01") ?? UUID(),
+            id: UUID(),
             type: .personal,
-            shortDescription: "Quick unsecured funding for personal goals and urgent expenses.",
-            maximumAmount: 2_500_000,
-            interestRateRange: "10.50% - 18.00%",
-            estimatedProcessingTime: "24-72 hours",
-            eligibilitySnapshot: "Salaried/Self-employed with stable income and credit score above 700.",
-            purpose: "Manage planned expenses such as travel, healthcare, or home improvements.",
-            benefits: ["Minimal paperwork", "Fast approval cycle", "Flexible tenure options"],
-            eligibilityCriteria: ["Age 21-58 years", "Minimum monthly income ₹25,000", "CIBIL 700+"],
-            minimumRequirements: ["KYC completed profile", "6 months bank statements", "Latest salary slips"],
-            interestInformation: "Rates are risk-based and depend on profile strength, obligations, and tenure.",
-            repaymentOverview: "EMI options from 12 to 84 months with auto-debit support.",
-            processingFees: "Up to 2.5% of sanctioned amount + GST.",
-            faqs: [
-                BorrowerLoanFAQ(question: "Can I prepay the loan?", answer: "Yes, part-prepayment and foreclosure are available as per policy."),
-                BorrowerLoanFAQ(question: "How quickly can funds be disbursed?", answer: "Disbursal generally happens within 1-3 working days after approval.")
-            ],
+            shortDescription: "Product Details Unavailable",
+            maximumAmount: 0,
+            interestRateRange: "Unknown",
+            estimatedProcessingTime: "Unknown",
+            eligibilitySnapshot: "Unknown",
+            purpose: "Unknown",
+            benefits: [],
+            eligibilityCriteria: [],
+            minimumRequirements: [],
+            interestInformation: "",
+            repaymentOverview: "",
+            processingFees: "",
+            faqs: [],
             loanSpecificDocuments: []
-        ),
-        BorrowerLoanProduct(
-            id: UUID(uuidString: "0f1e6d6d-6ce2-4df6-a8b8-1c47cbf804f2") ?? UUID(),
-            type: .home,
-            shortDescription: "High-value financing for home purchase, construction, or resale.",
-            maximumAmount: 25_000_000,
-            interestRateRange: "8.25% - 11.25%",
-            estimatedProcessingTime: "5-10 working days",
-            eligibilitySnapshot: "Stable income profile with property and legal verification eligibility.",
-            purpose: "Buy, build, or renovate residential property.",
-            benefits: ["Long tenure up to 30 years", "Tax benefits", "Competitive rates"],
-            eligibilityCriteria: ["Age 23-65 years", "Minimum annual income ₹4,80,000", "Healthy FOIR ratio"],
-            minimumRequirements: ["KYC + address proof", "Income proof", "Property chain documents"],
-            interestInformation: "Available in floating and fixed variants with periodic benchmark resets.",
-            repaymentOverview: "Tenure up to 360 months with step-up/step-down EMI options.",
-            processingFees: "0.35% - 1.00% of loan amount + legal and valuation charges.",
-            faqs: [
-                BorrowerLoanFAQ(question: "Do I need property insurance?", answer: "Property insurance is strongly recommended and may be mandatory in certain cases."),
-                BorrowerLoanFAQ(question: "Is co-applicant mandatory?", answer: "For jointly owned property, co-applicant is generally required.")
-            ],
-            loanSpecificDocuments: ["Property Documents", "Sale Agreement", "Property Valuation"]
-        ),
-        BorrowerLoanProduct(
-            id: UUID(uuidString: "84f596a0-9f58-4e18-b2a8-d1c8669b2cf3") ?? UUID(),
-            type: .education,
-            shortDescription: "Finance higher studies in India and abroad with moratorium support.",
-            maximumAmount: 7_500_000,
-            interestRateRange: "9.00% - 13.50%",
-            estimatedProcessingTime: "4-8 working days",
-            eligibilitySnapshot: "Confirmed admission with co-borrower income proof.",
-            purpose: "Cover tuition, accommodation, travel, and education-linked expenses.",
-            benefits: ["Moratorium during course period", "Tax deduction on interest", "Co-applicant support"],
-            eligibilityCriteria: ["Recognized institute admission", "Co-applicant with repayment capacity", "Academic consistency"],
-            minimumRequirements: ["Admission proof", "Fee structure", "Co-applicant KYC and income documents"],
-            interestInformation: "Concessions may apply for top institutions and profile categories.",
-            repaymentOverview: "Repayment starts after moratorium with tenure up to 180 months.",
-            processingFees: "0.5% - 1.5% depending on geography and collateral requirements.",
-            faqs: [
-                BorrowerLoanFAQ(question: "Does the loan cover living expenses?", answer: "Yes, subject to bank policy and sanctioned amount."),
-                BorrowerLoanFAQ(question: "Can I get a concession for girl students?", answer: "Eligible profiles may receive concession under applicable schemes.")
-            ],
-            loanSpecificDocuments: ["Admission Letter", "Fee Structure", "Academic Records"]
-        ),
-        BorrowerLoanProduct(
-            id: UUID(uuidString: "9f2752fb-2f28-4a31-86f0-0d87122e41f4") ?? UUID(),
-            type: .business,
-            shortDescription: "Working capital and expansion financing for MSME and enterprise growth.",
-            maximumAmount: 15_000_000,
-            interestRateRange: "11.00% - 17.00%",
-            estimatedProcessingTime: "3-7 working days",
-            eligibilitySnapshot: "Registered business with stable turnover and compliant filings.",
-            purpose: "Inventory, expansion, machinery, and working capital support.",
-            benefits: ["Flexible repayment", "Overdraft/term options", "Dedicated relationship officer"],
-            eligibilityCriteria: ["Business vintage 2+ years", "Consistent GST/ITR records", "Healthy bank conduct"],
-            minimumRequirements: ["Business KYC", "GST and registration proof", "Financial statements"],
-            interestInformation: "Rates vary based on vintage, collateral, bureau score, and cash-flow analysis.",
-            repaymentOverview: "Tenure up to 120 months with tailored repayment schedules.",
-            processingFees: "1.0% - 2.25% of sanctioned amount + applicable charges.",
-            faqs: [
-                BorrowerLoanFAQ(question: "Can startups apply?", answer: "Yes, based on business model and underwriting criteria."),
-                BorrowerLoanFAQ(question: "Is collateral mandatory?", answer: "Depends on ticket size, profile, and product variant.")
-            ],
-            loanSpecificDocuments: ["GST Documents", "Business Registration", "Financial Statements"]
-        ),
-        BorrowerLoanProduct(
-            id: UUID(uuidString: "4c72f920-0e3f-4f89-a608-9fbf588f93d5") ?? UUID(),
-            type: .vehicle,
-            shortDescription: "Finance new and used vehicles for personal and commercial use.",
-            maximumAmount: 4_000_000,
-            interestRateRange: "8.90% - 14.50%",
-            estimatedProcessingTime: "1-3 working days",
-            eligibilitySnapshot: "Steady income and dealer quotation with acceptable repayment capacity.",
-            purpose: "Purchase two-wheeler, car, or commercial vehicle.",
-            benefits: ["Fast dealer disbursal", "Flexible down payment", "Easy top-up eligibility"],
-            eligibilityCriteria: ["Age 21-60 years", "Income proof", "Valid driving profile"],
-            minimumRequirements: ["KYC", "Income proof", "Vehicle quotation/invoice"],
-            interestInformation: "Rates vary by vehicle segment and borrower credit profile.",
-            repaymentOverview: "Tenure up to 84 months with EMI auto-debit options.",
-            processingFees: "Up to 1.75% of loan amount + RC hypothecation charges.",
-            faqs: [
-                BorrowerLoanFAQ(question: "Can I finance used vehicles?", answer: "Yes, based on vehicle age and valuation."),
-                BorrowerLoanFAQ(question: "Do I need comprehensive insurance?", answer: "Yes, active insurance is required before disbursal.")
-            ],
-            loanSpecificDocuments: ["Vehicle Quotation", "Dealer Invoice"]
-        ),
-        BorrowerLoanProduct(
-            id: UUID(uuidString: "6b40d7e6-06dd-4ac8-8f93-ef9eb17a9d45") ?? UUID(),
-            type: .agriculture,
-            shortDescription: "Seasonal credit for cultivation, irrigation, equipment, seeds, and fertilizers.",
-            maximumAmount: 5_000_000,
-            interestRateRange: "7.00% - 11.50%",
-            estimatedProcessingTime: "2-5 working days",
-            eligibilitySnapshot: "Farmers, tenant cultivators, and agri-allied workers with land or activity proof.",
-            purpose: "Fund crop cultivation, farm machinery, irrigation systems, and agri inputs.",
-            benefits: ["Special schemes for farmers", "Government subsidies may apply", "Flexible seasonal repayment", "Lower interest support"],
-            eligibilityCriteria: ["Indian resident farmer", "Land/activity proof", "Crop or agri-use declaration"],
-            minimumRequirements: ["KYC", "Land records or tenancy proof", "Agri activity estimate"],
-            interestInformation: "Eligible farmer profiles may receive subsidy-linked or priority-sector pricing support.",
-            repaymentOverview: "Repayment can align with crop cycles, harvest income, or seasonal cash flows.",
-            processingFees: "Concessional processing may apply under eligible agriculture schemes.",
-            faqs: [
-                BorrowerLoanFAQ(question: "Can I use this for farm equipment?", answer: "Yes, equipment, irrigation, seeds, fertilizers, and crop cultivation are supported."),
-                BorrowerLoanFAQ(question: "Are subsidies guaranteed?", answer: "Subsidies depend on scheme eligibility, documentation, and current government guidelines.")
-            ],
-            loanSpecificDocuments: ["Land Record / Khasra", "Crop Declaration", "Equipment Quotation"]
-        ),
-        BorrowerLoanProduct(
-            id: UUID(uuidString: "be84595d-7608-4fb9-9fef-53072cb85f06") ?? UUID(),
-            type: .gold,
-            shortDescription: "Instant secured credit against household gold ornaments.",
-            maximumAmount: 3_000_000,
-            interestRateRange: "9.50% - 15.50%",
-            estimatedProcessingTime: "Same day",
-            eligibilitySnapshot: "Valid KYC with pledged gold valuation as per policy.",
-            purpose: "Meet short-term business or personal liquidity requirements.",
-            benefits: ["Fast disbursal", "Lower documentation", "Flexible repayment structures"],
-            eligibilityCriteria: ["Indian resident", "Valid KYC", "Eligible purity and valuation"],
-            minimumRequirements: ["Original gold ornaments", "KYC documents", "Photograph"],
-            interestInformation: "LTV and rate depend on prevailing gold prices and policy limits.",
-            repaymentOverview: "Bullet and EMI repayment variants available.",
-            processingFees: "Nominal appraisal and processing fee as per branch policy.",
-            faqs: [
-                BorrowerLoanFAQ(question: "Can I release partial pledged gold?", answer: "Yes, after part repayment and as per valuation."),
-                BorrowerLoanFAQ(question: "How is gold kept safe?", answer: "Gold is stored in secured vaults with strict audit controls.")
-            ],
-            loanSpecificDocuments: ["Gold Valuation Slip"]
-        ),
-        BorrowerLoanProduct(
-            id: UUID(uuidString: "7e95a540-c4da-4c52-aa62-bf847cb53a47") ?? UUID(),
-            type: .loanAgainstProperty,
-            shortDescription: "High-ticket secured funding by pledging residential or commercial property.",
-            maximumAmount: 50_000_000,
-            interestRateRange: "9.25% - 13.75%",
-            estimatedProcessingTime: "6-12 working days",
-            eligibilitySnapshot: "Clear property title and stable documented income profile.",
-            purpose: "Business expansion, education, medical, or other large requirements.",
-            benefits: ["Property pledged as collateral", "Lower rate than personal loans", "Higher loan eligibility", "Long repayment tenure"],
-            eligibilityCriteria: ["Self-owned property", "Stable income and repayment ability", "Legal and technical clearance"],
-            minimumRequirements: ["Property ownership documents", "Income proof", "Bank statements"],
-            interestInformation: "Final rates depend on LTV, profile quality, property type, and documentation strength.",
-            repaymentOverview: "Tenure up to 180 months with structured repayment schedules.",
-            processingFees: "0.75% - 1.5% plus legal/technical valuation charges.",
-            faqs: [
-                BorrowerLoanFAQ(question: "Can commercial property be used?", answer: "Yes, eligible residential/commercial properties may be accepted."),
-                BorrowerLoanFAQ(question: "Do I retain ownership?", answer: "Yes, ownership remains with you while property stays mortgaged.")
-            ],
-            loanSpecificDocuments: ["Property Ownership Records", "Encumbrance Certificate", "Latest Tax Receipts"]
-        ),
-        BorrowerLoanProduct(
-            id: UUID(uuidString: "c676d131-e109-4515-a47b-756ef073b436") ?? UUID(),
-            type: .consumer,
-            shortDescription: "Instant small-ticket finance for electronics, appliances, shopping, and card EMIs.",
-            maximumAmount: 1_000_000,
-            interestRateRange: "12.00% - 24.00%",
-            estimatedProcessingTime: "Instant - 24 hours",
-            eligibilitySnapshot: "Existing card/banking relationship or verified salaried/self-employed profile.",
-            purpose: "Convert consumer purchases into manageable EMIs with minimal documentation.",
-            benefits: ["Small-ticket financing", "Instant approvals", "Minimal documentation", "EMI conversion support"],
-            eligibilityCriteria: ["Age 21-60 years", "Valid KYC", "Stable repayment behavior"],
-            minimumRequirements: ["KYC", "Income or card relationship proof", "Purchase invoice where applicable"],
-            interestInformation: "Pricing depends on card relationship, tenure, merchant offer, and profile quality.",
-            repaymentOverview: "Short tenures from 3 to 36 months with auto-debit or card statement repayment.",
-            processingFees: "Merchant/card-linked fees may apply and are shown before confirmation.",
-            faqs: [
-                BorrowerLoanFAQ(question: "Can I convert purchases to EMI?", answer: "Eligible card and consumer purchases can be converted into EMI plans."),
-                BorrowerLoanFAQ(question: "Is documentation required?", answer: "Most eligible customers need only basic KYC and purchase details.")
-            ],
-            loanSpecificDocuments: ["Purchase Invoice", "Card Statement"]
-        ),
-        BorrowerLoanProduct(
-            id: UUID(uuidString: "f09cf57c-9858-4869-85fd-b9de6c76466f") ?? UUID(),
-            type: .msmeStartup,
-            shortDescription: "Growth capital for small businesses, startups, working capital, and expansion.",
-            maximumAmount: 20_000_000,
-            interestRateRange: "10.75% - 18.00%",
-            estimatedProcessingTime: "3-9 working days",
-            eligibilitySnapshot: "Registered MSME/startup with business verification, cash-flow records, or projected revenue.",
-            purpose: "Support startup funding, working capital, equipment, inventory, and business expansion.",
-            benefits: ["Government schemes possible", "Startup assistance", "Flexible repayment plans", "Working capital options"],
-            eligibilityCriteria: ["Business registration", "Banking/GST activity", "Promoter KYC and credit profile"],
-            minimumRequirements: ["Udyam/GST or registration proof", "Bank statements", "Business plan or financials"],
-            interestInformation: "Rates depend on turnover, vintage, collateral support, scheme eligibility, and cash-flow assessment.",
-            repaymentOverview: "Term loan and overdraft-style structures available based on business need.",
-            processingFees: "Scheme-linked concessions may apply for eligible MSME or startup profiles.",
-            faqs: [
-                BorrowerLoanFAQ(question: "Can new startups apply?", answer: "Yes, with promoter KYC, business plan, and eligibility under startup/MSME programs."),
-                BorrowerLoanFAQ(question: "Are government schemes available?", answer: "Eligible applicants may be mapped to MSME, Mudra-style, or startup assistance programs.")
-            ],
-            loanSpecificDocuments: ["Business Registration", "GST / Udyam Certificate", "Bank Statements", "Business Plan"]
         )
     ]
 }

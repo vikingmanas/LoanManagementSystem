@@ -5,8 +5,9 @@ struct LoanOfficerProfileView: View {
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
     
-    @AppStorage("biometricEnabled") private var biometricEnabled = true
+    @AppStorage("biometricEnabled") private var biometricEnabled = false
     @StateObject private var localSecurity = LocalSecurityService.shared
+    @State private var showChangePassword = false
     
     var body: some View {
         NavigationStack {
@@ -24,21 +25,21 @@ struct LoanOfficerProfileView: View {
                                 .frame(width: 80, height: 80)
                                 .shadow(color: LMSColors.actionBlue.opacity(0.2), radius: 8, x: 0, y: 4)
                             
-                            Text(authManager.currentStaffProfile?.initials ?? "AK")
+                            Text(authManager.currentStaffProfile?.initials ?? "")
                                 .font(.system(size: 32, weight: .bold, design: .rounded))
                                 .foregroundStyle(.white)
                         }
                         
                         VStack(spacing: 4) {
-                            Text(authManager.currentStaffProfile?.fullName ?? "Arjun Kashyap")
+                            Text(authManager.currentStaffProfile?.fullName ?? "")
                                 .font(.title3.bold())
                                 .foregroundStyle(LMSColors.textPrimary)
                             
-                            Text(authManager.currentStaffProfile?.designation ?? "Senior Loan Officer")
+                            Text(authManager.currentStaffProfile?.designation ?? "")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(LMSColors.actionBlue)
                             
-                            Text(authManager.currentStaffProfile?.branchName ?? "Bengaluru Central Branch (ID: BR-492)")
+                            Text(authManager.currentStaffProfile?.branchName ?? "Branch not assigned")
                                 .font(.caption)
                                 .foregroundStyle(LMSColors.textSecondary)
                         }
@@ -49,23 +50,23 @@ struct LoanOfficerProfileView: View {
                 
                 // 2. EMPLOYEE DETAILS SECTION
                 Section("Employee Information") {
-                    LabeledContent("Employee ID", value: authManager.currentStaffProfile?.employeeCode ?? "EMP-2024-9021")
+                    LabeledContent("Employee ID", value: authManager.currentStaffProfile?.employeeCode ?? "")
                     LabeledContent("Department", value: "Retail Lending Operations")
-                    LabeledContent("Role Level", value: authManager.currentStaffProfile?.designation ?? "L3 Administrator")
+                    LabeledContent("Role Level", value: authManager.currentStaffProfile?.designation ?? "")
                     
                     let dateStr: String = {
                         if let date = authManager.currentStaffProfile?.createdAt {
                             return RelativeDateFormatter.shared.absoluteString(from: date)
                         }
-                        return "15 Mar 2021"
+                        return ""
                     }()
                     LabeledContent("Date of Joining", value: dateStr)
                 }
                 
                 // 3. CONTACT DETAILS SECTION
                 Section("Contact Information") {
-                    LabeledContent("Official Email", value: authManager.currentStaffProfile?.email ?? "arjun.kashyap@astrabank.com")
-                    LabeledContent("Work Phone", value: authManager.currentStaffProfile?.phoneNumber ?? "+91 80 4991 2099")
+                    LabeledContent("Official Email", value: authManager.currentStaffProfile?.email ?? "")
+                    LabeledContent("Work Phone", value: authManager.currentStaffProfile?.phoneNumber ?? "")
                 }
                 
                 // 4. PERFORMANCE STATS SECTION
@@ -75,7 +76,7 @@ struct LoanOfficerProfileView: View {
                             Text("Loans Verified")
                                 .font(.caption2.bold())
                                 .foregroundStyle(.secondary)
-                            Text("482")
+                            Text("0")
                                 .font(.headline.bold())
                                 .foregroundStyle(LMSColors.brandNavy)
                             Text("Year to Date")
@@ -87,7 +88,7 @@ struct LoanOfficerProfileView: View {
                             Text("Accuracy Rate")
                                 .font(.caption2.bold())
                                 .foregroundStyle(.secondary)
-                            Text("98.7%")
+                            Text("0%")
                                 .font(.headline.bold())
                                 .foregroundStyle(LMSColors.brandNavy)
                             Text("Audit Score")
@@ -101,7 +102,7 @@ struct LoanOfficerProfileView: View {
                             Text("Portfolio Cap")
                                 .font(.caption2.bold())
                                 .foregroundStyle(.secondary)
-                            Text("₹ 12.8 Cr")
+                            Text("₹ 0")
                                 .font(.headline.bold())
                                 .foregroundStyle(LMSColors.brandNavy)
                             Text("Active Limit")
@@ -113,7 +114,7 @@ struct LoanOfficerProfileView: View {
                             Text("Avg. Cycle Time")
                                 .font(.caption2.bold())
                                 .foregroundStyle(.secondary)
-                            Text("1.8 Days")
+                            Text("0 Days")
                                 .font(.headline.bold())
                                 .foregroundStyle(LMSColors.brandNavy)
                             Text("TAT Score")
@@ -130,6 +131,13 @@ struct LoanOfficerProfileView: View {
                     Toggle(isOn: $biometricEnabled) {
                         Label("\(localSecurity.biometricTypeName) Login", systemImage: "faceid")
                     }
+                    
+                    Button {
+                        showChangePassword = true
+                    } label: {
+                        Label("Change Password", systemImage: "lock.fill")
+                    }
+                    .foregroundStyle(Color(.label))
                 }
                 
                 // 6. LOGOUT BUTTON
@@ -152,6 +160,9 @@ struct LoanOfficerProfileView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $showChangePassword) {
+                ChangePasswordSheet()
             }
         }
     }

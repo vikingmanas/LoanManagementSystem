@@ -12,8 +12,7 @@ struct ManagerApplicantsTabView: View {
                     if filtered.isEmpty {
                         ContentUnavailableView(
                             viewModel.applicants.isEmpty ? "No Applications Sent" : "No Applicants Found",
-                            systemImage: "doc.text.magnifyingglass",
-                            description: Text(viewModel.applicants.isEmpty ? "Loan applications submitted by loan officers for manager approval will appear here." : "Try adjusting your filters or search query.")
+                            systemImage: "doc.text.magnifyingglass"
                         )
                         .padding(.top, LMSSpacing.xxxl)
                     } else {
@@ -247,10 +246,3 @@ struct ApplicantListCard: View {
     }
 }
 
-#Preview {
-    ManagerApplicantsTabView(
-        viewModel: PreviewSupport.managerViewModel,
-        onSelectApplicant: { _ in }
-    )
-    .previewManagerEnvironment()
-}

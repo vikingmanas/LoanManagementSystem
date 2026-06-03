@@ -287,10 +287,3 @@ struct LoanCard: View {
     }
 }
 
-#Preview("SectionContainer") {
-    SectionContainer(title: "Sample", subtitle: "Preview subtitle") {
-        Text("Section content")
-    }
-    .padding()
-}
-

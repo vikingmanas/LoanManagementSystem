@@ -16,7 +16,7 @@ struct ManagerDashboardTabView: View {
                 ActionItemsRow(viewModel: viewModel, selectedTab: $selectedTab)
                     .padding(.top, LMSSpacing.md)
 
-                // Approval Queue
+                // Approval Request
                 ManagerApprovalQueueView(
                     viewModel: viewModel,
                     onViewAll: {
@@ -28,7 +28,7 @@ struct ManagerDashboardTabView: View {
 
                 BranchDashboardPromoCard(viewModel: viewModel, showBranchOverview: $showBranchOverview)
 
-                TeamPerformanceRow(viewModel: viewModel)
+                TeamInsightsRow(viewModel: viewModel)
 
                 Spacer()
                     .frame(height: LMSSpacing.xxxl)
@@ -61,7 +61,7 @@ private struct ActionItemsRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             Text("Action Items")
                 .font(.system(.title3, design: .rounded).bold())
                 .foregroundStyle(LMSColors.textPrimary)
@@ -69,7 +69,7 @@ private struct ActionItemsRow: View {
 
             HStack(spacing: LMSSpacing.md) {
                 ActionItemCard(
-                    title: "Decisions Due",
+                    title: "Under Review",
                     value: "\(pendingCount)",
                     icon: "checklist.checked",
                     tint: pendingCount == 0 ? LMSColors.emerald : LMSColors.amber,
@@ -81,7 +81,7 @@ private struct ActionItemsRow: View {
                 )
 
                 ActionItemCard(
-                    title: "Escalations",
+                    title: "Manager Review",
                     value: "\(escalatedCount)",
                     icon: "arrow.up.forward.circle.fill",
                     tint: escalatedCount == 0 ? LMSColors.emerald : LMSColors.coral,
@@ -95,7 +95,7 @@ private struct ActionItemsRow: View {
         }
         .sheet(isPresented: $showDecisionsDueSheet) {
             ManagerApplicantListSheet(
-                title: "Decisions Due",
+                title: "Under Review",
                 systemImage: "checklist.checked",
                 description: "No pending applications require your attention.",
                 applicants: viewModel.pendingApplicants,
@@ -166,8 +166,8 @@ private struct BranchDashboardPromoCard: View {
     @Binding var showBranchOverview: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
-            Text("Branch Performance")
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
+            Text("Branch Insights")
                 .font(.system(.title3, design: .rounded).bold())
                 .foregroundStyle(LMSColors.textPrimary)
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
@@ -187,13 +187,10 @@ private struct BranchDashboardPromoCard: View {
                                 .foregroundStyle(LMSColors.brandNavy)
                         }
 
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text(viewModel.branchOverview.name)
                                 .font(.system(.headline, design: .rounded).bold())
                                 .foregroundStyle(LMSColors.textPrimary)
-                            Text("Charts, officer ratings, and branch reports")
-                                .font(.system(.subheadline, design: .rounded))
-                                .foregroundStyle(LMSColors.textSecondary)
                         }
 
                         Spacer(minLength: 0)
@@ -209,7 +206,7 @@ private struct BranchDashboardPromoCard: View {
                             value: viewModel.branchOverview.totalDisbursed.formattedAsCompactINR()
                         )
                         promoMetric(title: "Officers", value: "\(viewModel.officers.count)")
-                        promoMetric(title: "Escalations", value: "\(viewModel.officerEscalatedApplicants.count)")
+                        promoMetric(title: "Manager Review", value: "\(viewModel.officerEscalatedApplicants.count)")
                     }
                 }
                 .padding(LMSSpacing.lg)
@@ -241,16 +238,16 @@ private struct BranchDashboardPromoCard: View {
 }
 
 
-// MARK: - Team Performance Row
+// MARK: - Team Insights Row
 
-private struct TeamPerformanceRow: View {
+private struct TeamInsightsRow: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
     @State private var showPerformanceSheet = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
             HStack {
-                Text("Team Performance")
+                Text("Team Insights")
                     .font(.system(.title3, design: .rounded).bold())
                     .foregroundStyle(LMSColors.textPrimary)
                 Spacer()
@@ -274,7 +271,7 @@ private struct TeamPerformanceRow: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: LMSSpacing.md) {
                         ForEach(viewModel.officers) { officer in
-                            TeamPerformanceOfficerCard(officer: officer)
+                            TeamInsightsOfficerCard(officer: officer)
                         }
                     }
                     .padding(.horizontal, LMSSpacing.screenHorizontal)
@@ -287,7 +284,7 @@ private struct TeamPerformanceRow: View {
     }
 }
 
-private struct TeamPerformanceOfficerCard: View {
+private struct TeamInsightsOfficerCard: View {
     let officer: ManagerOfficer
     
     var body: some View {
@@ -367,7 +364,7 @@ struct OfficerPerformanceReportSheet: View {
                 } else {
                     List {
                         Section {
-                            Text("Review escalations raised by each loan officer, then assign a performance rating for your branch team.")
+                            Text("Review manager review items raised by each loan officer, then assign a performance rating for your branch team.")
                                 .font(.system(.footnote, design: .rounded))
                                 .foregroundStyle(LMSColors.textSecondary)
                         }
@@ -376,7 +373,7 @@ struct OfficerPerformanceReportSheet: View {
                             LabeledContent("Officers Tracked", value: "\(viewModel.officers.count)")
                             LabeledContent("Total Loans Processed (YTD)", value: "\(totalProcessed)")
                             LabeledContent("Avg. Approval Rate", value: String(format: "%.1f%%", avgApprovalRate))
-                            LabeledContent("Officer Escalations", value: "\(totalOfficerEscalations)")
+                            LabeledContent("Officer Reviews", value: "\(totalOfficerEscalations)")
                         }
 
                         if !viewModel.unassignedApplicants.isEmpty {
@@ -485,7 +482,7 @@ private struct OfficerPerformanceRatingCard: View {
             HStack(spacing: LMSSpacing.lg) {
                 PerformanceMetric(label: "Assigned", value: "\(assignedLoans.count)")
                 PerformanceMetric(label: "Approval", value: String(format: "%.1f%%", summary.officer.approvalRate))
-                PerformanceMetric(label: "Escalated", value: "\(summary.officerEscalationCount)")
+                PerformanceMetric(label: "Reviewed", value: "\(summary.officerEscalationCount)")
             }
 
             if assignedLoans.isEmpty {
@@ -528,12 +525,12 @@ private struct OfficerPerformanceRatingCard: View {
             }
 
             if summary.escalations.isEmpty {
-                Text("No officer escalations on record.")
+                Text("No officer reviews on record.")
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(LMSColors.textSecondary)
             } else {
                 VStack(alignment: .leading, spacing: LMSSpacing.sm) {
-                    Text("Escalated Loans")
+                    Text("Manager Review Items")
                         .font(.system(.caption, design: .rounded).weight(.semibold))
                         .foregroundStyle(LMSColors.textSecondary)
 
@@ -576,7 +573,7 @@ private struct OfficerPerformanceRatingCard: View {
                         .foregroundStyle(LMSColors.textPrimary)
                 }
 
-                Text("Suggested: \(String(format: "%.1f", summary.suggestedRating)) from assigned loans, escalations, and approval rate")
+                Text("Suggested: \(String(format: "%.1f", summary.suggestedRating)) from assigned loans, manager reviews, and approval rate")
                     .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(LMSColors.textTertiary)
 
@@ -637,13 +634,3 @@ private struct PerformanceMetric: View {
 }
 
 
-#Preview {
-    @Previewable @State var selectedTab: ManagerWorkspaceTab = .dashboard
-
-    ManagerDashboardTabView(
-        viewModel: PreviewSupport.managerViewModel,
-        selectedTab: $selectedTab,
-        onSelectApplicant: { _ in }
-    )
-    .previewManagerEnvironment()
-}

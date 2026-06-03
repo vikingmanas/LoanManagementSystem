@@ -32,7 +32,5 @@ struct DataRowView: View {
 }
 
 #Preview {
-    DataRowView(label: "Full Name", value: "Rahul Sharma", isVerified: true)
-        .padding()
+    EmptyView()
 }
-
