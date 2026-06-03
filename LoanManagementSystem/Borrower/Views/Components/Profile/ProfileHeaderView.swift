@@ -8,7 +8,7 @@ struct ProfileHeaderView: View {
     var id: String
     var completionPercentage: Int
     var isVerified: Bool
-    var imageURL: String?
+    var imageData: Data?
     var onPhotoSelected: (Data) -> Void
     
     @State private var selectedItem: PhotosPickerItem? = nil
@@ -81,39 +81,23 @@ struct ProfileHeaderView: View {
 
     @ViewBuilder
     private var avatarImage: some View {
-        if let urlString = imageURL, let url = URL(string: urlString) {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .empty:
-                    ProgressView()
-                        .frame(width: avatarSize, height: avatarSize)
-                case .success(let image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: avatarSize, height: avatarSize)
-                        .clipped()
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(Color(.separator), lineWidth: 0.5))
-                case .failure:
-                    fallbackAvatar
-                @unknown default:
-                    fallbackAvatar
-                }
-            }
+        if let imageData = imageData, let uiImage = UIImage(data: imageData) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: avatarSize, height: avatarSize)
+                .clipped()
+                .clipShape(Circle())
+                .overlay(Circle().stroke(Color(.separator), lineWidth: 0.5))
         } else {
-            fallbackAvatar
+            Image(systemName: "person.crop.circle.fill")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .foregroundStyle(.secondary.opacity(0.3))
+                .frame(width: avatarSize, height: avatarSize)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(Color(.separator), lineWidth: 0.5))
         }
-    }
-
-    private var fallbackAvatar: some View {
-        Image(systemName: "person.crop.circle.fill")
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .foregroundStyle(.secondary.opacity(0.3))
-            .frame(width: avatarSize, height: avatarSize)
-            .clipShape(Circle())
-            .overlay(Circle().stroke(Color(.separator), lineWidth: 0.5))
     }
 }
 
@@ -123,7 +107,7 @@ struct ProfileHeaderView: View {
         id: "1531491B-E16B-48F2",
         completionPercentage: 26,
         isVerified: true,
-        imageURL: nil,
+        imageData: nil,
         onPhotoSelected: { _ in }
     )
 }

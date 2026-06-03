@@ -275,24 +275,9 @@ class BorrowerProfileViewModel: ObservableObject {
     }
     
     func updateProfileImage(data: Data) {
-        guard let profileId = activeProfile?.id else { return }
-        
-        Task { @MainActor in
-            do {
-                let path = "\(profileId)/profile-\(UUID().uuidString).jpg"
-                let url = try await StorageService.shared.uploadDocument(
-                    data: data,
-                    bucket: "profileImageData",
-                    path: path
-                )
-                
-                guard var updatedProfile = activeProfile else { return }
-                updatedProfile.profileImageData = url.absoluteString
-                BorrowerProfileStore.shared.updateProfile(updatedProfile)
-            } catch {
-                print("Failed to upload profile image: \(error.localizedDescription)")
-            }
-        }
+        guard var updatedProfile = activeProfile else { return }
+        updatedProfile.profileImageData = data
+        BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
     
     // Formatting Helpers

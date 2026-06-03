@@ -56,7 +56,7 @@ struct ProfileView: View {
                             id: profile.id,
                             completionPercentage: profile.profileCompletionPercentage,
                             isVerified: profile.kycVerification.overallStatus == .verified,
-                            imageURL: profile.profileImageData,
+                            imageData: profile.profileImageData,
                             onPhotoSelected: { data in
                                 viewModel.updateProfileImage(data: data)
                             }

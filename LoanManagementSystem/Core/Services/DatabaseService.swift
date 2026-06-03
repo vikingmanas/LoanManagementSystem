@@ -32,7 +32,7 @@ private struct DBProfile: Codable {
     var kycVerification: KYCVerification
     var loanOverview: LoanOverview
 
-    var profileImageData: String?  // Public URL string — DB column is `text`
+    var profileImageData: String?  // Base64-encoded string — DB column is `text`
     var linkedAccounts: [LinkedBankAccount]?
     var gstNumber: String?
 
@@ -178,7 +178,7 @@ private struct DBProfile: Codable {
             bankDetails: profile.bankDetails,
             kycVerification: profile.kycVerification,
             loanOverview: profile.loanOverview,
-            profileImageData: profile.profileImageData,
+            profileImageData: profile.profileImageData?.base64EncodedString(),
             linkedAccounts: profile.linkedAccounts,
             gstNumber: profile.gstNumber,
             occupation: profile.occupation,
@@ -231,7 +231,7 @@ private struct DBProfile: Codable {
             gstNumber: resolvedGSTNumber,
             kycVerification: kycVerification,
             loanOverview: loanOverview,
-            profileImageData: profileImageData,
+            profileImageData: profileImageData.flatMap { Data(base64Encoded: $0) },
             occupation: occupation,
             industry: industry,
             yearsOfExperience: yearsOfExperience,
