@@ -66,9 +66,4 @@ struct EditEmploymentView: View {
     }
 }
 
-#Preview {
-    NavigationStack {
-        EditEmploymentView(viewModel: PreviewSupport.borrowerProfileViewModel)
-    }
-}
 

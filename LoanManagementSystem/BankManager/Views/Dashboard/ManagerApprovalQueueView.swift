@@ -149,13 +149,4 @@ private struct ApprovalQueueCard: View {
     }
 }
 
-#Preview {
-    ManagerApprovalQueueView(
-        viewModel: PreviewSupport.managerViewModel,
-        onViewAll: {},
-        onSelectApplicant: { _ in }
-    )
-    .padding()
-    .previewManagerEnvironment()
-}
 

@@ -90,8 +90,4 @@ struct ManagerNotificationsView: View {
     }
 }
 
-#Preview {
-    ManagerNotificationsView(viewModel: PreviewSupport.managerViewModel)
-        .previewManagerEnvironment()
-}
 

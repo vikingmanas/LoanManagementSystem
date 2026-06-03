@@ -634,13 +634,3 @@ private struct PerformanceMetric: View {
 }
 
 
-#Preview {
-    @Previewable @State var selectedTab: ManagerWorkspaceTab = .dashboard
-
-    ManagerDashboardTabView(
-        viewModel: PreviewSupport.managerViewModel,
-        selectedTab: $selectedTab,
-        onSelectApplicant: { _ in }
-    )
-    .previewManagerEnvironment()
-}

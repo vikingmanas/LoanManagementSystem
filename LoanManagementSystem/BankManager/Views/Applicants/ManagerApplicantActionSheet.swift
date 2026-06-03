@@ -204,12 +204,4 @@ struct ManagerApplicantActionSheet: View {
     }
 }
 
-#Preview {
-    ManagerApplicantActionSheet(
-        applicant: PreviewSupport.sampleManagerApplicant,
-        actionType: .approve,
-        viewModel: PreviewSupport.managerViewModel,
-        onComplete: {}
-    )
-}
 

@@ -171,8 +171,4 @@ public struct InsightSummaryItem: View {
     }
 }
 
-#Preview {
-    CustomerInsightCardView(profile: PreviewSupport.sampleBorrowerProfile)
-        .padding()
-}
 

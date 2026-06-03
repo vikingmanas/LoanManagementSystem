@@ -81,11 +81,4 @@ struct ScaleButtonStyle: ButtonStyle {
     }
 }
 
-#Preview {
-    QuickActionRowView(
-        viewModel: PreviewSupport.loanOfficerViewModel,
-        onActionTapped: { _ in }
-    )
-    .padding()
-}
 

@@ -11,6 +11,8 @@ import Supabase
 
 @MainActor
 public final class DashboardViewModel: ObservableObject {
+    public static let emiShortfallPenalty: Double = 500
+
     @Published public var loanAccounts: [DashboardLoanAccount] = []
     @Published public var bankAccount: BankAccount = BankAccount(accountNumber: "", accountType: .savings, availableBalance: 0)
     @Published public var bankAccounts: [BankAccount] = []
@@ -25,9 +27,6 @@ public final class DashboardViewModel: ObservableObject {
     // Notification support
     public let notificationViewModel = NotificationViewModel()
     
-    // Quick demonstration toggle state (e.g. to mock low balance vs normal)
-    @Published public var forceLowBalanceMockState: Bool = false
-
     private var cancellables = Set<AnyCancellable>()
     
     public init() {
@@ -178,23 +177,11 @@ public final class DashboardViewModel: ObservableObject {
     }
     
     public func isLowBalance(_ account: BankAccount) -> Bool {
-        if account.id == MockData.uuid3 { // Axis Bank
-            return account.availableBalance < 9200.0
-        }
-        if account.id == MockData.uuid1 { // SBI
-            return forceLowBalanceMockState ? true : account.availableBalance < (account.minBalance ?? 5000.0)
-        }
-        return false
+        account.availableBalance < (account.minBalance ?? 0)
     }
     
     public func balanceDeficit(for account: BankAccount) -> Double {
-        if account.id == MockData.uuid3 { // Axis Bank
-            return max(0, 9200.0 - account.availableBalance)
-        }
-        if account.id == MockData.uuid1 { // SBI
-            return max(0, 18500.0 - account.availableBalance)
-        }
-        return 0
+        max(0, (account.minBalance ?? 0) - account.availableBalance)
     }
     
     public func fetchDashboardData() async {
@@ -204,7 +191,12 @@ public final class DashboardViewModel: ObservableObject {
         if let email = BorrowerProfileStore.shared.currentEmail ?? BorrowerProfileStore.shared.profile?.email,
            !email.isEmpty,
            BorrowerProfileStore.shared.profile == nil {
-            _ = BorrowerProfileStore.shared.ensureProfile(email: email)
+            if let session = try? await SupabaseManager.shared.client.auth.session {
+                await BorrowerProfileStore.shared.fetchProfileFromSupabase(
+                    uid: session.user.id.uuidString,
+                    email: session.user.email ?? email
+                )
+            }
         }
         
         // Simulate a 0.8s network latency delay
@@ -215,11 +207,18 @@ public final class DashboardViewModel: ObservableObject {
             return
         }
         
+        // Load loan accounts from approved/disbursed applications in CentralLoanRepository
+        let approvedApps = CentralLoanRepository.shared.applications.filter {
+            $0.currentStage == .approved || $0.currentStage == .disbursed
+        }
+
         if let profile = BorrowerProfileStore.shared.profile {
             self.profileName = profile.fullName
             self.profileCompletionPercentage = profile.profileCompletionPercentage
+            syncApprovedLoanODAccounts(approvedApps, profile: profile)
+            let refreshedProfile = BorrowerProfileStore.shared.profile ?? profile
             let disbursedCredits = disbursementCredits(for: profile)
-            self.bankAccounts = buildBankAccounts(from: profile, disbursedCredits: disbursedCredits)
+            self.bankAccounts = buildBankAccounts(from: refreshedProfile, disbursedCredits: disbursedCredits)
             self.bankAccount = bankAccounts.first(where: { $0.accountType == .overdraft })
                 ?? bankAccounts.first
                 ?? BankAccount(accountNumber: "", bankName: "", accountType: .overdraft, availableBalance: 0)
@@ -229,14 +228,10 @@ public final class DashboardViewModel: ObservableObject {
             self.bankAccount = BankAccount(accountNumber: "", bankName: "", accountType: .overdraft, availableBalance: 0.0)
             self.bankAccounts = []
         }
-        
-        // Load loan accounts from approved/disbursed applications in CentralLoanRepository
-        let approvedApps = CentralLoanRepository.shared.applications.filter {
-            $0.currentStage == .approved || $0.currentStage == .disbursed
-        }
-        
+
         self.loanAccounts = approvedApps.map { app in
             let totalEMI = app.formData.requestedAmountValue / Double(max(1, app.formData.preferredTenureMonths))
+            let linkedAccountID = bankAccounts.first(where: { $0.linkedLoanIds.contains(app.id) })?.id ?? bankAccount.id
             return DashboardLoanAccount(
                 id: app.id,
                 accountNumber: app.applicationId ?? "L-\(app.id.uuidString.prefix(6).uppercased())",
@@ -248,7 +243,7 @@ public final class DashboardViewModel: ObservableObject {
                 tenureRemainingMonths: app.formData.preferredTenureMonths,
                 totalTenureMonths: app.formData.preferredTenureMonths,
                 repaidPercentage: 0.0,
-                linkedBankAccountId: bankAccount.id
+                linkedBankAccountId: linkedAccountID
             )
         }
 
@@ -260,20 +255,12 @@ public final class DashboardViewModel: ObservableObject {
             }
         }
         
-        // Dynamically populate pending EMIs based on active loans
-        self.pendingEMIs = self.loanAccounts.filter { $0.principalOutstanding > 0 }.compactMap { loan in
-            EMIRecord(
-                dueDate: loan.nextEMIDate,
-                amount: loan.totalEMI,
-                loanType: loan.loanType,
-                status: .dueSoon
-            )
-        }
-        .sorted { $0.dueDate < $1.dueDate }
+        refreshPendingEMIs()
         
-        self.schemes = MockData.sampleSchemes
+        self.schemes = []
 
         // Fetch actual transactions from Supabase if borrower profile is available
+        let localTransactions = transactions
         var dbTransactionsList: [Transaction] = []
         if let profile = BorrowerProfileStore.shared.profile {
             do {
@@ -309,7 +296,11 @@ public final class DashboardViewModel: ObservableObject {
             }
         }
 
-        self.transactions = dbTransactionsList.sorted { $0.date > $1.date }
+        let dbTransactionIds = Set(dbTransactionsList.map(\.id))
+        let unsyncedLocalTransactions = localTransactions.filter { !dbTransactionIds.contains($0.id) }
+        self.transactions = (dbTransactionsList + unsyncedLocalTransactions).sorted { $0.date > $1.date }
+        applyEMIPaymentsToLoanOutstanding()
+        refreshPendingEMIs()
         
         // Configure notifications from Supabase
         if let profile = BorrowerProfileStore.shared.profile,
@@ -342,8 +333,100 @@ public final class DashboardViewModel: ObservableObject {
         return accounts
     }
 
+    private func applyEMIPaymentsToLoanOutstanding() {
+        guard !transactions.isEmpty else { return }
+
+        for loanIndex in loanAccounts.indices {
+            let loan = loanAccounts[loanIndex]
+            let paidAmount = transactions
+                .filter { transaction in
+                    transaction.type == .emiPayment &&
+                    transaction.bankAccountId == loan.linkedBankAccountId
+                }
+                .map(\.amount)
+                .reduce(0, +)
+
+            guard paidAmount > 0 else { continue }
+
+            loanAccounts[loanIndex].principalOutstanding = max(0, loan.sanctionedAmount - paidAmount)
+            loanAccounts[loanIndex].tenureRemainingMonths = max(
+                0,
+                loan.totalTenureMonths - Int(paidAmount / max(1, loan.totalEMI))
+            )
+            if loan.sanctionedAmount > 0 {
+                loanAccounts[loanIndex].repaidPercentage = min(1, paidAmount / loan.sanctionedAmount)
+            }
+        }
+    }
+
+    private func refreshPendingEMIs() {
+        pendingEMIs = loanAccounts.filter { $0.principalOutstanding > 0 }.compactMap { loan in
+            EMIRecord(
+                dueDate: loan.nextEMIDate,
+                amount: loan.totalEMI,
+                loanType: loan.loanType,
+                status: .dueSoon
+            )
+        }
+        .sorted { $0.dueDate < $1.dueDate }
+    }
+
+    private func syncApprovedLoanODAccounts(_ approvedApps: [BorrowerLoanApplication], profile: BorrowerProfile) {
+        let linkedAccounts = profile.linkedAccounts ?? []
+
+        for app in approvedApps {
+            let sanctionedAmount = app.formData.requestedAmountValue
+            guard sanctionedAmount > 0 else { continue }
+
+            let linkedODAccount = linkedAccounts.first {
+                $0.linkedLoanApplicationId == app.id && $0.isOverdraftAccount
+            }
+            let needsProvisioning = linkedODAccount == nil || linkedODAccount?.balance == 0
+
+            guard needsProvisioning else { continue }
+
+            _ = BorrowerProfileStore.shared.provisionODAccountForApprovedLoan(
+                email: app.formData.emailAddress,
+                applicationId: app.id,
+                applicationNumber: app.applicationId ?? app.displayIdentifier,
+                borrowerName: app.formData.fullName,
+                sanctionedAmount: sanctionedAmount
+            )
+        }
+    }
+
     private func emiRepaymentAccount() -> BankAccount? {
         bankAccounts.first(where: { $0.accountType == .overdraft })
+    }
+
+    func linkedRepaymentAccount(for loan: DashboardLoanAccount) -> BankAccount? {
+        bankAccounts.first(where: { $0.id == loan.linkedBankAccountId })
+            ?? bankAccounts.first(where: { $0.linkedLoanIds.contains(loan.id) })
+    }
+
+    func currentAccountBalance(for loan: DashboardLoanAccount) -> Double {
+        linkedRepaymentAccount(for: loan)?.availableBalance ?? 0
+    }
+
+    private func ensureRepaymentAccount(for loan: DashboardLoanAccount) -> BankAccount {
+        if let account = linkedRepaymentAccount(for: loan) {
+            return account
+        }
+
+        let account = BankAccount(
+            id: loan.linkedBankAccountId,
+            accountNumber: loan.accountNumber,
+            bankName: "Loan OD Account",
+            accountType: .overdraft,
+            availableBalance: 0,
+            odLimit: loan.sanctionedAmount,
+            linkedLoanIds: [loan.id]
+        )
+        bankAccounts.append(account)
+        if bankAccount.accountNumber.isEmpty {
+            bankAccount = account
+        }
+        return account
     }
 
     private func disbursementCredits(for profile: BorrowerProfile) -> [String: Double] {
@@ -450,18 +533,21 @@ public final class DashboardViewModel: ObservableObject {
     }
 
     @discardableResult
-    public func payEMI(for loan: DashboardLoanAccount, from account: BankAccount, scheduledDate: Date = Date()) -> Bool {
-        guard account.availableBalance >= loan.totalEMI,
-              loan.principalOutstanding > 0 else {
-            return false
+    public func payEMI(for loan: DashboardLoanAccount, scheduledDate: Date = Date()) -> (success: Bool, reference: String?, totalDebited: Double, penalty: Double) {
+        guard loan.principalOutstanding > 0 else {
+            return (false, nil, 0, 0)
         }
 
         let feedback = UIImpactFeedbackGenerator(style: .medium)
         feedback.prepare()
         feedback.impactOccurred()
 
-        let principalComponent = min(loan.principalOutstanding, loan.totalEMI * 0.73)
-        let updatedAccountBalance = account.availableBalance - loan.totalEMI
+        let account = ensureRepaymentAccount(for: loan)
+        let principalComponent = min(loan.principalOutstanding, loan.totalEMI)
+        let penalty = account.availableBalance < loan.totalEMI ? Self.emiShortfallPenalty : 0
+        let totalDebited = loan.totalEMI + penalty
+        let updatedAccountBalance = account.availableBalance - totalDebited
+        let refNo = "TXN\(Int.random(in: 1000000...9999999))"
 
         withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
             if let accountIndex = bankAccounts.firstIndex(where: { $0.id == account.id }) {
@@ -490,7 +576,6 @@ public final class DashboardViewModel: ObservableObject {
                 pendingEMIs[emiIndex].status = .paid
             }
 
-            let refNo = "TXN\(Int.random(in: 1000000...9999999))"
             let newTx = Transaction(
                 title: scheduledDate > Date() ? "Scheduled EMI for \(loan.loanType)" : "EMI paid for \(loan.loanType)",
                 date: Date(),
@@ -502,8 +587,21 @@ public final class DashboardViewModel: ObservableObject {
             transactions.insert(newTx, at: 0)
 
             saveTransactionToRemote(newTx, type: "emi_payment", borrowerType: "emi_payment")
+
+            if penalty > 0 {
+                let penaltyTx = Transaction(
+                    title: "Penalty for insufficient EMI balance",
+                    date: Date(),
+                    amount: penalty,
+                    type: .penalty,
+                    referenceNo: "PEN\(Int.random(in: 1000000...9999999))",
+                    bankAccountId: account.id
+                )
+                transactions.insert(penaltyTx, at: 1)
+                saveTransactionToRemote(penaltyTx, type: "penalty", borrowerType: "penalty")
+            }
         }
-        return true
+        return (true, refNo, totalDebited, penalty)
     }
     
     public func topUpAccount(amount: Double, to account: BankAccount? = nil) {
@@ -512,13 +610,21 @@ public final class DashboardViewModel: ObservableObject {
         
         withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
             let destinationID = account?.id ?? bankAccount.id
+            var updatedBalance = bankAccount.availableBalance + amount
 
             if let index = bankAccounts.firstIndex(where: { $0.id == destinationID }) {
                 bankAccounts[index].availableBalance += amount
+                updatedBalance = bankAccounts[index].availableBalance
                 bankAccount = bankAccounts[index]
             } else {
                 bankAccount.availableBalance += amount
+                updatedBalance = bankAccount.availableBalance
             }
+
+            BorrowerProfileStore.shared.updateLinkedAccountBalance(
+                accountId: destinationID,
+                balance: updatedBalance
+            )
             
             // Add a credit transaction row
             let refNo = "TXN\(Int.random(in: 1000000...9999999))"
@@ -683,6 +789,19 @@ public final class DashboardViewModel: ObservableObject {
         guard amount > 0 else { return }
 
         withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+            let account = ensureRepaymentAccount(for: loan)
+            let updatedBalance = account.availableBalance + amount
+            if let accountIndex = bankAccounts.firstIndex(where: { $0.id == account.id }) {
+                bankAccounts[accountIndex].availableBalance = updatedBalance
+            }
+            if bankAccount.id == account.id {
+                bankAccount.availableBalance = updatedBalance
+            }
+            BorrowerProfileStore.shared.updateLinkedAccountBalance(
+                accountId: account.id,
+                balance: updatedBalance
+            )
+
             let refNo = "TXN\(Int.random(in: 1000000...9999999))"
             let newTx = Transaction(
                 title: "Funds added to \(loan.loanType) linked account",
@@ -690,7 +809,7 @@ public final class DashboardViewModel: ObservableObject {
                 amount: amount,
                 type: .credit,
                 referenceNo: refNo,
-                bankAccountId: loan.linkedBankAccountId
+                bankAccountId: account.id
             )
             transactions.insert(newTx, at: 0)
             saveTransactionToRemote(newTx, type: "loan_linked_top_up", borrowerType: "credit")
@@ -725,20 +844,6 @@ public final class DashboardViewModel: ObservableObject {
         }
     }
     
-    public func toggleBalanceMockMode() {
-        let feedback = UIImpactFeedbackGenerator(style: .rigid)
-        feedback.impactOccurred()
-        
-        forceLowBalanceMockState.toggle()
-        
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-            if forceLowBalanceMockState {
-                bankAccount.availableBalance = 12300.0
-            } else {
-                bankAccount.availableBalance = 42300.0
-            }
-        }
-    }
 }
 
 private extension Array where Element == Transaction {

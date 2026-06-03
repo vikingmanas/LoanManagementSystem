@@ -71,9 +71,4 @@ struct EditAddressInfoView: View {
     }
 }
 
-#Preview {
-    NavigationStack {
-        EditAddressInfoView(viewModel: PreviewSupport.borrowerProfileViewModel)
-    }
-}
 

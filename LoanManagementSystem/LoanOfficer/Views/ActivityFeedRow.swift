@@ -145,13 +145,4 @@ struct ActivityFeedRow: View {
     }
 }
 
-#Preview {
-    ActivityFeedRow(
-        item: PreviewSupport.sampleActivityFeedItem,
-        onMarkRead: {},
-        onDismiss: {},
-        onActionTapped: { _ in }
-    )
-    .padding()
-}
 

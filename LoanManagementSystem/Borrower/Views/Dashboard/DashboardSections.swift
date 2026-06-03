@@ -81,7 +81,6 @@ struct ProfileCompletionCardSection: View {
                         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                             Text("Still needed")
                                 .font(LMSFont.caption.weight(.semibold))
-                                .foregroundStyle(LMSColors.textSecondary)
                             ForEach(missingItems.prefix(3), id: \.self) { item in
                                 Label(item, systemImage: "circle")
                                     .font(LMSFont.caption)
@@ -220,6 +219,7 @@ struct ActiveLoanAccountsSection: View {
                 }
             } else {
                 ActiveLoansCarousel(
+                    viewModel: viewModel,
                     loans: viewModel.loanAccounts,
                     onLoanTap: onLoanTap
                 )
@@ -230,6 +230,7 @@ struct ActiveLoanAccountsSection: View {
 }
 
 struct ActiveLoansCarousel: View {
+    @ObservedObject var viewModel: DashboardViewModel
     let loans: [DashboardLoanAccount]
     let onLoanTap: (DashboardLoanAccount) -> Void
     @State private var selectedIndex = 0
@@ -238,7 +239,10 @@ struct ActiveLoansCarousel: View {
         VStack(spacing: LMSSpacing.sm) {
             TabView(selection: $selectedIndex) {
                 ForEach(Array(loans.enumerated()), id: \.element.id) { index, loan in
-                    ActiveLoanAccountCard(loan: loan) {
+                    ActiveLoanAccountCard(
+                        loan: loan,
+                        currentBalance: viewModel.currentAccountBalance(for: loan)
+                    ) {
                         onLoanTap(loan)
                     }
                     .tag(index)
@@ -264,6 +268,7 @@ struct ActiveLoansCarousel: View {
 
 struct ActiveLoanAccountCard: View {
     let loan: DashboardLoanAccount
+    let currentBalance: Double
     let onTap: () -> Void
 
     private var statusText: String { loan.principalOutstanding <= 0 ? "Closed" : "Active" }
@@ -291,7 +296,7 @@ struct ActiveLoanAccountCard: View {
                 }
 
                 HStack {
-                    loanDetailColumn(title: "Outstanding", value: loan.principalOutstanding.formattedAsINR())
+                    loanDetailColumn(title: "Current Balance", value: currentBalance.formattedAsINR())
                     Spacer()
                     loanDetailColumn(title: "EMI", value: loan.totalEMI.formattedAsINR())
                     Spacer()

@@ -180,8 +180,4 @@ struct LoanOfficerChartView: View {
     }
 }
 
-#Preview {
-    LoanOfficerChartView(viewModel: PreviewSupport.loanOfficerViewModel, onTapAnalytics: {})
-        .padding()
-}
 

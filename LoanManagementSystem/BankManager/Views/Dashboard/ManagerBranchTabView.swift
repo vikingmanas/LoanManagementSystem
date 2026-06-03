@@ -375,8 +375,3 @@ private struct BranchOfficerChartItem: Identifiable {
     let amount: Double
 }
 
-#Preview {
-    NavigationStack {
-        ManagerBranchTabView(viewModel: PreviewSupport.managerViewModel)
-    }
-}

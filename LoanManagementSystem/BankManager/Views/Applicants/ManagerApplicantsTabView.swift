@@ -246,10 +246,3 @@ struct ApplicantListCard: View {
     }
 }
 
-#Preview {
-    ManagerApplicantsTabView(
-        viewModel: PreviewSupport.managerViewModel,
-        onSelectApplicant: { _ in }
-    )
-    .previewManagerEnvironment()
-}

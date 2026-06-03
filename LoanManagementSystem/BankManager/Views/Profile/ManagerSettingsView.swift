@@ -19,7 +19,7 @@ struct ManagerSettingsView: View {
     @AppStorage("managerNotifEscalations") private var notifEscalations = true
     @AppStorage("managerNotifReports") private var notifReports = true
     
-    @AppStorage("biometricEnabled") private var biometricEnabled = true
+    @AppStorage("biometricEnabled") private var biometricEnabled = false
     @StateObject private var localSecurity = LocalSecurityService.shared
 
     var body: some View {
@@ -219,12 +219,5 @@ private struct PermissionRow: View {
                 .foregroundStyle(LMSColors.textPrimary)
         }
     }
-}
-
-#Preview {
-    NavigationStack {
-        ManagerSettingsView()
-    }
-    .previewManagerEnvironment()
 }
 

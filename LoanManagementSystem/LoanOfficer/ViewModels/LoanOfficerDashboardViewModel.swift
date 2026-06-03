@@ -271,11 +271,16 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
 
     func refreshFromRepository() {
+        guard let officerProfile else {
+            // Keep the queue safe and empty until the profile is successfully loaded from the DB
+            self.applications = []
+            return
+        }
+        
+        let officerUserId = officerProfile.id
         applications = CentralLoanRepository.shared.applications.compactMap { borrowerApplication in
             guard borrowerApplication.currentStage != .draft else { return nil }
-            if let officerUserId = officerProfile?.id {
-                guard borrowerApplication.assignedOfficer?.userId == officerUserId else { return nil }
-            }
+            guard CentralLoanRepository.shared.isVisibleToOfficer(borrowerApplication, userId: officerUserId) else { return nil }
             return CentralLoanRepository.shared.toOfficerApplication(from: borrowerApplication)
         }
     }
@@ -291,10 +296,15 @@ class LoanOfficerDashboardViewModel: ObservableObject {
 
     @discardableResult
     func escalateApplication(applicationId: String, reason: String) -> Bool {
-        let officerName = officerProfile?.fullName ?? "Loan Officer"
-        let didEscalate = CentralLoanRepository.shared.escalateApplication(
-            applicationId: applicationId,
-            officerName: officerName,
+        guard let officerProfile,
+              let app = applications.first(where: { $0.applicationId == applicationId }) else {
+            return false
+        }
+
+        let didEscalate = CentralLoanRepository.shared.escalateApplicationByOfficer(
+            id: app.id,
+            officerId: officerProfile.id,
+            officerName: officerProfile.fullName,
             reason: reason
         )
         if didEscalate {
@@ -360,7 +370,7 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }),
            let doc = applications[idx].documents.first(where: { $0.id == docId }) {
             let docName = doc.docType.rawValue
-            let officerName = officerProfile?.fullName ?? "Officer Arjun"
+            let officerName = officerProfile?.fullName ?? "Loan Officer"
             logActivity(
                 borrowerName: applications[idx].borrowerName,
                 applicationId: applicationId,
@@ -398,7 +408,7 @@ class LoanOfficerDashboardViewModel: ObservableObject {
               app.documents.allSatisfy({ $0.status == .verified }) else {
             return
         }
-        let officerName = officerProfile?.fullName ?? "Officer Arjun"
+        let officerName = officerProfile?.fullName ?? "Loan Officer"
         CentralLoanRepository.shared.sendForFinalApproval(applicationId: applicationId, officerName: officerName)
         refreshFromRepository()
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }) {
@@ -410,6 +420,32 @@ class LoanOfficerDashboardViewModel: ObservableObject {
                 description: "Application verified & forwarded to Manager for final approval by \(officerName)."
             )
         }
+    }
+
+    @discardableResult
+    func rejectApplication(applicationId: String, reason: String) -> Bool {
+        guard let app = applications.first(where: { $0.applicationId == applicationId }) else {
+            return false
+        }
+
+        let officerName = officerProfile?.fullName ?? "Loan Officer"
+        let trimmedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rejectionNote = trimmedReason.isEmpty
+            ? "Rejected by \(officerName) after loan officer review."
+            : "\(trimmedReason) - Rejected by \(officerName)."
+
+        CentralLoanRepository.shared.rejectApplication(id: app.id, remarks: rejectionNote)
+        refreshFromRepository()
+
+        logActivity(
+            borrowerName: app.borrowerName,
+            applicationId: applicationId,
+            loanType: app.loanType.rawValue,
+            eventType: .queryRaised,
+            description: "Application rejected: \(rejectionNote)"
+        )
+
+        return true
     }
 
 

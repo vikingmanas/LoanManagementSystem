@@ -502,9 +502,3 @@ struct BranchPortfolioLedgerSheet: View {
     }
 }
 
-#Preview {
-    ScrollView {
-        ManagerAnalyticsView(viewModel: PreviewSupport.managerViewModel)
-    }
-    .previewManagerEnvironment()
-}

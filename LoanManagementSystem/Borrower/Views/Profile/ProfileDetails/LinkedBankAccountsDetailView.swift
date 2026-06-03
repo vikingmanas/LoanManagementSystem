@@ -2,8 +2,6 @@ import SwiftUI
 
 struct LinkedBankAccountsDetailView: View {
     @ObservedObject var viewModel: BorrowerProfileViewModel
-    @State private var showingEditSheet = false
-    @State private var showingAddSheet = false
     @State private var accountToDelete: LinkedBankAccount?
     @State private var showingDeleteAlert = false
     
@@ -35,10 +33,6 @@ struct LinkedBankAccountsDetailView: View {
                     repaidPercentage: 0
                 )
             }
-    }
-
-    private var hasAnyBankAccount: Bool {
-        hasPrimaryBank || !linkedAccounts.isEmpty
     }
 
     var body: some View {
@@ -124,59 +118,9 @@ struct LinkedBankAccountsDetailView: View {
                 }
             }
 
-            if hasAnyBankAccount {
-                Section {
-                    Button {
-                        showingAddSheet = true
-                    } label: {
-                        HStack {
-                            Spacer()
-                            Label(hasPrimaryBank ? "Add Another Account" : "Add Account", systemImage: "plus.circle.fill")
-                                .fontWeight(.semibold)
-                            Spacer()
-                        }
-                    }
-                    .foregroundStyle(LMSColors.brandNavy)
-                }
-            } else {
-                Section {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("No linked bank account")
-                            .font(.headline)
-                        Text("Add a bank account to transfer funds.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Button {
-                        showingAddSheet = true
-                    } label: {
-                        HStack {
-                            Spacer()
-                            Label("Add Account", systemImage: "plus.circle.fill")
-                                .fontWeight(.semibold)
-                            Spacer()
-                        }
-                    }
-                    .foregroundStyle(LMSColors.brandNavy)
-                }
-            }
         }
         .navigationTitle("Bank Accounts")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Edit") {
-                    showingEditSheet = true
-                }
-            }
-        }
-        .sheet(isPresented: $showingEditSheet) {
-            EditBankDetailsView(viewModel: viewModel)
-        }
-        .sheet(isPresented: $showingAddSheet) {
-            AddLinkedBankAccountView(viewModel: viewModel)
-        }
         .alert("Delete Bank Account?", isPresented: $showingDeleteAlert, presenting: accountToDelete) { account in
             Button("Delete", role: .destructive) {
                 viewModel.deleteLinkedBankAccount(withId: account.id)
@@ -260,65 +204,3 @@ struct LinkedBankAccountsDetailView: View {
     }
 }
 
-private struct AddLinkedBankAccountView: View {
-    @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: BorrowerProfileViewModel
-
-    @State private var bankName = ""
-    @State private var accountNumber = ""
-    @State private var ifscCode = ""
-    @State private var branch = ""
-    @State private var customerId = ""
-
-    private var canSave: Bool {
-        !bankName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !accountNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !ifscCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section(header: Text("Bank Details")) {
-                    TextField("Bank Name", text: $bankName)
-                    TextField("Account Number", text: $accountNumber)
-                        .keyboardType(.numberPad)
-                    TextField("IFSC Code", text: $ifscCode)
-                        .textInputAutocapitalization(.characters)
-                    TextField("Branch (Optional)", text: $branch)
-                    TextField("Customer ID (Optional)", text: $customerId)
-                }
-            }
-            .navigationTitle("Add Account")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        viewModel.addLinkedBankAccount(
-                            bank: bankName,
-                            account: accountNumber,
-                            ifsc: ifscCode,
-                            branch: branch,
-                            customerId: customerId
-                        )
-                        dismiss()
-                    }
-                    .fontWeight(.semibold)
-                    .disabled(!canSave)
-                }
-            }
-        }
-    }
-}
-
-#Preview {
-    NavigationStack {
-        LinkedBankAccountsDetailView(viewModel: PreviewSupport.borrowerProfileViewModel)
-    }
-}
