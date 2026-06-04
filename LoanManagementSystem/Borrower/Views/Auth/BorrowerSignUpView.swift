@@ -37,10 +37,11 @@ struct BorrowerSignUpView: View {
                     HStack {
                         Text("Email")
                             .frame(width: 95, alignment: .leading)
-                        TextField("example@mail.com", text: $viewModel.email)
+                        TextField("Email", text: $viewModel.email)
                             .textContentType(.emailAddress)
                             .keyboardType(.emailAddress)
                             .textInputAutocapitalization(.never)
+                            .foregroundStyle(LMSColors.textPrimary)
                     }
                     
                     HStack {
