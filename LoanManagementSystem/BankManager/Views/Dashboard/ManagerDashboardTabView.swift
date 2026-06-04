@@ -320,7 +320,9 @@ private struct TeamInsightsOfficerCard: View {
             .padding(.top, 4)
         }
         .padding(LMSSpacing.md)
-        .frame(width: 220)
+        .containerRelativeFrame(.horizontal) { width, _ in
+            width - (LMSSpacing.screenHorizontal * 2)
+        }
         .background(LMSColors.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
@@ -632,5 +634,4 @@ private struct PerformanceMetric: View {
         .frame(maxWidth: .infinity)
     }
 }
-
 

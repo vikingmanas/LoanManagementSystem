@@ -14,8 +14,7 @@ struct ManagerApplicantDetailView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            List {
+        List {
                 // MARK: - Profile Header
                 Section {
                     VStack(spacing: LMSSpacing.md) {
@@ -170,24 +169,17 @@ struct ManagerApplicantDetailView: View {
                         }
                     }
                 }
-            }
-            .listStyle(.insetGrouped)
-            .navigationTitle("Application Review")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .bold()
-                }
-            }
-            .sheet(item: $actionType) { action in
-                ManagerApplicantActionSheet(
-                    applicant: applicant,
-                    actionType: action,
-                    viewModel: viewModel,
-                    onComplete: { dismiss() }
-                )
-            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Application Review")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $actionType) { action in
+            ManagerApplicantActionSheet(
+                applicant: applicant,
+                actionType: action,
+                viewModel: viewModel,
+                onComplete: { dismiss() }
+            )
         }
     }
 

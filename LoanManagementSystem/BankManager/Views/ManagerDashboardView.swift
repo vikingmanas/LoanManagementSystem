@@ -21,6 +21,9 @@ struct ManagerDashboardView: View {
                 .navigationTitle("\(viewModel.branchOverview.name)")
                 .navigationBarTitleDisplayMode(.large)
                 .toolbar { dashboardToolbar }
+                .navigationDestination(item: $selectedApplicant) { applicant in
+                    ManagerApplicantDetailView(applicant: applicant, viewModel: viewModel)
+                }
             }
             .tabItem { Label("Dashboard", systemImage: "square.grid.2x2") }
             .tag(ManagerWorkspaceTab.dashboard)
@@ -31,6 +34,9 @@ struct ManagerDashboardView: View {
                     onSelectApplicant: { selectedApplicant = $0 }
                 )
                 .navigationTitle("Applicants")
+                .navigationDestination(item: $selectedApplicant) { applicant in
+                    ManagerApplicantDetailView(applicant: applicant, viewModel: viewModel)
+                }
             }
             .tabItem { Label("Applicants", systemImage: "person.2") }
             .badge(viewModel.pendingApplicants.count > 0 ? viewModel.pendingApplicants.count : 0)
@@ -69,9 +75,6 @@ struct ManagerDashboardView: View {
                 showSearchSheet = false
                 selectedApplicant = applicant
             }
-        }
-        .accessibleSheet(item: $selectedApplicant) { applicant in
-            ManagerApplicantDetailView(applicant: applicant, viewModel: viewModel)
         }
     }
 
@@ -213,4 +216,3 @@ private struct ManagerSearchSheet: View {
         }
     }
 }
-
