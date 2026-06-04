@@ -263,12 +263,12 @@ private struct FormDivider: View {
 
 // MARK: - Main Wizard View Overhaul
 struct BorrowerLoanWizardView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     let onComplete: () -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
-    @EnvironmentObject private var authManager: AuthManager
+    @Environment(AuthManager.self) private var authManager: AuthManager
 
     @State private var currentStep: Int = 1
     @State private var navigationDirection: WizardNavigationDirection = .forward
@@ -1045,7 +1045,7 @@ struct BorrowerLoanWizardView: View {
             } else {
                 let draftId = viewModel.currentDraftID?.uuidString ?? UUID().uuidString
                 let path = "selfies/\(draftId).png"
-                Task {
+                Task { [viewModel] in
                     do {
                         let url = try await StorageService.shared.uploadDocument(
                             data: data, bucket: "documents", path: path, contentType: "image/png"
@@ -1068,7 +1068,7 @@ struct BorrowerLoanWizardView: View {
             } else {
                 let draftId = viewModel.currentDraftID?.uuidString ?? UUID().uuidString
                 let path = "signatures/\(draftId).png"
-                Task {
+                Task { [viewModel] in
                     do {
                         let url = try await StorageService.shared.uploadDocument(
                             data: data, bucket: "documents", path: path, contentType: "image/png"
@@ -1804,7 +1804,7 @@ private struct Step1OverviewView: View {
 
 // MARK: - STEP 2: Eligibility Check
 private struct Step2EligibilityCheckView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     @Binding var desiredAmount: Double
     @Binding var tenureMonths: Double
@@ -1989,7 +1989,7 @@ private struct Step2EligibilityCheckView: View {
 
 // MARK: - STEP 3: Personal Details
 private struct Step3PersonalInfoOverhaulView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     
     var body: some View {
         VStack(spacing: LMSSpacing.lg) {
@@ -2028,7 +2028,7 @@ private struct Step3PersonalInfoOverhaulView: View {
 
 // MARK: - STEP 4: Employment & Income
 private struct Step4EmploymentOverhaulView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     
     @Binding var salariedCompany: String
     @Binding var salariedEmpID: String
@@ -2132,7 +2132,7 @@ private struct Step5BankDetailsView: View {
 
 // MARK: - STEP 6: Document Center
 private struct Step6DocumentCenterOverhaulView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     @Binding var stepValidationMessage: String?
     @Binding var uploadProgress: [String: Double]
@@ -2758,7 +2758,7 @@ private final class SignatureCanvasUIView: UIView {
 private struct LiveFaceVerificationView: View {
     let onComplete: (String) -> Void
     let onCancel: () -> Void
-    @StateObject private var camera = LiveFaceCameraController()
+    @State private var camera = LiveFaceCameraController()
 
     var body: some View {
         ZStack {
@@ -2849,10 +2849,10 @@ private struct LiveFaceCameraPreview: UIViewRepresentable {
 private final class LiveFaceCameraController: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     let session = AVCaptureSession()
     private let verificationDurationSeconds = 5
-    @Published var remainingSeconds = 5
-    @Published var faceDetected = false
-    @Published var statusText = "Recording..."
-    @Published var showFailureAlert = false
+    var remainingSeconds = 5
+    var faceDetected = false
+    var statusText = "Recording..."
+    var showFailureAlert = false
     private var timer: Timer?
     private var detectedFrames = 0
     private var totalFrames = 0
@@ -2928,7 +2928,7 @@ private final class LiveFaceCameraController: NSObject, ObservableObject, AVCapt
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let request = VNDetectFaceRectanglesRequest { [weak self] request, _ in
             let hasFace = !(request.results as? [VNFaceObservation] ?? []).isEmpty
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.totalFrames += 1
                 if hasFace {
@@ -2973,7 +2973,7 @@ private struct Step8NomineeReferencesView: View {
 
 // MARK: - STEP 9: Review Details View
 private struct Step9ReviewOverhaulView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     let onEditStep: (Int) -> Void
 
@@ -3036,7 +3036,7 @@ private struct Step9ReviewOverhaulView: View {
 
 // MARK: - STEP 10: Consent & Terms
 private struct Step10TermsConsentView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     @Binding var acceptTerms: Bool
     @Binding var acceptBureau: Bool

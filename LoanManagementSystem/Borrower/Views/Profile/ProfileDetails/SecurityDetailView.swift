@@ -3,8 +3,8 @@ import SwiftUI
 struct SecurityDetailView: View {
     @AppStorage("biometricEnabled") private var biometricEnabled = false
     @AppStorage("doubleAuthEnabled") private var doubleAuthEnabled = false
-    @EnvironmentObject private var authManager: AuthManager
-    @StateObject private var localSecurity = LocalSecurityService.shared
+    @Environment(AuthManager.self) private var authManager: AuthManager
+    @State private var localSecurity = LocalSecurityService.shared
     @State private var showOTPSheet = false
     @State private var securityMessage: String?
     
@@ -114,7 +114,7 @@ struct SecurityDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .accessibleSheet(isPresented: $showOTPSheet) {
             EmailOTPSetupSheet(isEnabled: $doubleAuthEnabled)
-                .environmentObject(authManager)
+                .environment(authManager)
         }
         .alert("Security Check", isPresented: Binding(
             get: { securityMessage != nil },
@@ -129,7 +129,7 @@ struct SecurityDetailView: View {
 
 private struct EmailOTPSetupSheet: View {
     @Binding var isEnabled: Bool
-    @EnvironmentObject private var authManager: AuthManager
+    @Environment(AuthManager.self) private var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
     @State private var enteredCode = ""
     @State private var errorMessage = ""

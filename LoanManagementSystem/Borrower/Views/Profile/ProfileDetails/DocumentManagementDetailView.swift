@@ -3,7 +3,7 @@ import UIKit
 @preconcurrency import Vision
 
 struct DocumentManagementDetailView: View {
-    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Bindable var viewModel: BorrowerProfileViewModel
 
     @State private var documents: [VaultDocument] = []
     @State private var searchText = ""

@@ -1,12 +1,14 @@
+import Observation
 import Foundation
 import Combine
 import SwiftUI
 import OSLog
 
 @MainActor
-class AdminTemplatesViewModel: ObservableObject {
-    @Published var templates: [MessageTemplate] = []
-    @Published var isLoading = false
+@Observable
+class AdminTemplatesViewModel {
+    var templates: [MessageTemplate] = []
+    var isLoading = false
     
     init() {}
     

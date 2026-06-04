@@ -4,9 +4,9 @@ import UIKit
 // MARK: - Loans Tab (Marketplace only — no applications here)
 
 struct LoanApplicationTabView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
-    @EnvironmentObject private var authManager: AuthManager
-    @EnvironmentObject private var tabRouter: BorrowerTabRouter
+    @Bindable var viewModel: LoanApplicationViewModel
+    @Environment(AuthManager.self) private var authManager: AuthManager
+    @Environment(BorrowerTabRouter.self) private var tabRouter: BorrowerTabRouter
     @State private var navigationPath = NavigationPath()
 
     var body: some View {
@@ -68,7 +68,7 @@ struct LoanApplicationTabView: View {
                         navigationPath = NavigationPath()
                         tabRouter.select(.applications)
                     }
-                    .environmentObject(authManager)
+                    .environment(authManager)
                 case .tracking(let application):
                     LoanApplicationTrackingScreen(
                         viewModel: viewModel,
@@ -95,7 +95,7 @@ struct LoanApplicationTabView: View {
 // MARK: - Legacy discovery (kept for reference — superseded by LoansMarketplaceView)
 #if false
 private struct LoanDiscoveryContent: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let onSelectProduct: (BorrowerLoanProduct) -> Void
 
     var body: some View {
@@ -267,7 +267,7 @@ private struct LoanProductMetricChip: View {
 
 // MARK: - Loan Overview Screen
 private struct LoanOverviewScreen: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     let onApply: () -> Void
     @Environment(\.dismiss) private var dismiss
@@ -417,7 +417,7 @@ private struct LoanOverviewScreen: View {
 
 // MARK: - Combined Application Screen
 private struct CombinedApplicationScreen: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let onVerify: () -> Void
     @Environment(\.dismiss) private var dismiss
     
@@ -601,7 +601,7 @@ private struct DocumentRow: View {
 
 // MARK: - Document Verification Result View
 private struct DocumentVerificationResultView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let onSubmit: () -> Void
     @Environment(\.dismiss) private var dismiss
     
@@ -681,7 +681,7 @@ private struct DocumentVerificationResultView: View {
 
 // MARK: - Applications Content
 private struct BorrowerApplicationsContent: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let onSelectApplication: (BorrowerLoanApplication) -> Void
 
     @State private var draftPendingDeletion: BorrowerLoanApplication?
@@ -813,11 +813,11 @@ private struct ApplicationCard: View {
                     Text(application.displayIdentifier)
                         .font(.caption.monospaced())
                         .foregroundStyle(LMSColors.textSecondary)
-                    Text(application.isDraft ? "Step \(application.draftStepIndex) of 10" : "Last Update: \((application.submittedAt ?? application.updatedAt).formattedAsDDMMMYYYY())")
+                    Text(application.isDraft ? "Step \(application.draftStepIndex) of 9" : "Last Update: \((application.submittedAt ?? application.updatedAt).formattedAsDDMMMYYYY())")
                         .font(.system(size: 10))
                         .foregroundStyle(LMSColors.textTertiary)
                     if application.isDraft {
-                        Text("\(Int((Double(min(max(application.draftStepIndex, 1), 10)) / 10.0) * 100))% Complete")
+                        Text("\(Int((Double(min(max(application.draftStepIndex, 1), 9)) / 9.0) * 100))% Complete")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(LMSColors.brandNavy)
                         Text("Updated \(RelativeDateFormatter.shared.relativeString(from: application.updatedAt))")
@@ -865,8 +865,8 @@ extension BorrowerLoanProductType {
 
 // MARK: - Loan Application Tracking Screen
 struct LoanApplicationTrackingScreen: View {
-    @EnvironmentObject private var authManager: AuthManager
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Environment(AuthManager.self) private var authManager: AuthManager
+    @Bindable var viewModel: LoanApplicationViewModel
     let application: BorrowerLoanApplication
     let onResume: () -> Void
     let onDelete: () -> Void
@@ -1541,7 +1541,7 @@ private struct AssignedLoanOfficerCard: View {
 
 // MARK: - Task 2 Components (Timeline Stepper)
 private struct TimelineStepperCard: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let application: BorrowerLoanApplication
     
     @State private var expandedStages: Set<BorrowerApplicationStage> = []

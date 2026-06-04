@@ -2,8 +2,8 @@ import SwiftUI
 
 struct BorrowerForgotPasswordView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var authManager: AuthManager
-    @StateObject private var viewModel = ForgotPasswordViewModel()
+    @Environment(AuthManager.self) var authManager: AuthManager
+    @State private var viewModel = ForgotPasswordViewModel()
 
     var body: some View {
         NavigationStack {
@@ -285,5 +285,5 @@ struct BorrowerForgotPasswordView: View {
 
 #Preview {
     BorrowerForgotPasswordView()
-        .environmentObject(AuthManager.shared)
+        .environment(AuthManager.shared)
 }

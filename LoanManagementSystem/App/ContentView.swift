@@ -7,13 +7,13 @@ import Supabase
 struct ContentView: View {
 
     // Supabase/Auth Manager
-    @EnvironmentObject private var authManager: AuthManager
+    @Environment(AuthManager.self) private var authManager: AuthManager
 
     // App State Manager
-    @StateObject private var appState = AppStateManager()
+    @State private var appState = AppStateManager()
 
     // Observed Profile Store
-    @ObservedObject private var profileStore = BorrowerProfileStore.shared
+    @Bindable private var profileStore = BorrowerProfileStore.shared
 
     // Splash control
     @State private var showSplash = true
@@ -37,7 +37,7 @@ struct ContentView: View {
             } else if appState.showRoleSelection && !authManager.isAuthenticated && !appState.isAuthenticated {
 
                 RoleSelectionView()
-                    .environmentObject(appState)
+                    .environment(appState)
                     .transition(.asymmetric(
                         insertion: .move(edge: .trailing).combined(with: .opacity),
                         removal: .move(edge: .leading).combined(with: .opacity)
@@ -58,16 +58,16 @@ struct ContentView: View {
                         case .customer:
                             if appState.requiresBorrowerOnboarding && profileStore.profile?.isOnboardingCompleted != true {
                                 OnboardingQuestionnaireView()
-                                    .environmentObject(authManager)
-                                    .environmentObject(appState)
+                                    .environment(authManager)
+                                    .environment(appState)
                                     .transition(.asymmetric(
                                         insertion: .move(edge: .trailing).combined(with: .opacity),
                                         removal: .move(edge: .leading).combined(with: .opacity)
                                     ))
                             } else {
                                 MainTabView()
-                                    .environmentObject(authManager)
-                                    .environmentObject(appState)
+                                    .environment(authManager)
+                                    .environment(appState)
                                     .transition(.asymmetric(
                                         insertion: .move(edge: .trailing).combined(with: .opacity),
                                         removal: .move(edge: .leading).combined(with: .opacity)
@@ -75,24 +75,24 @@ struct ContentView: View {
                             }
                         case .loanOfficer:
                             LoanOfficerDashboardView()
-                                .environmentObject(authManager)
-                                .environmentObject(appState)
+                                .environment(authManager)
+                                .environment(appState)
                                 .transition(.asymmetric(
                                     insertion: .move(edge: .trailing).combined(with: .opacity),
                                     removal: .move(edge: .leading).combined(with: .opacity)
                                 ))
                         case .bankManager:
                             ManagerDashboardView()
-                                .environmentObject(authManager)
-                                .environmentObject(appState)
+                                .environment(authManager)
+                                .environment(appState)
                                 .transition(.asymmetric(
                                     insertion: .move(edge: .trailing).combined(with: .opacity),
                                     removal: .move(edge: .leading).combined(with: .opacity)
                                 ))
                         case .admin:
                             AdminDashboardView()
-                                .environmentObject(authManager)
-                                .environmentObject(appState)
+                                .environment(authManager)
+                                .environment(appState)
                                 .transition(.asymmetric(
                                     insertion: .move(edge: .trailing).combined(with: .opacity),
                                     removal: .move(edge: .leading).combined(with: .opacity)
@@ -105,16 +105,16 @@ struct ContentView: View {
                         // MARK: - Authentication Flow
                         if appState.selectedRole == .customer {
                             SignInView()
-                                .environmentObject(authManager)
-                                .environmentObject(appState)
+                                .environment(authManager)
+                                .environment(appState)
                                 .transition(.asymmetric(
                                     insertion: .move(edge: .leading).combined(with: .opacity),
                                     removal: .move(edge: .trailing).combined(with: .opacity)
                                 ))
                         } else {
                             StaffLoginView()
-                                .environmentObject(authManager)
-                                .environmentObject(appState)
+                                .environment(authManager)
+                                .environment(appState)
                                 .transition(.asymmetric(
                                     insertion: .move(edge: .leading).combined(with: .opacity),
                                     removal: .move(edge: .trailing).combined(with: .opacity)
@@ -308,5 +308,5 @@ private struct LMSAnimatedSplashView: View {
 
 #Preview {
     ContentView()
-        .environmentObject(AuthManager())
+        .environment(AuthManager())
 }

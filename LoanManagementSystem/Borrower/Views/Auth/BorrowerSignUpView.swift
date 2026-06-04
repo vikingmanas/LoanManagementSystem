@@ -2,9 +2,9 @@ import SwiftUI
 
 struct BorrowerSignUpView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var appState: AppStateManager
-    @EnvironmentObject var authManager: AuthManager
-    @StateObject private var viewModel = SignUpViewModel()
+    @Environment(AppStateManager.self) var appState: AppStateManager
+    @Environment(AuthManager.self) var authManager: AuthManager
+    @State private var viewModel = SignUpViewModel()
     @State private var showTermsSheet = false
     
     var body: some View {
@@ -272,7 +272,7 @@ private struct TermsSection: View {
 
 #Preview("BorrowerSignUpView") {
     BorrowerSignUpView()
-        .environmentObject(AppStateManager())
-        .environmentObject(AuthManager())
+        .environment(AppStateManager())
+        .environment(AuthManager())
 }
 

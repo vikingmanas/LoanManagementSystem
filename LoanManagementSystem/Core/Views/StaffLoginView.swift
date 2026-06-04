@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct StaffLoginView: View {
-    @EnvironmentObject var appState: AppStateManager
-    @EnvironmentObject var authManager: AuthManager
+    @Environment(AppStateManager.self) var appState: AppStateManager
+    @Environment(AuthManager.self) var authManager: AuthManager
 
     @State private var employeeID: String = ""
     @State private var password: String = ""

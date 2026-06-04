@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AdminUsersTabView: View {
-    @ObservedObject var viewModel: AdminStaffViewModel
+    @Bindable var viewModel: AdminStaffViewModel
     @State private var isShowingAddSheet = false
 
     var body: some View {

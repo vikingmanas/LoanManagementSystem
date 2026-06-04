@@ -5,6 +5,7 @@
 //  Created by Antigravity on 19/05/26.
 //
 
+import Observation
 import SwiftUI
 import Combine
 import Supabase
@@ -26,32 +27,33 @@ struct AuthSessionUser: Codable {
 // MARK: - AuthManager
 /// Centralized authentication service wrapping Supabase Auth.
 @MainActor
-final class AuthManager: ObservableObject {
+@Observable
+final class AuthManager {
     static let shared = AuthManager()
 
     // MARK: - Published State
 
     /// Whether a user is currently authenticated.
-    @Published var isAuthenticated: Bool = false
+    var isAuthenticated: Bool = false
 
     /// The currently signed-in user, if any.
-    @Published var currentUser: AuthSessionUser? = nil
+    var currentUser: AuthSessionUser? = nil
 
     /// The detailed profile for the currently signed-in staff member, if any.
-    @Published var currentStaffProfile: StaffMember? = nil
+    var currentStaffProfile: StaffMember? = nil
 
     /// Controls the loading overlay in auth views.
-    @Published var isLoading: Bool = false
+    var isLoading: Bool = false
 
     /// User-friendly error message shown in alerts/banners.
-    @Published var errorMessage: String? = nil
+    var errorMessage: String? = nil
 
     /// Indicates the auth state listener has resolved at least once.
-    @Published var isAuthStateResolved: Bool = false
+    var isAuthStateResolved: Bool = false
 
     /// True while the user is in the password-reset OTP flow.
     /// When true, ContentView should NOT route to the dashboard.
-    @Published var isResettingPassword: Bool = false
+    var isResettingPassword: Bool = false
 
     // MARK: - Init
 

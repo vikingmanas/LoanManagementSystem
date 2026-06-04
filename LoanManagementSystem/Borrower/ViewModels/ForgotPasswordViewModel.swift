@@ -1,3 +1,4 @@
+import Observation
 import Foundation
 import Combine
 
@@ -8,16 +9,17 @@ enum ForgotPasswordStep {
 }
 
 @MainActor
-class ForgotPasswordViewModel: ObservableObject {
-    @Published var emailOrPhone: String = ""
-    @Published var otpToken: String = ""
-    @Published var newPassword: String = ""
-    @Published var confirmPassword: String = ""
+@Observable
+class ForgotPasswordViewModel {
+    var emailOrPhone: String = ""
+    var otpToken: String = ""
+    var newPassword: String = ""
+    var confirmPassword: String = ""
     
-    @Published var currentStep: ForgotPasswordStep = .email
-    @Published var isLoading: Bool = false
-    @Published var showSuccessMessage: Bool = false
-    @Published var errorMessage: String = ""
+    var currentStep: ForgotPasswordStep = .email
+    var isLoading: Bool = false
+    var showSuccessMessage: Bool = false
+    var errorMessage: String = ""
     
     var isEmailFormValid: Bool {
         let cleanedEmail = emailOrPhone.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()

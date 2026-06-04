@@ -14,13 +14,12 @@ struct ManagerSettingsView: View {
     @AppStorage("managerMinCIBILScore") private var minCIBILScore = "650"
     @AppStorage("managerMaxDebtToIncome") private var maxDebtToIncome = "50"
     @AppStorage("managerTwoFactorEnabled") private var twoFactorEnabled = true
-    @AppStorage("managerSessionTimeout") private var sessionTimeout = "30"
     @AppStorage("managerNotifApprovals") private var notifApprovals = true
     @AppStorage("managerNotifEscalations") private var notifEscalations = true
     @AppStorage("managerNotifReports") private var notifReports = true
     
     @AppStorage("biometricEnabled") private var biometricEnabled = false
-    @StateObject private var localSecurity = LocalSecurityService.shared
+    @State private var localSecurity = LocalSecurityService.shared
 
     var body: some View {
         List {
@@ -81,24 +80,6 @@ struct ManagerSettingsView: View {
             }
 
             Section {
-                NavigationLink {
-                    ManagerLoanProductConfigurationView()
-                } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Loan Product Pricing")
-                            .font(.body.weight(.semibold))
-                        Text("Interest rates and processing fees per product")
-                            .font(.caption)
-                            .foregroundStyle(LMSColors.textSecondary)
-                    }
-                }
-            } header: {
-                Label("Loan Product Configuration", systemImage: "doc.text.fill")
-            } footer: {
-                Text("Configure base interest rate and processing fee for each loan product at your branch.")
-            }
-
-            Section {
                 Toggle(isOn: Binding(
                     get: { biometricEnabled },
                     set: { newValue in
@@ -117,15 +98,6 @@ struct ManagerSettingsView: View {
                 .disabled(!localSecurity.canUseBiometrics())
                 Toggle(isOn: $twoFactorEnabled) {
                     Text("Two-Factor Authentication")
-                }
-                HStack {
-                    Text("Session Timeout (mins)")
-                    Spacer()
-                    TextField("", text: $sessionTimeout)
-                        .keyboardType(.numberPad)
-                        .frame(width: 60)
-                        .multilineTextAlignment(.trailing)
-                        .font(.body.bold())
                 }
             } header: {
                 Label("Security", systemImage: "lock.shield.fill")
@@ -209,7 +181,7 @@ struct ManagerSettingsView: View {
         } catch {
             HapticsManager.triggerNotification(type: .error)
             settingsAlertTitle = "Save Failed"
-            settingsAlertMessage = "Could not sync risk thresholds. Loan product pricing is saved separately under Loan Product Configuration."
+            settingsAlertMessage = "Could not sync risk thresholds."
             showSettingsAlert = true
         }
     }
@@ -236,4 +208,3 @@ private struct PermissionRow: View {
         }
     }
 }
-

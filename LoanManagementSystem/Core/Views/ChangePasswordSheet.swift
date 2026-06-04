@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ChangePasswordSheet: View {
     @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var authManager: AuthManager
+    @Environment(AuthManager.self) var authManager: AuthManager
     
     @State private var newPassword = ""
     @State private var confirmPassword = ""

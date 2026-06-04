@@ -2,7 +2,7 @@ import SwiftUI
 
 struct EditEmploymentView: View {
     @Environment(\.presentationMode) var presentationMode
-    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Bindable var viewModel: BorrowerProfileViewModel
 
     @State private var employmentType: String
     @State private var companyName: String

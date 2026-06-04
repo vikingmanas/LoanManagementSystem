@@ -2,12 +2,13 @@ import SwiftUI
 
 struct LoanOfficerProfileView: View {
     @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var appState: AppStateManager
-    @EnvironmentObject var authManager: AuthManager
+    @Environment(AppStateManager.self) var appState: AppStateManager
+    @Environment(AuthManager.self) var authManager: AuthManager
     
     @AppStorage("biometricEnabled") private var biometricEnabled = false
+    @AppStorage("isDarkMode") private var isDarkMode = false
 
-    @StateObject private var localSecurity = LocalSecurityService.shared
+    @State private var localSecurity = LocalSecurityService.shared
     @State private var showChangePassword = false
     
     private var officerApplications: [BorrowerLoanApplication] {
@@ -221,5 +222,6 @@ struct LoanOfficerProfileView: View {
                 ChangePasswordSheet()
             }
         }
+        .preferredColorScheme(isDarkMode ? .dark : .light)
     }
 }

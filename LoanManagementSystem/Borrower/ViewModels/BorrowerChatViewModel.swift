@@ -14,8 +14,9 @@ struct BorrowerConversation: Identifiable, Hashable {
     }
 
     var unreadCount: Int {
-        // Unread = messages where borrower is receiver AND not yet read
-        messages.filter { !$0.isRead }.count
+        guard let uid = AuthManager.shared.currentUser?.uid,
+              let borrowerId = UUID(uuidString: uid) else { return 0 }
+        return messages.filter { $0.receiverId == borrowerId && !$0.isRead }.count
     }
 
     // Custom Hashable & Equatable conformance
@@ -31,13 +32,16 @@ struct BorrowerConversation: Identifiable, Hashable {
     }
 }
 
+import Observation
+
 @MainActor
-final class BorrowerChatViewModel: ObservableObject {
+@Observable
+final class BorrowerChatViewModel {
 
     // MARK: - Published State
-    @Published var conversations: [BorrowerConversation] = []
-    @Published var isLoading: Bool = false
-    @Published var hasError: Bool = false
+    var conversations: [BorrowerConversation] = []
+    var isLoading: Bool = false
+    var hasError: Bool = false
 
     /// Total unread messages across all conversations (for tab badge).
     var totalUnreadCount: Int {
@@ -50,7 +54,7 @@ final class BorrowerChatViewModel: ObservableObject {
         return UUID(uuidString: uid)
     }
     
-    private var realtimeChannel: RealtimeChannelV2?
+    nonisolated(unsafe) private var realtimeChannel: RealtimeChannelV2?
     
     deinit {
         let channel = realtimeChannel
@@ -77,7 +81,7 @@ final class BorrowerChatViewModel: ObservableObject {
     private func handleNewRealtimeMessage(_ msg: DBMessage) {
         guard let appId = msg.applicationId else { return }
         if let idx = conversations.firstIndex(where: { $0.applicationId == appId }) {
-            var conv = conversations[idx]
+            let conv = conversations[idx]
             if !conv.messages.contains(where: { $0.messageId == msg.messageId }) {
                 var newMessages = conv.messages
                 newMessages.append(msg)
@@ -271,6 +275,28 @@ final class BorrowerChatViewModel: ObservableObject {
 
         do {
             try await DatabaseService.shared.markMessagesRead(messageIds: unreadIds)
+            let unreadIdSet = Set(unreadIds)
+            conversations = conversations.map { conversation in
+                let updatedMessages = conversation.messages.map { message in
+                    guard unreadIdSet.contains(message.messageId) else { return message }
+                    return DBMessage(
+                        messageId: message.messageId,
+                        senderId: message.senderId,
+                        receiverId: message.receiverId,
+                        applicationId: message.applicationId,
+                        content: message.content,
+                        sentAt: message.sentAt,
+                        isRead: true
+                    )
+                }
+                return BorrowerConversation(
+                    id: conversation.id,
+                    applicationId: conversation.applicationId,
+                    applicationDisplayId: conversation.applicationDisplayId,
+                    loanProductName: conversation.loanProductName,
+                    messages: updatedMessages
+                )
+            }
         } catch {
             print("[BorrowerChatVM] Failed to mark messages as read: \(error)")
         }

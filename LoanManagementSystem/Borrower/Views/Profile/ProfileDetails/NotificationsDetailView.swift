@@ -7,7 +7,7 @@ struct NotificationsDetailView: View {
     @State private var paymentReminders = true
     @State private var securityAlerts = true
     @State private var promoOffers = false
-    @ObservedObject var notificationViewModel: NotificationViewModel
+    @Bindable var notificationViewModel: NotificationViewModel
 
     var body: some View {
         Form {

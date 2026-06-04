@@ -11,7 +11,7 @@ struct LoanApplicationReviewDetailView: View {
     typealias LoanApplication = OfficerLoanApplication
     let applicationId: String
     let initialDocumentId: UUID?
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) var dismiss
     
 
@@ -20,9 +20,8 @@ struct LoanApplicationReviewDetailView: View {
     @State private var rejectionText = ""
     @State private var rejectionPrompt: DocumentRejectionPrompt?
     @State private var documentActionStatus: OfficerDocumentStatus = .rejectFlag
-    @State private var escalationReason = ""
-    @State private var showingEscalationAlert = false
-    @State private var escalationAlertMessage = ""
+    @State private var showingActionAlert = false
+    @State private var actionAlertMessage = ""
     @State private var showingApplicationRejectPrompt = false
     @State private var applicationRejectReason = ""
     @State private var hasPresentedInitialDocument = false
@@ -171,8 +170,8 @@ struct LoanApplicationReviewDetailView: View {
                     dismiss()
                 } else {
                     applicationRejectReason = ""
-                    escalationAlertMessage = "Could not reject this application right now."
-                    showingEscalationAlert = true
+                    actionAlertMessage = "Could not reject this application right now."
+                    showingActionAlert = true
                 }
             }
             Button("Cancel", role: .cancel) {
@@ -655,76 +654,55 @@ struct LoanApplicationReviewDetailView: View {
     private func approvalSection(_ app: LoanApplication) -> some View {
         if shouldShowOfficerActions(for: app) {
             Section {
-                if canSendForFinalApproval(app) {
+                VStack(spacing: 12) {
                     Button {
                         HapticsManager.triggerImpact(style: .heavy)
                         viewModel.sendForFinalApproval(applicationId: app.applicationId)
                         dismiss()
                     } label: {
-                        Text("Send for Final Approval")
+                        Label("Send for Approval", systemImage: "paperplane.fill")
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(.blue)
                             .frame(maxWidth: .infinity)
-                            .multilineTextAlignment(.center)
+                            .frame(minHeight: 28)
                     }
-                } else {
-                    HStack {
-                        Spacer()
-                        Label("Verification incomplete - resolve all documents first.", systemImage: "lock.fill")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                    }
-                    .padding(.vertical, 4)
-                }
+                    .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.roundedRectangle(radius: 12))
+                    .controlSize(.large)
+                    .disabled(!canSendForFinalApproval(app))
 
-                if canRejectCompleteApplication(app) {
-                    Button(role: .destructive) {
-                        HapticsManager.triggerImpact(style: .medium)
-                        applicationRejectReason = ""
-                        showingApplicationRejectPrompt = true
-                    } label: {
-                        VStack(spacing: 3) {
-                            Text("Reject Application")
+                    if canRejectCompleteApplication(app) {
+                        Button(role: .destructive) {
+                            HapticsManager.triggerImpact(style: .medium)
+                            applicationRejectReason = ""
+                            showingApplicationRejectPrompt = true
+                        } label: {
+                            Label("Reject Application", systemImage: "xmark.circle")
                                 .font(.body.weight(.semibold))
-                            Text("Rejects the complete application")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity)
+                                .frame(minHeight: 28)
                         }
-                        .frame(maxWidth: .infinity)
-                        .multilineTextAlignment(.center)
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.roundedRectangle(radius: 12))
+                        .controlSize(.large)
+                        .tint(.red)
+                    }
+
+                    if !canSendForFinalApproval(app) {
+                        Label("Verify all documents before sending for approval.", systemImage: "lock.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
-
-                TextField("Escalation reason for branch manager", text: $escalationReason, axis: .vertical)
-                    .lineLimit(2...4)
-
-                Button {
-                    let reason = escalationReason.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !reason.isEmpty else {
-                        escalationAlertMessage = "Add a short reason before escalating to your manager."
-                        showingEscalationAlert = true
-                        return
-                    }
-                    if viewModel.escalateApplication(applicationId: app.applicationId, reason: reason) {
-                        HapticsManager.triggerNotification(type: .success)
-                        dismiss()
-                    } else {
-                        escalationAlertMessage = "Could not escalate this application right now."
-                        showingEscalationAlert = true
-                    }
-                } label: {
-                    Text("Escalate to Branch Manager")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(Color.purple)
-                        .frame(maxWidth: .infinity)
-                        .multilineTextAlignment(.center)
-                }
+                .padding(.vertical, 4)
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
-            .alert("Escalation", isPresented: $showingEscalationAlert) {
+            .alert("Application Action", isPresented: $showingActionAlert) {
                 Button("OK", role: .cancel) {}
             } message: {
-                Text(escalationAlertMessage)
+                Text(actionAlertMessage)
             }
         }
     }
