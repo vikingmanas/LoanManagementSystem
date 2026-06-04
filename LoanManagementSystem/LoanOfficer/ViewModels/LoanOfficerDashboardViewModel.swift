@@ -473,6 +473,14 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     func updateDocumentStatus(applicationId: String, docId: UUID, newStatus: DocumentStatus, rejectionReason: String? = nil) {
         CentralLoanRepository.shared.updateDocumentStatus(applicationId: applicationId, docId: docId, status: newStatus, reason: rejectionReason)
         refreshFromRepository()
+
+        if let appIndex = applications.firstIndex(where: { $0.applicationId == applicationId }),
+           let docIndex = applications[appIndex].documents.firstIndex(where: { $0.id == docId }) {
+            applications[appIndex].documents[docIndex].status = newStatus
+            applications[appIndex].documents[docIndex].reviewedDate = Date()
+            applications[appIndex].documents[docIndex].rejectionReason = rejectionReason
+            applications[appIndex].lastUpdatedDate = Date()
+        }
         
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }),
            let doc = applications[idx].documents.first(where: { $0.id == docId }) {

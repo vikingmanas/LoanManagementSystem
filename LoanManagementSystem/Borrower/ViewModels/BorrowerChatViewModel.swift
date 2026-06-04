@@ -10,7 +10,7 @@ struct BorrowerConversation: Identifiable, Hashable {
     let messages: [DBMessage]
 
     var latestMessage: DBMessage? {
-        messages.sorted { $0.sentAt > $1.sentAt }.first
+        messages.max { $0.sentAt < $1.sentAt }
     }
 
     var unreadCount: Int {
@@ -24,17 +24,23 @@ struct BorrowerConversation: Identifiable, Hashable {
     }
 
     static func == (lhs: BorrowerConversation, rhs: BorrowerConversation) -> Bool {
-        lhs.id == rhs.id
+        lhs.id == rhs.id &&
+        lhs.applicationDisplayId == rhs.applicationDisplayId &&
+        lhs.loanProductName == rhs.loanProductName &&
+        lhs.messages == rhs.messages
     }
 }
 
+import Observation
+
 @MainActor
-final class BorrowerChatViewModel: ObservableObject {
+@Observable
+final class BorrowerChatViewModel {
 
     // MARK: - Published State
-    @Published var conversations: [BorrowerConversation] = []
-    @Published var isLoading: Bool = false
-    @Published var hasError: Bool = false
+    var conversations: [BorrowerConversation] = []
+    var isLoading: Bool = false
+    var hasError: Bool = false
 
     /// Total unread messages across all conversations (for tab badge).
     var totalUnreadCount: Int {
@@ -47,7 +53,7 @@ final class BorrowerChatViewModel: ObservableObject {
         return UUID(uuidString: uid)
     }
     
-    private var realtimeChannel: RealtimeChannelV2?
+    nonisolated(unsafe) private var realtimeChannel: RealtimeChannelV2?
     
     deinit {
         let channel = realtimeChannel
@@ -74,7 +80,7 @@ final class BorrowerChatViewModel: ObservableObject {
     private func handleNewRealtimeMessage(_ msg: DBMessage) {
         guard let appId = msg.applicationId else { return }
         if let idx = conversations.firstIndex(where: { $0.applicationId == appId }) {
-            var conv = conversations[idx]
+            let conv = conversations[idx]
             if !conv.messages.contains(where: { $0.messageId == msg.messageId }) {
                 var newMessages = conv.messages
                 newMessages.append(msg)
@@ -208,6 +214,7 @@ final class BorrowerChatViewModel: ObservableObject {
 
         do {
             try await DatabaseService.shared.sendMessage(newMsg)
+            appendMessageToConversation(newMsg, borrowerSent: true)
 
             // Send a notification to the officer
             try? await DatabaseService.shared.createNotification(
@@ -220,6 +227,39 @@ final class BorrowerChatViewModel: ObservableObject {
         } catch {
             print("[BorrowerChatVM] Failed to send message: \(error)")
             return nil
+        }
+    }
+
+    private func appendMessageToConversation(_ message: DBMessage, borrowerSent: Bool) {
+        guard let applicationId = message.applicationId,
+              let index = conversations.firstIndex(where: { $0.applicationId == applicationId }) else {
+            return
+        }
+
+        let conversation = conversations[index]
+        guard !conversation.messages.contains(where: { $0.messageId == message.messageId }) else { return }
+
+        let cachedMessage = borrowerSent
+            ? DBMessage(
+                messageId: message.messageId,
+                senderId: message.senderId,
+                receiverId: message.receiverId,
+                applicationId: message.applicationId,
+                content: message.content,
+                sentAt: message.sentAt,
+                isRead: true
+            )
+            : message
+
+        conversations[index] = BorrowerConversation(
+            id: conversation.id,
+            applicationId: conversation.applicationId,
+            applicationDisplayId: conversation.applicationDisplayId,
+            loanProductName: conversation.loanProductName,
+            messages: (conversation.messages + [cachedMessage]).sorted { $0.sentAt < $1.sentAt }
+        )
+        conversations.sort {
+            ($0.latestMessage?.sentAt ?? .distantPast) > ($1.latestMessage?.sentAt ?? .distantPast)
         }
     }
 

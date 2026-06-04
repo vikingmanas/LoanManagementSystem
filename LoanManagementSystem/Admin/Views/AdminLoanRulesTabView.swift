@@ -118,7 +118,7 @@ struct AdminLoanRulesTabView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingAddSheet) {
+            .accessibleSheet(isPresented: $showingAddSheet) {
                 AdminAddLoanProductSheet(viewModel: viewModel)
             }
             .alert(alertTitle, isPresented: $showingAlert) {

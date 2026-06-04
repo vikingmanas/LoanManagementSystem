@@ -130,10 +130,10 @@ struct ManagerAnalyticsView: View {
             }
         }
         .padding(.horizontal, LMSSpacing.screenHorizontal)
-        .sheet(isPresented: $showPortfolioLedger) {
+        .accessibleSheet(isPresented: $showPortfolioLedger) {
             BranchPortfolioLedgerSheet(viewModel: viewModel, portfolioItems: portfolioItems)
         }
-        .sheet(isPresented: $showDecisionMixSheet) {
+        .accessibleSheet(isPresented: $showDecisionMixSheet) {
             ManagerApplicantListSheet(
                 title: "Decision Mix",
                 systemImage: "chart.pie.fill",
@@ -142,7 +142,7 @@ struct ManagerAnalyticsView: View {
                 viewModel: viewModel
             )
         }
-        .sheet(isPresented: $showNPLRateSheet) {
+        .accessibleSheet(isPresented: $showNPLRateSheet) {
             ManagerApplicantListSheet(
                 title: "NPL Loans",
                 systemImage: "exclamationmark.triangle.fill",
@@ -151,7 +151,7 @@ struct ManagerAnalyticsView: View {
                 viewModel: viewModel
             )
         }
-        .sheet(isPresented: $showEscalationsSheet) {
+        .accessibleSheet(isPresented: $showEscalationsSheet) {
             ManagerApplicantListSheet(
                 title: "Manager Review",
                 systemImage: "arrow.up.circle.fill",
@@ -160,7 +160,7 @@ struct ManagerAnalyticsView: View {
                 viewModel: viewModel
             )
         }
-        .sheet(isPresented: $showHighRiskSheet) {
+        .accessibleSheet(isPresented: $showHighRiskSheet) {
             ManagerApplicantListSheet(
                 title: "High-Risk Loans",
                 systemImage: "shield.slash.fill",

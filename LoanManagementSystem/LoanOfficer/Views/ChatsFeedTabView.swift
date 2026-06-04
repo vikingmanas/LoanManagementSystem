@@ -92,7 +92,7 @@ struct ChatsFeedTabView: View {
             .task {
                 await viewModel.setupRealtime()
             }
-            .sheet(isPresented: $showingCompose) {
+            .accessibleSheet(isPresented: $showingCompose) {
                 OfficerComposeMessageSheet(viewModel: viewModel)
             }
         }

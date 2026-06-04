@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct AccessibilitySettingsView: View {
+    @AppStorage("isDarkMode") private var isDarkMode = false
     @AppStorage("forceHighContrast") private var forceHighContrast = false
     @AppStorage("forceBoldText") private var forceBoldText = false
     @AppStorage("reduceMotion") private var reduceMotion = false
@@ -9,6 +10,10 @@ struct AccessibilitySettingsView: View {
     var body: some View {
         Form {
             Section {
+                Toggle(isOn: $isDarkMode) {
+                    Label("Dark Mode", systemImage: isDarkMode ? "moon.fill" : "sun.max.fill")
+                }
+                
                 Toggle(isOn: $forceHighContrast) {
                     Label("High Contrast", systemImage: "circle.lefthalf.filled")
                 }
@@ -38,6 +43,7 @@ struct AccessibilitySettingsView: View {
         }
         .navigationTitle("Accessibility")
         .navigationBarTitleDisplayMode(.inline)
+        .preferredColorScheme(isDarkMode ? .dark : .light)
     }
 }
 

@@ -562,7 +562,7 @@ private struct CombinedApplicationScreen: View {
         }
         .navigationTitle("Application")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $activeUploadDocument) { document in
+        .accessibleSheet(item: $activeUploadDocument) { document in
             DocumentUploadSheet(documentName: document.name) { fileName, source in
                 viewModel.uploadDocument(document.id, fileName: fileName, source: source)
             }
@@ -671,7 +671,7 @@ private struct DocumentVerificationResultView: View {
         }
         .navigationTitle("Verification")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $activeUploadDocument) { document in
+        .accessibleSheet(item: $activeUploadDocument) { document in
             DocumentUploadSheet(documentName: document.name) { fileName, source in
                 viewModel.uploadDocument(document.id, fileName: fileName, source: source)
             }
@@ -990,7 +990,7 @@ struct LoanApplicationTrackingScreen: View {
         } message: {
             Text("This will permanently delete draft \(app.displayIdentifier). You cannot undo this action.")
         }
-        .sheet(item: $resubmittingDocument) { document in
+        .accessibleSheet(item: $resubmittingDocument) { document in
             DocumentUploadSheet(documentName: document.name) { fileName, source in
                 viewModel.uploadDocumentForApplication(
                     applicationID: app.id,
@@ -1000,7 +1000,7 @@ struct LoanApplicationTrackingScreen: View {
                 )
             }
         }
-        .sheet(isPresented: $showOfficerChat) {
+        .accessibleSheet(isPresented: $showOfficerChat) {
             NavigationStack {
                 BorrowerOfficerChatView(
                     application: app,
@@ -1008,7 +1008,7 @@ struct LoanApplicationTrackingScreen: View {
                 )
             }
         }
-        .sheet(isPresented: $showSanctionShareSheet) {
+        .accessibleSheet(isPresented: $showSanctionShareSheet) {
             BorrowerActivityShareSheet(activityItems: sanctionShareItems)
         }
         .task(id: app.assignedOfficerId) {

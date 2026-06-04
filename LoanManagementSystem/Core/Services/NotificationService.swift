@@ -160,7 +160,7 @@ final class NotificationService {
             InsertAction.self,
             schema: "public",
             table: "notifications",
-            filter: "user_id=eq.\(userId.uuidString)"
+            filter: .eq("user_id", value: userId.uuidString)
         )
         
         Task {
@@ -174,7 +174,7 @@ final class NotificationService {
             }
         }
         
-        await channel.subscribe()
+        try? await channel.subscribeWithError()
         return channel
     }
     

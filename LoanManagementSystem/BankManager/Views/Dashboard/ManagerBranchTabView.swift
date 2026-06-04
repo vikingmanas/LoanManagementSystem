@@ -7,58 +7,16 @@ struct ManagerBranchTabView: View {
     @State private var showOfficerPerformance = false
     @State private var showReportSheet = false
     @State private var showAuditLog = false
+    @State private var selectedAnalyticsTab: AnalyticsTab = .overview
+
+    enum AnalyticsTab: String, CaseIterable, Identifiable {
+        case overview = "Status"
+        case products = "Products"
+        var id: String { rawValue }
+    }
 
     private var snapshot: BranchLoanReportSnapshot {
         BranchLoanReportSnapshot(applicants: viewModel.applicants, officers: viewModel.officers)
-    }
-
-    private var loanTypeChartData: [BranchChartSlice] {
-        snapshot.loanTypeRows.map {
-            BranchChartSlice(
-                id: $0.loanType.rawValue,
-                label: $0.loanType.rawValue,
-                value: $0.disbursedAmount,
-                color: $0.loanType.themeColor
-            )
-        }
-        .filter { $0.value > 0 }
-    }
-
-    private var officerChartData: [BranchOfficerChartItem] {
-        snapshot.officerRows.map {
-            BranchOfficerChartItem(
-                id: $0.officer.id,
-                name: $0.officer.name,
-                amount: $0.disbursedAmount
-            )
-        }
-        .filter { $0.amount > 0 }
-    }
-
-    private func assignedCount(for summary: ManagerOfficerPerformanceSummary) -> Int {
-        viewModel.applicants(for: summary.officer).count
-    }
-
-    private func disbursedAmount(for summary: ManagerOfficerPerformanceSummary) -> Double {
-        let officerId = summary.officer.id
-        return snapshot.officerRows.first { row in
-            row.officer.id == officerId
-        }?.disbursedAmount ?? 0
-    }
-
-    private var statusChartData: [BranchChartSlice] {
-        let approved = viewModel.applicants.filter { $0.status == .approved || $0.status == .disbursed }.count
-        let pending = viewModel.pendingApplicants.count
-        let rejected = viewModel.applicants.filter { $0.status == .rejected }.count
-        let escalated = viewModel.officerEscalatedApplicants.count
-
-        return [
-            BranchChartSlice(id: "approved", label: "Approved", value: Double(approved), color: LMSColors.emerald),
-            BranchChartSlice(id: "pending", label: "Pending", value: Double(pending), color: LMSColors.amber),
-            BranchChartSlice(id: "rejected", label: "Rejected", value: Double(rejected), color: LMSColors.coral),
-            BranchChartSlice(id: "escalated", label: "Manager Review", value: Double(escalated), color: Color.purple)
-        ]
-        .filter { $0.value > 0 }
     }
 
     var body: some View {
@@ -66,10 +24,30 @@ struct ManagerBranchTabView: View {
             Section {
                 branchHeaderCard
             }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
 
-            Section("Branch Metrics") {
+            // MARK: - Consolidated Analytics Card
+            Section {
+                VStack(spacing: LMSSpacing.lg) {
+                    Picker("Analytics View", selection: $selectedAnalyticsTab) {
+                        ForEach(AnalyticsTab.allCases) { tab in
+                            Text(tab.rawValue).tag(tab)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, LMSSpacing.sm)
+
+                    unifiedChartView
+                        .frame(height: 260)
+                        .padding(.vertical, LMSSpacing.xs)
+                    
+                    analyticsLegend
+                }
+                .padding(.vertical, LMSSpacing.md)
+            } header: {
+                Text("Branch Performance")
+            }
+
+            Section("Key Performance Indicators") {
                 metricRow(
                     title: "Total Disbursed",
                     value: CurrencyFormatter.shared.format(viewModel.branchOverview.totalDisbursed),
@@ -89,94 +67,24 @@ struct ManagerBranchTabView: View {
                     tint: LMSColors.actionBlue
                 )
                 metricRow(
-                    title: "Non-Performing Loan Rate",
+                    title: "NPL Rate",
                     value: String(format: "%.2f%%", viewModel.branchOverview.nplRate),
                     icon: "exclamationmark.triangle.fill",
                     tint: viewModel.branchOverview.nplRate < 1 ? LMSColors.emerald : LMSColors.coral
                 )
             }
 
-            if !statusChartData.isEmpty {
-                Section("Application Status") {
-                    Chart(statusChartData) { item in
-                        BarMark(
-                            x: .value("Status", item.label),
-                            y: .value("Count", item.value)
-                        )
-                        .foregroundStyle(item.color.gradient)
-                        .cornerRadius(6)
-                    }
-                    .frame(height: 200)
-                    .chartYAxis {
-                        AxisMarks(position: .leading)
-                    }
-
-                    ForEach(statusChartData) { item in
-                        LabeledContent(item.label, value: "\(Int(item.value))")
-                    }
-                }
-            }
-
-            if !loanTypeChartData.isEmpty {
-                Section("Loans by Product") {
-                    Chart(loanTypeChartData) { item in
-                        SectorMark(
-                            angle: .value("Amount", item.value),
-                            innerRadius: .ratio(0.58),
-                            angularInset: 1.5
-                        )
-                        .foregroundStyle(item.color)
-                    }
-                    .frame(height: 220)
-
-                    ForEach(loanTypeChartData) { item in
-                        HStack {
-                            Circle()
-                                .fill(item.color)
-                                .frame(width: 8, height: 8)
-                            Text(item.label)
-                            Spacer()
-                            Text(CurrencyFormatter.shared.format(item.value))
-                                .foregroundStyle(LMSColors.textSecondary)
-                        }
-                        .font(.subheadline)
-                    }
-                }
-            }
-
-            if !officerChartData.isEmpty {
-                Section("Disbursal by Loan Officer") {
-                    Chart(officerChartData) { item in
-                        BarMark(
-                            x: .value("Amount", item.amount),
-                            y: .value("Officer", item.name)
-                        )
-                        .foregroundStyle(LMSColors.brandNavy.gradient)
-                        .cornerRadius(6)
-                    }
-                    .frame(height: max(180, CGFloat(officerChartData.count) * 44))
-                    .chartXAxis {
-                        AxisMarks { value in
-                            AxisGridLine()
-                            if let amount = value.as(Double.self) {
-                                AxisValueLabel(amount.formattedAsCompactINR())
-                            }
-                        }
-                    }
-                }
-            }
-
-            Section {
+            Section("Team Performance") {
                 Button {
                     HapticsManager.triggerImpact(style: .medium)
                     showOfficerPerformance = true
                 } label: {
                     Label {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Loan Officer Performance")
-                                .font(.body.weight(.semibold))
-                            Text("Manager reviews, ratings, and officer-wise loan book")
-                                .font(.caption)
+                            Text("Detailed Officer Report")
+                                .font(LMSFont.body.weight(.semibold))
+                            Text("Manager reviews and historical ratings")
+                                .font(LMSFont.caption)
                                 .foregroundStyle(LMSColors.textSecondary)
                         }
                     } icon: {
@@ -186,82 +94,39 @@ struct ManagerBranchTabView: View {
                 }
 
                 if viewModel.officers.isEmpty {
-                    Text("Loan officers will appear once staff or applications are assigned to this branch.")
-                        .font(.footnote)
+                    Text("No loan officers assigned to this branch yet.")
+                        .font(LMSFont.footnote)
                         .foregroundStyle(LMSColors.textSecondary)
                 } else {
-                    ForEach(viewModel.officerPerformanceSummaries.prefix(5)) { summary in
-                        let assignedCount = assignedCount(for: summary)
-                        let disbursedAmount = disbursedAmount(for: summary)
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(summary.officer.name)
-                                    .font(.subheadline.weight(.semibold))
-                                Spacer()
-                                HStack(spacing: 3) {
-                                    Image(systemName: "star.fill")
-                                        .font(.caption2)
-                                        .foregroundStyle(LMSColors.amber)
-                                    Text(String(format: "%.1f", summary.displayRating))
-                                        .font(.caption.weight(.bold))
-                                }
-                            }
-                            HStack {
-                                Text("\(assignedCount) assigned")
-                                Text("·")
-                                Text("\(summary.officerEscalationCount) reviewed")
-                                Text("·")
-                                Text(CurrencyFormatter.shared.format(disbursedAmount))
-                            }
-                            .font(.caption)
-                            .foregroundStyle(LMSColors.textSecondary)
-                        }
-                        .padding(.vertical, 2)
+                    ForEach(viewModel.officerPerformanceSummaries.prefix(3)) { summary in
+                        OfficerMiniRow(summary: summary, viewModel: viewModel, snapshot: snapshot)
                     }
-
-                    if !viewModel.unassignedApplicants.isEmpty {
-                        LabeledContent("Unassigned Loans", value: "\(viewModel.unassignedApplicants.count)")
+                    
+                    if viewModel.officerPerformanceSummaries.count > 3 {
+                        NavigationLink {
+                            OfficerPerformanceReportSheet(viewModel: viewModel)
+                        } label: {
+                            Text("View All \(viewModel.officers.count) Officers")
+                                .font(LMSFont.footnote.weight(.semibold))
+                                .foregroundStyle(LMSColors.brandNavy)
+                        }
                     }
                 }
-            } header: {
-                Text("Team")
             }
 
-            Section("Reports") {
+            Section("Operations & Reports") {
                 Button {
                     HapticsManager.triggerImpact(style: .medium)
                     showReportSheet = true
                 } label: {
-                    Label("Branch Loan Report", systemImage: "chart.bar.doc.horizontal.fill")
+                    Label("Generate Branch Report", systemImage: "chart.bar.doc.horizontal.fill")
                 }
 
                 Button {
                     HapticsManager.triggerImpact(style: .light)
                     showAuditLog = true
                 } label: {
-                    Label("Audit Logs", systemImage: "list.bullet.clipboard.fill")
-                }
-
-                if let lastReportPublishedAt = viewModel.lastReportPublishedAt {
-                    LabeledContent("Last Stored Report", value: lastReportPublishedAt.formatted(date: .abbreviated, time: .shortened))
-                }
-
-                if !viewModel.storedReports.isEmpty {
-                    ForEach(viewModel.storedReports.prefix(4)) { report in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(report.title)
-                                .font(.subheadline.weight(.semibold))
-                            Text(report.generatedAt.formatted(date: .abbreviated, time: .shortened))
-                                .font(.caption)
-                                .foregroundStyle(LMSColors.textSecondary)
-                            HStack {
-                                Link("PDF", destination: report.pdfURL)
-                                Spacer()
-                                Link("CSV", destination: report.csvURL)
-                            }
-                            .font(.caption.weight(.semibold))
-                        }
-                    }
+                    Label("Branch Audit Trail", systemImage: "list.bullet.clipboard.fill")
                 }
             }
         }
@@ -270,94 +135,259 @@ struct ManagerBranchTabView: View {
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Details") {
-                    showBranchOverview = true
-                }
-                .font(.subheadline.weight(.semibold))
+                Button("Details") { showBranchOverview = true }
+                    .font(LMSFont.subheadline.weight(.semibold))
             }
         }
-        .refreshable {
-            await viewModel.refreshData()
-        }
-        .sheet(isPresented: $showBranchOverview) {
-            BranchOverviewDetailSheet(overview: viewModel.branchOverview)
-        }
-        .sheet(isPresented: $showOfficerPerformance) {
-            OfficerPerformanceReportSheet(viewModel: viewModel)
-        }
-        .sheet(isPresented: $showReportSheet) {
-            ManagerReportSheet(viewModel: viewModel)
-        }
-        .sheet(isPresented: $showAuditLog) {
-            ManagerAuditLogSheet(events: viewModel.auditEvents)
+        .refreshable { await viewModel.refreshData() }
+        .sheet(isPresented: $showBranchOverview) { BranchOverviewDetailSheet(overview: viewModel.branchOverview) }
+        .sheet(isPresented: $showOfficerPerformance) { OfficerPerformanceReportSheet(viewModel: viewModel) }
+        .sheet(isPresented: $showReportSheet) { ManagerReportSheet(viewModel: viewModel) }
+        .sheet(isPresented: $showAuditLog) { ManagerAuditLogSheet(events: viewModel.auditEvents) }
+    }
+
+    // MARK: - Chart Logic
+
+    @ViewBuilder
+    private var unifiedChartView: some View {
+        switch selectedAnalyticsTab {
+        case .overview:
+            if statusChartData.isEmpty {
+                emptyChartView(title: "No Status Data", message: "There are no applications to display status for.")
+            } else {
+                Chart(statusChartData) { item in
+                    SectorMark(
+                        angle: .value("Count", item.value),
+                        innerRadius: .ratio(0.65),
+                        angularInset: 2
+                    )
+                    .foregroundStyle(item.color.gradient)
+                    .cornerRadius(4)
+                }
+                .chartBackground { _ in
+                    VStack(spacing: 2) {
+                        Text("Total")
+                            .font(LMSFont.caption2)
+                            .foregroundStyle(LMSColors.textTertiary)
+                        Text("\(Int(statusChartData.reduce(0) { $0 + $1.value }))")
+                            .font(LMSFont.subheadline.bold())
+                            .foregroundStyle(LMSColors.textPrimary)
+                    }
+                }
+            }
+
+        case .products:
+            if loanTypeChartData.isEmpty {
+                emptyChartView(title: "No Product Data", message: "There are no disbursed loans to display products for.")
+            } else {
+                Chart(loanTypeChartData) { item in
+                    SectorMark(
+                        angle: .value("Amount", item.value),
+                        innerRadius: .ratio(0.65),
+                        angularInset: 2
+                    )
+                    .foregroundStyle(item.color.gradient)
+                    .cornerRadius(4)
+                }
+                .chartBackground { _ in
+                    VStack(spacing: 2) {
+                        Text("Total")
+                            .font(LMSFont.caption2)
+                            .foregroundStyle(LMSColors.textTertiary)
+                        Text(loanTypeChartData.reduce(0) { $0 + $1.value }.formattedAsCompactINR())
+                            .font(LMSFont.subheadline.bold())
+                            .foregroundStyle(LMSColors.textPrimary)
+                    }
+                }
+            }
         }
     }
+
+    private func emptyChartView(title: String, message: String) -> some View {
+        VStack(spacing: LMSSpacing.sm) {
+            Image(systemName: "chart.bar.xaxis")
+                .font(.system(size: 32))
+                .foregroundStyle(LMSColors.textTertiary.opacity(0.5))
+            Text(title)
+                .font(LMSFont.subheadline.bold())
+                .foregroundStyle(LMSColors.textSecondary)
+            Text(message)
+                .font(LMSFont.caption)
+                .foregroundStyle(LMSColors.textTertiary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private var analyticsLegend: some View {
+        switch selectedAnalyticsTab {
+        case .overview:
+            if !statusChartData.isEmpty {
+                HStack(spacing: LMSSpacing.md) {
+                    ForEach(statusChartData) { item in
+                        LegendItem(color: item.color, label: item.label)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+        case .products:
+            if !loanTypeChartData.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: LMSSpacing.lg) {
+                        ForEach(loanTypeChartData) { item in
+                            LegendItem(color: item.color, label: item.label)
+                        }
+                    }
+                    .padding(.horizontal, LMSSpacing.sm)
+                }
+            }
+        }
+    }
+
+    // MARK: - Header & Components
 
     private var branchHeaderCard: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(viewModel.branchOverview.name)
-                        .font(.title2.weight(.bold))
+                        .font(LMSFont.title)
                     Text("\(viewModel.branchOverview.code) · \(viewModel.branchOverview.region)")
-                        .font(.subheadline)
+                        .font(LMSFont.subheadline)
                         .foregroundStyle(LMSColors.textSecondary)
                 }
                 Spacer()
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(viewModel.branchOverview.auditRating)
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(LMSColors.emerald)
-                    Text("Audit")
-                        .font(.caption2)
-                        .foregroundStyle(LMSColors.textTertiary)
-                }
+                Text(viewModel.branchOverview.auditRating)
+                    .font(LMSFont.caption.weight(.bold))
+                    .foregroundStyle(LMSColors.emerald)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(LMSColors.emerald.opacity(0.12), in: Capsule())
             }
 
             HStack(spacing: LMSSpacing.sm) {
                 headerStat(title: "Officers", value: "\(viewModel.officers.count)")
-                headerStat(title: "Applications", value: "\(viewModel.applicants.count)")
-                headerStat(
-                    title: "Disbursed",
-                    value: viewModel.branchOverview.totalDisbursed.formattedAsCompactINR()
-                )
+                headerStat(title: "Apps", value: "\(viewModel.applicants.count)")
+                headerStat(title: "Volume", value: viewModel.branchOverview.totalDisbursed.formattedAsCompactINR())
             }
         }
-        .padding(LMSSpacing.lg)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(LMSColors.surfaceElevated, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-        .padding(.horizontal, LMSSpacing.screenHorizontal)
         .padding(.vertical, LMSSpacing.sm)
     }
 
     private func headerStat(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(.caption2.weight(.medium))
+                .font(LMSFont.caption2.weight(.medium))
                 .foregroundStyle(LMSColors.textTertiary)
             Text(value)
-                .font(.subheadline.weight(.bold))
+                .font(LMSFont.subheadline.bold())
                 .foregroundStyle(LMSColors.textPrimary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(LMSSpacing.sm)
-        .background(LMSColors.background, in: RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous))
+        .background(LMSColors.background.opacity(0.5), in: RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous))
     }
 
     private func metricRow(title: String, value: String, icon: String, tint: Color) -> some View {
         HStack(spacing: LMSSpacing.md) {
-            Image(systemName: icon)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(tint)
-                .frame(width: 28)
+            ZStack {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(tint.opacity(0.1))
+                    .frame(width: 32, height: 32)
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(tint)
+            }
             Text(title)
+                .font(LMSFont.body)
             Spacer()
             Text(value)
-                .font(.subheadline.weight(.semibold))
+                .font(LMSFont.subheadline.bold())
                 .foregroundStyle(LMSColors.textPrimary)
-                .multilineTextAlignment(.trailing)
+        }
+        .padding(.vertical, 2)
+    }
+
+    // MARK: - Data Preparation
+
+    private var loanTypeChartData: [BranchChartSlice] {
+        snapshot.loanTypeRows.map {
+            BranchChartSlice(id: $0.loanType.rawValue, label: $0.loanType.rawValue, value: $0.disbursedAmount, color: $0.loanType.themeColor)
+        }
+        .filter { $0.value > 0 }
+        .sorted { $0.value > $1.value }
+    }
+
+    private var statusChartData: [BranchChartSlice] {
+        let approved = viewModel.applicants.filter { $0.status == .approved || $0.status == .disbursed }.count
+        let pending = viewModel.pendingApplicants.count
+        let rejected = viewModel.applicants.filter { $0.status == .rejected }.count
+        let escalated = viewModel.officerEscalatedApplicants.count
+
+        return [
+            BranchChartSlice(id: "approved", label: "Approved", value: Double(approved), color: LMSColors.emerald),
+            BranchChartSlice(id: "pending", label: "Pending", value: Double(pending), color: LMSColors.amber),
+            BranchChartSlice(id: "rejected", label: "Rejected", value: Double(rejected), color: LMSColors.coral),
+            BranchChartSlice(id: "escalated", label: "Escalated", value: Double(escalated), color: Color.purple)
+        ]
+        .filter { $0.value > 0 }
+    }
+}
+
+// MARK: - Supporting Views
+
+private struct OfficerMiniRow: View {
+    let summary: ManagerOfficerPerformanceSummary
+    let viewModel: ManagerDashboardViewModel
+    let snapshot: BranchLoanReportSnapshot
+
+    var body: some View {
+        let assignedCount = viewModel.applicants(for: summary.officer).count
+        let disbursedAmount = snapshot.officerRows.first { $0.officer.id == summary.officer.id }?.disbursedAmount ?? 0
+
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(summary.officer.name)
+                    .font(LMSFont.subheadline.bold())
+                Spacer()
+                RatingLabel(rating: summary.displayRating)
+            }
+            HStack {
+                Label("\(assignedCount) Cases", systemImage: "briefcase")
+                Text("·")
+                Text(CurrencyFormatter.shared.format(disbursedAmount))
+            }
+            .font(LMSFont.caption)
+            .foregroundStyle(LMSColors.textSecondary)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct RatingLabel: View {
+    let rating: Double
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "star.fill")
+                .font(.system(size: 8))
+            Text(String(format: "%.1f", rating))
+                .font(LMSFont.caption.bold())
+        }
+        .foregroundStyle(LMSColors.amber)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(LMSColors.amber.opacity(0.1), in: Capsule())
+    }
+}
+
+private struct LegendItem: View {
+    let color: Color
+    let label: String
+    var body: some View {
+        HStack(spacing: 4) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text(label).font(LMSFont.caption2).foregroundStyle(LMSColors.textSecondary)
         }
     }
 }
@@ -368,10 +398,3 @@ private struct BranchChartSlice: Identifiable {
     let value: Double
     let color: Color
 }
-
-private struct BranchOfficerChartItem: Identifiable {
-    let id: UUID
-    let name: String
-    let amount: Double
-}
-

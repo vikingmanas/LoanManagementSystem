@@ -64,7 +64,7 @@ struct ManagerCommunicationTabView: View {
                 .disabled(viewModel.officers.isEmpty)
             }
         }
-        .sheet(isPresented: $showBroadcastSheet) {
+        .accessibleSheet(isPresented: $showBroadcastSheet) {
             BroadcastAnnouncementSheet(viewModel: viewModel)
         }
     }

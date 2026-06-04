@@ -33,7 +33,7 @@ struct SignInView: View {
             .lmsScreenBackground()
             .navigationBarTitleDisplayMode(.inline)
             .hideNavigationBar()
-            .sheet(isPresented: $showBankAccess) {
+            .accessibleSheet(isPresented: $showBankAccess) {
                 BankRoleAccessSheet { role in
                     HapticsManager.triggerImpact(style: .heavy)
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {

@@ -38,7 +38,7 @@ struct ManagerDashboardTabView: View {
         .refreshable {
             await viewModel.refreshData()
         }
-        .sheet(isPresented: $showBranchOverview) {
+        .accessibleSheet(isPresented: $showBranchOverview) {
             BranchOverviewDetailSheet(overview: viewModel.branchOverview)
         }
     }
@@ -93,7 +93,7 @@ private struct ActionItemsRow: View {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, LMSSpacing.screenHorizontal)
         }
-        .sheet(isPresented: $showDecisionsDueSheet) {
+        .accessibleSheet(isPresented: $showDecisionsDueSheet) {
             ManagerApplicantListSheet(
                 title: "Under Review",
                 systemImage: "checklist.checked",
@@ -278,7 +278,7 @@ private struct TeamInsightsRow: View {
                 }
             }
         }
-        .sheet(isPresented: $showPerformanceSheet) {
+        .accessibleSheet(isPresented: $showPerformanceSheet) {
             OfficerPerformanceReportSheet(viewModel: viewModel)
         }
     }

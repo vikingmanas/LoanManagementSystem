@@ -33,7 +33,7 @@ struct KYCStatusDetailView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingEditSheet) {
+        .accessibleSheet(isPresented: $showingEditSheet) {
             EditKYCView(viewModel: viewModel)
         }
     }

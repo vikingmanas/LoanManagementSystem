@@ -14,10 +14,7 @@ struct LoanApplicationReviewDetailView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) var dismiss
     
-    @State private var isRunningAIAudit = false
-    @State private var aiAuditRun = false
-    @State private var aiStatusText = ""
-    
+
     @State private var selectedDocForPreview: LoanDocument? = nil
     @State private var showingActionSheetForDoc: LoanDocument? = nil
     @State private var rejectionText = ""
@@ -95,13 +92,10 @@ struct LoanApplicationReviewDetailView: View {
         ZStack {
             List {
                 applicationHeaderSection(currentApp)
-                progressSection(currentApp)
                 personalDetailsSection(currentApp)
                 loanEmploymentSection(currentApp)
                 creditRiskSection(currentApp)
-                aiAuditSection(currentApp)
                 documentChecklistSection(currentApp)
-                timelineSection(currentApp)
                 sanctionLetterSection(currentApp)
                 approvalSection(currentApp)
             }
@@ -156,7 +150,7 @@ struct LoanApplicationReviewDetailView: View {
         } message: {
             Text("Add a reason for the borrower and audit trail.")
         }
-        .sheet(isPresented: $showSanctionShareSheet) {
+        .accessibleSheet(isPresented: $showSanctionShareSheet) {
             OfficerSanctionShareSheet(activityItems: sanctionShareItems)
         }
         .alert("Export Failed", isPresented: Binding(
@@ -352,43 +346,7 @@ struct LoanApplicationReviewDetailView: View {
         }
     }
     
-    // MARK: - Progress
-    
-    private func progressSection(_ app: LoanApplication) -> some View {
-        let verifiedCount = loanDocuments.filter { $0.status == .verified }.count
-        let pendingCount = loanDocuments.filter { $0.status != .verified && $0.status != .rejectFlag }.count
-        let rejectedCount = loanDocuments.filter { $0.status == .rejectFlag }.count
-        let totalDocs = loanDocuments.count
-        let completionPct = totalDocs > 0 ? Double(verifiedCount) / Double(totalDocs) : 0
-        
-        return Section("Verification Progress") {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("\(Int(completionPct * 100))% Complete")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(LMSColors.actionBlue)
-                    Spacer()
-                    Text("\(verifiedCount) of \(totalDocs) verified")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                
-                ProgressView(value: completionPct)
-                    .tint(completionPct >= 1.0 ? LMSColors.emerald : LMSColors.actionBlue)
 
-                HStack(spacing: 12) {
-                    Label("\(verifiedCount) Verified", systemImage: "checkmark.seal.fill")
-                        .foregroundStyle(LMSColors.emerald)
-                    Label("\(pendingCount) Pending", systemImage: "clock.fill")
-                        .foregroundStyle(LMSColors.amber)
-                    Label("\(rejectedCount) Rejected", systemImage: "xmark.octagon.fill")
-                        .foregroundStyle(LMSColors.coral)
-                }
-                .font(.caption2.weight(.semibold))
-            }
-            .padding(.vertical, 4)
-        }
-    }
     
     // MARK: - Personal Details
     
@@ -438,54 +396,7 @@ struct LoanApplicationReviewDetailView: View {
         }
     }
     
-    // MARK: - AI Audit
-    
-    private func aiAuditSection(_ app: LoanApplication) -> some View {
-        Section("AI / OCR Validation") {
-            if isRunningAIAudit {
-                HStack(spacing: 12) {
-                    ProgressView()
-                        .tint(LMSColors.actionBlue)
-                    Text(aiStatusText)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 4)
-            } else if aiAuditRun {
-                Label("OCR Audit Completed", systemImage: "cpu.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(LMSColors.emerald)
-                
-                ForEach(loanDocuments) { doc in
-                    AIFindingRow(
-                        type: doc.status == .rejectFlag ? .critical : (doc.status == .verified ? .success : .warning),
-                        docName: doc.docType.rawValue,
-                        desc: "\(doc.ocrStatus). \(doc.status.rawValue)."
-                    )
-                }
-            } else {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Auto OCR Bureau Scans")
-                            .font(.subheadline.weight(.semibold))
-                        Text("Scans for blur, mismatches, and date validity.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    Button("Run Audit") {
-                        runAIAudit()
-                    }
-                    .font(.caption.weight(.bold))
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                }
-                .padding(.vertical, 2)
-            }
-        }
-    }
+
     
     // MARK: - Document Checklist
     
@@ -509,39 +420,7 @@ struct LoanApplicationReviewDetailView: View {
         }
     }
     
-    // MARK: - Timeline
-    
-    private func timelineSection(_ app: LoanApplication) -> some View {
-        let timelineItems = viewModel.activityFeed.filter { $0.applicationId == app.applicationId }
-        
-        return Group {
-            if !timelineItems.isEmpty {
-                Section("Activity Timeline") {
-                    ForEach(timelineItems) { item in
-                        HStack(alignment: .top, spacing: 12) {
-                            Image(systemName: item.eventType.symbol)
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(item.eventType.themeColor)
-                                .frame(width: 28, height: 28)
-                                .background(item.eventType.themeColor.opacity(0.12), in: Circle())
-                            
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(item.eventDescription)
-                                    .font(.caption.weight(.medium))
-                                
-                                Text(RelativeDateFormatter.shared.relativeString(from: item.timestamp))
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(.vertical, 2)
-                    }
-                }
-            }
-        }
-    }
-    
-    // MARK: - Credit History & Risk Assessment
+
     
     private func creditRiskSection(_ app: LoanApplication) -> some View {
         let cibil = app.cibilScore ?? 0
@@ -551,14 +430,18 @@ struct LoanApplicationReviewDetailView: View {
         let existingEMIs = app.borrowerDetails.existingEMIs
         let requestedAmount = app.requestedAmount
         
-        // Compute DTI ratio
-        let incomeVal = parseAmount(monthlyIncome)
+        // Compute DTI ratio robustly
+        var incomeVal = parseAmount(monthlyIncome)
+        if incomeVal > 0 && incomeVal < 1000 {
+            incomeVal *= 100_000 // Fix "1.2 Lakh" parsing bug
+        }
         let emisVal = parseAmount(existingEMIs)
-        let tenureMonths = max(1, parseTenure(app.borrowerDetails.tenure))
-        let proposedEMI = requestedAmount / Double(tenureMonths)
+        let tenureMonths = max(1, Double(parseTenure(app.borrowerDetails.tenure)))
+        let proposedEMI = requestedAmount / tenureMonths
         let totalObligations = emisVal + proposedEMI
         let dtiRatio = incomeVal > 0 ? (totalObligations / incomeVal) * 100 : 0
         
+        // Determine Risk
         let riskLevel: String
         let riskColor: Color
         if cibil >= 750 && dtiRatio <= 40 {
@@ -573,161 +456,130 @@ struct LoanApplicationReviewDetailView: View {
         }
         
         return Section {
-            // Risk Level Badge
-            HStack {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Overall Risk Assessment")
-                        .font(.subheadline.weight(.semibold))
-                    Text("Based on CIBIL score, DTI ratio, and financial profile")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Label(riskLevel, systemImage: riskLevel == "Low Risk" ? "checkmark.shield.fill" : (riskLevel == "Medium Risk" ? "exclamationmark.shield.fill" : "xmark.shield.fill"))
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(riskColor, in: Capsule())
-            }
-            .padding(.vertical, 4)
-            
-            // CIBIL Score Gauge
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("CIBIL Score")
-                        .font(.subheadline.weight(.semibold))
+            VStack(spacing: LMSSpacing.lg) {
+                // Header Badge
+                HStack {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                            .foregroundStyle(riskColor)
+                        Text("INTELLIRISK ENGINE™")
+                            .font(.system(size: 10, weight: .heavy, design: .rounded))
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
                     Spacer()
-                    Text("\(cibil)")
-                        .font(.system(.title2, design: .rounded).weight(.bold))
-                        .foregroundStyle(cibilColor(for: cibil))
-                    Text("/ 900")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text(riskLevel.uppercased())
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(riskColor)
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
                 }
                 
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(Color.secondary.opacity(0.12))
+                // Solid Stat Cards
+                HStack(spacing: 16) {
+                    // CIBIL Box
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("CIBIL SCORE")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.8))
                         
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [cibilColor(for: cibil).opacity(0.7), cibilColor(for: cibil)],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .frame(width: max(0, geo.size.width * CGFloat(cibil) / 900.0))
+                        Text("\(Int(cibil))")
+                            .font(.system(size: 28, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(cibil >= 750 ? LMSColors.emerald : (cibil >= minCibil ? LMSColors.amber : LMSColors.coral))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    
+                    // DTI Box
+                    let dtiColor = dtiRatio <= 40 ? LMSColors.emerald : (dtiRatio <= maxDTI ? LMSColors.amber : LMSColors.coral)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("DTI RATIO")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.8))
+                        
+                        Text(String(format: "%.1f%%", dtiRatio))
+                            .font(.system(size: 28, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(dtiColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                
+                // Financial Details
+                VStack(spacing: 12) {
+                    HStack {
+                        Text("Monthly Income")
+                            .font(.subheadline)
+                            .foregroundStyle(LMSColors.textSecondary)
+                        Spacer()
+                        Text(monthlyIncome)
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    Divider()
+                    HStack {
+                        Text("Existing EMIs")
+                            .font(.subheadline)
+                            .foregroundStyle(LMSColors.textSecondary)
+                        Spacer()
+                        Text(existingEMIs)
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    Divider()
+                    HStack {
+                        Text("Proposed EMI")
+                            .font(.subheadline)
+                            .foregroundStyle(LMSColors.textSecondary)
+                        Spacer()
+                        Text(CurrencyFormatter.shared.format(proposedEMI))
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    Divider()
+                    HStack {
+                        Text("Work Experience")
+                            .font(.subheadline)
+                            .foregroundStyle(LMSColors.textSecondary)
+                        Spacer()
+                        Text(app.borrowerDetails.workExperience)
+                            .font(.subheadline.weight(.semibold))
                     }
                 }
-                .frame(height: 10)
-                
-                HStack {
-                    Text("300")
-                    Spacer()
-                    Text("Min: \(minCibil)")
-                        .foregroundStyle(LMSColors.amber)
-                    Spacer()
-                    Text("900")
-                }
-                .font(.system(size: 9, weight: .semibold, design: .rounded))
-                .foregroundStyle(.secondary)
-                
-                // Score classification
-                HStack(spacing: 6) {
-                    creditScoreBadge("Poor", range: "300-579", active: cibil < 580)
-                    creditScoreBadge("Fair", range: "580-669", active: cibil >= 580 && cibil < 670)
-                    creditScoreBadge("Good", range: "670-749", active: cibil >= 670 && cibil < 750)
-                    creditScoreBadge("Excellent", range: "750-900", active: cibil >= 750)
-                }
+                .padding(16)
+                .background(LMSColors.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(LMSColors.separatorLight, lineWidth: 1)
+                )
             }
-            .padding(.vertical, 4)
-            
-            // DTI Ratio
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Debt-to-Income Ratio")
-                        .font(.subheadline.weight(.semibold))
-                    Spacer()
-                    Text(String(format: "%.1f%%", dtiRatio))
-                        .font(.system(.body, design: .rounded).weight(.bold))
-                        .foregroundStyle(dtiRatio <= 40 ? LMSColors.emerald : (dtiRatio <= maxDTI ? LMSColors.amber : LMSColors.coral))
-                }
-                
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(Color.secondary.opacity(0.12))
-                        
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(dtiRatio <= 40 ? LMSColors.emerald : (dtiRatio <= maxDTI ? LMSColors.amber : LMSColors.coral))
-                            .frame(width: max(0, geo.size.width * min(1, CGFloat(dtiRatio) / 100.0)))
-                    }
-                }
-                .frame(height: 8)
-                
-                HStack {
-                    Text("Healthy: ≤40%")
-                        .foregroundStyle(LMSColors.emerald)
-                    Spacer()
-                    Text("Max: \(Int(maxDTI))%")
-                        .foregroundStyle(LMSColors.coral)
-                }
-                .font(.system(size: 9, weight: .semibold, design: .rounded))
-            }
-            .padding(.vertical, 4)
-            
-            // Financial Summary
-            VStack(spacing: 0) {
-                CreditDetailRow("Monthly Income", value: monthlyIncome, icon: "indianrupeesign.arrow.circlepath", valueColor: LMSColors.emerald)
-                CreditDetailRow("Existing EMIs", value: existingEMIs, icon: "arrow.left.arrow.right", valueColor: existingEMIs == "Not provided" ? .secondary : LMSColors.amber)
-                CreditDetailRow("Credit Card Obligations", value: app.borrowerDetails.creditCardObligations, icon: "creditcard", valueColor: .secondary)
-                CreditDetailRow("Proposed EMI", value: CurrencyFormatter.shared.format(proposedEMI), icon: "calendar.badge.clock", valueColor: LMSColors.actionBlue)
-                CreditDetailRow("Work Experience", value: app.borrowerDetails.workExperience, icon: "briefcase", valueColor: .primary, isLast: true)
-            }
-            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-            
-            // Credit Factors
-            VStack(alignment: .leading, spacing: 8) {
-                Text("KEY CREDIT FACTORS")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(.secondary)
-                
-                CreditFactorRow(factor: "Payment History", impact: cibil >= 700 ? .positive : .negative, detail: cibil >= 700 ? "Good track record" : "Delinquencies detected")
-                CreditFactorRow(factor: "Credit Utilization", impact: dtiRatio <= 40 ? .positive : (dtiRatio <= maxDTI ? .neutral : .negative), detail: String(format: "%.0f%% of income committed", dtiRatio))
-                CreditFactorRow(factor: "Credit Age", impact: .neutral, detail: "Based on bureau data")
-                CreditFactorRow(factor: "Employment Stability", impact: app.borrowerDetails.workExperience != "Not provided" ? .positive : .neutral, detail: app.borrowerDetails.workExperience)
-            }
-            .padding(.vertical, 4)
+            .padding(.vertical, 8)
         } header: {
             Label("Credit History & Risk Assessment", systemImage: "chart.bar.doc.horizontal")
         }
-    }
-    
-    private func creditScoreBadge(_ label: String, range: String, active: Bool) -> some View {
-        VStack(spacing: 2) {
-            Text(label)
-                .font(.system(size: 9, weight: .bold))
-            Text(range)
-                .font(.system(size: 7))
-        }
-        .foregroundStyle(active ? .white : .secondary)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 6)
-        .background(
-            active
-            ? AnyShapeStyle(label == "Excellent" ? LMSColors.emerald : (label == "Good" ? LMSColors.actionBlue : (label == "Fair" ? LMSColors.amber : LMSColors.coral)))
-            : AnyShapeStyle(Color.secondary.opacity(0.08)),
-            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-        )
+        .listRowSeparator(.hidden)
     }
     
     private func parseAmount(_ value: String) -> Double {
         if value == "Not provided" { return 0 }
         let filtered = value.filter { "0123456789.".contains($0) }
-        return Double(filtered) ?? 0
+        let num = Double(filtered) ?? 0
+        let lower = value.lowercased()
+        if lower.contains("lakh") || lower.contains("l") {
+            return num * 100_000
+        } else if lower.contains("crore") || lower.contains("cr") {
+            return num * 10_000_000
+        } else if lower.contains("k") {
+            return num * 1_000
+        }
+        return num
     }
     
     private func parseTenure(_ value: String) -> Int {
@@ -896,22 +748,7 @@ struct LoanApplicationReviewDetailView: View {
         [.pending, .applied, .documentsPending, .documentsRejected, .underReview, .verificationCompleted].contains(app.status)
     }
     
-    private func runAIAudit() {
-        HapticsManager.triggerImpact(style: .medium)
-        isRunningAIAudit = true
-        aiStatusText = "Extracting document boundaries..."
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-            aiStatusText = "Scanning against Bureau databases..."
-        }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-            isRunningAIAudit = false
-            aiAuditRun = true
-            HapticsManager.triggerImpact(style: .heavy)
-        }
-    }
-    
+
     private func cibilColor(for score: Int) -> Color {
         if score >= 750 { return LMSColors.emerald }
         if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return LMSColors.amber }
@@ -1263,95 +1100,7 @@ struct DocumentChecklistItemRow: View {
 
 // MARK: - Credit Risk Supporting Views
 
-private struct CreditDetailRow: View {
-    let label: String
-    let value: String
-    let icon: String
-    let valueColor: Color
-    let isLast: Bool
-    
-    init(_ label: String, value: String, icon: String, valueColor: Color = .primary, isLast: Bool = false) {
-        self.label = label
-        self.value = value
-        self.icon = icon
-        self.valueColor = valueColor
-        self.isLast = isLast
-    }
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                Image(systemName: icon)
-                    .font(.caption)
-                    .foregroundStyle(valueColor)
-                    .frame(width: 20)
-                
-                Text(label)
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
-                
-                Spacer(minLength: 8)
-                
-                Text(displayValue)
-                    .font(.subheadline.weight(value == "Not provided" ? .regular : .semibold))
-                    .foregroundStyle(value == "Not provided" ? .secondary : valueColor)
-            }
-            .padding(.vertical, 10)
-            
-            if !isLast {
-                Divider()
-            }
-        }
-    }
-    
-    private var displayValue: String {
-        value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Not provided" : value
-    }
-}
 
-private enum CreditFactorImpact {
-    case positive, neutral, negative
-    
-    var icon: String {
-        switch self {
-        case .positive: return "arrow.up.circle.fill"
-        case .neutral: return "minus.circle.fill"
-        case .negative: return "arrow.down.circle.fill"
-        }
-    }
-    
-    var color: Color {
-        switch self {
-        case .positive: return LMSColors.emerald
-        case .neutral: return LMSColors.amber
-        case .negative: return LMSColors.coral
-        }
-    }
-}
-
-private struct CreditFactorRow: View {
-    let factor: String
-    let impact: CreditFactorImpact
-    let detail: String
-    
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: impact.icon)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(impact.color)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(factor)
-                    .font(.caption.weight(.semibold))
-                Text(detail)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            
-            Spacer()
-        }
-    }
-}
 
 private struct OfficerSanctionShareSheet: UIViewControllerRepresentable {
     let activityItems: [Any]

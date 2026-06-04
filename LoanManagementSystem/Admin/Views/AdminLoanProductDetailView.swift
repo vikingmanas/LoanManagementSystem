@@ -37,6 +37,22 @@ struct AdminLoanProductDetailView: View {
             
             Section("Parameters") {
                 LabeledContent {
+                    TextField("Min Amount", value: $product.minAmount, formatter: NumberFormatter())
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                } label: {
+                    Text("Min Amount (₹)")
+                }
+                
+                LabeledContent {
+                    TextField("Max Amount", value: $product.maxAmount, formatter: NumberFormatter())
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                } label: {
+                    Text("Max Amount (₹)")
+                }
+                
+                LabeledContent {
                     TextField("Max Tenure (months)", value: $product.maxTenure, formatter: NumberFormatter())
                         .keyboardType(.numberPad)
                         .multilineTextAlignment(.trailing)

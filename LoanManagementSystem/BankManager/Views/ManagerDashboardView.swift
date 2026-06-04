@@ -61,16 +61,16 @@ struct ManagerDashboardView: View {
             guard let tab = ManagerWorkspaceTab(rawValue: rawValue), tab != selectedTab else { return }
             selectedTab = tab
         }
-        .sheet(isPresented: $showProfileSheet) {
+        .accessibleSheet(isPresented: $showProfileSheet) {
             ManagerProfileView(viewModel: viewModel)
         }
-        .sheet(isPresented: $showSearchSheet) {
+        .accessibleSheet(isPresented: $showSearchSheet) {
             ManagerSearchSheet(viewModel: viewModel) { applicant in
                 showSearchSheet = false
                 selectedApplicant = applicant
             }
         }
-        .sheet(item: $selectedApplicant) { applicant in
+        .accessibleSheet(item: $selectedApplicant) { applicant in
             ManagerApplicantDetailView(applicant: applicant, viewModel: viewModel)
         }
     }

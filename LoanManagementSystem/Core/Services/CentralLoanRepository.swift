@@ -139,6 +139,7 @@ final class CentralLoanRepository: ObservableObject {
 
     func isVisibleToOfficer(_ app: BorrowerLoanApplication, userId: UUID) -> Bool {
         guard app.currentStage != .draft else { return false }
+        if isLoanUnassigned(app) { return true }
         // Officer can only see applications explicitly assigned to them
         return resolvedOfficerUserId(for: app) == userId
     }
@@ -568,28 +569,16 @@ final class CentralLoanRepository: ObservableObject {
             do {
                 var finalDbApp = dbApp
                 
+                // MARK: — Signature: NEVER store base64 in Supabase. Upload to Storage or clear it.
                 if finalDbApp.formData.signatureImageData.count > 1000,
                    !finalDbApp.formData.signatureImageData.starts(with: "http") {
-                   if let data = Data(base64Encoded: finalDbApp.formData.signatureImageData) {
+                    var updatedFormData = finalDbApp.formData
+                    
+                    if let data = Data(base64Encoded: finalDbApp.formData.signatureImageData) {
                         let path = "signatures/\(resolvedUUID.uuidString)_\(finalDbApp.applicationId.uuidString).png"
                         if let publicUrl = try? await StorageService.shared.uploadDocument(data: data, bucket: "documents", path: path, contentType: "image/png") {
-                            var updatedFormData = finalDbApp.formData
                             updatedFormData.signatureImageData = publicUrl.absoluteString
-                            
-                            finalDbApp = DBLoanApplication(
-                                applicationId: finalDbApp.applicationId,
-                                borrowerId: finalDbApp.borrowerId,
-                                officerId: finalDbApp.officerId,
-                                productId: finalDbApp.productId,
-                                amountRequested: finalDbApp.amountRequested,
-                                tenureMonths: finalDbApp.tenureMonths,
-                                purpose: finalDbApp.purpose,
-                                status: finalDbApp.status,
-                                formData: updatedFormData,
-                                stageHistory: finalDbApp.stageHistory,
-                                submittedAt: finalDbApp.submittedAt,
-                                updatedAt: finalDbApp.updatedAt
-                            )
+                            print("✅ [CentralLoanRepository] Signature uploaded to Storage: \(publicUrl.absoluteString)")
                             
                             Task { @MainActor in
                                 if let idx = CentralLoanRepository.shared.applications.firstIndex(where: { $0.id == app.id }) {
@@ -598,27 +587,29 @@ final class CentralLoanRepository: ObservableObject {
                                 }
                             }
                         } else {
-                            print("❌ [CentralLoanRepository] Failed to upload signature image to Storage. Aborting DB sync.")
-                            throw NSError(domain: "CentralLoanRepository", code: 400, userInfo: [NSLocalizedDescriptionKey: "Failed to upload signature image. Please ensure the 'documents' storage bucket exists and has correct RLS policies."])
+                            // Upload failed — clear the base64 completely. NEVER let it reach the DB.
+                            updatedFormData.signatureImageData = ""
+                            print("❌ [CentralLoanRepository] Signature upload failed. Cleared base64 — it will NOT be stored in DB.")
                         }
-                   } else {
-                       var updatedFormData = finalDbApp.formData
-                       updatedFormData.signatureImageData = ""
-                       finalDbApp = DBLoanApplication(
-                           applicationId: finalDbApp.applicationId,
-                           borrowerId: finalDbApp.borrowerId,
-                           officerId: finalDbApp.officerId,
-                           productId: finalDbApp.productId,
-                           amountRequested: finalDbApp.amountRequested,
-                           tenureMonths: finalDbApp.tenureMonths,
-                           purpose: finalDbApp.purpose,
-                           status: finalDbApp.status,
-                           formData: updatedFormData,
-                           stageHistory: finalDbApp.stageHistory,
-                           submittedAt: finalDbApp.submittedAt,
-                           updatedAt: finalDbApp.updatedAt
-                       )
-                   }
+                    } else {
+                        // Invalid base64 data — clear it
+                        updatedFormData.signatureImageData = ""
+                    }
+                    
+                    finalDbApp = DBLoanApplication(
+                        applicationId: finalDbApp.applicationId,
+                        borrowerId: finalDbApp.borrowerId,
+                        officerId: finalDbApp.officerId,
+                        productId: finalDbApp.productId,
+                        amountRequested: finalDbApp.amountRequested,
+                        tenureMonths: finalDbApp.tenureMonths,
+                        purpose: finalDbApp.purpose,
+                        status: finalDbApp.status,
+                        formData: updatedFormData,
+                        stageHistory: finalDbApp.stageHistory,
+                        submittedAt: finalDbApp.submittedAt,
+                        updatedAt: finalDbApp.updatedAt
+                    )
                 }
                 
                 try await ApplicationService.shared.upsertApplication(finalDbApp)
@@ -1354,6 +1345,15 @@ final class CentralLoanRepository: ObservableObject {
         let officerUserId = resolvedOfficerUserId(for: app)
         let assignedOfficerName = resolvedOfficerName(for: app)
         let assignedOfficerId = officerUserId ?? ManagerOfficerAssignment.unassignedOfficerId
+        
+        let resolvedBranchName: String
+        if let officerId = officerUserId, let officerBranch = officerBranchNameByUserId[officerId] {
+            resolvedBranchName = officerBranch
+        } else {
+            resolvedBranchName = app.formData.preferredBranch
+        }
+
+        let advancedRisk = AdvancedRiskEngine.assessRisk(for: app)
 
         return ManagerApplicant(
             id: app.id,
@@ -1364,7 +1364,7 @@ final class CentralLoanRepository: ObservableObject {
             requestedAmount: app.formData.requestedAmountValue,
             cibilScore: app.formData.creditScoreValue > 0 ? app.formData.creditScoreValue : 750,
             status: status,
-            riskLevel: app.formData.creditScoreValue >= 750 ? .low : (app.formData.creditScoreValue >= self.globalRules.minCibilScore ? .medium : .high),
+            riskLevel: advancedRisk.riskLevel,
             assignedOfficer: assignedOfficerName,
             assignedOfficerId: assignedOfficerId,
             submissionDate: app.submittedAt ?? Date(),
@@ -1373,9 +1373,11 @@ final class CentralLoanRepository: ObservableObject {
             managerRemarks: app.stageHistory.last(where: { $0.stage == .approved })?.note ?? "",
             verificationProgress: app.documents.isEmpty ? 0 : Double(app.documents.filter { $0.status == .verified }.count) / Double(app.documents.count),
             tenure: app.formData.preferredTenureMonths,
-            interestRate: 10.5,
-            branchName: app.formData.preferredBranch,
-            escalatedAt: app.stageHistory.last(where: { $0.stage == .escalated })?.timestamp
+            interestRate: app.product.baseInterestRate > 0 ? app.product.baseInterestRate : 10.5,
+            branchName: resolvedBranchName,
+            escalatedAt: app.stageHistory.last(where: { $0.stage == .escalated })?.timestamp,
+            riskFactors: advancedRisk.factors,
+            compositeRiskScore: advancedRisk.compositeScore
         )
     }
     

@@ -11,7 +11,7 @@ import Combine
 // MARK: - Conversations List (Tab Root)
 
 struct BorrowerChatView: View {
-    @StateObject private var viewModel = BorrowerChatViewModel()
+    @State private var viewModel = BorrowerChatViewModel()
     @State private var searchText = ""
 
     private var filteredConversations: [BorrowerConversation] {
@@ -172,7 +172,7 @@ private struct BorrowerConversationRow: View {
 
 private struct BorrowerMessageThreadView: View {
     let conversation: BorrowerConversation
-    @ObservedObject var viewModel: BorrowerChatViewModel
+    @Bindable var viewModel: BorrowerChatViewModel
 
     @State private var messageText = ""
     @State private var messages: [DBMessage] = []
