@@ -43,6 +43,11 @@ struct LoanApplicationReviewDetailView: View {
         guard let app = app else { return [] }
         return app.documents
     }
+
+    private var prioritizedLoanDocuments: [LoanDocument] {
+        loanDocuments.filter { $0.status == .verified }
+            + loanDocuments.filter { $0.status != .verified }
+    }
     
     var borrowerData: BorrowerDetails {
         app?.borrowerDetails ?? .empty
@@ -408,7 +413,7 @@ struct LoanApplicationReviewDetailView: View {
                     description: Text("No borrower document records were found for this application or customer.")
                 )
             } else {
-                ForEach(loanDocuments) { doc in
+                ForEach(prioritizedLoanDocuments) { doc in
                     OfficerDocumentReviewCard(
                         doc: doc,
                         borrowerName: app.borrowerName,
