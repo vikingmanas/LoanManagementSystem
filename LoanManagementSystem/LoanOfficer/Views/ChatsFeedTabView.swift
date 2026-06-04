@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 struct ChatsFeedTabView: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @State private var searchText = ""
     @State private var showUnreadOnly = false
     @State private var showingCompose = false
@@ -194,7 +194,7 @@ private struct OfficerConversationRow: View {
 
 private struct OfficerMessageThreadView: View {
     let conversation: OfficerConversation
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
 
     @State private var messageText = ""
     @State private var messages: [OfficerThreadMessage]
@@ -429,7 +429,7 @@ private struct OfficerThreadMessage: Identifiable, Hashable {
 }
 
 private struct OfficerComposeMessageSheet: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var selectedApplicationId = ""
     @State private var message = ""

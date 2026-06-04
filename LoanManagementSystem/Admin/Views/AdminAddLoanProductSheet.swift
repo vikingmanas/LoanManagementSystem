@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AdminAddLoanProductSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: AdminLoanRulesViewModel
+    @Bindable var viewModel: AdminLoanRulesViewModel
     
     @State private var product = AdminLoanProduct(
         id: UUID(),

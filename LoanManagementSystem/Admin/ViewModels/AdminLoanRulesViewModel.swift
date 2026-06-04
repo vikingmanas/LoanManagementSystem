@@ -1,15 +1,17 @@
+import Observation
 import Foundation
 import Combine
 import SwiftUI
 import OSLog
 
 @MainActor
-final class AdminLoanRulesViewModel: ObservableObject {
-    @Published var loanProducts: [AdminLoanProduct] = []
-    @Published var globalRules = GlobalLoanRules(minCibilScore: 700, maxDTI: 50.0, maxLTV: 80.0)
+@Observable
+final class AdminLoanRulesViewModel {
+    var loanProducts: [AdminLoanProduct] = []
+    var globalRules = GlobalLoanRules(minCibilScore: 700, maxDTI: 50.0, maxLTV: 80.0)
     
-    @Published var isLoading = false
-    @Published var errorMessage: String?
+    var isLoading = false
+    var errorMessage: String?
     
     init() {
         if let data = UserDefaults.standard.data(forKey: "GlobalLoanRules"),

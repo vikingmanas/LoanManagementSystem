@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ManagerAnalyticsView: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @State private var showPortfolioLedger = false
 
     private var approvalStats: (approved: Int, rejected: Int, pending: Int) {
@@ -127,10 +127,10 @@ struct ManagerAnalyticsView: View {
             }
         }
         .padding(.horizontal, LMSSpacing.screenHorizontal)
-        .accessibleSheet(isPresented: $showPortfolioLedger) {
+        .sheet(isPresented: $showPortfolioLedger) {
             BranchPortfolioLedgerSheet(viewModel: viewModel, portfolioItems: portfolioItems)
         }
-        .accessibleSheet(isPresented: $showDecisionMixSheet) {
+        .sheet(isPresented: $showDecisionMixSheet) {
             ManagerApplicantListSheet(
                 title: "Decision Mix",
                 systemImage: "chart.pie.fill",
@@ -139,7 +139,7 @@ struct ManagerAnalyticsView: View {
                 viewModel: viewModel
             )
         }
-        .accessibleSheet(isPresented: $showNPLRateSheet) {
+        .sheet(isPresented: $showNPLRateSheet) {
             ManagerApplicantListSheet(
                 title: "NPL Loans",
                 systemImage: "exclamationmark.triangle.fill",
@@ -148,7 +148,7 @@ struct ManagerAnalyticsView: View {
                 viewModel: viewModel
             )
         }
-        .accessibleSheet(isPresented: $showEscalationsSheet) {
+        .sheet(isPresented: $showEscalationsSheet) {
             ManagerApplicantListSheet(
                 title: "Manager Review",
                 systemImage: "arrow.up.circle.fill",
@@ -157,7 +157,7 @@ struct ManagerAnalyticsView: View {
                 viewModel: viewModel
             )
         }
-        .accessibleSheet(isPresented: $showHighRiskSheet) {
+        .sheet(isPresented: $showHighRiskSheet) {
             ManagerApplicantListSheet(
                 title: "High-Risk Loans",
                 systemImage: "shield.slash.fill",
@@ -417,7 +417,7 @@ private struct PortfolioTypeRow: View {
 }
 
 struct BranchPortfolioLedgerSheet: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     let portfolioItems: [LoanPortfolioItem]
     @Environment(\.dismiss) var dismiss
 

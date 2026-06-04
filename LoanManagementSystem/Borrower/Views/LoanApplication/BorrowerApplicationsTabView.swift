@@ -2,9 +2,9 @@ import SwiftUI
 
 
 struct BorrowerApplicationsTabView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
-    @EnvironmentObject private var authManager: AuthManager
-    @EnvironmentObject private var tabRouter: BorrowerTabRouter
+    @Bindable var viewModel: LoanApplicationViewModel
+    @Environment(AuthManager.self) private var authManager: AuthManager
+    @Environment(BorrowerTabRouter.self) private var tabRouter: BorrowerTabRouter
     @State private var navigationPath = NavigationPath()
 
     var body: some View {
@@ -56,7 +56,7 @@ struct BorrowerApplicationsTabView: View {
                     BorrowerLoanWizardView(viewModel: viewModel, product: product) {
                         navigationPath = NavigationPath()
                     }
-                    .environmentObject(authManager)
+                    .environment(authManager)
                 case .tracking(let application):
                     LoanApplicationTrackingScreen(
                         viewModel: viewModel,
@@ -82,7 +82,7 @@ struct BorrowerApplicationsTabView: View {
 
 
 struct BorrowerApplicationsHub: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let onSelectApplication: (BorrowerLoanApplication) -> Void
     let onApplyForLoan: () -> Void
 
@@ -223,7 +223,7 @@ struct ApplicationTrackingCard: View {
                     Text(application.isDraft ? "Current Step" : "Submitted")
                         .font(LMSFont.caption2)
                         .foregroundStyle(LMSColors.textSecondary)
-                    Text(application.isDraft ? "Step \(application.draftStepIndex) of 10" : (application.submittedAt ?? application.updatedAt).formattedAsDDMMMYYYY())
+                    Text(application.isDraft ? "Step \(application.draftStepIndex) of 9" : (application.submittedAt ?? application.updatedAt).formattedAsDDMMMYYYY())
                         .font(LMSFont.footnote.weight(.medium))
                         .foregroundStyle(LMSColors.textPrimary)
                     if application.isDraft {

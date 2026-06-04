@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AdminAuditTrailView: View {
-    @StateObject private var viewModel = AdminAuditViewModel()
+    @State private var viewModel = AdminAuditViewModel()
     @State private var showingExportOptions = false
     @State private var shareURL: URL?
     @State private var isShowingShareSheet = false

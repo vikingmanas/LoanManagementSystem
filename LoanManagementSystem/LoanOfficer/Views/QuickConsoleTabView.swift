@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct QuickConsoleTabView: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     var onActionSelected: (String) -> Void
     
     @State private var principalAmount: Double = 2500000.0 // 25 Lakhs

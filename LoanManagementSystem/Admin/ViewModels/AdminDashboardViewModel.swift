@@ -1,17 +1,19 @@
+import Observation
 import Foundation
 import Combine
 import SwiftUI
 import Supabase
 
 @MainActor
-final class AdminDashboardViewModel: ObservableObject {
-    @Published var kpis: [AdminKPI] = []
-    @Published var systemHealth = SystemHealth(serverUptime: 100.0, activeSessions: 0, lastBackupTime: Date())
-    @Published var recentAuditLogs: [AuditLogEntry] = []
-    @Published var approvalBreakdown: (approved: Int, rejected: Int, pending: Int) = (0, 0, 0)
+@Observable
+final class AdminDashboardViewModel {
+    var kpis: [AdminKPI] = []
+    var systemHealth = SystemHealth(serverUptime: 100.0, activeSessions: 0, lastBackupTime: Date())
+    var recentAuditLogs: [AuditLogEntry] = []
+    var approvalBreakdown: (approved: Int, rejected: Int, pending: Int) = (0, 0, 0)
 
-    @Published var isLoading = false
-    @Published var errorMessage: String?
+    var isLoading = false
+    var errorMessage: String?
     
     private var branchBreakdowns: [String: [KPIBranchData]] = [:]
     

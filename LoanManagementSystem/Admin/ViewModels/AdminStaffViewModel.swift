@@ -1,18 +1,20 @@
+import Observation
 import Foundation
 import Combine
 import SwiftUI
 
 @MainActor
-final class AdminStaffViewModel: ObservableObject {
-    @Published var staffMembers: [StaffMember] = []
-    @Published var branches: [BranchInfo] = []
-    @Published var isLoading: Bool = false
-    @Published var errorMessage: String? = nil
+@Observable
+final class AdminStaffViewModel {
+    var staffMembers: [StaffMember] = []
+    var branches: [BranchInfo] = []
+    var isLoading: Bool = false
+    var errorMessage: String? = nil
 
 
-    @Published var searchText: String = ""
-    @Published var selectedRoleFilter: StaffRole? = nil
-    @Published var selectedStatusFilter: StaffStatus? = nil
+    var searchText: String = ""
+    var selectedRoleFilter: StaffRole? = nil
+    var selectedStatusFilter: StaffStatus? = nil
 
     private let service = AdminStaffService.shared
 

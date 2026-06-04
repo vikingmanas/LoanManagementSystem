@@ -2,7 +2,7 @@ import SwiftUI
 
 
 struct ManagerCommunicationTabView: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @State private var activeConversation: ManagerChatConversation? = nil
     @State private var showBroadcastSheet = false
 
@@ -129,7 +129,7 @@ private struct ConversationRow: View {
 
 private struct ManagerChatDetailView: View {
     let conversation: ManagerChatConversation
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
     @State private var chatText = ""
 
@@ -214,7 +214,7 @@ private struct ChatBubble: View {
 }
 
 private struct BroadcastAnnouncementSheet: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
     @State private var subject = ""
     @State private var message = ""

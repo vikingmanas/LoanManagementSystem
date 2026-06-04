@@ -3,7 +3,7 @@ import SwiftUI
 /// Reusable full-screen notification list view used by all user roles.
 /// Displays real notifications from Supabase via NotificationViewModel.
 struct NotificationsListView: View {
-    @ObservedObject var viewModel: NotificationViewModel
+    @Bindable var viewModel: NotificationViewModel
     @Environment(\.dismiss) private var dismiss
     
     /// Determines if the view is being pushed into a NavigationStack or presented as a sheet.

@@ -2,7 +2,7 @@ import SwiftUI
 import Charts
 
 struct ManagerBranchTabView: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @State private var showBranchOverview = false
     @State private var showOfficerPerformance = false
     @State private var showReportSheet = false

@@ -1,3 +1,4 @@
+import Observation
 import Foundation
 import Combine
 import SwiftUI
@@ -29,11 +30,12 @@ public enum PortalRole: String, CaseIterable, Identifiable {
     }
 }
 
-class AppStateManager: ObservableObject {
-    @Published var isAuthenticated: Bool = false
-    @Published var selectedRole: PortalRole = .customer
-    @Published var showRoleSelection: Bool = false
-    @Published var requiresBorrowerOnboarding: Bool = false
+@Observable
+class AppStateManager {
+    var isAuthenticated: Bool = false
+    var selectedRole: PortalRole = .customer
+    var showRoleSelection: Bool = false
+    var requiresBorrowerOnboarding: Bool = false
     
     
     func login(requiresBorrowerOnboarding: Bool = false) {

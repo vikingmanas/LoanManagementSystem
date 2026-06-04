@@ -2,7 +2,7 @@ import SwiftUI
 
 struct DashboardTabView: View {
     typealias LoanApplication = OfficerLoanApplication
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     
     var onDocumentSeeAllTapped: () -> Void
     var onManagerRespondTapped: (LoanApplication) -> Void

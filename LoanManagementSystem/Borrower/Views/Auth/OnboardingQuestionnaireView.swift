@@ -2,9 +2,9 @@ import SwiftUI
 import Supabase
 
 struct OnboardingQuestionnaireView: View {
-    @EnvironmentObject private var authManager: AuthManager
-    @EnvironmentObject private var appState: AppStateManager
-    @ObservedObject private var profileStore = BorrowerProfileStore.shared
+    @Environment(AuthManager.self) private var authManager: AuthManager
+    @Environment(AppStateManager.self) private var appState: AppStateManager
+    @Bindable private var profileStore = BorrowerProfileStore.shared
     
     @State private var currentStep = 0
     private let totalSteps = 2

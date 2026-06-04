@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ManagerLoanProductConfigurationView: View {
-    @StateObject private var viewModel = ManagerLoanProductConfigurationViewModel()
+    @State private var viewModel = ManagerLoanProductConfigurationViewModel()
 
     var body: some View {
         Group {
@@ -100,7 +100,7 @@ private struct ManagerLoanProductRow: View {
 
 struct ManagerLoanProductPricingDetailView: View {
     @State var product: AdminLoanProduct
-    @ObservedObject var viewModel: ManagerLoanProductConfigurationViewModel
+    @Bindable var viewModel: ManagerLoanProductConfigurationViewModel
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {

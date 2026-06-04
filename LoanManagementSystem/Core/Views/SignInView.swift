@@ -1,9 +1,9 @@
 import SwiftUI
 
 struct SignInView: View {
-    @EnvironmentObject var appState: AppStateManager
-    @EnvironmentObject var authManager: AuthManager
-    @StateObject private var viewModel = SignInViewModel()
+    @Environment(AppStateManager.self) var appState: AppStateManager
+    @Environment(AuthManager.self) var authManager: AuthManager
+    @State private var viewModel = SignInViewModel()
     @State private var showBankAccess = false
 
     var body: some View {
@@ -369,6 +369,6 @@ private struct BankRoleAccessSheet: View {
 
 #Preview {
     SignInView()
-        .environmentObject(AppStateManager())
-        .environmentObject(AuthManager())
+        .environment(AppStateManager())
+        .environment(AuthManager())
 }

@@ -6,7 +6,7 @@ struct LoanManagementSystemApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     
     /// Shared authentication manager injected into the environment.
-    @StateObject private var authManager = AuthManager.shared
+    @State private var authManager = AuthManager.shared
     @AppStorage("isDarkMode") private var isDarkMode = false
     
     init() {}
@@ -14,7 +14,7 @@ struct LoanManagementSystemApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(authManager)
+                .environment(authManager)
                 .accessibilityOverrides()
                 .onAppear { applyDarkModeToAllWindows() }
                 .onChange(of: isDarkMode) { applyDarkModeToAllWindows() }

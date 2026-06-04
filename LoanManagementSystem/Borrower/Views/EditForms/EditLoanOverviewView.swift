@@ -2,7 +2,7 @@ import SwiftUI
 
 struct EditLoanOverviewView: View {
     @Environment(\.presentationMode) var presentationMode
-    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Bindable var viewModel: BorrowerProfileViewModel
 
     @State private var requestType: String = "Tenure Extension"
     @State private var reason: String = "Temporary financial hardship"

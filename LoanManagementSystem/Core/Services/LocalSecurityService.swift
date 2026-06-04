@@ -1,13 +1,15 @@
+import Observation
 import Combine
 import Foundation
 import LocalAuthentication
 
 @MainActor
-final class LocalSecurityService: ObservableObject {
+@Observable
+final class LocalSecurityService {
     static let shared = LocalSecurityService()
 
-    @Published private(set) var lastOTPCode: String = ""
-    @Published private(set) var lastOTPIssuedAt: Date?
+    private(set) var lastOTPCode: String = ""
+    private(set) var lastOTPIssuedAt: Date?
 
     private let otpTTL: TimeInterval = 300
 

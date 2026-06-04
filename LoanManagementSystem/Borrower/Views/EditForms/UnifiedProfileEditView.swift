@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct UnifiedProfileEditContentView: View {
-    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Bindable var viewModel: BorrowerProfileViewModel
     
     @State private var fullName: String = ""
     @State private var gender: String = ""
@@ -296,7 +296,7 @@ struct UnifiedProfileEditContentView: View {
 
 struct UnifiedProfileEditView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Bindable var viewModel: BorrowerProfileViewModel
     
     var body: some View {
         NavigationStack {

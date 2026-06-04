@@ -98,7 +98,7 @@ struct ProfileCompletionCardSection: View {
 
 
 struct LoanPortfolioSummarySection: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
@@ -120,7 +120,7 @@ struct LoanPortfolioSummarySection: View {
 }
 
 struct LoanPortfolioSummaryCard: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
 
     var body: some View {
         ZStack {
@@ -188,7 +188,7 @@ struct LoanPortfolioSummaryCard: View {
 
 
 struct ActiveLoanAccountsSection: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     let onLoanTap: (DashboardLoanAccount) -> Void
     let onApplyLoan: () -> Void
 
@@ -226,7 +226,7 @@ struct ActiveLoanAccountsSection: View {
 }
 
 struct ActiveLoansCarousel: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     let loans: [DashboardLoanAccount]
     let onLoanTap: (DashboardLoanAccount) -> Void
     @State private var selectedIndex = 0
@@ -332,7 +332,7 @@ struct ActiveLoanAccountCard: View {
 
 
 struct UpcomingPaymentSection: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     var onPayNow: () -> Void
     var onViewAll: () -> Void
     var onSchedule: () -> Void
@@ -413,12 +413,10 @@ struct UpcomingPaymentSection: View {
 
 
 struct DashboardQuickActionsSection: View {
-    var onApplyLoan: () -> Void
     var onPayEMI: () -> Void
     var onStatement: () -> Void
     var onSupport: () -> Void
     var onCalculator: () -> Void
-    var onForeclosure: () -> Void
     var onTopUp: () -> Void
 
     private var actions: [DashboardQuickAction] {
@@ -636,7 +634,7 @@ private struct AccountFilterSheet: View {
 }
 
 struct TransactionHistoryFullScreen: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @State private var searchText = ""
     @State private var selectedFilter: DashboardTransactionFilter = .all
     @State private var selectedSort: DashboardTransactionSort = .newest

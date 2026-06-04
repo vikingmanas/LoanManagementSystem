@@ -1,3 +1,4 @@
+import Observation
 import SwiftUI
 import Combine
 import Supabase
@@ -5,13 +6,14 @@ import Supabase
 /// Shared ViewModel for in-app notifications, usable by all user roles.
 /// Fetches notifications from Supabase and auto-polls for new ones.
 @MainActor
-public final class NotificationViewModel: ObservableObject {
+@Observable
+public final class NotificationViewModel {
     
-    @Published public var notifications: [DBNotification] = []
-    @Published public var unreadCount: Int = 0
-    @Published public var isLoading: Bool = false
+    public var notifications: [DBNotification] = []
+    public var unreadCount: Int = 0
+    public var isLoading: Bool = false
     
-    private var realtimeChannel: RealtimeChannelV2?
+    nonisolated(unsafe) private var realtimeChannel: RealtimeChannelV2?
     private var userId: UUID?
     
     public init() {}

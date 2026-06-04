@@ -261,12 +261,12 @@ private struct FormDivider: View {
 }
 
 struct BorrowerLoanWizardView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     let onComplete: () -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
-    @EnvironmentObject private var authManager: AuthManager
+    @Environment(AuthManager.self) private var authManager: AuthManager
 
     @State private var currentStep: Int = 1
     @State private var navigationDirection: WizardNavigationDirection = .forward
@@ -1786,7 +1786,7 @@ private struct Step1OverviewView: View {
 }
 
 private struct Step2EligibilityCheckView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     @Binding var desiredAmount: Double
     @Binding var tenureMonths: Double
@@ -1970,7 +1970,7 @@ private struct Step2EligibilityCheckView: View {
 }
 
 private struct Step3PersonalInfoOverhaulView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     
     var body: some View {
         VStack(spacing: LMSSpacing.lg) {
@@ -2008,7 +2008,7 @@ private struct Step3PersonalInfoOverhaulView: View {
 }
 
 private struct Step4EmploymentOverhaulView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     
     @Binding var salariedCompany: String
     @Binding var salariedEmpID: String
@@ -2109,7 +2109,7 @@ private struct Step5BankDetailsView: View {
 }
 
 private struct Step6DocumentCenterOverhaulView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     @Binding var stepValidationMessage: String?
     @Binding var uploadProgress: [String: Double]
@@ -2733,7 +2733,7 @@ private final class SignatureCanvasUIView: UIView {
 private struct LiveFaceVerificationView: View {
     let onComplete: (String) -> Void
     let onCancel: () -> Void
-    @StateObject private var camera = LiveFaceCameraController()
+    @State private var camera = LiveFaceCameraController()
 
     var body: some View {
         ZStack {
@@ -2824,10 +2824,10 @@ private struct LiveFaceCameraPreview: UIViewRepresentable {
 private final class LiveFaceCameraController: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     let session = AVCaptureSession()
     private let verificationDurationSeconds = 5
-    @Published var remainingSeconds = 5
-    @Published var faceDetected = false
-    @Published var statusText = "Recording..."
-    @Published var showFailureAlert = false
+    var remainingSeconds = 5
+    var faceDetected = false
+    var statusText = "Recording..."
+    var showFailureAlert = false
     private var timer: Timer?
     private var detectedFrames = 0
     private var totalFrames = 0
@@ -2946,7 +2946,7 @@ private struct Step8NomineeReferencesView: View {
 }
 
 private struct Step9ReviewOverhaulView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     let onEditStep: (Int) -> Void
 
@@ -3008,7 +3008,7 @@ private struct Step9ReviewOverhaulView: View {
 }
 
 private struct Step10TermsConsentView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     @Binding var acceptTerms: Bool
     @Binding var acceptBureau: Bool
