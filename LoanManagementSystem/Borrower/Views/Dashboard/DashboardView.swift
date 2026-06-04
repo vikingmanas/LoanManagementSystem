@@ -208,12 +208,10 @@ public struct DashboardView: View {
                     LoanPortfolioSummarySection(viewModel: viewModel)
 
                     DashboardQuickActionsSection(
-                        onApplyLoan: { tabRouter.select(.loans) },
                         onPayEMI: { navigationPath.append(.payEMI) },
                         onStatement: { navigationPath.append(.statement) },
                         onSupport: { navigationPath.append(.support) },
                         onCalculator: { navigationPath.append(.emiCalculator) },
-                        onForeclosure: { navigationPath.append(.foreclosure) },
                         onTopUp: { navigationPath.append(.topUp) }
                     )
 
@@ -327,6 +325,7 @@ public struct DashboardView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
+        .glassEffect(.regular, in: Capsule())
     }
 }
 

@@ -813,11 +813,11 @@ private struct ApplicationCard: View {
                     Text(application.displayIdentifier)
                         .font(.caption.monospaced())
                         .foregroundStyle(LMSColors.textSecondary)
-                    Text(application.isDraft ? "Step \(application.draftStepIndex) of 10" : "Last Update: \((application.submittedAt ?? application.updatedAt).formattedAsDDMMMYYYY())")
+                    Text(application.isDraft ? "Step \(application.draftStepIndex) of 9" : "Last Update: \((application.submittedAt ?? application.updatedAt).formattedAsDDMMMYYYY())")
                         .font(.system(size: 10))
                         .foregroundStyle(LMSColors.textTertiary)
                     if application.isDraft {
-                        Text("\(Int((Double(min(max(application.draftStepIndex, 1), 10)) / 10.0) * 100))% Complete")
+                        Text("\(Int((Double(min(max(application.draftStepIndex, 1), 9)) / 9.0) * 100))% Complete")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(LMSColors.brandNavy)
                         Text("Updated \(RelativeDateFormatter.shared.relativeString(from: application.updatedAt))")
