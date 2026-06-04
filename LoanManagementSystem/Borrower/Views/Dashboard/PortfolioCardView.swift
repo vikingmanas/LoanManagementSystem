@@ -46,7 +46,7 @@ extension View {
 
 // MARK: - Refined Portfolio Carousel View
 public struct PortfolioCarouselView: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @State private var currentIndex = 0
     
     let onNavigateToLoan: (DashboardLoanAccount) -> Void
@@ -146,7 +146,7 @@ private struct EmptyLoanAccountStateCard: View {
 
 // MARK: - Card 1: Total Loan Outstanding Card
 struct TotalLoanOutstandingCard: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {

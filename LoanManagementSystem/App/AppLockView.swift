@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AppLockView: View {
     @Binding var isUnlocked: Bool
-    @StateObject private var localSecurity = LocalSecurityService.shared
+    @State private var localSecurity = LocalSecurityService.shared
     @State private var authenticationFailed = false
 
     var body: some View {

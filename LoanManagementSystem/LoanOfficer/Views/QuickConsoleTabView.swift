@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct QuickConsoleTabView: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     var onActionSelected: (String) -> Void
     
     // Live Calculator states

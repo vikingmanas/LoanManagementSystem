@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ProfileInfoDetailView: View {
-    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Bindable var viewModel: BorrowerProfileViewModel
     @State private var showingEditView = false
     
     var body: some View {
@@ -135,7 +135,7 @@ struct ProfileInfoDetailView: View {
 
 // Internal Wrapper for Push-based editing (Non-Modal)
 struct UnifiedProfileEditScreen: View {
-    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Bindable var viewModel: BorrowerProfileViewModel
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {

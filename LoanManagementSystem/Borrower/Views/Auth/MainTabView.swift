@@ -1,11 +1,11 @@
 import SwiftUI
 
 struct MainTabView: View {
-    @EnvironmentObject private var authManager: AuthManager
-    @EnvironmentObject private var appState: AppStateManager
-    @StateObject private var tabRouter = BorrowerTabRouter()
-    @StateObject private var dashboardViewModel = DashboardViewModel()
-    @StateObject private var loanApplicationViewModel = LoanApplicationViewModel()
+    @Environment(AuthManager.self) private var authManager: AuthManager
+    @Environment(AppStateManager.self) private var appState: AppStateManager
+    @State private var tabRouter = BorrowerTabRouter()
+    @State private var dashboardViewModel = DashboardViewModel()
+    @State private var loanApplicationViewModel = LoanApplicationViewModel()
 
     init() {
         let appearance = UITabBarAppearance()
@@ -57,7 +57,7 @@ struct MainTabView: View {
         .tint(LMSColors.brandNavy)
         .toolbarBackground(LMSColors.surfaceElevated, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
-        .environmentObject(tabRouter)
+        .environment(tabRouter)
         .task {
             await dashboardViewModel.fetchDashboardData()
         }
@@ -66,6 +66,6 @@ struct MainTabView: View {
 
 #Preview {
     MainTabView()
-        .environmentObject(AppStateManager())
-        .environmentObject(AuthManager())
+        .environment(AppStateManager())
+        .environment(AuthManager())
 }

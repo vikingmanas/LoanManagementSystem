@@ -19,7 +19,7 @@ struct ManagerSettingsView: View {
     @AppStorage("managerNotifReports") private var notifReports = true
     
     @AppStorage("biometricEnabled") private var biometricEnabled = false
-    @StateObject private var localSecurity = LocalSecurityService.shared
+    @State private var localSecurity = LocalSecurityService.shared
 
     var body: some View {
         List {

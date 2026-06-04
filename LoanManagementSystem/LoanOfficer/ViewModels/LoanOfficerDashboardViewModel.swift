@@ -1,3 +1,4 @@
+import Observation
 import SwiftUI
 import Combine
 import Supabase
@@ -10,21 +11,22 @@ enum HistorySortOrder: String, CaseIterable {
 }
 
 @MainActor
-class LoanOfficerDashboardViewModel: ObservableObject {
+@Observable
+class LoanOfficerDashboardViewModel {
     typealias LoanApplication = OfficerLoanApplication
     typealias LoanType = OfficerLoanType
     typealias ApplicationStatus = OfficerApplicationStatus
     typealias DocumentStatus = OfficerDocumentStatus
     typealias DocumentType = OfficerDocumentType
-    @Published var applications: [LoanApplication] = []
-    @Published var activityFeed: [ActivityFeedItem] = []
-    @Published var applicationMessages: [UUID: [DBMessage]] = [:]
-    @Published var officerProfile: StaffMember? = nil
-    @Published var isLoading: Bool = true
-    @Published var hasError: Bool = false
-    @Published var selectedTab: Int = 0              // 0=Dashboard, 1=History
+    var applications: [LoanApplication] = []
+    var activityFeed: [ActivityFeedItem] = []
+    var applicationMessages: [UUID: [DBMessage]] = [:]
+    var officerProfile: StaffMember? = nil
+    var isLoading: Bool = true
+    var hasError: Bool = false
+    var selectedTab: Int = 0              // 0=Dashboard, 1=History
     
-    private var realtimeChannel: RealtimeChannelV2?
+    nonisolated(unsafe) private var realtimeChannel: RealtimeChannelV2?
     private var cancellables = Set<AnyCancellable>()
     private var isFetchingDashboardData = false
     
@@ -40,17 +42,17 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
     
     // Tab 2 History Filter parameters
-    @Published var historyFilter: RegistryFilter = .all
-    @Published var historyLoanTypeFilter: LoanType? = nil
-    @Published var historySortOrder: HistorySortOrder = .newest
-    @Published var historySearchQuery: String = ""
+    var historyFilter: RegistryFilter = .all
+    var historyLoanTypeFilter: LoanType? = nil
+    var historySortOrder: HistorySortOrder = .newest
+    var historySearchQuery: String = ""
     
     // Date Range filters for history
-    @Published var historyStartDate: Date = Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date()
-    @Published var historyEndDate: Date = Date()
+    var historyStartDate: Date = Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date()
+    var historyEndDate: Date = Date()
     
     // Notifications Count
-    @Published var unreadActivityCount: Int = 0
+    var unreadActivityCount: Int = 0
     
     // MARK: - KPI Computed Properties
     var totalApplications: Int {

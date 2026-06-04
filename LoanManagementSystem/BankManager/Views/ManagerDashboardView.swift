@@ -1,9 +1,9 @@
 import SwiftUI
 
 struct ManagerDashboardView: View {
-    @EnvironmentObject private var authManager: AuthManager
-    @StateObject private var viewModel = ManagerDashboardViewModel()
-    @StateObject private var notificationViewModel = NotificationViewModel()
+    @Environment(AuthManager.self) private var authManager: AuthManager
+    @State private var viewModel = ManagerDashboardViewModel()
+    @State private var notificationViewModel = NotificationViewModel()
 
     @State private var selectedTab: ManagerWorkspaceTab = .dashboard
     @State private var showProfileSheet = false
@@ -120,7 +120,7 @@ enum ManagerWorkspaceTab: Int, Hashable {
 }
 
 private struct ManagerSearchSheet: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     var onSelectApplicant: (ManagerApplicant) -> Void
     @Environment(\.dismiss) var dismiss
     @State private var query = ""

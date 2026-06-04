@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AdminBranchKPIView: View {
     let kpi: AdminKPI
-    @ObservedObject var viewModel: AdminDashboardViewModel
+    @Bindable var viewModel: AdminDashboardViewModel
     
     @State private var branchData: [KPIBranchData] = []
     @State private var searchText = ""

@@ -5,7 +5,7 @@ struct DocumentReviewDetailView: View {
     typealias DocumentType = OfficerDocumentType
     typealias DocumentStatus = OfficerDocumentStatus
     let item: DocumentQueueItem
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     let isPresentedModally: Bool
     @Environment(\.dismiss) var dismiss
     

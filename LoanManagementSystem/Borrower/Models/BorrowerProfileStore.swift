@@ -1,3 +1,4 @@
+import Observation
 import Foundation
 import Combine
 import Supabase
@@ -13,12 +14,13 @@ public struct UserAccount: Codable {
 }
 
 @MainActor
-public class BorrowerProfileStore: ObservableObject {
+@Observable
+public class BorrowerProfileStore {
     public static let shared = BorrowerProfileStore()
 
-    @Published public var profile: BorrowerProfile?
-    @Published public var accounts: [UserAccount] = []
-    @Published var currentEmail: String?
+    public var profile: BorrowerProfile?
+    public var accounts: [UserAccount] = []
+    var currentEmail: String?
 
     private init() {
         setupDefaultAccount()

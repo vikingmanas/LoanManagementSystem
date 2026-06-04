@@ -390,5 +390,5 @@ private struct BorrowerChatAvatar: View {
 
 #Preview {
     BorrowerChatView()
-        .environmentObject(AuthManager())
+        .environment(AuthManager())
 }

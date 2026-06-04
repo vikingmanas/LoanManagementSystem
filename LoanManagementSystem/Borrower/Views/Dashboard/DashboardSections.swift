@@ -101,7 +101,7 @@ struct ProfileCompletionCardSection: View {
 // MARK: - Loan Portfolio Summary
 
 struct LoanPortfolioSummarySection: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
@@ -123,7 +123,7 @@ struct LoanPortfolioSummarySection: View {
 }
 
 struct LoanPortfolioSummaryCard: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
 
     var body: some View {
         ZStack {
@@ -192,7 +192,7 @@ struct LoanPortfolioSummaryCard: View {
 // MARK: - Active Loan Accounts
 
 struct ActiveLoanAccountsSection: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     let onLoanTap: (DashboardLoanAccount) -> Void
     let onApplyLoan: () -> Void
 
@@ -230,7 +230,7 @@ struct ActiveLoanAccountsSection: View {
 }
 
 struct ActiveLoansCarousel: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     let loans: [DashboardLoanAccount]
     let onLoanTap: (DashboardLoanAccount) -> Void
     @State private var selectedIndex = 0
@@ -337,7 +337,7 @@ struct ActiveLoanAccountCard: View {
 // MARK: - Upcoming Payment
 
 struct UpcomingPaymentSection: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     var onPayNow: () -> Void
     var onViewAll: () -> Void
     var onSchedule: () -> Void
@@ -644,7 +644,7 @@ private struct AccountFilterSheet: View {
 }
 
 struct TransactionHistoryFullScreen: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @State private var searchText = ""
     @State private var selectedFilter: DashboardTransactionFilter = .all
     @State private var selectedSort: DashboardTransactionSort = .newest

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AdminLoanRulesTabView: View {
-    @StateObject private var viewModel = AdminLoanRulesViewModel()
+    @State private var viewModel = AdminLoanRulesViewModel()
     @State private var showingAddSheet = false
     @State private var showingAlert = false
     @State private var alertTitle = ""

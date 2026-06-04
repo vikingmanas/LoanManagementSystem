@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct KYCStatusDetailView: View {
-    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Bindable var viewModel: BorrowerProfileViewModel
     @State private var showingEditSheet = false
     
     var body: some View {

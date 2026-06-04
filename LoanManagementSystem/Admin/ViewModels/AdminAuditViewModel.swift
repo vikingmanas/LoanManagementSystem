@@ -1,3 +1,4 @@
+import Observation
 import Foundation
 import Combine
 import SwiftUI
@@ -5,13 +6,14 @@ import OSLog
 import Supabase
 
 @MainActor
-final class AdminAuditViewModel: ObservableObject {
-    @Published var auditEntries: [AuditLogEntry] = []
-    @Published var searchText: String = ""
-    @Published var selectedType: AuditLogType? = nil
+@Observable
+final class AdminAuditViewModel {
+    var auditEntries: [AuditLogEntry] = []
+    var searchText: String = ""
+    var selectedType: AuditLogType? = nil
     
-    @Published var isLoading = false
-    @Published var errorMessage: String?
+    var isLoading = false
+    var errorMessage: String?
     
     var filteredEntries: [AuditLogEntry] {
         var filtered = auditEntries

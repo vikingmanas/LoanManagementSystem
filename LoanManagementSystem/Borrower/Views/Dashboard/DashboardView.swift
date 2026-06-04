@@ -23,7 +23,7 @@ public enum DashboardRoute: Hashable {
 
 // MARK: - Native Status Banner Section
 struct StatusBannerSection: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @Binding var navigationPath: [DashboardRoute]
 
     var body: some View {
@@ -170,12 +170,12 @@ struct QuickActionButton: View {
 // MARK: - Dashboard View
 
 public struct DashboardView: View {
-    @EnvironmentObject var appState: AppStateManager
-    @EnvironmentObject var authManager: AuthManager
-    @EnvironmentObject var tabRouter: BorrowerTabRouter
-    @ObservedObject var viewModel: DashboardViewModel
+    @Environment(AppStateManager.self) var appState: AppStateManager
+    @Environment(AuthManager.self) var authManager: AuthManager
+    @Environment(BorrowerTabRouter.self) var tabRouter: BorrowerTabRouter
+    @Bindable var viewModel: DashboardViewModel
     
-    @StateObject private var profileViewModel = BorrowerProfileViewModel()
+    @State private var profileViewModel = BorrowerProfileViewModel()
     @State private var navigationPath = [DashboardRoute]()
     @AppStorage("dashboard.dismissedProfileCompletionPercentage") private var dismissedProfileCompletionPercentage = -1
 
@@ -271,8 +271,8 @@ public struct DashboardView: View {
                     SchemeDetailsView(scheme: scheme)
                 case .profile:
                     ProfileView()
-                        .environmentObject(authManager)
-                        .environmentObject(appState)
+                        .environment(authManager)
+                        .environment(appState)
                 case .linkedBankAccounts:
                     LinkedBankAccountsDetailView(viewModel: profileViewModel)
                 case .profileInfo:
@@ -369,7 +369,7 @@ private struct RepaymentScheduleItem: Identifiable, Hashable {
 }
 
 private struct RepaymentScheduleView: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @State private var selectedLoanID: UUID?
 
     init(viewModel: DashboardViewModel, initialLoan: DashboardLoanAccount?) {
@@ -660,7 +660,7 @@ private struct RepaymentScheduleRow: View {
 
 // MARK: - Section 6: Govt Schemes
 struct GovernmentSchemesSection: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     let onSchemeTap: (GovernmentScheme) -> Void
     @State private var showingPlaceholderAlert = false
     
@@ -1042,7 +1042,7 @@ private enum EMIPaymentOption: String, CaseIterable, Identifiable {
 }
 
 struct PayEMIWorkflowView: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var step: EMIPaymentStep = .selectLoan
     @State private var selectedLoan: DashboardLoanAccount?
@@ -1802,7 +1802,7 @@ private enum StatementFormat: String, CaseIterable, Identifiable {
 }
 
 struct StatementWorkflowView: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @State private var selectedAccountID: String?
     @State private var period: StatementPeriod = .days30
     @State private var format: StatementFormat = .pdf
@@ -2008,7 +2008,7 @@ private enum TopUpMode {
 }
 
 struct TopUpWorkflowView: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var step: TopUpStep = .home
     @State private var mode: TopUpMode?
@@ -2639,7 +2639,7 @@ private struct TopUpSuccessView: View {
 }
 
 struct QuickPaySheet: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @Environment(\.dismiss) var dismiss
     @State private var successMessage = ""
     @State private var showSuccessAlert = false
@@ -2835,7 +2835,7 @@ struct QuickPaySheet: View {
 }
 
 struct StatementSheet: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
@@ -2886,7 +2886,7 @@ struct StatementSheet: View {
 }
 
 struct CloseLoanSheet: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @State private var selectedLoan: DashboardLoanAccount?
     @State private var acceptedClosure = false
     @State private var selectedPaymentAccountID: UUID?
@@ -3293,7 +3293,7 @@ struct SupportSheet: View {
 }
 
 struct TopUpSheet: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @Environment(\.dismiss) var dismiss
     @State private var topUpAmount = 10000.0
     @State private var destinationAccountID: UUID?
@@ -3522,7 +3522,7 @@ struct LoanDetailsView: View {
 
 struct BankDetailsView: View {
     let bank: BankAccount
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     
     var body: some View {
         List {
@@ -3615,7 +3615,7 @@ struct InsuranceDetailsView: View {
 
 
 struct AllPendingEMIsView: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     
     var body: some View {
         List {

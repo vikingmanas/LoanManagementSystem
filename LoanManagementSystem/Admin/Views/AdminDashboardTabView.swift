@@ -1,10 +1,10 @@
 import SwiftUI
 
 struct AdminDashboardTabView: View {
-    @ObservedObject var viewModel: AdminDashboardViewModel
+    @Bindable var viewModel: AdminDashboardViewModel
     @Binding var showingProfile: Bool
     
-    @EnvironmentObject private var authManager: AuthManager
+    @Environment(AuthManager.self) private var authManager: AuthManager
     
     let columns = [GridItem(.flexible()), GridItem(.flexible())]
 
@@ -228,5 +228,5 @@ struct AdminDashboardTabView: View {
     auth.currentUser = AuthSessionUser(uid: "preview", email: "admin@lms.com", displayName: "US Admin")
 
     return AdminDashboardTabView(viewModel: vm, showingProfile: .constant(false))
-        .environmentObject(auth)
+        .environment(auth)
 }

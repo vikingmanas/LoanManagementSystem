@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AdminSignUpView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var viewModel = AdminSignUpViewModel()
+    @State private var viewModel = AdminSignUpViewModel()
 
     var body: some View {
         ZStack {

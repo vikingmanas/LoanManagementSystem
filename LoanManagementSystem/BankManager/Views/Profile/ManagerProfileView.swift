@@ -2,10 +2,10 @@ import SwiftUI
 
 
 struct ManagerProfileView: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var appState: AppStateManager
-    @EnvironmentObject var authManager: AuthManager
+    @Environment(AppStateManager.self) var appState: AppStateManager
+    @Environment(AuthManager.self) var authManager: AuthManager
 
     @State private var showChangePassword = false
     @AppStorage("isDarkMode") private var isDarkMode = false

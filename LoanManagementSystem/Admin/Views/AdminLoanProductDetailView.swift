@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AdminLoanProductDetailView: View {
     @State var product: AdminLoanProduct
-    @ObservedObject var viewModel: AdminLoanRulesViewModel
+    @Bindable var viewModel: AdminLoanRulesViewModel
     
     @Environment(\.dismiss) private var dismiss
     

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ManagerApplicantDetailView: View {
     let applicant: ManagerApplicant
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
 
     @State private var actionType: ActionType? = nil

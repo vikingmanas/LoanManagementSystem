@@ -2,7 +2,7 @@ import SwiftUI
 
 
 struct ManagerApplicantsTabView: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     var onSelectApplicant: (ManagerApplicant) -> Void
     
     var body: some View {

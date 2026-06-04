@@ -1,3 +1,4 @@
+import Observation
 import Foundation
 import Combine
 import SwiftUI
@@ -46,13 +47,14 @@ struct ManagerOfficerAssignment {
 }
 
 @MainActor
-final class CentralLoanRepository: ObservableObject {
+@Observable
+final class CentralLoanRepository {
     static let shared = CentralLoanRepository()
     
-    @Published var applications: [BorrowerLoanApplication] = []
-    @Published var disbursementEvents: [LoanDisbursementEvent] = []
-    @Published var borrowerNotifications: [LMSNotification] = []
-    @Published var globalRules = GlobalLoanRules(minCibilScore: 700, maxDTI: 50.0, maxLTV: 80.0)
+    var applications: [BorrowerLoanApplication] = []
+    var disbursementEvents: [LoanDisbursementEvent] = []
+    var borrowerNotifications: [LMSNotification] = []
+    var globalRules = GlobalLoanRules(minCibilScore: 700, maxDTI: 50.0, maxLTV: 80.0)
 
     private var officerRecordIdByUserId: [UUID: UUID] = [:]
     private var officerUserIdByRecordId: [UUID: UUID] = [:]

@@ -3,7 +3,7 @@ import SwiftUI
 struct ManagerApplicantActionSheet: View {
     let applicant: ManagerApplicant
     let actionType: ManagerApplicantDetailView.ActionType
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     var onComplete: () -> Void
 
     @Environment(\.dismiss) var dismiss

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct EditPersonalInfoView: View {
     @Environment(\.presentationMode) var presentationMode
-    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Bindable var viewModel: BorrowerProfileViewModel
 
     @State private var fullName: String
     @State private var gender: String

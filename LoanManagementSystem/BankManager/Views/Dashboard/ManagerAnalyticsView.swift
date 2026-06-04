@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ManagerAnalyticsView: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @State private var showPortfolioLedger = false
 
     private var approvalStats: (approved: Int, rejected: Int, pending: Int) {
@@ -422,7 +422,7 @@ private struct PortfolioTypeRow: View {
 }
 
 struct BranchPortfolioLedgerSheet: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     let portfolioItems: [LoanPortfolioItem]
     @Environment(\.dismiss) var dismiss
 
