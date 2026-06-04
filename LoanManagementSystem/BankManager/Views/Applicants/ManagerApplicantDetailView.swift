@@ -114,7 +114,7 @@ struct ManagerApplicantDetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
 
 
-                    CIBILScoreCard(score: applicant.cibilScore, showSheet: $showCIBILSheet)
+                    AdvancedRiskSection(applicant: applicant)
 
 
                     DocumentsSection(documents: applicant.documents)
@@ -275,65 +275,86 @@ private struct DetailRow: View {
 
 
 
-private struct CIBILScoreCard: View {
-    let score: Int
-    @Binding var showSheet: Bool
-
-    private var color: Color {
-        if score >= 700 { return LMSColors.emerald }
-        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return LMSColors.amber }
-        return LMSColors.coral
-    }
-
-    private var rating: String {
-        if score >= 750 { return "Excellent" }
-        if score >= 700 { return "Good" }
-        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return "Fair" }
-        return "Poor"
+private struct AdvancedRiskSection: View {
+    let applicant: ManagerApplicant
+    @State private var appearAnimation = false
+    
+    private var riskPillStyle: LMSStatusPill.Style {
+        switch applicant.riskLevel {
+        case .low: return .success
+        case .medium: return .warning
+        case .high, .critical: return .error
+        }
     }
 
     var body: some View {
-        Button(action: { showSheet = true }) {
-            HStack(spacing: LMSSpacing.lg) {
-                ZStack {
-                    Circle()
-                        .stroke(color.opacity(0.15), lineWidth: 6)
-                        .frame(width: 60, height: 60)
-                    Circle()
-                        .trim(from: 0, to: Double(score) / 900.0)
-                        .stroke(color, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                        .frame(width: 60, height: 60)
-                        .rotationEffect(.degrees(-90))
-
-                    Text("\(score)")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(LMSColors.textPrimary)
-                        .monospacedDigit()
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("CIBIL SCORE")
-                        .font(.system(size: 9, weight: .bold, design: .rounded))
-                        .foregroundStyle(LMSColors.textSecondary)
-                    Text(rating)
-                        .font(.system(.subheadline, design: .rounded).bold())
-                        .foregroundStyle(color)
-                    Text("Tap for risk insight")
-                        .font(.system(.caption2, design: .rounded))
-                        .foregroundStyle(LMSColors.textTertiary)
-                }
-
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            HStack {
+                Text("INTELLIRISK ENGINE™")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(LMSColors.textSecondary)
                 Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(LMSColors.textTertiary)
+                LMSStatusPill(text: applicant.riskLevel.rawValue, style: riskPillStyle, icon: applicant.riskLevel.icon)
             }
-            .padding(LMSSpacing.lg)
+
+            VStack(spacing: 0) {
+                // Header: Standard Score Display
+                HStack(spacing: LMSSpacing.lg) {
+                    ZStack {
+                        Circle()
+                            .stroke(applicant.riskLevel.themeColor.opacity(0.15), lineWidth: 6)
+                            .frame(width: 60, height: 60)
+                            
+                        Circle()
+                            .trim(from: 0, to: appearAnimation ? Double(applicant.compositeRiskScore) / 100.0 : 0)
+                            .stroke(applicant.riskLevel.themeColor, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                            .frame(width: 60, height: 60)
+                            .rotationEffect(.degrees(-90))
+                            .animation(.easeOut(duration: 1.2).delay(0.2), value: appearAnimation)
+
+                        Text("\(applicant.compositeRiskScore)")
+                            .font(.system(.title3, design: .rounded).weight(.bold))
+                            .foregroundStyle(LMSColors.textPrimary)
+                            .monospacedDigit()
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(applicant.riskLevel.rawValue + " Risk")
+                            .font(LMSFont.headline)
+                            .foregroundStyle(applicant.riskLevel.themeColor)
+                        
+                        Text("Proprietary AI risk assessment based on multiple data points.")
+                            .font(LMSFont.subheadline)
+                            .foregroundStyle(LMSColors.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer()
+                }
+                .padding(LMSSpacing.lg)
+
+                LMSGroupedDivider()
+
+                // Factors - displayed as standard grouped rows
+                ForEach(Array(applicant.riskFactors.enumerated()), id: \.element.id) { index, factor in
+                    LMSListRow(
+                        title: factor.title,
+                        subtitle: factor.description,
+                        icon: factor.isPositive ? "checkmark" : "exclamationmark.triangle.fill",
+                        iconColor: factor.isPositive ? LMSColors.emerald : LMSColors.amber,
+                        showChevron: false
+                    )
+                    
+                    if index < applicant.riskFactors.count - 1 {
+                        LMSGroupedDivider()
+                    }
+                }
+            }
             .background(LMSColors.surfaceElevated)
             .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+            .onAppear {
+                appearAnimation = true
+            }
         }
-        .buttonStyle(.plain)
     }
 }
 
