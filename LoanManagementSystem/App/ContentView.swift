@@ -146,7 +146,7 @@ struct ContentView: View {
             // MARK: - Splash Delay
             // Skip the splash delay inside SwiftUI Previews for instant canvas rendering.
             let isPreview = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
-            let delay = isPreview ? 0.5 : 1.5
+            let delay = isPreview ? 0.5 : 2.6
             
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 withAnimation(.easeInOut(duration: 0.5)) {
@@ -206,36 +206,103 @@ struct ContentView: View {
 
     // MARK: - Splash View
     private var splashView: some View {
+        LMSAnimatedSplashView()
+    }
+}
+
+private struct LMSAnimatedSplashView: View {
+    @State private var logoVisible = false
+    @State private var titleVisible = false
+    @State private var orbiting = false
+
+    var body: some View {
         ZStack {
-            
-            LinearGradient(
+            Color(hex: "#020711")
+                .ignoresSafeArea()
+
+            RadialGradient(
                 colors: [
-                    LMSColors.brandNavy,
-                    Color(hex: "#2E3B84")
+                    Color(hex: "#12375E").opacity(0.72),
+                    Color(hex: "#071523").opacity(0.52),
+                    .clear
                 ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                center: .center,
+                startRadius: 12,
+                endRadius: 420
             )
             .ignoresSafeArea()
-            
-            VStack(spacing: 20) {
-                
-                Image(systemName: "indianrupeesign.circle.fill")
-                    .font(.system(size: 60))
-                    .foregroundColor(.white)
-                
-                Text("Loan Manager")
-                    .font(.system(.title, design: .rounded))
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                
-                ProgressView()
-                    .progressViewStyle(.circular)
-                    .tint(.white.opacity(0.8))
-                    .scaleEffect(1.1)
+
+            VStack(spacing: 24) {
+                ZStack {
+                    Circle()
+                        .stroke(
+                            AngularGradient(
+                                colors: [
+                                    .clear,
+                                    LMSColors.actionBlue.opacity(0.8),
+                                    LMSColors.emerald.opacity(0.9),
+                                    .clear
+                                ],
+                                center: .center
+                            ),
+                            lineWidth: 1.5
+                        )
+                        .frame(width: 226, height: 226)
+                        .rotationEffect(.degrees(orbiting ? 360 : 0))
+
+                    Circle()
+                        .stroke(LMSColors.actionBlue.opacity(0.18), lineWidth: 1)
+                        .frame(width: 194, height: 194)
+                        .scaleEffect(logoVisible ? 1 : 0.55)
+
+                    Circle()
+                        .fill(LMSColors.actionBlue.opacity(0.18))
+                        .frame(width: 168, height: 168)
+                        .blur(radius: 28)
+                        .scaleEffect(logoVisible ? 1.22 : 0.45)
+
+                    Image("SplashLogo")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 140, height: 140)
+                        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        )
+                        .shadow(color: LMSColors.actionBlue.opacity(0.6), radius: 28)
+                        .shadow(color: LMSColors.emerald.opacity(0.28), radius: 48)
+                        .scaleEffect(logoVisible ? 1 : 0.42)
+                        .opacity(logoVisible ? 1 : 0)
+                }
+
+                VStack(spacing: 7) {
+                    Text("LoanMate")
+                        .font(.system(size: 38, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+
+                    Text("Smarter lending. Simpler life.")
+                        .font(.system(.subheadline, design: .rounded).weight(.medium))
+                        .foregroundStyle(Color.white.opacity(0.58))
+                        .tracking(0.7)
+                }
+                .opacity(titleVisible ? 1 : 0)
+                .offset(y: titleVisible ? 0 : 16)
             }
-            
         }
+        .onAppear {
+            withAnimation(.spring(response: 0.85, dampingFraction: 0.72)) {
+                logoVisible = true
+            }
+            withAnimation(.linear(duration: 5).repeatForever(autoreverses: false)) {
+                orbiting = true
+            }
+            withAnimation(.easeOut(duration: 0.7).delay(0.45)) {
+                titleVisible = true
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("LoanMate")
     }
 }
 
