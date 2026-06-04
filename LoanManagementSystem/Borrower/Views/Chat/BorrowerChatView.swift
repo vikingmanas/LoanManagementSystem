@@ -108,17 +108,22 @@ private struct BorrowerConversationRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            // Unread dot
-            Circle()
-                .fill(conversation.unreadCount > 0 ? LMSColors.actionBlue : Color.clear)
-                .frame(width: 10, height: 10)
+            ZStack(alignment: .topTrailing) {
+                BorrowerChatAvatar(
+                    name: "Loan Officer",
+                    icon: "person.badge.shield.checkmark.fill",
+                    tint: LMSColors.brandNavy
+                )
 
-            // Avatar
-            BorrowerChatAvatar(
-                name: "Loan Officer",
-                icon: "person.badge.shield.checkmark.fill",
-                tint: LMSColors.brandNavy
-            )
+                if conversation.unreadCount > 0 {
+                    Circle()
+                        .fill(.red)
+                        .frame(width: 12, height: 12)
+                        .overlay(Circle().stroke(LMSColors.surface, lineWidth: 2))
+                        .offset(x: 1, y: -1)
+                        .accessibilityHidden(true)
+                }
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .top) {

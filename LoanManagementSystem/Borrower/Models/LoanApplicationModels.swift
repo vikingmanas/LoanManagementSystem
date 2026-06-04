@@ -621,7 +621,7 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
         self.selectedIdentityDoc = selectedIdentityDoc
         self.selectedAddressDoc = selectedAddressDoc
         self.selectedIncomeDoc = selectedIncomeDoc
-        self.draftStepIndex = min(max(draftStepIndex, 1), 10)
+        self.draftStepIndex = min(max(draftStepIndex, 1), 9)
         self.bankName = bankName
         self.bankAccountNumber = bankAccountNumber
         self.bankIFSCCode = bankIFSCCode
@@ -1071,7 +1071,7 @@ struct DBLoanApplication: Codable {
             documents: documents,
             currentStage: BorrowerApplicationStage.from(databaseValue: status),
             stageHistory: stageHistory,
-            draftStepIndex: min(max(formData.draftStepIndex, 1), 10),
+            draftStepIndex: min(max(formData.draftStepIndex, 1), 9),
             submittedAt: submittedAt,
             updatedAt: updatedAt,
             assignedQueue: status == "draft" ? nil : "Loan Officer Assignment Pending",
@@ -1084,7 +1084,7 @@ struct DBLoanApplication: Codable {
     
     static func from(borrowerApplication app: BorrowerLoanApplication, borrowerId: UUID) -> DBLoanApplication {
         var formData = app.formData
-        formData.draftStepIndex = min(max(app.draftStepIndex, 1), 10)
+        formData.draftStepIndex = min(max(app.draftStepIndex, 1), 9)
 
         return DBLoanApplication(
             applicationId: app.id,

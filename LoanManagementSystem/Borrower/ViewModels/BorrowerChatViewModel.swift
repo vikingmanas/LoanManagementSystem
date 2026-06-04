@@ -14,8 +14,9 @@ struct BorrowerConversation: Identifiable, Hashable {
     }
 
     var unreadCount: Int {
-        // Unread = messages where borrower is receiver AND not yet read
-        messages.filter { !$0.isRead }.count
+        guard let uid = AuthManager.shared.currentUser?.uid,
+              let borrowerId = UUID(uuidString: uid) else { return 0 }
+        return messages.filter { $0.receiverId == borrowerId && !$0.isRead }.count
     }
 
     // Custom Hashable & Equatable conformance
@@ -274,6 +275,28 @@ final class BorrowerChatViewModel {
 
         do {
             try await DatabaseService.shared.markMessagesRead(messageIds: unreadIds)
+            let unreadIdSet = Set(unreadIds)
+            conversations = conversations.map { conversation in
+                let updatedMessages = conversation.messages.map { message in
+                    guard unreadIdSet.contains(message.messageId) else { return message }
+                    return DBMessage(
+                        messageId: message.messageId,
+                        senderId: message.senderId,
+                        receiverId: message.receiverId,
+                        applicationId: message.applicationId,
+                        content: message.content,
+                        sentAt: message.sentAt,
+                        isRead: true
+                    )
+                }
+                return BorrowerConversation(
+                    id: conversation.id,
+                    applicationId: conversation.applicationId,
+                    applicationDisplayId: conversation.applicationDisplayId,
+                    loanProductName: conversation.loanProductName,
+                    messages: updatedMessages
+                )
+            }
         } catch {
             print("[BorrowerChatVM] Failed to mark messages as read: \(error)")
         }

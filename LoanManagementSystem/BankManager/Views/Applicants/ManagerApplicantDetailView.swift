@@ -14,8 +14,7 @@ struct ManagerApplicantDetailView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            List {
+        List {
                 // MARK: - Profile Header
                 Section {
                     VStack(spacing: LMSSpacing.md) {
@@ -93,17 +92,17 @@ struct ManagerApplicantDetailView: View {
 
                 // MARK: - Advanced Risk Engine
                 Section {
-                    NavigationLink {
-                        CIBILDetailView(
-                            score: applicant.cibilScore,
-                            insight: LoanRiskInsightService.insight(for: applicant)
+                    AdvancedRiskSection(applicant: applicant)
+                        .background(
+                            NavigationLink("", destination: CIBILDetailView(
+                                score: applicant.cibilScore,
+                                insight: LoanRiskInsightService.insight(for: applicant)
+                            ))
+                            .opacity(0)
                         )
-                    } label: {
-                        AdvancedRiskSection(applicant: applicant)
-                    }
-                    .listRowInsets(EdgeInsets(top: LMSSpacing.md, leading: 0, bottom: LMSSpacing.md, trailing: LMSSpacing.screenHorizontal))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: LMSSpacing.md, leading: 0, bottom: LMSSpacing.md, trailing: 0))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                 } header: {
                     Text("Risk Analysis")
                 }
@@ -148,10 +147,6 @@ struct ManagerApplicantDetailView: View {
                             officerName: applicant.assignedOfficer,
                             remarks: applicant.officerRemarks
                         )
-                        
-                        if !applicant.managerRemarks.isEmpty {
-                            ManagerRemarksView(remarks: applicant.managerRemarks)
-                        }
                     }
                     .padding(.vertical, 8)
                     .listRowInsets(EdgeInsets(top: 0, leading: LMSSpacing.lg, bottom: 0, trailing: LMSSpacing.lg))
@@ -161,54 +156,50 @@ struct ManagerApplicantDetailView: View {
                 // MARK: - Actions
                 if applicant.status == .sentToManager || applicant.status == .needsClarification {
                     Section {
-                        Button(action: { actionType = .approve }) {
-                            HStack {
-                                Spacer()
-                                Text("Approve Application")
+                        VStack(spacing: 12) {
+                            Button {
+                                actionType = .approve
+                            } label: {
+                                Label("Approve Application", systemImage: "checkmark.seal.fill")
                                     .font(LMSFont.body.bold())
-                                Spacer()
+                                    .frame(maxWidth: .infinity)
+                                    .frame(minHeight: 28)
                             }
-                        }
-                        .tint(LMSColors.emerald)
+                            .buttonStyle(.borderedProminent)
+                            .buttonBorderShape(.roundedRectangle(radius: 12))
+                            .controlSize(.large)
+                            .tint(LMSColors.emerald)
 
-                        Button(role: .destructive, action: { actionType = .reject }) {
-                            HStack {
-                                Spacer()
-                                Text("Reject Application")
+                            Button(role: .destructive) {
+                                actionType = .reject
+                            } label: {
+                                Label("Reject Application", systemImage: "xmark.circle")
                                     .font(LMSFont.body.bold())
-                                Spacer()
+                                    .frame(maxWidth: .infinity)
+                                    .frame(minHeight: 28)
                             }
+                            .buttonStyle(.bordered)
+                            .buttonBorderShape(.roundedRectangle(radius: 12))
+                            .controlSize(.large)
+                            .tint(.red)
                         }
-
-                        Button(action: { actionType = .sendBack }) {
-                            HStack {
-                                Spacer()
-                                Text("Request Clarification")
-                                    .font(LMSFont.body.weight(.semibold))
-                                Spacer()
-                            }
-                        }
-                        .tint(LMSColors.brandNavy)
+                        .padding(.vertical, 4)
+                        .listRowInsets(EdgeInsets(top: 0, leading: LMSSpacing.lg, bottom: 0, trailing: LMSSpacing.lg))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                     }
                 }
-            }
-            .listStyle(.insetGrouped)
-            .navigationTitle("Application Review")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .bold()
-                }
-            }
-            .sheet(item: $actionType) { action in
-                ManagerApplicantActionSheet(
-                    applicant: applicant,
-                    actionType: action,
-                    viewModel: viewModel,
-                    onComplete: { dismiss() }
-                )
-            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Application Review")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $actionType) { action in
+            ManagerApplicantActionSheet(
+                applicant: applicant,
+                actionType: action,
+                viewModel: viewModel,
+                onComplete: { dismiss() }
+            )
         }
     }
 
@@ -299,29 +290,6 @@ private struct OfficerRecommendationView: View {
     }
 }
 
-private struct ManagerRemarksView: View {
-    let remarks: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
-            Label("PREVIOUS MANAGER REMARKS", systemImage: "pencil.and.outline")
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-                .foregroundStyle(LMSColors.textSecondary)
-
-            Text(remarks)
-                .font(LMSFont.footnote)
-                .foregroundStyle(LMSColors.textPrimary)
-                .padding(LMSSpacing.md)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(LMSColors.emerald.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md))
-                .overlay(
-                    RoundedRectangle(cornerRadius: LMSRadius.md)
-                        .stroke(LMSColors.emerald.opacity(0.15), lineWidth: 0.5)
-                )
-        }
-    }
-}
 
 private struct CIBILDetailView: View {
     let score: Int
@@ -440,7 +408,12 @@ private struct AdvancedRiskSection: View {
                         .foregroundStyle(LMSColors.textSecondary)
                 }
                 Spacer()
-                LMSStatusPill(text: applicant.riskLevel.rawValue, style: riskPillStyle, icon: applicant.riskLevel.icon)
+                HStack(spacing: 8) {
+                    LMSStatusPill(text: applicant.riskLevel.rawValue, style: riskPillStyle, icon: applicant.riskLevel.icon)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(LMSColors.textTertiary)
+                }
             }
             .padding(.horizontal, LMSSpacing.screenHorizontal)
 

@@ -227,7 +227,7 @@ struct ApplicationTrackingCard: View {
                     Text(application.isDraft ? "Current Step" : "Submitted")
                         .font(LMSFont.caption2)
                         .foregroundStyle(LMSColors.textSecondary)
-                    Text(application.isDraft ? "Step \(application.draftStepIndex) of 10" : (application.submittedAt ?? application.updatedAt).formattedAsDDMMMYYYY())
+                    Text(application.isDraft ? "Step \(application.draftStepIndex) of 9" : (application.submittedAt ?? application.updatedAt).formattedAsDDMMMYYYY())
                         .font(LMSFont.footnote.weight(.medium))
                         .foregroundStyle(LMSColors.textPrimary)
                     if application.isDraft {

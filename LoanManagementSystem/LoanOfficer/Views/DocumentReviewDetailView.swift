@@ -11,6 +11,8 @@ struct DocumentReviewDetailView: View {
     
     @State private var showingRejectionAlert = false
     @State private var rejectionReason = ""
+    @State private var isApproving = false
+    @State private var approvalErrorMessage: String?
     
     init(item: DocumentQueueItem, viewModel: LoanOfficerDashboardViewModel, isPresentedModally: Bool = false) {
         self.item = item
@@ -78,6 +80,14 @@ struct DocumentReviewDetailView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Enter clarification reason for requesting re-upload from borrower.")
+        }
+        .alert("Approval Failed", isPresented: Binding(
+            get: { approvalErrorMessage != nil },
+            set: { if !$0 { approvalErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(approvalErrorMessage ?? "")
         }
     }
     
@@ -202,17 +212,39 @@ struct DocumentReviewDetailView: View {
         VStack(spacing: 12) {
             Button {
                 HapticsManager.triggerImpact(style: .heavy)
-                viewModel.updateDocumentStatus(applicationId: item.applicationId, docId: item.id, newStatus: .verified)
-                dismiss()
+                isApproving = true
+                let syncTask = viewModel.updateDocumentStatus(
+                    applicationId: item.applicationId,
+                    docId: item.id,
+                    newStatus: .verified
+                )
+                Task {
+                    let didPersist = await syncTask?.value ?? false
+                    isApproving = false
+                    if didPersist {
+                        await viewModel.refreshDocuments(for: item.applicationId)
+                        dismiss()
+                    } else {
+                        await viewModel.refreshDocuments(for: item.applicationId)
+                        approvalErrorMessage = "The document could not be approved right now. Please try again."
+                    }
+                }
             } label: {
-                Text("Verify & Approve")
-                    .font(.body.weight(.bold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.blue)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                HStack(spacing: 8) {
+                    if isApproving {
+                        ProgressView()
+                            .tint(.white)
+                    }
+                    Text(isApproving ? "Approving..." : "Verify & Approve")
+                        .font(.body.weight(.bold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.blue)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
+            .disabled(isApproving)
             
             Button {
                 HapticsManager.triggerImpact(style: .medium)
