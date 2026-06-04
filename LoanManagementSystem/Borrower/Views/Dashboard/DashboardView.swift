@@ -1273,7 +1273,7 @@ struct PayEMIWorkflowView: View {
     }
 
     private func confirmPayment() {
-        guard let selectedLoan else { return }
+        guard selectedLoan != nil else { return }
         
         guard let rootVC = window?.rootViewController else {
             print("No window found")

@@ -24,8 +24,6 @@ struct ManagerBranchTabView: View {
             Section {
                 branchHeaderCard
             }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
 
             // MARK: - Consolidated Analytics Card
             Section {
@@ -154,68 +152,95 @@ struct ManagerBranchTabView: View {
     private var unifiedChartView: some View {
         switch selectedAnalyticsTab {
         case .overview:
-            Chart(statusChartData) { item in
-                BarMark(
-                    x: .value("Count", item.value),
-                    y: .value("Status", item.label)
-                )
-                .foregroundStyle(item.color.gradient)
-                .cornerRadius(4)
-                .annotation(position: .trailing) {
-                    Text("\(Int(item.value))")
-                        .font(LMSFont.caption2.bold())
-                        .foregroundStyle(LMSColors.textSecondary)
+            if statusChartData.isEmpty {
+                emptyChartView(title: "No Status Data", message: "There are no applications to display status for.")
+            } else {
+                Chart(statusChartData) { item in
+                    SectorMark(
+                        angle: .value("Count", item.value),
+                        innerRadius: .ratio(0.65),
+                        angularInset: 2
+                    )
+                    .foregroundStyle(item.color.gradient)
+                    .cornerRadius(4)
                 }
-            }
-            .chartXAxis(.hidden)
-            .chartYAxis {
-                AxisMarks { value in
-                    AxisValueLabel()
-                        .font(LMSFont.caption2)
+                .chartBackground { _ in
+                    VStack(spacing: 2) {
+                        Text("Total")
+                            .font(LMSFont.caption2)
+                            .foregroundStyle(LMSColors.textTertiary)
+                        Text("\(Int(statusChartData.reduce(0) { $0 + $1.value }))")
+                            .font(LMSFont.subheadline.bold())
+                            .foregroundStyle(LMSColors.textPrimary)
+                    }
                 }
             }
 
         case .products:
-            Chart(loanTypeChartData) { item in
-                SectorMark(
-                    angle: .value("Amount", item.value),
-                    innerRadius: .ratio(0.65),
-                    angularInset: 2
-                )
-                .foregroundStyle(item.color.gradient)
-                .cornerRadius(4)
-            }
-            .chartBackground { _ in
-                VStack(spacing: 2) {
-                    Text("Total")
-                        .font(LMSFont.caption2)
-                        .foregroundStyle(LMSColors.textTertiary)
-                    Text(loanTypeChartData.reduce(0) { $0 + $1.value }.formattedAsCompactINR())
-                        .font(LMSFont.subheadline.bold())
-                        .foregroundStyle(LMSColors.textPrimary)
+            if loanTypeChartData.isEmpty {
+                emptyChartView(title: "No Product Data", message: "There are no disbursed loans to display products for.")
+            } else {
+                Chart(loanTypeChartData) { item in
+                    SectorMark(
+                        angle: .value("Amount", item.value),
+                        innerRadius: .ratio(0.65),
+                        angularInset: 2
+                    )
+                    .foregroundStyle(item.color.gradient)
+                    .cornerRadius(4)
+                }
+                .chartBackground { _ in
+                    VStack(spacing: 2) {
+                        Text("Total")
+                            .font(LMSFont.caption2)
+                            .foregroundStyle(LMSColors.textTertiary)
+                        Text(loanTypeChartData.reduce(0) { $0 + $1.value }.formattedAsCompactINR())
+                            .font(LMSFont.subheadline.bold())
+                            .foregroundStyle(LMSColors.textPrimary)
+                    }
                 }
             }
         }
+    }
+
+    private func emptyChartView(title: String, message: String) -> some View {
+        VStack(spacing: LMSSpacing.sm) {
+            Image(systemName: "chart.bar.xaxis")
+                .font(.system(size: 32))
+                .foregroundStyle(LMSColors.textTertiary.opacity(0.5))
+            Text(title)
+                .font(LMSFont.subheadline.bold())
+                .foregroundStyle(LMSColors.textSecondary)
+            Text(message)
+                .font(LMSFont.caption)
+                .foregroundStyle(LMSColors.textTertiary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder
     private var analyticsLegend: some View {
         switch selectedAnalyticsTab {
         case .overview:
-            HStack(spacing: LMSSpacing.md) {
-                ForEach(statusChartData) { item in
-                    LegendItem(color: item.color, label: item.label)
-                }
-            }
-            .frame(maxWidth: .infinity)
-        case .products:
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: LMSSpacing.lg) {
-                    ForEach(loanTypeChartData) { item in
+            if !statusChartData.isEmpty {
+                HStack(spacing: LMSSpacing.md) {
+                    ForEach(statusChartData) { item in
                         LegendItem(color: item.color, label: item.label)
                     }
                 }
-                .padding(.horizontal, LMSSpacing.sm)
+                .frame(maxWidth: .infinity)
+            }
+        case .products:
+            if !loanTypeChartData.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: LMSSpacing.lg) {
+                        ForEach(loanTypeChartData) { item in
+                            LegendItem(color: item.color, label: item.label)
+                        }
+                    }
+                    .padding(.horizontal, LMSSpacing.sm)
+                }
             }
         }
     }
@@ -227,20 +252,18 @@ struct ManagerBranchTabView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(viewModel.branchOverview.name)
-                        .font(LMSFont.title.weight(.bold))
+                        .font(LMSFont.title)
                     Text("\(viewModel.branchOverview.code) · \(viewModel.branchOverview.region)")
                         .font(LMSFont.subheadline)
                         .foregroundStyle(LMSColors.textSecondary)
                 }
                 Spacer()
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(viewModel.branchOverview.auditRating)
-                        .font(LMSFont.caption.weight(.bold))
-                        .foregroundStyle(LMSColors.emerald)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(LMSColors.emerald.opacity(0.1), in: Capsule())
-                }
+                Text(viewModel.branchOverview.auditRating)
+                    .font(LMSFont.caption.weight(.bold))
+                    .foregroundStyle(LMSColors.emerald)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(LMSColors.emerald.opacity(0.12), in: Capsule())
             }
 
             HStack(spacing: LMSSpacing.sm) {
@@ -249,9 +272,6 @@ struct ManagerBranchTabView: View {
                 headerStat(title: "Volume", value: viewModel.branchOverview.totalDisbursed.formattedAsCompactINR())
             }
         }
-        .padding(LMSSpacing.lg)
-        .background(LMSColors.surfaceElevated, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-        .padding(.horizontal, LMSSpacing.screenHorizontal)
         .padding(.vertical, LMSSpacing.sm)
     }
 

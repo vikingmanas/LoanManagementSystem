@@ -9,7 +9,7 @@ struct ManagerApplicantDetailView: View {
     @State private var managerRemarks = ""
 
     enum ActionType: Identifiable {
-        case approve, reject, escalate
+        case approve, reject, sendBack, escalate
         var id: String { String(describing: self) }
     }
 
@@ -91,10 +91,21 @@ struct ManagerApplicantDetailView: View {
                 }
 
                 // MARK: - Advanced Risk Engine
-                AdvancedRiskSection(applicant: applicant)
-                    .listRowInsets(EdgeInsets(top: LMSSpacing.lg, leading: 0, bottom: LMSSpacing.lg, trailing: 0))
+                Section {
+                    NavigationLink {
+                        CIBILDetailView(
+                            score: applicant.cibilScore,
+                            insight: LoanRiskInsightService.insight(for: applicant)
+                        )
+                    } label: {
+                        AdvancedRiskSection(applicant: applicant)
+                    }
+                    .listRowInsets(EdgeInsets(top: LMSSpacing.md, leading: 0, bottom: LMSSpacing.md, trailing: LMSSpacing.screenHorizontal))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
+                } header: {
+                    Text("Risk Analysis")
+                }
 
                 // MARK: - Documents
                 Section("Documents") {
@@ -167,6 +178,16 @@ struct ManagerApplicantDetailView: View {
                                 Spacer()
                             }
                         }
+
+                        Button(action: { actionType = .sendBack }) {
+                            HStack {
+                                Spacer()
+                                Text("Request Clarification")
+                                    .font(LMSFont.body.weight(.semibold))
+                                Spacer()
+                            }
+                        }
+                        .tint(LMSColors.brandNavy)
                     }
                 }
         }
@@ -194,53 +215,6 @@ struct ManagerApplicantDetailView: View {
 }
 
 // MARK: - Helper Views
-
-private struct CIBILScoreRow: View {
-    let score: Int
-
-    private var color: Color {
-        if score >= 700 { return LMSColors.emerald }
-        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return LMSColors.amber }
-        return LMSColors.coral
-    }
-
-    private var rating: String {
-        if score >= 750 { return "Excellent" }
-        if score >= 700 { return "Good" }
-        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return "Fair" }
-        return "Poor"
-    }
-
-    var body: some View {
-        HStack(spacing: LMSSpacing.md) {
-            ZStack {
-                Circle()
-                    .stroke(color.opacity(0.15), lineWidth: 4)
-                    .frame(width: 44, height: 44)
-                Circle()
-                    .trim(from: 0, to: Double(score) / 900.0)
-                    .stroke(color, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                    .frame(width: 44, height: 44)
-                    .rotationEffect(.degrees(-90))
-
-                Text("\(score)")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(LMSColors.textPrimary)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("CIBIL Score")
-                    .font(LMSFont.subheadline.bold())
-                Text(rating)
-                    .font(LMSFont.caption)
-                    .foregroundStyle(color)
-            }
-
-            Spacer()
-        }
-        .padding(.vertical, 2)
-    }
-}
 
 private struct DocumentRow: View {
     let doc: ManagerDocument
@@ -312,7 +286,7 @@ private struct OfficerRecommendationView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: LMSRadius.md)
                     .stroke(LMSColors.amber.opacity(0.15), lineWidth: 0.5)
-            )
+                )
         }
     }
 }
@@ -438,7 +412,6 @@ private struct CIBILDetailView: View {
 
 private struct AdvancedRiskSection: View {
     let applicant: ManagerApplicant
-    @State private var appearAnimation = false
     
     private var riskPillStyle: LMSStatusPill.Style {
         switch applicant.riskLevel {

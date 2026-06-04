@@ -6,6 +6,7 @@ struct AdminProfileSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     @AppStorage("biometricEnabled") private var biometricEnabled = false
+    @AppStorage("isDarkMode") private var isDarkMode = false
 
     @StateObject private var localSecurity = LocalSecurityService.shared
     
@@ -137,5 +138,6 @@ struct AdminProfileSheet: View {
                 }
             }
         }
+        .preferredColorScheme(isDarkMode ? .dark : .light)
     }
 }
