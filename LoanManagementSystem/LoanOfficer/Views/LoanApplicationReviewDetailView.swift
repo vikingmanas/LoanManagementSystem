@@ -11,7 +11,7 @@ struct LoanApplicationReviewDetailView: View {
     typealias LoanApplication = OfficerLoanApplication
     let applicationId: String
     let initialDocumentId: UUID?
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) var dismiss
     
 

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct KPIGridView: View {
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onCardSelected: (RegistryFilter) -> Void
     
     var body: some View {

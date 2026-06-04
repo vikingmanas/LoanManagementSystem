@@ -49,6 +49,7 @@ final class BorrowerChatViewModel {
         return UUID(uuidString: uid)
     }
     
+    @ObservationIgnored
     nonisolated(unsafe) private var realtimeChannel: RealtimeChannelV2?
     
     deinit {

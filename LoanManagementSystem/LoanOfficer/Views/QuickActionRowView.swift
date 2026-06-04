@@ -9,7 +9,7 @@ struct QuickActionItem: Identifiable {
 }
 
 struct QuickActionRowView: View {
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onActionTapped: (String) -> Void
 
     private let actions = [

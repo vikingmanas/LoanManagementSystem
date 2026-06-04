@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct PortfolioMetricsSheet: View {
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) var dismiss
 
     var body: some View {

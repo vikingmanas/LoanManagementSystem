@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct DocumentQueueView: View {
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onReviewTapped: (DocumentQueueItem) -> Void
     var onSeeAllTapped: () -> Void
     

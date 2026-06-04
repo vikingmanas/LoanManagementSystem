@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LoanHistoryTabView: View {
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @State private var activeDetailApp: OfficerLoanApplication?
     @State private var showingCallAlert = false
     @State private var showingFlagAlert = false

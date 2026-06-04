@@ -72,7 +72,7 @@ enum OfficerWorkspaceTab: Hashable {
 
 private struct LoanOfficerTodayView: View {
     @Environment(AuthManager.self) var authManager: AuthManager
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Binding var selectedTab: OfficerWorkspaceTab
     @Bindable var notificationViewModel: NotificationViewModel
     var onProfile: () -> Void
@@ -188,7 +188,7 @@ private struct LoanOfficerTodayView: View {
 
 
 private struct OfficerActionItemsRow: View {
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Binding var selectedTab: OfficerWorkspaceTab
     @Binding var showingEscalationSheet: Bool
     @Binding var showingPendingAppsList: Bool
@@ -324,7 +324,7 @@ private struct OfficerNextActionCard: View {
 
 
 private struct OfficerReviewSnapshotView: View {
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Binding var selectedTab: OfficerWorkspaceTab
     @Binding var selectedApplication: OfficerLoanApplication?
 
@@ -585,7 +585,7 @@ private struct CalculatorInputRow: View {
 
 
 private struct OfficerEscalationsSection: View {
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Binding var selectedApplication: OfficerLoanApplication?
 
     var body: some View {
@@ -623,7 +623,7 @@ private struct OfficerEscalationsSection: View {
 
 
 private struct OfficerAnalyticsSection: View {
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @State private var showPipelineDetails = false
 
     private var stats: (pending: Int, underReview: Int, sentToManager: Int, completed: Int) {
@@ -776,7 +776,7 @@ private struct PipelineBarRow: View {
 
 
 private struct OfficerTodayReviewQueueListView: View {
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
 
     private var todayApplications: [(application: OfficerLoanApplication, matchingDocuments: [LoanDocument])] {
         viewModel.applications.compactMap { application in
@@ -817,7 +817,7 @@ private struct OfficerTodayReviewQueueListView: View {
 
 
 private struct LoanOfficerReviewQueueView: View {
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @State private var query = ""
     @State private var selectedStatus: OfficerDocumentStatus?
 
@@ -878,7 +878,7 @@ private struct LoanOfficerReviewQueueView: View {
 
 
 private struct OfficerEscalationSheet: View {
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var reason = ""
     @State private var priority = "Normal"
@@ -1066,7 +1066,7 @@ struct OfficerAvatar: View {
 
 
 struct NotificationsFeedSheet: View {
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -1128,7 +1128,7 @@ struct NotificationsFeedSheet: View {
     }
 }
 private struct LoanOfficerPipelineDetailsSheet: View {
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) var dismiss
 
     private var pendingApps: [OfficerLoanApplication] {
@@ -1238,7 +1238,7 @@ private struct OfficerApplicationListSheet: View {
     let applications: [OfficerLoanApplication]
     
     @Environment(\.dismiss) var dismiss
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @State private var selectedApplication: OfficerLoanApplication?
     
     var body: some View {
@@ -1289,7 +1289,7 @@ private struct OfficerPushApplicationListView: View {
     let description: String
     let applications: [OfficerLoanApplication]
     
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @State private var selectedApplication: OfficerLoanApplication?
     
     var body: some View {
@@ -1331,7 +1331,7 @@ private struct OfficerPushApplicationListView: View {
 struct OfficerApplicationReviewCard: View {
     let application: OfficerLoanApplication
     let matchingDocuments: [LoanDocument]
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {

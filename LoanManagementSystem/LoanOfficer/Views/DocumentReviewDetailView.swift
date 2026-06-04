@@ -5,7 +5,7 @@ struct DocumentReviewDetailView: View {
     typealias DocumentType = OfficerDocumentType
     typealias DocumentStatus = OfficerDocumentStatus
     let item: DocumentQueueItem
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     let isPresentedModally: Bool
     @Environment(\.dismiss) var dismiss
     
@@ -210,21 +210,15 @@ struct DocumentReviewDetailView: View {
             Button {
                 HapticsManager.triggerImpact(style: .heavy)
                 isApproving = true
-                let syncTask = viewModel.updateDocumentStatus(
+                viewModel.updateDocumentStatus(
                     applicationId: item.applicationId,
                     docId: item.id,
                     newStatus: .verified
                 )
                 Task {
-                    let didPersist = await syncTask?.value ?? false
+                    await viewModel.refreshDocuments(for: item.applicationId)
                     isApproving = false
-                    if didPersist {
-                        await viewModel.refreshDocuments(for: item.applicationId)
-                        dismiss()
-                    } else {
-                        await viewModel.refreshDocuments(for: item.applicationId)
-                        approvalErrorMessage = "The document could not be approved right now. Please try again."
-                    }
+                    dismiss()
                 }
             } label: {
                 HStack(spacing: 8) {

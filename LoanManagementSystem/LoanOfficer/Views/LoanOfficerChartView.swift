@@ -15,7 +15,7 @@ struct ChartDataPoint: Identifiable {
 }
 
 struct LoanOfficerChartView: View {
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onTapAnalytics: () -> Void
     @State private var timeFilter: ChartTimeFilter = .last7Days
 

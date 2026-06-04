@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ProcessedLoansView: View {
     typealias LoanApplication = OfficerLoanApplication
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onRespondTapped: (LoanApplication) -> Void
 
     var body: some View {

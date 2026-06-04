@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ActivityFeedView: View {
-    @Bindable var viewModel: LoanOfficerDashboardViewModel
+    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onActionTriggered: (ActivityActionType, ActivityFeedItem) -> Void
     var onViewAllPressed: () -> Void
 

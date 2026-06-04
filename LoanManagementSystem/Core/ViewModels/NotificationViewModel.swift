@@ -13,6 +13,7 @@ public final class NotificationViewModel {
     public var unreadCount: Int = 0
     public var isLoading: Bool = false
     
+    @ObservationIgnored
     nonisolated(unsafe) private var realtimeChannel: RealtimeChannelV2?
     private var userId: UUID?
     
