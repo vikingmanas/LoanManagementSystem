@@ -6,6 +6,7 @@ struct LoanOfficerProfileView: View {
     @EnvironmentObject var authManager: AuthManager
     
     @AppStorage("biometricEnabled") private var biometricEnabled = false
+    @AppStorage("isDarkMode") private var isDarkMode = false
 
     @StateObject private var localSecurity = LocalSecurityService.shared
     @State private var showChangePassword = false
@@ -221,5 +222,6 @@ struct LoanOfficerProfileView: View {
                 ChangePasswordSheet()
             }
         }
+        .preferredColorScheme(isDarkMode ? .dark : .light)
     }
 }

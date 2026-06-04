@@ -10,6 +10,7 @@ struct ProfileView: View {
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel = BorrowerProfileViewModel()
     @StateObject private var notifVM = NotificationViewModel()
+    @AppStorage("isDarkMode") private var isDarkMode = false
     @State private var activeSheet: ProfileEditSheet?
 
     var body: some View {
@@ -44,7 +45,9 @@ struct ProfileView: View {
                 notifVM.configure(userId: userId)
             }
         }
+        .preferredColorScheme(isDarkMode ? .dark : .light)
     }
+
 
     @ViewBuilder
     private func profileForm(_ profile: BorrowerProfile) -> some View {
