@@ -21,7 +21,7 @@ struct LoanManagementSystemApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(authManager)
-                .accessibilityOverrides()
+                .accessibilityOverrides() // Trigger Xcode re-index
                 .onAppear { applyDarkModeToAllWindows() }
                 .onChange(of: isDarkMode) { _ in applyDarkModeToAllWindows() }
         }

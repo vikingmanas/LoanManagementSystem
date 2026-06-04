@@ -15,6 +15,7 @@ struct AccessibilityOverridesModifier: ViewModifier {
         content
             .preferredColorScheme(isDarkMode ? .dark : .light)
             .bold(forceBoldText)
+            .brightness(forceHighContrast ? (isDarkMode ? 0.05 : -0.05) : 0.0)
             .contrast(forceHighContrast ? 1.2 : 1.0)
             .transaction { transaction in
                 if reduceMotion {
