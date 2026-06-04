@@ -835,7 +835,22 @@ private struct LoanOfficerReviewQueueView: View {
                 let matchesStatus = selectedStatus == nil || doc.status == selectedStatus
                 return matchesQuery && matchesStatus
             }
-            return docs.isEmpty ? nil : (application, docs)
+            let prioritizedDocs = docs.sorted { lhs, rhs in
+                if (lhs.status != .verified) != (rhs.status != .verified) {
+                    return lhs.status != .verified
+                }
+                return lhs.docType.rawValue < rhs.docType.rawValue
+            }
+            return prioritizedDocs.isEmpty ? nil : (application, prioritizedDocs)
+        }
+        .sorted { lhs, rhs in
+            let lhsNeedsApproval = lhs.application.documents.contains { $0.status != .verified }
+            let rhsNeedsApproval = rhs.application.documents.contains { $0.status != .verified }
+
+            if lhsNeedsApproval != rhsNeedsApproval {
+                return lhsNeedsApproval
+            }
+            return lhs.application.submittedDate > rhs.application.submittedDate
         }
     }
 
