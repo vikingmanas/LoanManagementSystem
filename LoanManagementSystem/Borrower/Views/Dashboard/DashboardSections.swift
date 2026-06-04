@@ -430,7 +430,6 @@ struct DashboardQuickActionsSection: View {
     private var actions: [DashboardQuickAction] {
         [
             DashboardQuickAction(title: "Pay EMI", subtitle: "Due payments", icon: "indianrupeesign", tint: LMSColors.emerald, action: onPayEMI),
-            DashboardQuickAction(title: "Top Up", subtitle: "Add funds", icon: "plus.circle.fill", tint: LMSColors.coral, action: onTopUp),
             DashboardQuickAction(title: "Calculator", subtitle: "Plan EMI", icon: "plus.forwardslash.minus", tint: LMSColors.brandNavy, action: onCalculator),
             DashboardQuickAction(title: "Statements", subtitle: "Download", icon: "doc.text.fill", tint: LMSColors.actionBlue, action: onStatement),
             DashboardQuickAction(title: "Support", subtitle: "Get help", icon: "headphones", tint: LMSColors.amber, action: onSupport)
