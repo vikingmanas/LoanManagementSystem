@@ -23,7 +23,7 @@ struct LoanManagementSystemApp: App {
                 .environmentObject(authManager)
                 .accessibilityOverrides()
                 .onAppear { applyDarkModeToAllWindows() }
-                .onChange(of: isDarkMode) { _ in applyDarkModeToAllWindows() }
+                .onChange(of: isDarkMode) { applyDarkModeToAllWindows() }
         }
     }
     

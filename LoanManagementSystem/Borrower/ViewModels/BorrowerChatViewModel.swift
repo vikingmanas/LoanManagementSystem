@@ -31,13 +31,16 @@ struct BorrowerConversation: Identifiable, Hashable {
     }
 }
 
+import Observation
+
 @MainActor
-final class BorrowerChatViewModel: ObservableObject {
+@Observable
+final class BorrowerChatViewModel {
 
     // MARK: - Published State
-    @Published var conversations: [BorrowerConversation] = []
-    @Published var isLoading: Bool = false
-    @Published var hasError: Bool = false
+    var conversations: [BorrowerConversation] = []
+    var isLoading: Bool = false
+    var hasError: Bool = false
 
     /// Total unread messages across all conversations (for tab badge).
     var totalUnreadCount: Int {
@@ -50,7 +53,7 @@ final class BorrowerChatViewModel: ObservableObject {
         return UUID(uuidString: uid)
     }
     
-    private var realtimeChannel: RealtimeChannelV2?
+    nonisolated(unsafe) private var realtimeChannel: RealtimeChannelV2?
     
     deinit {
         let channel = realtimeChannel
@@ -77,7 +80,7 @@ final class BorrowerChatViewModel: ObservableObject {
     private func handleNewRealtimeMessage(_ msg: DBMessage) {
         guard let appId = msg.applicationId else { return }
         if let idx = conversations.firstIndex(where: { $0.applicationId == appId }) {
-            var conv = conversations[idx]
+            let conv = conversations[idx]
             if !conv.messages.contains(where: { $0.messageId == msg.messageId }) {
                 var newMessages = conv.messages
                 newMessages.append(msg)

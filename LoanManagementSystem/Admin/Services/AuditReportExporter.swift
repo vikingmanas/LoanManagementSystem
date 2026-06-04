@@ -139,7 +139,7 @@ final class AuditReportExporter {
                 // Draw a subtle line between items
                 context.cgContext.move(to: CGPoint(x: 20, y: currentY))
                 context.cgContext.addLine(to: CGPoint(x: pageWidth - 20, y: currentY))
-                context.cgContext.setStrokeColor(UIColor.groupTableViewBackground.cgColor)
+                context.cgContext.setStrokeColor(UIColor.systemGroupedBackground.cgColor)
                 context.cgContext.strokePath()
                 currentY += 10
             }

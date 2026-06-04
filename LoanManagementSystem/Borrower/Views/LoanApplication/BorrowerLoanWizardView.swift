@@ -1045,7 +1045,7 @@ struct BorrowerLoanWizardView: View {
             } else {
                 let draftId = viewModel.currentDraftID?.uuidString ?? UUID().uuidString
                 let path = "selfies/\(draftId).png"
-                Task {
+                Task { [viewModel] in
                     do {
                         let url = try await StorageService.shared.uploadDocument(
                             data: data, bucket: "documents", path: path, contentType: "image/png"
@@ -1068,7 +1068,7 @@ struct BorrowerLoanWizardView: View {
             } else {
                 let draftId = viewModel.currentDraftID?.uuidString ?? UUID().uuidString
                 let path = "signatures/\(draftId).png"
-                Task {
+                Task { [viewModel] in
                     do {
                         let url = try await StorageService.shared.uploadDocument(
                             data: data, bucket: "documents", path: path, contentType: "image/png"
@@ -2928,7 +2928,7 @@ private final class LiveFaceCameraController: NSObject, ObservableObject, AVCapt
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let request = VNDetectFaceRectanglesRequest { [weak self] request, _ in
             let hasFace = !(request.results as? [VNFaceObservation] ?? []).isEmpty
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.totalFrames += 1
                 if hasFace {

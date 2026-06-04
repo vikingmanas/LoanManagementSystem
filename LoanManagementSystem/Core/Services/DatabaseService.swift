@@ -1104,7 +1104,7 @@ final class DatabaseService {
             InsertAction.self,
             schema: "public",
             table: "messages",
-            filter: "application_id=eq.\(applicationId.uuidString)"
+            filter: .eq("application_id", value: applicationId.uuidString)
         )
         
         Task {
@@ -1118,7 +1118,7 @@ final class DatabaseService {
             }
         }
         
-        await channel.subscribe()
+        try? await channel.subscribeWithError()
         return channel
     }
     
@@ -1144,7 +1144,7 @@ final class DatabaseService {
             }
         }
         
-        await channel.subscribe()
+        try? await channel.subscribeWithError()
         return channel
     }
 
