@@ -102,6 +102,7 @@ struct ProfileCompletionCardSection: View {
 
 struct LoanPortfolioSummarySection: View {
     @ObservedObject var viewModel: DashboardViewModel
+    let onTap: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
@@ -115,7 +116,11 @@ struct LoanPortfolioSummarySection: View {
                     .frame(height: 168)
                     .shimmer(active: true)
             } else {
-                LoanPortfolioSummaryCard(viewModel: viewModel)
+                Button(action: onTap) {
+                    LoanPortfolioSummaryCard(viewModel: viewModel)
+                }
+                .buttonStyle(DashboardPressableStyle())
+                .accessibilityLabel("Open all loans")
             }
         }
         .padding(.horizontal, LMSSpacing.screenHorizontal)
@@ -186,6 +191,42 @@ struct LoanPortfolioSummaryCard: View {
                 .minimumScaleFactor(0.75)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - Portfolio Loans
+
+struct PortfolioLoansView: View {
+    @ObservedObject var viewModel: DashboardViewModel
+    let onLoanTap: (DashboardLoanAccount) -> Void
+
+    var body: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            LazyVStack(spacing: LMSSpacing.md) {
+                if viewModel.loanAccounts.isEmpty {
+                    ContentUnavailableView(
+                        "No Loans",
+                        systemImage: "building.columns",
+                        description: Text("Your approved loans will appear here.")
+                    )
+                    .padding(.top, LMSSpacing.xxxl)
+                } else {
+                    ForEach(viewModel.loanAccounts) { loan in
+                        ActiveLoanAccountCard(
+                            loan: loan,
+                            currentBalance: viewModel.currentAccountBalance(for: loan)
+                        ) {
+                            onLoanTap(loan)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
+            .padding(.vertical, LMSSpacing.lg)
+        }
+        .background(LMSColors.background)
+        .navigationTitle("All Loans")
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 

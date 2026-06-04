@@ -81,10 +81,13 @@ struct ManagerDashboardView: View {
     @ToolbarContentBuilder
     private var dashboardToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            HStack(spacing: LMSSpacing.sm) {
+            HStack(spacing: 4) {
                 notificationButton
                 profileButton
             }
+            .padding(.horizontal, 5)
+            .padding(.vertical, 3)
+            .glassEffect(.regular, in: Capsule())
         }
     }
 
@@ -100,6 +103,10 @@ struct ManagerDashboardView: View {
             NotificationsListView(viewModel: notificationViewModel, isPushed: true)
         } label: {
             Image(systemName: notificationViewModel.unreadCount > 0 ? "bell.badge" : "bell")
+                .symbolRenderingMode(.hierarchical)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(LMSColors.brandNavy)
+                .frame(width: 40, height: 42)
         }
         .accessibilityLabel("Notifications")
     }
@@ -109,8 +116,9 @@ struct ManagerDashboardView: View {
             Text(viewModel.managerProfile.initials)
                 .font(.caption.weight(.bold))
                 .foregroundStyle(.white)
-                .frame(width: 30, height: 30)
+                .frame(width: 36, height: 36)
                 .background(LMSColors.brandNavy.gradient, in: Circle())
+                .frame(width: 40, height: 42)
         }
         .accessibilityLabel("Manager profile")
     }
