@@ -27,19 +27,25 @@ struct BorrowerSignUpView: View {
                 
                 // Personal Information
                 Section(header: Text("Personal Details")) {
-                    LabeledContent("Name") {
+                    HStack {
+                        Text("Name")
+                            .frame(width: 95, alignment: .leading)
                         TextField("Full Name", text: $viewModel.fullName)
                             .textContentType(.name)
                     }
                     
-                    LabeledContent("Email") {
+                    HStack {
+                        Text("Email")
+                            .frame(width: 95, alignment: .leading)
                         TextField("example@mail.com", text: $viewModel.email)
                             .textContentType(.emailAddress)
                             .keyboardType(.emailAddress)
                             .textInputAutocapitalization(.never)
                     }
                     
-                    LabeledContent("Mobile") {
+                    HStack {
+                        Text("Mobile")
+                            .frame(width: 95, alignment: .leading)
                         TextField("Phone Number", text: $viewModel.phone)
                             .textContentType(.telephoneNumber)
                             .keyboardType(.phonePad)
@@ -48,12 +54,16 @@ struct BorrowerSignUpView: View {
                 
                 // Additional Information (Optional)
                 Section(header: Text("Optional Details")) {
-                    LabeledContent("Alt. Mobile") {
+                    HStack {
+                        Text("Alt. Mobile")
+                            .frame(width: 95, alignment: .leading)
                         TextField("Optional", text: $viewModel.alternatePhone)
                             .keyboardType(.phonePad)
                     }
                     
-                    LabeledContent("Referral") {
+                    HStack {
+                        Text("Referral")
+                            .frame(width: 95, alignment: .leading)
                         TextField("Code", text: $viewModel.referralCode)
                             .textInputAutocapitalization(.characters)
                     }
