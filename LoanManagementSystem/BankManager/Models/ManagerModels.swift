@@ -60,6 +60,13 @@ enum ManagerRiskLevel: String, CaseIterable, Codable, Hashable {
     }
 }
 
+struct ManagerRiskFactor: Identifiable, Hashable {
+    let id = UUID()
+    var title: String
+    var description: String
+    var isPositive: Bool
+}
+
 
 enum ManagerLoanType: String, CaseIterable, Codable, Hashable {
     case home = "Home Loan"
@@ -111,6 +118,8 @@ struct ManagerApplicant: Identifiable, Hashable {
     var interestRate: Double
     var branchName: String
     var escalatedAt: Date? = nil
+    var riskFactors: [ManagerRiskFactor] = []
+    var compositeRiskScore: Int = 100
 
     var isAssignedToOfficer: Bool {
         assignedOfficerId != id && !assignedOfficer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

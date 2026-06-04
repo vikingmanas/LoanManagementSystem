@@ -1,6 +1,5 @@
 import SwiftUI
 
-
 struct ManagerApplicantActionSheet: View {
     let applicant: ManagerApplicant
     let actionType: ManagerApplicantDetailView.ActionType
@@ -14,110 +13,79 @@ struct ManagerApplicantActionSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: LMSSpacing.xl) {
-
-                ZStack {
-                    Circle()
-                        .fill(actionColor.opacity(0.12))
-                        .frame(width: 72, height: 72)
-                    Image(systemName: actionIcon)
-                        .font(.system(size: 32, weight: .semibold))
-                        .foregroundStyle(actionColor)
-                }
-                .padding(.top, LMSSpacing.xl)
-
-
-                Text(actionTitle)
-                    .font(.system(.title3, design: .rounded).bold())
-                    .foregroundStyle(LMSColors.textPrimary)
-                    .multilineTextAlignment(.center)
-
-
-                VStack(spacing: LMSSpacing.sm) {
-                    HStack {
-                        Text("Borrower")
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(LMSColors.textSecondary)
-                        Spacer()
-                        Text(applicant.borrowerName)
-                            .font(.system(.caption, design: .rounded).bold())
-                    }
-                    HStack {
-                        Text("Application")
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(LMSColors.textSecondary)
-                        Spacer()
-                        Text(applicant.applicationId)
-                            .font(.system(.caption, design: .monospaced).bold())
-                    }
-                    HStack {
-                        Text("Amount")
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(LMSColors.textSecondary)
-                        Spacer()
-                        Text(CurrencyFormatter.shared.format(applicant.requestedAmount))
-                            .font(.system(.caption, design: .rounded).bold())
-                    }
-                }
-                .padding(LMSSpacing.lg)
-                .background(LMSColors.surfaceElevated)
-                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
-
-
-                VStack(alignment: .leading, spacing: LMSSpacing.sm) {
-                    Text("Remarks (Required)")
-                        .font(.system(.caption, design: .rounded).bold())
-                        .foregroundStyle(LMSColors.textSecondary)
-
-                    TextEditor(text: $remarks)
-                        .font(.system(.body, design: .rounded))
-                        .frame(height: 100)
-                        .padding(LMSSpacing.sm)
-                        .background(LMSColors.surfaceElevated)
-                        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
-                                .stroke(LMSColors.separatorLight, lineWidth: 0.5)
-                        )
-                        .onChange(of: remarks) { _, _ in
-                            validationMessage = nil
+            Form {
+                // MARK: - Summary Section
+                Section {
+                    HStack(spacing: LMSSpacing.md) {
+                        ZStack {
+                            Circle()
+                                .fill(actionColor.opacity(0.12))
+                                .frame(width: 54, height: 54)
+                            Image(systemName: actionIcon)
+                                .font(.title3.bold())
+                                .foregroundStyle(actionColor)
                         }
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(actionTitle)
+                                .font(LMSFont.headline)
+                            Text("Process clearance for this application")
+                                .font(LMSFont.caption)
+                                .foregroundStyle(LMSColors.textSecondary)
+                        }
+                    }
+                    .padding(.vertical, 8)
+                    
+                    LabeledContent("Borrower", value: applicant.borrowerName)
+                    LabeledContent("Application ID", value: applicant.applicationId)
+                    LabeledContent("Amount", value: CurrencyFormatter.shared.format(applicant.requestedAmount))
+                }
 
+                // MARK: - Remarks Section
+                Section {
+                    TextEditor(text: $remarks)
+                        .frame(minHeight: 120)
+                        .overlay(alignment: .topLeading) {
+                            if remarks.isEmpty {
+                                Text("Enter your decision remarks here...")
+                                    .font(LMSFont.body)
+                                    .foregroundStyle(LMSColors.textTertiary)
+                                    .padding(.top, 8)
+                                    .padding(.leading, 5)
+                            }
+                        }
+                } header: {
+                    Text("DECISION REMARKS")
+                } footer: {
                     if let validationMessage {
                         Text(validationMessage)
-                            .font(.system(.caption, design: .rounded))
                             .foregroundStyle(LMSColors.coral)
+                    } else {
+                        Text("These remarks will be visible to the loan officer and borrower.")
                     }
                 }
 
-                Spacer()
-
-
-                Button(action: performAction) {
-                    Group {
-                        if isProcessing {
-                            ProgressView()
-                                .tint(.white)
-                        } else {
-                            Text(confirmLabel)
-                                .font(.system(.body, design: .rounded).weight(.bold))
+                // MARK: - Action Section
+                Section {
+                    Button(action: performAction) {
+                        HStack {
+                            Spacer()
+                            if isProcessing {
+                                ProgressView()
+                                    .tint(.white)
+                            } else {
+                                Text(confirmLabel)
+                                    .font(LMSFont.body.bold())
+                            }
+                            Spacer()
                         }
                     }
+                    .listRowBackground(actionColor)
                     .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-                    .background(actionColor)
-                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+                    .disabled(isProcessing)
                 }
-                .disabled(isProcessing)
-
-                Button("Cancel") { dismiss() }
-                    .font(.system(.body, design: .rounded).weight(.semibold))
-                    .foregroundStyle(LMSColors.textSecondary)
-                    .padding(.bottom, LMSSpacing.md)
             }
-            .padding(.horizontal, LMSSpacing.screenHorizontal)
-            .navigationTitle(actionTitle)
+            .navigationTitle("Clearance Action")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -126,7 +94,6 @@ struct ManagerApplicantActionSheet: View {
             }
         }
     }
-
 
     private func performAction() {
         let trimmedRemarks = remarks.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -146,9 +113,6 @@ struct ManagerApplicantActionSheet: View {
         case .reject:
             viewModel.rejectApplicant(applicant.id, remarks: trimmedRemarks)
             succeeded = true
-        case .sendBack:
-            viewModel.sendBackApplicant(applicant.id, remarks: trimmedRemarks)
-            succeeded = true
         case .escalate:
             viewModel.escalateApplicant(applicant.id)
             succeeded = true
@@ -166,12 +130,10 @@ struct ManagerApplicantActionSheet: View {
         onComplete()
     }
 
-
     private var actionTitle: String {
         switch actionType {
         case .approve:  return "Approve Application"
         case .reject:   return "Reject Application"
-        case .sendBack: return "Request Clarification"
         case .escalate: return "Escalate to Admin"
         }
     }
@@ -180,7 +142,6 @@ struct ManagerApplicantActionSheet: View {
         switch actionType {
         case .approve:  return "Confirm Approval"
         case .reject:   return "Confirm Rejection"
-        case .sendBack: return "Send Back to Officer"
         case .escalate: return "Escalate Now"
         }
     }
@@ -189,7 +150,6 @@ struct ManagerApplicantActionSheet: View {
         switch actionType {
         case .approve:  return "checkmark.seal.fill"
         case .reject:   return "xmark.octagon.fill"
-        case .sendBack: return "arrow.uturn.backward.circle.fill"
         case .escalate: return "arrow.up.forward.circle.fill"
         }
     }
@@ -198,10 +158,7 @@ struct ManagerApplicantActionSheet: View {
         switch actionType {
         case .approve:  return LMSColors.emerald
         case .reject:   return LMSColors.coral
-        case .sendBack: return LMSColors.brandNavy
         case .escalate: return Color.purple
         }
     }
 }
-
-
