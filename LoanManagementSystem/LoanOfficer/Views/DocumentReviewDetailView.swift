@@ -81,7 +81,6 @@ struct DocumentReviewDetailView: View {
         }
     }
     
-    // MARK: - Borrower Info Section
     
     private var borrowerSection: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -127,7 +126,6 @@ struct DocumentReviewDetailView: View {
         }
     }
     
-    // MARK: - Document Preview
     
     private var documentPreviewSection: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -196,7 +194,6 @@ struct DocumentReviewDetailView: View {
         }
     }
     
-    // MARK: - Actions
     
     private var actionsSection: some View {
         VStack(spacing: 12) {

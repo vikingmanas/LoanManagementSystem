@@ -12,11 +12,9 @@ struct ManagerDashboardTabView: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: LMSSpacing.xl) {
 
-                // Key Performance Indicators
                 ActionItemsRow(viewModel: viewModel, selectedTab: $selectedTab)
                     .padding(.top, LMSSpacing.md)
 
-                // Approval Request
                 ManagerApprovalQueueView(
                     viewModel: viewModel,
                     onViewAll: {
@@ -48,7 +46,6 @@ struct ManagerDashboardTabView: View {
 
 
 
-// MARK: - Action Items Row (replaces 4-card Branch Command Center)
 
 private struct ActionItemsRow: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
@@ -159,7 +156,6 @@ private struct ActionItemCard: View {
 }
 
 
-// MARK: - Branch quick access (full analytics live on Branch tab)
 
 private struct BranchDashboardPromoCard: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
@@ -238,7 +234,6 @@ private struct BranchDashboardPromoCard: View {
 }
 
 
-// MARK: - Team Insights Row
 
 private struct TeamInsightsRow: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel
@@ -328,7 +323,6 @@ private struct TeamInsightsOfficerCard: View {
 }
 
 
-// MARK: - Officer Performance Report Sheet
 
 struct OfficerPerformanceReportSheet: View {
     @ObservedObject var viewModel: ManagerDashboardViewModel

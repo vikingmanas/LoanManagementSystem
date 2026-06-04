@@ -253,9 +253,7 @@ final class AdminStaffService {
                 try await adminClient.from("managers").insert(managerInsert).execute()
             }
             
-            // Send welcome email with login credentials
             let roleName = payload.role == "loan_officer" ? "Loan Officer" : "Bank Manager"
-            // Resolve branch name
             var branchName = "N/A"
             if let branches = try? await fetchBranches() {
                 branchName = branches.first(where: { $0.id == payload.branchId })?.name ?? "N/A"

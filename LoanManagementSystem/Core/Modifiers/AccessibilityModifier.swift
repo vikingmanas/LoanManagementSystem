@@ -1,9 +1,6 @@
 import SwiftUI
 import Combine
 
-// MARK: - Reusable modifier that applies all accessibility overrides.
-// Attach this to any view (including sheet content) that needs to respect
-// the user's accessibility preferences.
 
 struct AccessibilityOverridesModifier: ViewModifier {
     @AppStorage("isDarkMode") private var isDarkMode = false
@@ -36,10 +33,6 @@ extension View {
 }
 
 
-// MARK: - Convenience sheet wrappers that auto-apply accessibility overrides.
-// Use these in place of `.sheet(...)` to guarantee every sheet
-// inherits bold text, contrast, dark mode, and reduce-motion settings
-// without requiring manual `.accessibilityOverrides()` calls.
 
 extension View {
     /// Drop-in replacement for `.sheet(isPresented:onDismiss:content:)` that

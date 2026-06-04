@@ -39,20 +39,16 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         refreshFromRepository()
     }
     
-    // Tab 2 History Filter parameters
     @Published var historyFilter: RegistryFilter = .all
     @Published var historyLoanTypeFilter: LoanType? = nil
     @Published var historySortOrder: HistorySortOrder = .newest
     @Published var historySearchQuery: String = ""
     
-    // Date Range filters for history
     @Published var historyStartDate: Date = Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date()
     @Published var historyEndDate: Date = Date()
     
-    // Notifications Count
     @Published var unreadActivityCount: Int = 0
     
-    // MARK: - KPI Computed Properties
     var totalApplications: Int {
         applications.count
     }
@@ -114,7 +110,6 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
     
     var pendingDocumentCount: Int {
-        // Sum all documents that are pending, uploaded, under review, or re-uploaded across all apps
         applications.reduce(0) { count, app in
             count + app.documents.filter { $0.status != .verified }.count
         }
@@ -124,7 +119,6 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         var items: [DocumentQueueItem] = []
         for app in applications {
             for doc in app.documents {
-                // Use application's submittedDate as a fallback for pending uploads so they appear in the "Missing" filter
                 let date = doc.uploadedDate ?? app.submittedDate
                 items.append(DocumentQueueItem(
                     id: doc.id,
@@ -168,11 +162,9 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Filtered List for Tab 2 (History)
     var filteredApplications: [LoanApplication] {
         var list = applications
         
-        // 1. Filter by Status (Registry Category)
         list = list.filter { app in
             switch historyFilter {
             case .all:
@@ -190,12 +182,10 @@ class LoanOfficerDashboardViewModel: ObservableObject {
             }
         }
         
-        // 2. Filter by Loan Type
         if let typeFilter = historyLoanTypeFilter {
             list = list.filter { $0.loanType == typeFilter }
         }
         
-        // 3. Filter by Search Query (Name, ID, Branch, or Notes)
         let query = historySearchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if !query.isEmpty {
             list = list.filter {
@@ -206,12 +196,10 @@ class LoanOfficerDashboardViewModel: ObservableObject {
             }
         }
         
-        // 4. Date Range Filter
         list = list.filter {
             $0.submittedDate >= historyStartDate && $0.submittedDate <= historyEndDate
         }
         
-        // 5. Sorting
         switch historySortOrder {
         case .newest:
             list.sort { $0.submittedDate > $1.submittedDate }
@@ -226,7 +214,6 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         return list
     }
     
-    // MARK: - Fetch Data
     func fetchDashboardData() async {
         guard !isFetchingDashboardData else { return }
         isFetchingDashboardData = true
@@ -241,15 +228,12 @@ class LoanOfficerDashboardViewModel: ObservableObject {
                 }
             }
             
-            // Fetch all submitted applications from Supabase for the officer view
             await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
             refreshFromRepository()
             await loadAssignedApplicationMessages()
             
-            // Simulate brief loading delay for UI
             try await Task.sleep(nanoseconds: 400_000_000)
             
-            // Starts empty to remove mock feed items
             self.activityFeed = []
             
             if let officerId = self.officerProfile?.id {
@@ -328,7 +312,6 @@ class LoanOfficerDashboardViewModel: ObservableObject {
 
     func refreshFromRepository() {
         guard let officerProfile else {
-            // Keep the queue safe and empty until the profile is successfully loaded from the DB
             self.applications = []
             return
         }
@@ -390,7 +373,6 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         applicationMessages = nextMessages
     }
     
-    // MARK: - Realtime
     func setupRealtime() async {
         guard let profileId = officerProfile?.id else { return }
         
@@ -408,13 +390,11 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     private func handleNewRealtimeMessage(_ msg: DBMessage, profileId: UUID) {
         guard let appId = msg.applicationId else { return }
         
-        // Append message if not already present
         var messagesForApp = applicationMessages[appId] ?? []
         if !messagesForApp.contains(where: { $0.messageId == msg.messageId }) {
             messagesForApp.append(msg)
             applicationMessages[appId] = messagesForApp.sorted { $0.sentAt < $1.sentAt }
             
-            // Add to activity feed if received
             if msg.receiverId == profileId && !msg.isRead {
                 let borrowerName = applications.first(where: { $0.id == appId })?.borrowerName ?? "Borrower"
                 let appDisplayId = applications.first(where: { $0.id == appId })?.applicationId ?? "APP"
@@ -445,7 +425,6 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         self.unreadActivityCount = self.activityFeed.filter { !$0.isRead }.count
     }
     
-    // MARK: - User Interactions
     func markActivityRead(_ id: UUID) {
         if let index = activityFeed.firstIndex(where: { $0.id == id }) {
             activityFeed[index].isRead = true
@@ -604,7 +583,6 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
 }
 
-// Wrapper for UI list handling
 struct DocumentQueueItem: Identifiable, Hashable {
     typealias DocumentType = OfficerDocumentType
     typealias DocumentStatus = OfficerDocumentStatus

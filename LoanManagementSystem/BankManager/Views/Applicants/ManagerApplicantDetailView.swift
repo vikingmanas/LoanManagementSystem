@@ -16,7 +16,6 @@ struct ManagerApplicantDetailView: View {
     var body: some View {
         NavigationStack {
             List {
-                // MARK: - Profile Header
                 Section {
                     VStack(spacing: LMSSpacing.md) {
                         ZStack {
@@ -56,7 +55,6 @@ struct ManagerApplicantDetailView: View {
                     .padding(.vertical, LMSSpacing.lg)
                 }
 
-                // MARK: - Loan Details
                 Section("Loan Information") {
                     LabeledContent {
                         Text(applicant.loanType.rawValue)
@@ -91,7 +89,6 @@ struct ManagerApplicantDetailView: View {
                     }
                 }
 
-                // MARK: - Advanced Risk Engine
                 Section {
                     NavigationLink {
                         CIBILDetailView(
@@ -108,7 +105,6 @@ struct ManagerApplicantDetailView: View {
                     Text("Risk Analysis")
                 }
 
-                // MARK: - Documents
                 Section("Documents") {
                     if applicant.documents.isEmpty {
                         Text("No documents uploaded")
@@ -121,7 +117,6 @@ struct ManagerApplicantDetailView: View {
                     }
                 }
 
-                // MARK: - Assignment Warning
                 if !applicant.isAssignedToOfficer {
                     Section {
                         HStack(spacing: LMSSpacing.md) {
@@ -141,7 +136,6 @@ struct ManagerApplicantDetailView: View {
                     }
                 }
 
-                // MARK: - Reviewer Notes
                 Section("Reviewer Context") {
                     VStack(alignment: .leading, spacing: LMSSpacing.md) {
                         OfficerRecommendationView(
@@ -158,7 +152,6 @@ struct ManagerApplicantDetailView: View {
                     .listRowBackground(Color.clear)
                 }
 
-                // MARK: - Actions
                 if applicant.status == .sentToManager || applicant.status == .needsClarification {
                     Section {
                         Button(action: { actionType = .approve }) {
@@ -222,7 +215,6 @@ struct ManagerApplicantDetailView: View {
     }
 }
 
-// MARK: - Helper Views
 
 private struct DocumentRow: View {
     let doc: ManagerDocument
@@ -416,7 +408,6 @@ private struct CIBILDetailView: View {
     }
 }
 
-// MARK: - Advanced Risk UI
 
 private struct AdvancedRiskSection: View {
     let applicant: ManagerApplicant
@@ -445,9 +436,7 @@ private struct AdvancedRiskSection: View {
             .padding(.horizontal, LMSSpacing.screenHorizontal)
 
             VStack(spacing: LMSSpacing.lg) {
-                // Solid Stat Cards
                 HStack(spacing: 16) {
-                    // CIBIL Box
                     VStack(alignment: .leading, spacing: 8) {
                         Text("CIBIL SCORE")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
@@ -464,7 +453,6 @@ private struct AdvancedRiskSection: View {
                     .background(applicant.cibilScore >= 750 ? LMSColors.emerald : (applicant.cibilScore >= 650 ? LMSColors.amber : LMSColors.coral))
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     
-                    // Composite Score Box
                     VStack(alignment: .leading, spacing: 8) {
                         Text("COMPOSITE RISK")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
@@ -483,7 +471,6 @@ private struct AdvancedRiskSection: View {
                 }
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
 
-                // Risk Factors List
                 if !applicant.riskFactors.isEmpty {
                     VStack(spacing: 12) {
                         ForEach(Array(applicant.riskFactors.enumerated()), id: \.element.id) { index, factor in

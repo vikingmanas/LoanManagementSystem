@@ -71,7 +71,6 @@ struct ChangePasswordSheet: View {
     }
     
     private func changePassword() async {
-        // Validation
         guard newPassword == confirmPassword else {
             errorMessage = "Passwords do not match."
             return

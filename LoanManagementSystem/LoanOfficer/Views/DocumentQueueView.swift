@@ -7,7 +7,6 @@ struct DocumentQueueView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Header Row
             HStack {
                 HStack(spacing: 8) {
                     Text("Document Queue")
@@ -37,7 +36,6 @@ struct DocumentQueueView: View {
             }
             .padding(.horizontal, 16)
             
-            // List of Rows inside a Card
             VStack(spacing: 0) {
                 let items = viewModel.documentQueueList.prefix(5)
                 if items.isEmpty {
@@ -84,7 +82,6 @@ struct DocumentStatusRow: View {
                     .foregroundStyle(item.docType.iconColor)
             }
             
-            // Borrower details
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.borrowerName)
                     .font(.system(.caption, design: .rounded).bold())
@@ -97,7 +94,6 @@ struct DocumentStatusRow: View {
             
             Spacer()
             
-            // Status Badge
             Text(statusLabel(for: item.status))
                 .font(.system(.caption2, design: .rounded).bold())
                 .foregroundStyle(item.status == .pending ? LMSColors.amber : .white)
@@ -106,7 +102,6 @@ struct DocumentStatusRow: View {
                 .background(item.status == .pending ? LMSColors.amber.opacity(0.15) : item.status.themeColor)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             
-            // Action review CTA
             if item.status == .uploaded || item.status == .reUploaded {
                 Button(action: {
                     HapticsManager.triggerImpact(style: .medium)

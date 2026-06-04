@@ -60,7 +60,6 @@ struct NotificationsListView: View {
         }
     }
     
-    // MARK: - Subviews
     
     private var loadingView: some View {
         VStack(spacing: 16) {
@@ -85,7 +84,6 @@ struct NotificationsListView: View {
     
     private var notificationsList: some View {
         List {
-            // Unread section
             let unread = viewModel.notifications.filter { !$0.isRead }
             if !unread.isEmpty {
                 Section {
@@ -110,7 +108,6 @@ struct NotificationsListView: View {
                 }
             }
             
-            // Read section
             let read = viewModel.notifications.filter { $0.isRead }
             if !read.isEmpty {
                 Section {

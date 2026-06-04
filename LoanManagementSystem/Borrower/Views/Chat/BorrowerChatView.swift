@@ -1,14 +1,7 @@
-//
-//  BorrowerChatView.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 02/06/26.
-//
 
 import SwiftUI
 import Combine
 
-// MARK: - Conversations List (Tab Root)
 
 struct BorrowerChatView: View {
     @State private var viewModel = BorrowerChatViewModel()
@@ -47,7 +40,6 @@ struct BorrowerChatView: View {
         }
     }
 
-    // MARK: - Loading
     private var loadingState: some View {
         VStack(spacing: LMSSpacing.lg) {
             ProgressView()
@@ -62,7 +54,6 @@ struct BorrowerChatView: View {
         .background(LMSColors.background)
     }
 
-    // MARK: - Empty State
     private var emptyState: some View {
         VStack(spacing: LMSSpacing.lg) {
             Image(systemName: "bubble.left.and.bubble.right")
@@ -86,7 +77,6 @@ struct BorrowerChatView: View {
         .background(LMSColors.background)
     }
 
-    // MARK: - Conversations List
     private var conversationsList: some View {
         List {
             ForEach(filteredConversations) { conversation in
@@ -101,19 +91,16 @@ struct BorrowerChatView: View {
     }
 }
 
-// MARK: - Conversation Row
 
 private struct BorrowerConversationRow: View {
     let conversation: BorrowerConversation
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            // Unread dot
             Circle()
                 .fill(conversation.unreadCount > 0 ? LMSColors.actionBlue : Color.clear)
                 .frame(width: 10, height: 10)
 
-            // Avatar
             BorrowerChatAvatar(
                 name: "Loan Officer",
                 icon: "person.badge.shield.checkmark.fill",
@@ -168,7 +155,6 @@ private struct BorrowerConversationRow: View {
     }
 }
 
-// MARK: - Message Thread View
 
 private struct BorrowerMessageThreadView: View {
     let conversation: BorrowerConversation
@@ -182,14 +168,12 @@ private struct BorrowerMessageThreadView: View {
     private var officerUserId: UUID? {
         guard let borrowerUid = AuthManager.shared.currentUser?.uid,
               let borrowerId = UUID(uuidString: borrowerUid) else { return nil }
-        // Find the first message where senderId is NOT the borrower — that's the officer
         return messages.first(where: { $0.senderId != borrowerId })?.senderId
             ?? messages.first(where: { $0.receiverId != borrowerId })?.receiverId
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            // Messages
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 10) {
@@ -211,7 +195,6 @@ private struct BorrowerMessageThreadView: View {
                 }
             }
 
-            // Composer
             BorrowerMessageComposer(text: $messageText, isFocused: $isComposerFocused, onSend: sendMessage)
         }
         .navigationTitle(conversation.loanProductName)
@@ -274,7 +257,6 @@ private struct BorrowerMessageThreadView: View {
     }
 }
 
-// MARK: - Message Composer
 
 private struct BorrowerMessageComposer: View {
     @Binding var text: String
@@ -314,7 +296,6 @@ private struct BorrowerMessageComposer: View {
     }
 }
 
-// MARK: - Message Bubble
 
 private struct BorrowerMessageBubble: View {
     let message: DBMessage
@@ -325,7 +306,6 @@ private struct BorrowerMessageBubble: View {
             if isBorrower { Spacer(minLength: 52) }
 
             VStack(alignment: isBorrower ? .trailing : .leading, spacing: 4) {
-                // Sender label for officer messages
                 if !isBorrower {
                     Text("Loan Officer")
                         .font(.system(.caption2, design: .rounded).weight(.semibold))
@@ -370,7 +350,6 @@ private struct BorrowerMessageBubble: View {
     }
 }
 
-// MARK: - Avatar
 
 private struct BorrowerChatAvatar: View {
     let name: String
@@ -386,7 +365,6 @@ private struct BorrowerChatAvatar: View {
     }
 }
 
-// MARK: - Preview
 
 #Preview {
     BorrowerChatView()

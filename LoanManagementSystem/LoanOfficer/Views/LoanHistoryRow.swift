@@ -10,10 +10,8 @@ struct LoanHistoryRow: View {
     var body: some View {
         Button(action: onView) {
             HStack(spacing: 16) {
-                // Left: Premium Grayscale Initials Avatar
                 borrowerAvatar
                 
-                // Center Details
                 VStack(alignment: .leading, spacing: 3) {
                     Text(app.borrowerName)
                         .font(.system(size: 16, weight: .bold, design: .rounded))
@@ -30,7 +28,6 @@ struct LoanHistoryRow: View {
                 
                 Spacer()
                 
-                // Right Details: large formatted amount & tiny elegant badge
                 VStack(alignment: .trailing, spacing: 6) {
                     Text(CurrencyFormatter.shared.format(app.requestedAmount))
                         .font(.system(size: 16, weight: .bold, design: .rounded))
@@ -45,7 +42,6 @@ struct LoanHistoryRow: View {
         }
         .buttonStyle(PlainButtonStyle())
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            // View Action
             Button {
                 HapticsManager.triggerImpact(style: .light)
                 onView()
@@ -54,7 +50,6 @@ struct LoanHistoryRow: View {
             }
             .tint(LMSColors.actionBlue)
             
-            // Call Action
             Button {
                 HapticsManager.triggerImpact(style: .light)
                 onCall()
@@ -63,7 +58,6 @@ struct LoanHistoryRow: View {
             }
             .tint(LMSColors.emerald)
             
-            // Flag Action
             Button {
                 HapticsManager.triggerImpact(style: .light)
                 onFlag()
@@ -74,7 +68,6 @@ struct LoanHistoryRow: View {
         }
     }
     
-    // Grayscale Initials Avatar
     private var borrowerAvatar: some View {
         let initials = app.borrowerName.components(separatedBy: " ")
             .compactMap { $0.first }
@@ -97,7 +90,6 @@ struct LoanHistoryRow: View {
         }
     }
     
-    // Simplified status badge colors and tags matching specs
     private var statusDetails: (text: String, color: Color) {
         switch app.status {
         case .pending, .applied, .documentsPending:

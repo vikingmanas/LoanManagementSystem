@@ -1,9 +1,3 @@
-//
-//  DashboardViewModel.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 19/05/26.
-//
 
 import SwiftUI
 import Combine
@@ -24,7 +18,6 @@ public final class DashboardViewModel: ObservableObject {
     @Published public var profileName: String = ""
     @Published public var profileCompletionPercentage: Int = 0
     
-    // Notification support
     public let notificationViewModel = NotificationViewModel()
     
     private var cancellables = Set<AnyCancellable>()
@@ -61,7 +54,6 @@ public final class DashboardViewModel: ObservableObject {
     public var repaidFraction:   Double { totalSanctioned > 0 ? (totalRepaid / totalSanctioned) : 0 }
     
     public var loansClosedCount: Int {
-        // Closed if outstanding principal has reached 0 (or below due to rounding).
         loanAccounts.filter { $0.principalOutstanding <= 0.0 }.count
     }
     
@@ -202,7 +194,6 @@ public final class DashboardViewModel: ObservableObject {
             }
         }
         
-        // Simulate a 0.8s network latency delay
         do {
             try await Task.sleep(nanoseconds: 800_000_000)
             try Task.checkCancellation()
@@ -210,7 +201,6 @@ public final class DashboardViewModel: ObservableObject {
             return
         }
         
-        // Load loan accounts from approved/disbursed applications in CentralLoanRepository
         let approvedApps = CentralLoanRepository.shared.applications.filter {
             $0.currentStage == .approved || $0.currentStage == .disbursed
         }
@@ -262,7 +252,6 @@ public final class DashboardViewModel: ObservableObject {
         
         self.schemes = []
 
-        // Fetch actual transactions from Supabase if borrower profile is available
         let localTransactions = transactions
         var dbTransactionsList: [Transaction] = []
         if let profile = BorrowerProfileStore.shared.profile {
@@ -305,7 +294,6 @@ public final class DashboardViewModel: ObservableObject {
         applyEMIPaymentsToLoanOutstanding()
         refreshPendingEMIs()
         
-        // Configure notifications from Supabase
         if let profile = BorrowerProfileStore.shared.profile,
            let userId = UUID(uuidString: profile.id) {
             notificationViewModel.configure(userId: userId)
@@ -447,7 +435,6 @@ public final class DashboardViewModel: ObservableObject {
     }
 
     
-    // Quick-action methods
     public func payNextEMI() {
         let dueEMIs = nextDueEMIs
         guard !dueEMIs.isEmpty,
@@ -468,7 +455,6 @@ public final class DashboardViewModel: ObservableObject {
             return false
         }
         
-        // Trigger haptic feedback
         HapticsManager.triggerImpact(style: .medium)
         
         guard let repaymentAccount = emiRepaymentAccount(),
@@ -493,7 +479,6 @@ public final class DashboardViewModel: ObservableObject {
 
             pendingEMIs[index].status = .paid
                 
-            // Add a new transaction row for the EMI paid
             let refNo = "TXN\(Int.random(in: 1000000...9999999))"
             let newTx = Transaction(
                 title: "EMI paid for \(emi.loanType)",
@@ -624,7 +609,6 @@ public final class DashboardViewModel: ObservableObject {
                 balance: updatedBalance
             )
             
-            // Add a credit transaction row
             let refNo = "TXN\(Int.random(in: 1000000...9999999))"
             let newTx = Transaction(
                 title: "Account Top-Up",

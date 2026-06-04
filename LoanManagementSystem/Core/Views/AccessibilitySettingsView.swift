@@ -6,10 +6,15 @@ struct AccessibilitySettingsView: View {
     @AppStorage("forceBoldText") private var forceBoldText = false
     @AppStorage("reduceMotion") private var reduceMotion = false
     @AppStorage("enableHaptics") private var enableHaptics = true
+    @AppStorage("enableInAppVoiceOver") private var enableInAppVoiceOver = false
     
     var body: some View {
         Form {
             Section {
+                Toggle(isOn: $enableInAppVoiceOver) {
+                    Label("In-App Voice Over", systemImage: "speaker.wave.3.fill")
+                }
+                
                 Toggle(isOn: $isDarkMode) {
                     Label("Dark Mode", systemImage: isDarkMode ? "moon.fill" : "sun.max.fill")
                 }

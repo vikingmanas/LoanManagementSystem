@@ -12,7 +12,6 @@ struct AdminDashboardTabView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: LMSSpacing.sectionGap) {
-                    // Custom title to avoid SwiftUI large-title padding bug on first launch
                     Text("Dashboard")
                         .font(.largeTitle)
                         .fontWeight(.bold)
@@ -206,9 +205,7 @@ struct AdminDashboardTabView: View {
     }
 }
 
-// MARK: - Preview
 #Preview {
-    // Build a mock view model with static data so Xcode canvas works offline
     let vm = AdminDashboardViewModel()
     vm.kpis = [
         AdminKPI(title: "Total Applications", value: "12",  icon: "square.stack.3d.up",      trend:  8.0,  themeColor: LMSColors.textPrimary),
@@ -223,7 +220,6 @@ struct AdminDashboardTabView: View {
         AuditLogEntry(id: UUID(), userId: UUID(), userName: "User",   action: "Approved Loan Application", entityType: "Loan",    entityId: "APP-6014C9", timestamp: Date(timeIntervalSinceNow: -86400), details: "", type: .loanAction)
     ]
 
-    // Mock AuthManager with a display name so initials render correctly
     let auth = AuthManager()
     auth.currentUser = AuthSessionUser(uid: "preview", email: "admin@lms.com", displayName: "US Admin")
 

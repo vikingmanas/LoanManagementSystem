@@ -37,7 +37,6 @@ struct AdminApplicationListSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Search Bar
                 SearchBar(text: $searchText, placeholder: "Search by name or Application ID...")
                     .padding(.horizontal, LMSSpacing.screenHorizontal)
                     .padding(.top, LMSSpacing.md)
@@ -163,7 +162,6 @@ private struct ApplicationRowView: View {
     }
 }
 
-// MARK: - Search Bar Component
 struct SearchBar: View {
     @Binding var text: String
     var placeholder: String
@@ -193,7 +191,6 @@ struct SearchBar: View {
     }
 }
 
-// MARK: - Status Pill Mappers
 func displayStatus(_ status: String) -> String {
     switch status.lowercased() {
     case "draft": return "Draft"
@@ -227,7 +224,6 @@ func statusIcon(_ status: String) -> String {
     }
 }
 
-// Make DBLoanApplication Identifiable for sheet bindings
 extension DBLoanApplication: Identifiable {
     public var id: UUID { applicationId }
 }

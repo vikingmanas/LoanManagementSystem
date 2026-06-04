@@ -51,7 +51,6 @@ struct LoanOfficerProfileView: View {
     var body: some View {
         NavigationStack {
             List {
-                // 1. OFFICER PROFILE HEADER CARD
                 Section {
                     VStack(spacing: 12) {
                         ZStack {
@@ -87,7 +86,6 @@ struct LoanOfficerProfileView: View {
                     .padding(.vertical, 16)
                 }
                 
-                // 2. EMPLOYEE DETAILS SECTION
                 Section("Employee Information") {
                     LabeledContent("Employee ID", value: authManager.currentStaffProfile?.employeeCode ?? "")
                     LabeledContent("Department", value: "Retail Lending Operations")
@@ -102,13 +100,11 @@ struct LoanOfficerProfileView: View {
                     LabeledContent("Date of Joining", value: dateStr)
                 }
                 
-                // 3. CONTACT DETAILS SECTION
                 Section("Contact Information") {
                     LabeledContent("Official Email", value: authManager.currentStaffProfile?.email ?? "")
                     LabeledContent("Work Phone", value: authManager.currentStaffProfile?.phoneNumber ?? "")
                 }
                 
-                // 4. PERFORMANCE STATS SECTION
                 Section("Performance & Operations") {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -165,7 +161,6 @@ struct LoanOfficerProfileView: View {
 
 
                 
-                // 5. SYSTEM SETTINGS
                 Section("System Settings") {
                     
                     Toggle(isOn: Binding(
@@ -197,7 +192,6 @@ struct LoanOfficerProfileView: View {
                     }
                 }
                 
-                // 6. LOGOUT BUTTON
                 Section {
                     Button(role: .destructive) {
                         HapticsManager.triggerImpact(style: .medium)

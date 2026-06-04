@@ -19,7 +19,6 @@ class SignInViewModel: ObservableObject {
     @Published var showSuccess: Bool = false
     @Published var generalError: String = ""
 
-    // MARK: - OTP Step State
     @Published var otpCode: String = ""
     @Published var isOtpStep: Bool = false
     @Published var otpSentMessage: String = ""
@@ -38,7 +37,6 @@ class SignInViewModel: ObservableObject {
         return digits.count == 6
     }
 
-    // MARK: - Step 1: Validate Credentials & Send OTP
 
     func signIn(authManager: AuthManager, appState: AppStateManager) async {
         emailError = ""
@@ -65,23 +63,18 @@ class SignInViewModel: ObservableObject {
 
         isLoading = true
 
-        // 1. Validate credentials by signing in
         let result = await authManager.signIn(email: cleanedEmail, password: password)
 
         if result.success {
-            // Store validated data for after OTP verification
             validatedEmail = cleanedEmail
             validatedRole = result.role
 
-            // 2. Sign out immediately — user must complete OTP before accessing dashboard
             authManager.signOut()
 
-            // 3. Send OTP to the user's email
             let otpSent = await authManager.sendEmailOTP(email: cleanedEmail)
             isLoading = false
 
             if otpSent {
-                // Transition to OTP entry step
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                     isOtpStep = true
                     otpSentMessage = "A 6-digit verification code has been sent to \(cleanedEmail)"
@@ -95,7 +88,6 @@ class SignInViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Step 2: Verify OTP
 
     func verifyOTP(authManager: AuthManager, appState: AppStateManager) async {
         otpError = ""
@@ -119,7 +111,6 @@ class SignInViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Resend OTP
 
     func resendOTP(authManager: AuthManager) async {
         generalError = ""
@@ -137,7 +128,6 @@ class SignInViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Go Back to Credentials Step
 
     func goBackToCredentials() {
         withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
@@ -149,7 +139,6 @@ class SignInViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Complete Login
 
     private func completeSuccessfulLogin(role: String?, email: String, authManager: AuthManager, appState: AppStateManager) {
         if let role {

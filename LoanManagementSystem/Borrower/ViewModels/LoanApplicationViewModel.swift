@@ -728,7 +728,6 @@ final class LoanApplicationViewModel: ObservableObject {
         let app = applications[appIndex]
         CentralLoanRepository.shared.submitApplication(app)
         
-        // Sync to Supabase Storage & Database
         Task {
             do {
                 guard let dummyData = Data("Re-upload payload unavailable for \(fileName)".utf8) as Data? else { return }
@@ -788,12 +787,9 @@ final class LoanApplicationViewModel: ObservableObject {
         }
         
         func runBulkVerification() {
-            // Documents stay as .uploaded — actual verification is done by the Loan Officer.
-            // This method only ensures all documents have been uploaded (completeness check).
             for index in documents.indices {
                 guard !documents[index].isLocked else { continue }
                 if documents[index].status == .pendingUpload {
-                    // Mark as needing attention but don't auto-verify
                     documents[index].lastUpdated = Date()
                 }
             }
@@ -805,7 +801,6 @@ final class LoanApplicationViewModel: ObservableObject {
         }
         
         func verifyAndShowResult() {
-            // Don't auto-verify — just mark completeness check as done
             runBulkVerification()
             verificationComplete = true
             showVerificationResult = true
@@ -813,7 +808,6 @@ final class LoanApplicationViewModel: ObservableObject {
         
         @discardableResult
         func submitCurrentApplication() -> BorrowerLoanApplication? {
-            // Cancel any pending autosave task to prevent post-submit race conditions
             autosaveTask?.cancel()
             
             if formData.monthlyIncomeValue > 0,
@@ -830,7 +824,6 @@ final class LoanApplicationViewModel: ObservableObject {
             let now = Date()
             var draft = applications[index]
             
-            // Copy latest user input to the draft before status transition
             draft.formData = formData
             draft.documents = documents
             let generatedApplicationID = draft.applicationId ?? generateApplicationID()
@@ -965,7 +958,6 @@ final class LoanApplicationViewModel: ObservableObject {
         }
         
         private func seedInitialApplications() {
-            // Clear all mock data
         }
         
         func setBorrowerAuthContext(email: String, displayName: String) {

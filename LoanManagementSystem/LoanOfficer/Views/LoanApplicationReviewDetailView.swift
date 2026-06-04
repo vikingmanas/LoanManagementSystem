@@ -85,7 +85,6 @@ struct LoanApplicationReviewDetailView: View {
         }
     }
     
-    // MARK: - Main Content
     
     @ViewBuilder
     private func applicationContent(_ currentApp: LoanApplication) -> some View {
@@ -318,7 +317,6 @@ struct LoanApplicationReviewDetailView: View {
             : "Reviewed by loan officer."
     }
     
-    // MARK: - Application Header
     
     private func applicationHeaderSection(_ app: LoanApplication) -> some View {
         Section {
@@ -348,7 +346,6 @@ struct LoanApplicationReviewDetailView: View {
     
 
     
-    // MARK: - Personal Details
     
     private func personalDetailsSection(_ app: LoanApplication) -> some View {
         Section("Personal Information") {
@@ -367,7 +364,6 @@ struct LoanApplicationReviewDetailView: View {
         }
     }
     
-    // MARK: - Loan & Employment
     
     private func loanEmploymentSection(_ app: LoanApplication) -> some View {
         Section("Loan & Employment") {
@@ -398,7 +394,6 @@ struct LoanApplicationReviewDetailView: View {
     
 
     
-    // MARK: - Document Checklist
     
     private func documentChecklistSection(_ app: LoanApplication) -> some View {
         Section("Documents (\(loanDocuments.filter { $0.status == .verified }.count)/\(loanDocuments.count) verified)") {
@@ -430,7 +425,6 @@ struct LoanApplicationReviewDetailView: View {
         let existingEMIs = app.borrowerDetails.existingEMIs
         let requestedAmount = app.requestedAmount
         
-        // Compute DTI ratio robustly
         var incomeVal = parseAmount(monthlyIncome)
         if incomeVal > 0 && incomeVal < 1000 {
             incomeVal *= 100_000 // Fix "1.2 Lakh" parsing bug
@@ -441,7 +435,6 @@ struct LoanApplicationReviewDetailView: View {
         let totalObligations = emisVal + proposedEMI
         let dtiRatio = incomeVal > 0 ? (totalObligations / incomeVal) * 100 : 0
         
-        // Determine Risk
         let riskLevel: String
         let riskColor: Color
         if cibil >= 750 && dtiRatio <= 40 {
@@ -457,7 +450,6 @@ struct LoanApplicationReviewDetailView: View {
         
         return Section {
             VStack(spacing: LMSSpacing.lg) {
-                // Header Badge
                 HStack {
                     HStack(spacing: 4) {
                         Image(systemName: "sparkles")
@@ -476,9 +468,7 @@ struct LoanApplicationReviewDetailView: View {
                         .clipShape(Capsule())
                 }
                 
-                // Solid Stat Cards
                 HStack(spacing: 16) {
-                    // CIBIL Box
                     VStack(alignment: .leading, spacing: 8) {
                         Text("CIBIL SCORE")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
@@ -495,7 +485,6 @@ struct LoanApplicationReviewDetailView: View {
                     .background(cibil >= 750 ? LMSColors.emerald : (cibil >= minCibil ? LMSColors.amber : LMSColors.coral))
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     
-                    // DTI Box
                     let dtiColor = dtiRatio <= 40 ? LMSColors.emerald : (dtiRatio <= maxDTI ? LMSColors.amber : LMSColors.coral)
                     VStack(alignment: .leading, spacing: 8) {
                         Text("DTI RATIO")
@@ -514,7 +503,6 @@ struct LoanApplicationReviewDetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 
-                // Financial Details
                 VStack(spacing: 12) {
                     HStack {
                         Text("Monthly Income")
@@ -588,7 +576,6 @@ struct LoanApplicationReviewDetailView: View {
         return Int(filtered) ?? 60
     }
     
-    // MARK: - Sanction Letter
     
     @ViewBuilder
     private func sanctionLetterSection(_ app: LoanApplication) -> some View {
@@ -649,7 +636,6 @@ struct LoanApplicationReviewDetailView: View {
         }
     }
 
-    // MARK: - Approval
     
     @ViewBuilder
     private func approvalSection(_ app: LoanApplication) -> some View {
@@ -729,7 +715,6 @@ struct LoanApplicationReviewDetailView: View {
         }
     }
     
-    // MARK: - Helpers
 
     private func shouldShowOfficerActions(for app: LoanApplication) -> Bool {
         switch app.status {
@@ -756,7 +741,6 @@ struct LoanApplicationReviewDetailView: View {
     }
 }
 
-// MARK: - Supporting Views
 
 struct InfoCell: View {
     let label: String
@@ -1098,7 +1082,6 @@ struct DocumentChecklistItemRow: View {
     }
 }
 
-// MARK: - Credit Risk Supporting Views
 
 
 

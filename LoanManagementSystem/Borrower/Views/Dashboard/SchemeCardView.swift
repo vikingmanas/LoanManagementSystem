@@ -11,7 +11,6 @@ public struct SchemeCardView: View {
     
     public var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            // Top Row: Category badge & Icon
             HStack(alignment: .center) {
                 Text(categoryBadgeText)
                     .font(.system(size: 9, weight: .black, design: .rounded))
@@ -43,7 +42,6 @@ public struct SchemeCardView: View {
             
             Spacer(minLength: 0)
             
-            // Bottom Row
             HStack {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("VALID UNTIL")
@@ -79,7 +77,6 @@ public struct SchemeCardView: View {
         .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 4)
     }
     
-    // MARK: - Category Helpers
     private var categoryColor: Color {
         switch scheme.category {
         case .businessLoan: return LMSColors.brandNavy
@@ -106,7 +103,6 @@ public struct SchemeCardView: View {
     }
 }
 
-// MARK: - Scheme Skeleton Card
 public struct SchemeCardSkeleton: View {
     public init() {}
     

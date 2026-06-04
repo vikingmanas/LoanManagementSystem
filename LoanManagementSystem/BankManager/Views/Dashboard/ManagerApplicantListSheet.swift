@@ -8,9 +8,6 @@ struct ManagerApplicantListSheet: View {
     
     @Environment(\.dismiss) var dismiss
     
-    // We will just show a detail view when one is tapped.
-    // However, since we are in a sheet, maybe it's better to just use a NavigationLink or open another sheet.
-    // Since ManagerApplicantDetailView requires a view model, we should probably pass it in.
     @ObservedObject var viewModel: ManagerDashboardViewModel
     @State private var selectedApplicant: ManagerApplicant?
     

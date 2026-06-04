@@ -45,7 +45,6 @@ struct ManagerDashboardView: View {
         .tint(LMSColors.brandNavy)
         .task {
             await viewModel.fetchDashboardData(authManager: authManager)
-            // Configure notification VM with current user ID
             if let userId = authManager.currentUser?.uid,
                let uuid = UUID(uuidString: userId) {
                 notificationViewModel.configure(userId: uuid)
@@ -72,6 +71,9 @@ struct ManagerDashboardView: View {
         }
         .accessibleSheet(item: $selectedApplicant) { applicant in
             ManagerApplicantDetailView(applicant: applicant, viewModel: viewModel)
+        }
+        .inAppVoiceOver {
+            "Manager Workspace. Branch \(viewModel.branchOverview.name). \(viewModel.pendingApplicants.count) pending applications."
         }
     }
 

@@ -13,7 +13,6 @@ enum AdvancedRiskEngine {
         let formData = app.formData
         var riskScore = 100
         
-        // 1. Debt-To-Income (DTI) Ratio Calculation
         let monthlyIncome = formData.monthlyIncomeValue > 0 ? formData.monthlyIncomeValue : (formData.annualIncomeValue / 12.0)
         let existingEMIs = formData.existingEMIsValue
         let creditCardObs = formData.creditCardObligationsValue
@@ -33,7 +32,6 @@ enum AdvancedRiskEngine {
             riskScore -= 30
         }
         
-        // 2. Employment Stability
         let isSalaried = formData.employmentType.lowercased().contains("salaried")
         let yearsExp = formData.workExperienceYears
         
@@ -51,7 +49,6 @@ enum AdvancedRiskEngine {
             riskScore -= 20
         }
         
-        // 3. CIBIL Score Modifier
         let cibil = formData.creditScoreValue > 0 ? formData.creditScoreValue : 750
         if cibil >= 750 {
             factors.append(ManagerRiskFactor(title: "Excellent Credit", description: "CIBIL Score: \(cibil)", isPositive: true))
@@ -64,10 +61,8 @@ enum AdvancedRiskEngine {
             riskScore -= 40
         }
         
-        // Final Score clamping
         riskScore = max(0, min(100, riskScore))
         
-        // Determine final risk level
         let finalRiskLevel: ManagerRiskLevel
         if riskScore >= 80 {
             finalRiskLevel = .low

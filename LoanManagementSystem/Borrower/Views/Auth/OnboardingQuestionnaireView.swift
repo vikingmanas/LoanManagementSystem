@@ -6,11 +6,9 @@ struct OnboardingQuestionnaireView: View {
     @EnvironmentObject private var appState: AppStateManager
     @ObservedObject private var profileStore = BorrowerProfileStore.shared
     
-    // Step indicator: 0 = Professional, 1 = Financial
     @State private var currentStep = 0
     private let totalSteps = 2
     
-    // Step 1: Professional Details
     @State private var occupation = ""
     @State private var employmentType = "Salaried"
     @State private var companyName = ""
@@ -20,7 +18,6 @@ struct OnboardingQuestionnaireView: View {
     @State private var annualIncome = ""
     @State private var gstNumber = ""
     
-    // Step 2: Financial Details
     @State private var hasExistingBankAccount = false
     @State private var emergencyContactName = ""
     @State private var emergencyContactRelationship = "Spouse"
@@ -34,12 +31,10 @@ struct OnboardingQuestionnaireView: View {
     @State private var isShowingAddAccountForm = false
     @State private var branchesList: [BranchInfo] = []
     
-    // Loading & validation state
     @State private var isLoading = false
     @State private var errorMessage = ""
     @State private var showValidationError = false
     
-    // Lists of Options
     private let employmentTypes = ["Salaried", "Self-Employed", "Business Owner"]
     private let relationships = ["Spouse", "Parent", "Sibling", "Friend", "Relative", "Other"]
 
@@ -47,7 +42,6 @@ struct OnboardingQuestionnaireView: View {
     var body: some View {
         NavigationStack {
             Form {
-                // Progress & Instructions
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(stepTitle)
@@ -66,14 +60,12 @@ struct OnboardingQuestionnaireView: View {
                     .listRowInsets(EdgeInsets(top: 20, leading: 0, bottom: 20, trailing: 0))
                 }
                 
-                // Form Content
                 if currentStep == 0 {
                     professionalSection
                 } else {
                     financialSection
                 }
                 
-                // Error Section
                 if showValidationError {
                     Section {
                         Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
@@ -121,7 +113,6 @@ struct OnboardingQuestionnaireView: View {
         }
     }
     
-    // MARK: - Sections
     
     private var professionalSection: some View {
         Group {
@@ -312,7 +303,6 @@ struct OnboardingQuestionnaireView: View {
         }
     }
     
-    // MARK: - Helpers
     
     private var stepTitle: String {
         switch currentStep {
@@ -639,13 +629,11 @@ struct OnboardingQuestionnaireView: View {
     }
 }
 
-// MARK: - Premium Bank Account Insight Card View
 struct BankAccountInsightCardView: View {
     let account: LinkedBankAccount
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header: Bank Name and Icon
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(account.bankName)
@@ -673,7 +661,6 @@ struct BankAccountInsightCardView: View {
             Divider()
                 .background(Color.white.opacity(0.2))
             
-            // Body: Details
             VStack(spacing: 12) {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
@@ -725,7 +712,6 @@ struct BankAccountInsightCardView: View {
             Divider()
                 .background(Color.white.opacity(0.2))
             
-            // Balance Footer
             HStack {
                 Text("Available Balance")
                     .font(.system(.subheadline, design: .rounded))

@@ -1,12 +1,10 @@
 import Foundation
 import SwiftUI
 
-// MARK: - Navigation
 enum AdminTab: Hashable {
     case dashboard, staff, loanRules, templates
 }
 
-// MARK: - Dashboard KPIs
 struct AdminKPI: Identifiable, Hashable {
     let id = UUID()
     let title: String
@@ -16,7 +14,6 @@ struct AdminKPI: Identifiable, Hashable {
     let themeColor: Color
 }
 
-// MARK: - Branch KPI Data
 struct KPIBranchData: Identifiable, Hashable {
     let id = UUID()
     let branchName: String
@@ -25,14 +22,12 @@ struct KPIBranchData: Identifiable, Hashable {
     let trend: Double // Positive for up, negative for down
 }
 
-// MARK: - System Health
 struct SystemHealth: Equatable {
     var serverUptime: Double // Percentage (e.g. 99.98)
     var activeSessions: Int
     var lastBackupTime: Date
 }
 
-// MARK: - Audit Trail
 enum AuditLogType: String, Codable, CaseIterable {
     case userAction = "User Action"
     case documentAction = "Document Action"
@@ -147,7 +142,6 @@ struct AuditLogEntry: Identifiable, Codable, Hashable {
     }
 }
 
-// MARK: - Admin Communication Center
 enum AdminIssueCategory: String, CaseIterable, Identifiable, Hashable {
     case customerFeedback = "Customer Feedback"
     case branchOperations = "Branch Operations"
@@ -206,7 +200,6 @@ enum AdminIssueStatus: String, CaseIterable, Identifiable, Hashable {
     }
 }
 
-// MARK: - Loan Products
 struct AdminLoanProduct: Identifiable, Codable, Hashable {
     let id: UUID
     var name: String
@@ -221,7 +214,6 @@ struct AdminLoanProduct: Identifiable, Codable, Hashable {
     var requiredDocuments: [String]
 }
 
-// MARK: - Global Rules
 struct GlobalLoanRules: Codable, Equatable {
     var minCibilScore: Int
     var maxDTI: Double // Debt-to-Income ratio max percentage
@@ -243,7 +235,6 @@ struct GlobalLoanRules: Codable, Equatable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
-        // Decode minCibilScore (try camelCase, snake_case, or auto-converted key)
         if let val = try? container.decode(Int.self, forKey: .minCibilScore) {
             self.minCibilScore = val
         } else if let val = try? container.decode(Int.self, forKey: .minCibilScoreSnake) {
@@ -252,7 +243,6 @@ struct GlobalLoanRules: Codable, Equatable {
             self.minCibilScore = try container.decode(Int.self, forKey: .minCibilScore)
         }
 
-        // Decode maxDTI (try Double then Int)
         if let val = try? container.decode(Double.self, forKey: .maxDTI) {
             self.maxDTI = val
         } else if let val = try? container.decode(Int.self, forKey: .maxDTI) {
@@ -265,7 +255,6 @@ struct GlobalLoanRules: Codable, Equatable {
             self.maxDTI = try container.decode(Double.self, forKey: .maxDTI)
         }
 
-        // Decode maxLTV (try Double then Int)
         if let val = try? container.decode(Double.self, forKey: .maxLTV) {
             self.maxLTV = val
         } else if let val = try? container.decode(Int.self, forKey: .maxLTV) {
@@ -287,7 +276,6 @@ struct GlobalLoanRules: Codable, Equatable {
     }
 }
 
-// MARK: - Message Templates
 enum MessageTemplateType: String, Codable, CaseIterable {
     case email = "Email"
     case sms = "SMS"

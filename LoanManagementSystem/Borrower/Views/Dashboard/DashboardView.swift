@@ -1,7 +1,6 @@
 import SwiftUI
 import UIKit
 
-// MARK: - Navigation Destinations
 public enum DashboardRoute: Hashable {
     case loanDetails(DashboardLoanAccount)
     case bankDetails(BankAccount)
@@ -21,14 +20,12 @@ public enum DashboardRoute: Hashable {
     case support
 }
 
-// MARK: - Native Status Banner Section
 struct StatusBannerSection: View {
     @ObservedObject var viewModel: DashboardViewModel
     @Binding var navigationPath: [DashboardRoute]
 
     var body: some View {
         VStack(spacing: 12) {
-            // Profile Completion Row (Priority 1)
             if viewModel.profileCompletionPercentage < 100 {
                 Button {
                     navigationPath.append(.profile)
@@ -67,7 +64,6 @@ struct StatusBannerSection: View {
                 .buttonStyle(DashboardPressableStyle())
             }
             
-            // Account Health Status Row (High-Signal Urgent Alert)
             Button {
                 handleAlertTap()
             } label: {
@@ -115,7 +111,6 @@ struct StatusBannerSection: View {
     }
 }
 
-// MARK: - Native Quick Actions Section
 struct QuickActionGridSection: View {
     var onPay: () -> Void
     var onStatement: () -> Void
@@ -167,7 +162,6 @@ struct QuickActionButton: View {
     }
 }
 
-// MARK: - Dashboard View
 
 public struct DashboardView: View {
     @EnvironmentObject var appState: AppStateManager
@@ -296,6 +290,9 @@ public struct DashboardView: View {
                 }
             }
         }
+        .inAppVoiceOver {
+            "Dashboard overview. You have \(viewModel.loanAccounts.count) active loans. Profile is \(Int(viewModel.profileCompletionPercentage)) percent complete."
+        }
     }
 
     private var dashboardToolbarActions: some View {
@@ -330,7 +327,6 @@ public struct DashboardView: View {
     }
 }
 
-// MARK: - Repayment Schedule
 
 private enum RepaymentScheduleStatus: String {
     case paid = "Paid"
@@ -658,7 +654,6 @@ private struct RepaymentScheduleRow: View {
     }
 }
 
-// MARK: - Section 6: Govt Schemes
 struct GovernmentSchemesSection: View {
     @ObservedObject var viewModel: DashboardViewModel
     let onSchemeTap: (GovernmentScheme) -> Void
@@ -709,7 +704,6 @@ struct GovernmentSchemesSection: View {
     }
 }
 
-// MARK: - EMI Calculator
 
 private enum EMICalculatorTenureUnit: String, CaseIterable, Identifiable {
     case months = "Months"
@@ -1018,7 +1012,6 @@ private struct EMICalculatorView: View {
     }
 }
 
-// MARK: - Quick Action Action Sheets
 
 private enum EMIPaymentStep: Int, CaseIterable {
     case selectLoan, details, options, confirm
@@ -3450,7 +3443,6 @@ struct TopUpSheet: View {
 
 }
 
-// MARK: - Premium Detail Views
 
 struct LoanDetailsView: View {
     let loan: DashboardLoanAccount
@@ -3731,7 +3723,6 @@ struct SchemeDetailsView: View {
     }
 }
 
-// MARK: - Helpers
 
 private func dashboardInitials(viewModel: DashboardViewModel, authManager: AuthManager) -> String {
     let profileStore = BorrowerProfileStore.shared

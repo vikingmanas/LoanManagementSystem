@@ -10,7 +10,6 @@ struct BorrowerSignUpView: View {
     var body: some View {
         NavigationStack {
             Form {
-                // Header Information
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Create Account")
@@ -25,7 +24,6 @@ struct BorrowerSignUpView: View {
                     .listRowInsets(EdgeInsets(top: 10, leading: 0, bottom: 20, trailing: 0))
                 }
                 
-                // Personal Information
                 Section(header: Text("Personal Details")) {
                     LabeledContent("Name") {
                         TextField("Full Name", text: $viewModel.fullName)
@@ -46,7 +44,6 @@ struct BorrowerSignUpView: View {
                     }
                 }
                 
-                // Additional Information (Optional)
                 Section(header: Text("Optional Details")) {
                     LabeledContent("Alt. Mobile") {
                         TextField("Optional", text: $viewModel.alternatePhone)
@@ -59,7 +56,6 @@ struct BorrowerSignUpView: View {
                     }
                 }
                 
-                // Security
                 Section(header: Text("Security"), footer: passwordRequirementsFooter) {
                     SecureField("Password", text: $viewModel.password)
                         .textContentType(.newPassword)
@@ -68,14 +64,12 @@ struct BorrowerSignUpView: View {
                         .textContentType(.newPassword)
                 }
                 
-                // Agreements
                 Section {
                     termsAgreementRow
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 }
                 
-                // Action
                 Section {
                     Button {
                         Task {
@@ -97,7 +91,6 @@ struct BorrowerSignUpView: View {
                     .foregroundStyle(.white)
                 }
                 
-                // Error Section
                 if !viewModel.generalError.isEmpty {
                     Section {
                         Label(viewModel.generalError, systemImage: "exclamationmark.triangle.fill")
@@ -106,7 +99,6 @@ struct BorrowerSignUpView: View {
                     }
                 }
                 
-                // Footer
                 Section {
                     HStack {
                         Spacer()

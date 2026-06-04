@@ -4,12 +4,10 @@ struct QuickConsoleTabView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     var onActionSelected: (String) -> Void
     
-    // Live Calculator states
     @State private var principalAmount: Double = 2500000.0 // 25 Lakhs
     @State private var interestRate: Double = 8.65 // 8.65%
     @State private var tenureYears: Double = 15.0 // 15 years
     
-    // Compute dynamic EMI
     private var calculatedEMI: Double {
         let monthlyRate = (interestRate / 100.0) / 12.0
         let totalMonths = tenureYears * 12.0
@@ -33,7 +31,6 @@ struct QuickConsoleTabView: View {
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 20) {
-                // Header Banner
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Operations Console")
                         .font(.system(.title3, design: .rounded).bold())
@@ -47,7 +44,6 @@ struct QuickConsoleTabView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
                 
-                // 1. OPERATIONS UTILITIES GRID (2x3)
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Workspace Utilities")
                         .font(.system(.subheadline, design: .rounded).bold())
@@ -112,7 +108,6 @@ struct QuickConsoleTabView: View {
                     .padding(.horizontal, 16)
                 }
                 
-                // 2. LIVE LOAN EMI CALCULATOR WIDGET (Premium Card)
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Quick Financial Calculator")
                         .font(.system(.subheadline, design: .rounded).bold())
@@ -120,7 +115,6 @@ struct QuickConsoleTabView: View {
                         .padding(.horizontal, 16)
                     
                     VStack(spacing: 16) {
-                        // Dynamic Output Metrics Display
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Monthly EMI")
@@ -148,9 +142,7 @@ struct QuickConsoleTabView: View {
                         .background(LMSColors.actionBlue.opacity(0.06))
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         
-                        // Sliders Form
                         VStack(spacing: 12) {
-                            // 1. Principal Amount Slider
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
                                     Text("Principal Loan Amount")
@@ -165,7 +157,6 @@ struct QuickConsoleTabView: View {
                                     .tint(LMSColors.actionBlue)
                             }
                             
-                            // 2. Interest Rate Slider
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
                                     Text("Interest Rate (p.a.)")
@@ -180,7 +171,6 @@ struct QuickConsoleTabView: View {
                                     .tint(LMSColors.actionBlue)
                             }
                             
-                            // 3. Tenure Slider
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
                                     Text("Tenure Duration")
@@ -224,7 +214,6 @@ struct ConsoleGridCard: View {
             onTap()
         }) {
             VStack(alignment: .leading, spacing: 12) {
-                // Top Symbol Circle
                 ZStack {
                     Circle()
                         .fill(color.opacity(0.12))
@@ -235,7 +224,6 @@ struct ConsoleGridCard: View {
                         .foregroundStyle(color)
                 }
                 
-                // Title and description
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
                         .font(.system(.callout, design: .rounded).bold())

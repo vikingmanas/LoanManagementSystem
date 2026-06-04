@@ -122,7 +122,6 @@ struct BorrowerLoanProduct: Codable, Identifiable, Hashable {
     var faqs: [BorrowerLoanFAQ]
     var loanSpecificDocuments: [String]
     
-    // Custom Memberwise Initializer for Backwards Compatibility
     init(
         id: UUID,
         type: BorrowerLoanProductType,
@@ -166,7 +165,6 @@ struct BorrowerLoanProduct: Codable, Identifiable, Hashable {
         self.loanSpecificDocuments = loanSpecificDocuments
     }
     
-    // Custom Codable Mapping for Supabase Flat & JSONB Columns
     enum CodingKeys: String, CodingKey {
         case id = "productId"
         case name
@@ -427,12 +425,10 @@ struct BorrowerLoanFormData: Codable, Equatable, Hashable {
     var guarantorDetails: String
     var gstNumber: String
 
-    // Dropdown selections
     var selectedIdentityDoc: String
     var selectedAddressDoc: String
     var selectedIncomeDoc: String
 
-    // Draft-only persistence fields that are collected across wizard steps.
     var draftStepIndex: Int
     var bankName: String
     var bankAccountNumber: String

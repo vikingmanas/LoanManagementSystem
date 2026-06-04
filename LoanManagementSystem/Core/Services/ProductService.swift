@@ -1,9 +1,3 @@
-//
-//  ProductService.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 26/05/26.
-//
 
 import Foundation
 import Supabase

@@ -63,7 +63,6 @@ public struct DBNotification: Codable, Identifiable, Sendable {
     }
 }
 
-// MARK: - Insert-Only DTO
 
 /// Lightweight struct used only for INSERT operations.
 private struct DBNotificationInsert: Codable {
@@ -85,7 +84,6 @@ final class NotificationService {
         SupabaseManager.shared.client
     }
     
-    // MARK: - Insert
     
     /// Creates a new notification in Supabase for the given user.
     func insertNotification(userId: UUID, title: String, message: String, notifType: String = "push") async {
@@ -137,7 +135,6 @@ final class NotificationService {
         }
     }
     
-    // MARK: - Fetch
     
     /// Fetches all notifications for the given user, ordered by most recent first.
     func fetchNotifications(userId: UUID) async throws -> [DBNotification] {
@@ -193,7 +190,6 @@ final class NotificationService {
         return notifications.count
     }
     
-    // MARK: - Update
     
     /// Marks a single notification as read.
     func markAsRead(notificationId: UUID) async throws {
@@ -220,7 +216,6 @@ final class NotificationService {
             .execute()
     }
     
-    // MARK: - Delete
     
     /// Deletes a single notification.
     func deleteNotification(notificationId: UUID) async throws {
@@ -231,7 +226,6 @@ final class NotificationService {
             .execute()
     }
     
-    // MARK: - User Lookup Helpers
     
     /// Fetches all user IDs with a specific role (e.g., "loan_officer", "manager").
     /// For "manager", also matches "loan_manager" to handle role-naming inconsistencies.
@@ -244,7 +238,6 @@ final class NotificationService {
                 .from("users")
                 .select("id")
             
-            // Handle both "manager" and "loan_manager" role variants
             let filteredQuery: PostgrestFilterBuilder
             if role == "manager" {
                 filteredQuery = query.in("role", values: ["manager", "loan_manager"])
@@ -298,7 +291,6 @@ final class NotificationService {
             print("[NotificationService] ❌ Failed to fetch manager for branch '\(branchName)': \(error)")
         }
         
-        // Fallback: notify all branch managers if branch manager is null or lookup failed
         return await fetchUserIds(byRole: "manager")
     }
 }

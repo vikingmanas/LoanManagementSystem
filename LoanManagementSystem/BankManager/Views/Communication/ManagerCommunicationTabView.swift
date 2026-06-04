@@ -10,7 +10,6 @@ struct ManagerCommunicationTabView: View {
         let filtered = viewModel.filteredConversations
 
         List {
-            // Segmented Picker Header
             Section {
                 Picker("Filter", selection: $viewModel.selectedChatFilter) {
                     ForEach(ManagerDashboardViewModel.ChatFilterMode.allCases, id: \.self) { mode in
@@ -75,7 +74,6 @@ private struct ConversationRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Avatar with Status
             ZStack(alignment: .bottomTrailing) {
                 Circle()
                     .fill(LMSColors.brandNavy.gradient)
@@ -158,7 +156,6 @@ private struct ManagerChatDetailView: View {
                 }
             }
 
-            // Native Input Bar
             VStack(spacing: 0) {
                 Divider()
                 HStack(spacing: 12) {

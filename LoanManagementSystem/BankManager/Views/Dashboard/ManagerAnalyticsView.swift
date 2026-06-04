@@ -41,7 +41,6 @@ struct ManagerAnalyticsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
-            // Decision Mix
             AnalyticsCard(action: { showDecisionMixSheet = true }) {
                 ChartHeader(
                     title: "Decision Mix",
@@ -51,7 +50,6 @@ struct ManagerAnalyticsView: View {
                 ApprovalDonutChart(stats: approvalStats)
             }
 
-            // Branch Portfolio
             AnalyticsCard(action: { showPortfolioLedger = true }) {
                 ChartHeader(
                     title: "Branch Portfolio",
@@ -77,7 +75,6 @@ struct ManagerAnalyticsView: View {
                 }
             }
 
-            // Risk Summary (merged from deleted ManagerRiskPanelView)
             if viewModel.applicants.isEmpty {
                 AnalyticsCard {
                     ContentUnavailableView(
@@ -181,7 +178,6 @@ struct LoanPortfolioItem: Identifiable {
 }
 
 
-// MARK: - Risk Metric Card (compact gauge for risk summary row)
 
 private struct RiskMetricCard: View {
     let title: String
@@ -227,7 +223,6 @@ private struct RiskMetricCard: View {
 }
 
 
-// MARK: - Shared Card Wrappers
 
 private struct AnalyticsCard<Content: View>: View {
     var action: (() -> Void)? = nil

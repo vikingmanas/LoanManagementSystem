@@ -18,7 +18,6 @@ struct AdminBranchKPIView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: LMSSpacing.lg) {
-                // Branch List
                 if filteredData.isEmpty {
                     ContentUnavailableView.search(text: searchText)
                         .padding(.top, 40)

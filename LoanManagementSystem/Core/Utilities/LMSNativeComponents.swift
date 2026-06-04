@@ -375,7 +375,6 @@ public struct LMSNotificationRow: View {
 
     public var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            // Unread Indicator
             ZStack {
                 if notification.isUnread {
                     Circle()
@@ -386,7 +385,6 @@ public struct LMSNotificationRow: View {
             .frame(width: 12)
             .padding(.top, 14)
 
-            // Icon
             ZStack {
                 Circle()
                     .fill(notification.tint.opacity(0.1))
@@ -398,7 +396,6 @@ public struct LMSNotificationRow: View {
             }
             .padding(.top, 2)
 
-            // Content
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(notification.title)

@@ -1,6 +1,5 @@
 import SwiftUI
 
-// MARK: - Scroll Header (replaces "Dashboard" large title)
 
 struct DashboardScrollHeader: View {
     let greeting: String
@@ -22,7 +21,6 @@ struct DashboardScrollHeader: View {
     }
 }
 
-// MARK: - Profile Completion
 
 struct ProfileCompletionCardSection: View {
     let percentage: Int
@@ -98,7 +96,6 @@ struct ProfileCompletionCardSection: View {
     }
 }
 
-// MARK: - Loan Portfolio Summary
 
 struct LoanPortfolioSummarySection: View {
     @ObservedObject var viewModel: DashboardViewModel
@@ -189,7 +186,6 @@ struct LoanPortfolioSummaryCard: View {
     }
 }
 
-// MARK: - Active Loan Accounts
 
 struct ActiveLoanAccountsSection: View {
     @ObservedObject var viewModel: DashboardViewModel
@@ -334,7 +330,6 @@ struct ActiveLoanAccountCard: View {
     }
 }
 
-// MARK: - Upcoming Payment
 
 struct UpcomingPaymentSection: View {
     @ObservedObject var viewModel: DashboardViewModel
@@ -416,7 +411,6 @@ struct UpcomingPaymentSection: View {
     }
 }
 
-// MARK: - Quick Actions
 
 struct DashboardQuickActionsSection: View {
     var onApplyLoan: () -> Void
@@ -516,7 +510,6 @@ struct DashboardQuickActionTile: View {
     }
 }
 
-// MARK: - Transaction History
 
 enum DashboardTransactionFilter: String, CaseIterable, Identifiable {
     case all = "All"
@@ -1052,7 +1045,6 @@ private extension TransactionType {
     }
 }
 
-// MARK: - Notifications
 
 struct DashboardNotificationsSection: View {
     let notifications: [LMSNotification]

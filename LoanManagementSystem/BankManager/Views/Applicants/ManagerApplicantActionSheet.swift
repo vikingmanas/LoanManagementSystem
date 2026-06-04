@@ -14,7 +14,6 @@ struct ManagerApplicantActionSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                // MARK: - Summary Section
                 Section {
                     HStack(spacing: LMSSpacing.md) {
                         ZStack {
@@ -41,7 +40,6 @@ struct ManagerApplicantActionSheet: View {
                     LabeledContent("Amount", value: CurrencyFormatter.shared.format(applicant.requestedAmount))
                 }
 
-                // MARK: - Remarks Section
                 Section {
                     TextEditor(text: $remarks)
                         .frame(minHeight: 120)
@@ -65,7 +63,6 @@ struct ManagerApplicantActionSheet: View {
                     }
                 }
 
-                // MARK: - Action Section
                 Section {
                     Button(action: performAction) {
                         HStack {

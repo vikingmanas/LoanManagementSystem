@@ -14,14 +14,12 @@ struct SignInView: View {
                         .frame(width: 0, height: 90)
 
                     if viewModel.isOtpStep {
-                        // MARK: - OTP Verification Step
                         otpVerificationStep
                             .transition(.asymmetric(
                                 insertion: .move(edge: .trailing).combined(with: .opacity),
                                 removal: .move(edge: .leading).combined(with: .opacity)
                             ))
                     } else {
-                        // MARK: - Credentials Step
                         credentialsStep
                             .transition(.asymmetric(
                                 insertion: .move(edge: .leading).combined(with: .opacity),
@@ -49,11 +47,9 @@ struct SignInView: View {
         }
     }
 
-    // MARK: - Credentials Step View
 
     private var credentialsStep: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.xxl) {
-            // Header
             VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                 Text("Welcome")
                     .font(LMSFont.largeTitle)
@@ -62,12 +58,10 @@ struct SignInView: View {
             }
             .padding(.top, LMSSpacing.sm)
 
-            // Error banner
             if !viewModel.generalError.isEmpty {
                 errorBanner(message: viewModel.generalError)
             }
             
-            // Fields
             VStack(spacing: LMSSpacing.lg) {
 
                 CustomTextField(
@@ -88,7 +82,6 @@ struct SignInView: View {
             }
             Spacer()
                 .frame(width:0,height:7)
-            // Secondary actions
             HStack(alignment:.center) {
                 CheckboxView(isChecked: $viewModel.rememberMe, label: "Remember Me")
 
@@ -101,7 +94,6 @@ struct SignInView: View {
                 }
             }
 
-            // Sign In
             PrimaryButton(
                 title: "Sign In",
                 isLoading: viewModel.isLoading,
@@ -116,7 +108,6 @@ struct SignInView: View {
 
             
 
-            // Sign Up link
             HStack {
                 Spacer()
                 Text("Don't have an account?")
@@ -131,7 +122,6 @@ struct SignInView: View {
                 Spacer()
             }
             .padding(.bottom, LMSSpacing.xxxl)
-            // Divider
             HStack(spacing: LMSSpacing.md) {
                 Rectangle()
                     .fill(LMSColors.separator)
@@ -149,11 +139,9 @@ struct SignInView: View {
         .padding(.horizontal, LMSSpacing.xxl)
     }
 
-    // MARK: - OTP Verification Step View
 
     private var otpVerificationStep: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.xxl) {
-            // Back button
             Button {
                 HapticsManager.triggerImpact(style: .light)
                 viewModel.goBackToCredentials()
@@ -169,7 +157,6 @@ struct SignInView: View {
             .buttonStyle(.plain)
             .disabled(viewModel.isLoading)
 
-            // Header
             VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                 Text("Verify Your Identity")
                     .font(LMSFont.largeTitle)
@@ -180,7 +167,6 @@ struct SignInView: View {
                     .foregroundStyle(LMSColors.textSecondary)
             }
 
-            // Success banner (OTP sent confirmation)
             if !viewModel.otpSentMessage.isEmpty {
                 HStack(alignment: .top, spacing: LMSSpacing.sm) {
                     Image(systemName: "checkmark.seal.fill")
@@ -196,7 +182,6 @@ struct SignInView: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
 
-            // Error banners
             if !viewModel.generalError.isEmpty {
                 errorBanner(message: viewModel.generalError)
             }
@@ -205,7 +190,6 @@ struct SignInView: View {
                 errorBanner(message: viewModel.otpError)
             }
 
-            // OTP Input Field
             VStack(alignment: .leading, spacing: LMSSpacing.md) {
                 CustomTextField(
                     icon: "key.fill",
@@ -214,7 +198,6 @@ struct SignInView: View {
                     keyboardType: .numberPad
                 )
                 .onChange(of: viewModel.otpCode) {
-                    // Allow only digits, max 6 characters
                     let filtered = viewModel.otpCode.filter { $0.isNumber }
                     if filtered.count > 6 {
                         viewModel.otpCode = String(filtered.prefix(6))
@@ -223,7 +206,6 @@ struct SignInView: View {
                     }
                 }
 
-                // Resend Code button
                 Button {
                     Task {
                         await viewModel.resendOTP(authManager: authManager)
@@ -238,7 +220,6 @@ struct SignInView: View {
                 .padding(.leading, LMSSpacing.xs)
             }
 
-            // Verify OTP Button
             PrimaryButton(
                 title: "Verify & Sign In",
                 isLoading: viewModel.isLoading,
@@ -256,7 +237,6 @@ struct SignInView: View {
         .padding(.horizontal, LMSSpacing.xxl)
     }
 
-    // MARK: - Reusable Error Banner
 
     private func errorBanner(message: String) -> some View {
         HStack(alignment: .top, spacing: LMSSpacing.sm) {

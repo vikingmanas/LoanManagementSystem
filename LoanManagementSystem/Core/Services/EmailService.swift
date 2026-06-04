@@ -1,9 +1,3 @@
-//
-//  EmailService.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 04/06/26.
-//
 
 import Foundation
 
@@ -13,7 +7,6 @@ final class EmailService {
     static let shared = EmailService()
     private init() {}
     
-    // MARK: - Send Welcome Email
     
     /// Sends a professional welcome email with login credentials to a newly created staff member.
     /// - Parameters:
@@ -72,7 +65,6 @@ final class EmailService {
         }
     }
     
-    // MARK: - HTML Template
     
     private func buildWelcomeHTML(
         name: String,

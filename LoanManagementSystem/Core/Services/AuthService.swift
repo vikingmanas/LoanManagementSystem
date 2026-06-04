@@ -1,8 +1,3 @@
-//
-//  AuthService.swift
-//  LoanManagementSystem
-//
-//
 
 import Foundation
 import Supabase
@@ -85,7 +80,6 @@ final class AuthService {
             return !results.isEmpty
         } catch {
             print("[Supabase Auth] Email existence check failed: \(error.localizedDescription)")
-            // On network/query failure, allow signup to proceed (Supabase Auth will catch real duplicates)
             return false
         }
     }
@@ -97,13 +91,11 @@ final class AuthService {
         
         print("[Supabase Auth] Starting signup for: \(cleanEmail)")
         
-        // 1. Pre-check: Reject if email already exists in the users table
         if await isEmailRegistered(cleanEmail) {
             print("[Supabase Auth] ✋ Email already exists in users table: \(cleanEmail)")
             throw AuthServiceError.emailAlreadyRegistered
         }
         
-        // 2. Sign up the user with Supabase Auth (passing all potential metadata keys to prevent trigger errors)
         let authResponse = try await client.auth.signUp(
             email: cleanEmail,
             password: password,
@@ -118,20 +110,17 @@ final class AuthService {
         let user = authResponse.user
         print("[Supabase Auth] Auth signup returned UID: \(user.id)")
         
-        // 3. Detect Supabase's obfuscated/fake user responses
         let returnedEmail = (user.email ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if returnedEmail != cleanEmail {
             print("[Supabase Auth] ⚠️ Obfuscated signup detected!")
             throw AuthServiceError.obfuscatedSignUpDetected
         }
         
-        // 4. Verify the session exists (confirms this is a real, new user)
         guard authResponse.session != nil else {
             print("[Supabase Auth] ⚠️ Signup returned nil session — email may require confirmation or already exists.")
             throw AuthServiceError.obfuscatedSignUpDetected
         }
         
-        // 5. Insert corresponding profile into public 'users' table
         do {
             print("[Supabase DB] Attempting insert into public.users table...")
             try await insertUserRecord(uid: user.id, email: cleanEmail, role: "borrower", name: name, phone: phone)

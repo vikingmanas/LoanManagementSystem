@@ -1,9 +1,3 @@
-//
-//  LoanManagementSystemApp.swift
-//  LoanManagementSystem
-//
-//  Created by apple on 14/05/26.
-//
 
 import SwiftUI
 

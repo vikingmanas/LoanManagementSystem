@@ -48,7 +48,6 @@ struct LoanOfficerDashboardView: View {
         .tint(LMSColors.brandNavy)
         .task {
             await viewModel.fetchDashboardData()
-            // Configure notification VM with current user ID
             if let userId = authManager.currentUser?.uid,
                let uuid = UUID(uuidString: userId) {
                 notificationViewModel.configure(userId: uuid)
@@ -56,6 +55,9 @@ struct LoanOfficerDashboardView: View {
         }
         .accessibleSheet(isPresented: $showingProfile) {
             LoanOfficerProfileView()
+        }
+        .inAppVoiceOver {
+            "Loan Officer Workspace. You have \(appsRequiringReviewCount) applications awaiting your review."
         }
     }
 }
@@ -67,7 +69,6 @@ enum OfficerWorkspaceTab: Hashable {
     case registry
 }
 
-// MARK: - Dashboard Main View
 
 private struct LoanOfficerTodayView: View {
     @EnvironmentObject var authManager: AuthManager
@@ -185,7 +186,6 @@ private struct LoanOfficerTodayView: View {
     }
 }
 
-// MARK: - Action Items
 
 private struct OfficerActionItemsRow: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
@@ -275,7 +275,6 @@ private struct OfficerActionCard: View {
     }
 }
 
-// MARK: - Next Action Card
 
 private struct OfficerNextActionCard: View {
     let app: OfficerLoanApplication
@@ -323,7 +322,6 @@ private struct OfficerNextActionCard: View {
     }
 }
 
-// MARK: - Review Queue Snapshot
 
 private struct OfficerReviewSnapshotView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
@@ -393,7 +391,6 @@ private struct OfficerReviewSnapshotView: View {
     }
 }
 
-// MARK: - Inline EMI Calculator
 
 private struct OfficerInlineEMICalculatorView: View {
     @State private var amountText = "2500000"
@@ -586,7 +583,6 @@ private struct CalculatorInputRow: View {
     }
 }
 
-// MARK: - Escalations Section
 
 private struct OfficerEscalationsSection: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
@@ -625,7 +621,6 @@ private struct OfficerEscalationsSection: View {
     }
 }
 
-// MARK: - Analytics Section
 
 private struct OfficerAnalyticsSection: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
@@ -779,7 +774,6 @@ private struct PipelineBarRow: View {
 }
 
 
-// MARK: - Today's approval List
 
 private struct OfficerTodayReviewQueueListView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
@@ -821,7 +815,6 @@ private struct OfficerTodayReviewQueueListView: View {
     }
 }
 
-// MARK: - Review Queue Tab
 
 private struct LoanOfficerReviewQueueView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
@@ -883,7 +876,6 @@ private struct LoanOfficerReviewQueueView: View {
     }
 }
 
-// MARK: - Escalation Sheet
 
 private struct OfficerEscalationSheet: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
@@ -979,7 +971,6 @@ private struct OfficerEscalationSheet: View {
     }
 }
 
-// MARK: - Document Row
 
 struct OfficerDocumentRow: View {
     let item: DocumentQueueItem
@@ -1021,7 +1012,6 @@ struct OfficerDocumentRow: View {
     }
 }
 
-// MARK: - Application Compact Row
 
 struct OfficerApplicationCompactRow: View {
     let app: OfficerLoanApplication
@@ -1056,7 +1046,6 @@ struct OfficerApplicationCompactRow: View {
     }
 }
 
-// MARK: - Avatar
 
 struct OfficerAvatar: View {
     let name: String
@@ -1075,7 +1064,6 @@ struct OfficerAvatar: View {
     }
 }
 
-// MARK: - Notifications Sheet
 
 struct NotificationsFeedSheet: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
@@ -1339,7 +1327,6 @@ private struct OfficerPushApplicationListView: View {
     }
 }
 
-// MARK: - Grouped Application Review Card
 
 struct OfficerApplicationReviewCard: View {
     let application: OfficerLoanApplication
@@ -1348,7 +1335,6 @@ struct OfficerApplicationReviewCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header: Borrower Avatar, Name, Loan details, status
             NavigationLink {
                 LoanApplicationReviewDetailView(applicationId: application.applicationId, viewModel: viewModel)
             } label: {
@@ -1371,7 +1357,6 @@ struct OfficerApplicationReviewCard: View {
                     
                     Spacer()
                     
-                    // Document progress indicator
                     VStack(alignment: .trailing, spacing: 4) {
                         let total = application.documents.count
                         let verified = application.documents.filter { $0.status == .verified }.count
@@ -1390,7 +1375,6 @@ struct OfficerApplicationReviewCard: View {
             Divider()
                 .padding(.vertical, 4)
             
-            // Nested documents list
             VStack(spacing: 8) {
                 ForEach(matchingDocuments) { doc in
                     NavigationLink {
@@ -1428,7 +1412,6 @@ struct OfficerApplicationReviewCard: View {
                             
                             Spacer()
                             
-                            // Status tag
                             Text(doc.status.rawValue)
                                 .font(.system(size: 10, weight: .bold, design: .rounded))
                                 .foregroundStyle(doc.status == .pending ? LMSColors.amber : .white)
@@ -1459,7 +1442,6 @@ struct OfficerApplicationReviewCard: View {
 
 }
 
-// MARK: - Calculator Sheet
 
 struct OfficerCalculatorSheet: View {
     @Environment(\.dismiss) private var dismiss
@@ -1484,7 +1466,6 @@ struct OfficerCalculatorSheet: View {
         NavigationStack {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: LMSSpacing.xl) {
-                    // Output metrics
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Monthly EMI")
@@ -1508,7 +1489,6 @@ struct OfficerCalculatorSheet: View {
                     .background(LMSColors.actionBlue.opacity(0.06))
                     .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
 
-                    // Sliders
                     VStack(spacing: LMSSpacing.lg) {
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {

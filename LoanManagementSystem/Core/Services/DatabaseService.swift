@@ -154,7 +154,6 @@ private struct DBProfile: Codable {
         isOnboardingCompleted = try container.decodeIfPresent(Bool.self, forKey: .isOnboardingCompleted) ?? false
     }
 
-    // MARK: - Mapping from BorrowerProfile
 
     static func from(_ profile: BorrowerProfile) -> DBProfile {
         return DBProfile(
@@ -202,7 +201,6 @@ private struct DBProfile: Codable {
         )
     }
 
-    // MARK: - Mapping to BorrowerProfile
 
     func toBorrowerProfile(linkedAccounts: [LinkedBankAccount]? = nil, gstNumber: String? = nil, prefetchedImageData: Data? = nil) -> BorrowerProfile {
         let resolvedLinkedAccounts = linkedAccounts ?? self.linkedAccounts
@@ -599,8 +597,6 @@ final class DatabaseService {
             .value
 
         if let dbProfile = dbProfiles.first {
-            // Convert DB representation back to full BorrowerProfile,
-            // preserving any locally-cached linkedAccounts/gstNumber
             let cached = loadProfileLocally(userId: userId)
             let cachedLinkedAccounts = cached?.linkedAccounts?.isEmpty == false ? cached?.linkedAccounts : nil
             let cachedGSTNumber = cached?.gstNumber?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? cached?.gstNumber : nil
@@ -636,7 +632,6 @@ final class DatabaseService {
     func updateProfile(_ profile: BorrowerProfile) async throws {
         var profileToSave = profile
 
-        // Fetch the existing remote profile first — we need the existing avatar URL.
         let existingRemote = try? await fetchRawProfile(userId: profile.id)
 
         if let existingProfile = existingRemote,
@@ -667,18 +662,12 @@ final class DatabaseService {
             }
         }
 
-        // Fetch the raw DB string for the existing avatar URL (it's a String in DB, not Data)
         let existingAvatarURL: String? = await fetchExistingAvatarURL(userId: profileToSave.id)
 
-        // Convert to DB-safe struct — never encode image as base64 here.
         var dbProfile = DBProfile.from(profileToSave)
 
-        // --- Profile Image: Upload to Storage, NEVER save base64 to Postgres ---
         if let imageData = profileToSave.profileImageData, !imageData.isEmpty {
             do {
-                // Use a subfolder named after the user's ID to satisfy Storage RLS policies.
-                // IMPORTANT: Must be lowercased — Supabase auth.uid() returns lowercase UUIDs,
-                // and the RLS policy compares auth.uid()::text against the folder name.
                 let path = "\(profileToSave.id.lowercased())/avatar.png"
                 let url = try await StorageService.shared.uploadDocument(
                     data: imageData,
@@ -689,8 +678,6 @@ final class DatabaseService {
                 dbProfile.profileImageData = url.absoluteString
                 print("✅ [DatabaseService] Avatar uploaded to Storage: \(url.absoluteString)")
             } catch {
-                // IMPORTANT: Never fall back to base64. Preserve the existing URL if available.
-                // A missing image is better than blowing up your database with megabytes of text.
                 print("❌ [DatabaseService] Avatar upload failed: \(error)")
                 print("❌ [DatabaseService] Avatar upload localized error: \(error.localizedDescription)")
                 if let storageError = error as? StorageError {
@@ -699,7 +686,6 @@ final class DatabaseService {
                 dbProfile.profileImageData = existingAvatarURL
             }
         } else {
-            // No new image — preserve existing URL so we don't wipe it on every profile save
             dbProfile.profileImageData = existingAvatarURL
         }
 
@@ -923,7 +909,6 @@ final class DatabaseService {
         return directory.appendingPathComponent("\(userId).json")
     }
 
-    // MARK: - Supabase Document Sync Operations
 
     func upsertDocument(_ doc: DBDocument) async throws {
         do {
@@ -970,7 +955,6 @@ final class DatabaseService {
         return Dictionary(grouping: allDocs, by: \.applicationId!)
     }
 
-    // MARK: - Supabase Repayment & Account Operations
 
     func insertLoanAccount(_ account: DBLoanAccount) async throws {
         try await client
@@ -1017,7 +1001,6 @@ final class DatabaseService {
             .execute()
     }
 
-    // MARK: - Supabase Chat Sync Operations
 
     func fetchMessagesForApplication(applicationId: UUID) async throws -> [DBMessage] {
         return try await client

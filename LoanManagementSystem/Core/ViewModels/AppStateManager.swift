@@ -35,7 +35,6 @@ class AppStateManager: ObservableObject {
     @Published var showRoleSelection: Bool = false
     @Published var requiresBorrowerOnboarding: Bool = false
     
-    // Mock user details could be stored here later
     
     func login(requiresBorrowerOnboarding: Bool = false) {
         self.requiresBorrowerOnboarding = requiresBorrowerOnboarding

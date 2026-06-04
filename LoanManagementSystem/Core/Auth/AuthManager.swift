@@ -1,15 +1,8 @@
-//
-//  AuthManager.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 19/05/26.
-//
 
 import SwiftUI
 import Combine
 import Supabase
 
-// MARK: - AuthSessionUser
 /// Custom User representation replacing FirebaseAuth.User to prepare for Supabase.
 struct AuthSessionUser: Codable {
     let uid: String
@@ -23,13 +16,11 @@ struct AuthSessionUser: Codable {
     }
 }
 
-// MARK: - AuthManager
 /// Centralized authentication service wrapping Supabase Auth.
 @MainActor
 final class AuthManager: ObservableObject {
     static let shared = AuthManager()
 
-    // MARK: - Published State
 
     /// Whether a user is currently authenticated.
     @Published var isAuthenticated: Bool = false
@@ -53,7 +44,6 @@ final class AuthManager: ObservableObject {
     /// When true, ContentView should NOT route to the dashboard.
     @Published var isResettingPassword: Bool = false
 
-    // MARK: - Init
 
     init() {}
 
@@ -65,7 +55,6 @@ final class AuthManager: ObservableObject {
                 let session = try await client.auth.session
                 let user = session.user
                 
-                // Fetch role to determine user type
                 let role = try? await AuthService.shared.fetchUserRole(uid: user.id)
                 
                 self.currentUser = AuthSessionUser(
@@ -104,12 +93,10 @@ final class AuthManager: ObservableObject {
                 
                 print("[AuthManager] Session restored for user: \(user.email ?? "unknown"), role: \(role ?? "borrower")")
                 
-                // Fetch borrower's applications from Supabase on session restore
                 if role == "borrower" || role == nil {
                     await CentralLoanRepository.shared.fetchApplicationsFromSupabase(borrowerId: user.id)
                 }
             } catch {
-                // No valid session exists — user needs to log in
                 self.currentUser = nil
                 self.isAuthenticated = false
                 self.isAuthStateResolved = true
@@ -118,7 +105,6 @@ final class AuthManager: ObservableObject {
         }
     }
 
-    // MARK: - Sign In
     /// Signs in an existing user with email and password, returning their assigned role.
     @discardableResult
     func signIn(email: String, password: String) async -> (success: Bool, role: String?) {
@@ -129,7 +115,6 @@ final class AuthManager: ObservableObject {
             let session = try await AuthService.shared.signIn(email: email, password: password)
             let user = session.user
             
-            // Fetch role from users database table
             let role = try await AuthService.shared.fetchUserRole(uid: user.id)
             
             if role == "loan_officer" {
@@ -149,7 +134,6 @@ final class AuthManager: ObservableObject {
             self.isAuthenticated = true
             self.isLoading = false
             
-            // Fetch borrower's applications from Supabase after login
             if role == "borrower" {
                 Task {
                     await CentralLoanRepository.shared.fetchApplicationsFromSupabase(borrowerId: user.id)
@@ -221,7 +205,6 @@ final class AuthManager: ObservableObject {
         }
     }
 
-    // MARK: - Sign Up
     /// Creates a new borrower account with email and password, then inserts them in the users table.
     @discardableResult
     func signUp(name: String, email: String, password: String, phone: String) async -> Bool {
@@ -241,7 +224,6 @@ final class AuthManager: ObservableObject {
                 }
                 self.isAuthenticated = true
             } else {
-                // Sign up succeeded but session is nil because email confirmation is enabled
                 self.errorMessage = "Account created! Please check your email inbox to confirm your email before signing in."
                 self.isLoading = false
                 return false
@@ -272,7 +254,6 @@ final class AuthManager: ObservableObject {
         }
     }
 
-    // MARK: - Password Reset
     /// Sends a password reset email via Supabase.
     @discardableResult
     func resetPassword(email: String) async -> Bool {
@@ -290,7 +271,6 @@ final class AuthManager: ObservableObject {
         }
     }
 
-    // MARK: - Verify Recovery OTP
     /// Verifies the 6-digit password recovery code.
     /// NOTE: Does NOT set isAuthenticated to avoid routing to dashboard.
     /// Instead sets isResettingPassword so the UI stays on the reset flow.
@@ -306,8 +286,6 @@ final class AuthManager: ObservableObject {
                 type: .recovery
             )
             
-            // Keep session alive for the password update call,
-            // but do NOT set isAuthenticated or currentUser.
             self.isResettingPassword = true
             self.isLoading = false
             return true
@@ -318,7 +296,6 @@ final class AuthManager: ObservableObject {
         }
     }
     
-    // MARK: - Update Password
     /// Updates the password for the currently signed-in user.
     /// After success, signs the user out so they can log in fresh with the new password.
     @discardableResult
@@ -328,7 +305,6 @@ final class AuthManager: ObservableObject {
 
         do {
             try await AuthService.shared.updatePassword(newPassword: newPassword)
-            // Sign out after password update so user logs in fresh
             signOut()
             self.isResettingPassword = false
             self.isLoading = false
@@ -340,7 +316,6 @@ final class AuthManager: ObservableObject {
         }
     }
 
-    // MARK: - Helpers
 
     /// Clears any existing error message.
     func clearError() {
@@ -377,22 +352,18 @@ final class AuthManager: ObservableObject {
         currentUser?.email
     }
 
-    // MARK: - Error Mapping
     /// Converts Supabase Auth/DB errors into user-friendly messages.
     private func mapSupabaseError(_ error: Error) -> String {
-        // Handle custom AuthServiceError cases with clear, user-friendly messages
         if let authServiceError = error as? AuthServiceError {
             return authServiceError.errorDescription ?? error.localizedDescription
         }
         
         let errDesc = error.localizedDescription
         
-        // Handle common auth/network string matches
         if errDesc.localizedCaseInsensitiveContains("invalid login credentials") ||
            errDesc.localizedCaseInsensitiveContains("invalid credentials") {
             return "Incorrect email or password. Please try again."
         } else if errDesc.localizedCaseInsensitiveContains("email address") && errDesc.localizedCaseInsensitiveContains("is invalid") {
-            // Supabase returns this when the email is not found in auth.users (even if it's in public.users)
             return "You are not registered."
         } else if errDesc.localizedCaseInsensitiveContains("email already in use") ||
                   errDesc.localizedCaseInsensitiveContains("user already exists") ||

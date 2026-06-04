@@ -1,9 +1,3 @@
-//
-//  AdminDashboardService.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 28/05/26.
-//
 
 import Foundation
 import Supabase
@@ -50,7 +44,6 @@ final class AdminDashboardService {
         var loanSpecificDocuments: [String] = []
     }
 
-    // MARK: - Loan Products DB Model
     struct DBAdminLoanProduct: Codable {
         let productId: UUID
         var name: String
@@ -66,7 +59,6 @@ final class AdminDashboardService {
         var richDetails: DBRichDetails?
     }
     
-    // MARK: - Notification Templates DB Model
     struct DBNotificationTemplate: Codable {
         let templateId: UUID
         let notifType: String
@@ -92,18 +84,15 @@ final class AdminDashboardService {
         let rawApplications: [DBLoanApplication]
     }
     
-    // MARK: - Core Dashboard Operations
     func fetchDashboardData() async throws -> DashboardData {
         logger.info("AdminDashboardService: Starting dashboard data fetch...")
         
-        // 1. Fetch all applications
         let dbApps: [DBLoanApplication] = try await client
             .from("loan_applications")
             .select()
             .execute()
             .value
         
-        // 2. Fetch all users for name mapping & active sessions count
         let dbUsers: [DBUserMin] = try await client
             .from("users")
             .select()
@@ -111,10 +100,8 @@ final class AdminDashboardService {
             .value
         let usersMap = Dictionary(uniqueKeysWithValues: dbUsers.map { ($0.id, $0) })
         
-        // 3. Seed audit logs if the table is completely empty
         await seedAuditLogsIfNeeded(users: dbUsers)
         
-        // 4. Fetch recent audit logs from Supabase
         let dbLogs: [DBAuditLog] = try await client
             .from("audit_logs")
             .select()
@@ -123,7 +110,6 @@ final class AdminDashboardService {
             .execute()
             .value
         
-        // Map db logs to UI logs
         let mappedLogs = dbLogs.map { dbLog -> AuditLogEntry in
             let userName = usersMap[dbLog.userId]?.fullName ?? "System"
             let logType: AuditLogType
@@ -151,7 +137,6 @@ final class AdminDashboardService {
             )
         }
         
-        // Compute metrics
         let pendingStatuses = ["submitted", "under_review", "document_verification", "officer_review", "manager_review"]
         
         let totalApplications = dbApps.count
@@ -161,7 +146,6 @@ final class AdminDashboardService {
             .filter { $0.status == "disbursed" || $0.status == "approved" }
             .reduce(0.0) { $0 + Double($1.amountRequested) }
         
-        // Compute trends (comparing last 30 days vs 30 days prior)
         let now = Date()
         let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: now) ?? now
         let sixtyDaysAgo = Calendar.current.date(byAdding: .day, value: -60, to: now) ?? now
@@ -183,7 +167,6 @@ final class AdminDashboardService {
         let prevDisbursed = prev30Apps.filter { $0.status == "disbursed" || $0.status == "approved" }.reduce(0.0) { $0 + Double($1.amountRequested) }
         let disbursedTrend = calculateTrend(current: Int(currentDisbursed), previous: Int(prevDisbursed))
         
-        // Active sessions: count users logged in within the last 24 hours
         let oneDayAgo = Calendar.current.date(byAdding: .hour, value: -24, to: now) ?? now
         let activeSessionsCount = dbUsers.filter {
             if let lastLogin = $0.lastLogin {
@@ -256,10 +239,8 @@ final class AdminDashboardService {
         }
     }
     
-    // MARK: - Rules & Products Operations
     func fetchLoanProducts() async throws -> [AdminLoanProduct] {
         logger.info("AdminDashboardService: Fetching loan products...")
-        // Seed first if empty
         try await seedLoanProductsIfNeeded()
         
         let dbProds: [DBAdminLoanProduct] = try await client
@@ -304,7 +285,6 @@ final class AdminDashboardService {
             .replacingOccurrences(of: " loan", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
             
-        // Fetch existing product to preserve other rich details
         var existingRich: DBRichDetails? = nil
         do {
             let existing: [DBAdminLoanProduct] = try await client
@@ -344,10 +324,8 @@ final class AdminDashboardService {
             .execute()
     }
     
-    // MARK: - Message Templates Operations
     func fetchNotificationTemplates() async throws -> [MessageTemplate] {
         logger.info("AdminDashboardService: Fetching notification templates...")
-        // Seed first if empty
         try await seedNotificationTemplatesIfNeeded()
         
         let dbTemps: [DBNotificationTemplate] = try await client
@@ -383,7 +361,6 @@ final class AdminDashboardService {
         let updatedBy: UUID?
     }
 
-    // MARK: - Global Threshold Rules
     func fetchGlobalRules() async throws -> GlobalLoanRules {
         logger.info("AdminDashboardService: Fetching global rules from system_settings table...")
         let dbSettings: [DBSystemSetting] = try await client
@@ -397,7 +374,6 @@ final class AdminDashboardService {
             return setting.value
         }
         
-        // Fallback to local default if table row doesn't exist yet
         let defaultRules = GlobalLoanRules(minCibilScore: 700, maxDTI: 50.0, maxLTV: 80.0)
         try? await updateGlobalRules(defaultRules)
         return defaultRules
@@ -454,7 +430,6 @@ final class AdminDashboardService {
             .execute()
     }
     
-    // MARK: - Seeding Helpers
     private func seedAuditLogsIfNeeded(users: [DBUserMin]) async {
         do {
             let existingLogs: [DBAuditLog] = try await client

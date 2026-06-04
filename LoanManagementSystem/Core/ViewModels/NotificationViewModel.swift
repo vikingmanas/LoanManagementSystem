@@ -28,7 +28,6 @@ public final class NotificationViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Configuration
     
     /// Configures the view model with the current user's ID and starts realtime listener.
     public func configure(userId: UUID) {
@@ -71,7 +70,6 @@ public final class NotificationViewModel: ObservableObject {
         realtimeChannel = nil
     }
     
-    // MARK: - Load
     
     /// Fetches all notifications from Supabase for the current user.
     public func loadNotifications() async {
@@ -91,7 +89,6 @@ public final class NotificationViewModel: ObservableObject {
         isLoading = false
     }
     
-    // MARK: - Mark as Read
     
     /// Marks a single notification as read.
     public func markRead(id: UUID) {

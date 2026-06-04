@@ -280,7 +280,6 @@ class BorrowerProfileViewModel: ObservableObject {
         BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
     
-    // Formatting Helpers
     func maskedAccountNumber(_ number: String) -> String {
         guard number.count > 4 else { return number }
         let suffix = number.suffix(4)

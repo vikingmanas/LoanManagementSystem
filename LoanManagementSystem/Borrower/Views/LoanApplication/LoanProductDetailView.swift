@@ -45,7 +45,6 @@ struct LoanProductDetailView: View {
         }
     }
 
-    // MARK: - Hero
 
     private var heroSection: some View {
         ZStack(alignment: .bottomLeading) {
@@ -119,7 +118,6 @@ struct LoanProductDetailView: View {
         }
     }
 
-    // MARK: - Sections
 
     private var benefitsSection: some View {
         detailSection(title: "Key Benefits", subtitle: "Why borrowers choose this product") {

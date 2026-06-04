@@ -11,7 +11,6 @@ struct OfficerQuickActionsView: View {
             subtitle: "Manage documents, reports, and escalations"
         ) {
             HStack(spacing: 0) {
-                // 1. Verify Documents
                 OfficerQuickActionButton(
                     title: "Verify Docs",
                     icon: "doc.text.magnifyingglass",
@@ -19,7 +18,6 @@ struct OfficerQuickActionsView: View {
                     action: onVerifyDocs
                 )
                 
-                // 2. Branch Reports
                 OfficerQuickActionButton(
                     title: "Reports",
                     icon: "chart.bar.fill",
@@ -27,7 +25,6 @@ struct OfficerQuickActionsView: View {
                     action: onReports
                 )
                 
-                // 3. Escalate Case
                 OfficerQuickActionButton(
                     title: "Escalate",
                     icon: "arrow.up.circle.fill",

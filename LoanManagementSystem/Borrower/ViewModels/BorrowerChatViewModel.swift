@@ -14,11 +14,9 @@ struct BorrowerConversation: Identifiable, Hashable {
     }
 
     var unreadCount: Int {
-        // Unread = messages where borrower is receiver AND not yet read
         messages.filter { !$0.isRead }.count
     }
 
-    // Custom Hashable & Equatable conformance
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
@@ -37,7 +35,6 @@ import Observation
 @Observable
 final class BorrowerChatViewModel {
 
-    // MARK: - Published State
     var conversations: [BorrowerConversation] = []
     var isLoading: Bool = false
     var hasError: Bool = false
@@ -47,7 +44,6 @@ final class BorrowerChatViewModel {
         conversations.reduce(0) { $0 + $1.unreadCount }
     }
 
-    // MARK: - Private
     private var borrowerUserId: UUID? {
         guard let uid = AuthManager.shared.currentUser?.uid else { return nil }
         return UUID(uuidString: uid)
@@ -62,7 +58,6 @@ final class BorrowerChatViewModel {
         }
     }
 
-    // MARK: - Realtime
     func setupRealtime() async {
         guard let userId = borrowerUserId else { return }
         
@@ -105,7 +100,6 @@ final class BorrowerChatViewModel {
         }
     }
 
-    // MARK: - Fetch All Conversations
     func fetchConversations() async {
         guard let userId = borrowerUserId else { return }
         isLoading = true
@@ -114,17 +108,14 @@ final class BorrowerChatViewModel {
         do {
             let allMessages = try await DatabaseService.shared.fetchMessages(for: userId)
 
-            // Only keep messages relevant to this borrower (sent or received)
             let borrowerMessages = allMessages.filter {
                 $0.senderId == userId || $0.receiverId == userId
             }
 
-            // Group by applicationId
             let grouped = Dictionary(grouping: borrowerMessages) { msg -> UUID in
                 msg.applicationId ?? UUID()
             }
 
-            // Resolve application display names from CentralLoanRepository
             let repoApps = CentralLoanRepository.shared.applications
 
             var convos: [BorrowerConversation] = []
@@ -133,13 +124,10 @@ final class BorrowerChatViewModel {
                 let displayId = matchedApp?.displayIdentifier ?? "APP-\(appId.uuidString.prefix(6).uppercased())"
                 let productName = matchedApp?.product.type.title ?? "Loan Application"
 
-                // Filter unread: only messages where the borrower is the receiver
                 let messagesWithCorrectReadState = msgs.map { msg -> DBMessage in
-                    // We only count messages as unread if the borrower is the receiver
                     if msg.receiverId == userId {
                         return msg
                     } else {
-                        // Messages the borrower sent — always "read" from borrower's perspective
                         return DBMessage(
                             messageId: msg.messageId,
                             senderId: msg.senderId,
@@ -161,7 +149,6 @@ final class BorrowerChatViewModel {
                 ))
             }
 
-            // Sort conversations by latest message timestamp (most recent first)
             conversations = convos.sorted {
                 ($0.latestMessage?.sentAt ?? .distantPast) > ($1.latestMessage?.sentAt ?? .distantPast)
             }
@@ -174,11 +161,9 @@ final class BorrowerChatViewModel {
         }
     }
 
-    // MARK: - Fetch Messages for a Single Thread
     func fetchMessagesForThread(applicationId: UUID) async -> [DBMessage] {
         do {
             let msgs = try await DatabaseService.shared.fetchMessagesForApplication(applicationId: applicationId)
-            // Update local conversations cache
             if let idx = conversations.firstIndex(where: { $0.applicationId == applicationId }) {
                 let conv = conversations[idx]
                 conversations[idx] = BorrowerConversation(
@@ -196,7 +181,6 @@ final class BorrowerChatViewModel {
         }
     }
 
-    // MARK: - Send Message
     func sendMessage(content: String, applicationId: UUID, receiverId: UUID) async -> DBMessage? {
         guard let userId = borrowerUserId else { return nil }
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -216,7 +200,6 @@ final class BorrowerChatViewModel {
             try await DatabaseService.shared.sendMessage(newMsg)
             appendMessageToConversation(newMsg, borrowerSent: true)
 
-            // Send a notification to the officer
             try? await DatabaseService.shared.createNotification(
                 userId: receiverId,
                 title: "New message from borrower",
@@ -263,7 +246,6 @@ final class BorrowerChatViewModel {
         }
     }
 
-    // MARK: - Mark Messages as Read
     func markMessagesAsRead(messages: [DBMessage]) async {
         guard let userId = borrowerUserId else { return }
         let unreadIds = messages

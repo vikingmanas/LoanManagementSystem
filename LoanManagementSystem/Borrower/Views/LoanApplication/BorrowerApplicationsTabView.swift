@@ -1,6 +1,5 @@
 import SwiftUI
 
-// MARK: - Applications Tab
 
 struct BorrowerApplicationsTabView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
@@ -81,7 +80,6 @@ struct BorrowerApplicationsTabView: View {
     }
 }
 
-// MARK: - Hub Content
 
 struct BorrowerApplicationsHub: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
@@ -149,7 +147,6 @@ struct BorrowerApplicationsHub: View {
     }
 }
 
-// MARK: - Metrics
 
 private struct ApplicationMetricsRow: View {
     let metrics: BorrowerLoanDashboardMetrics
@@ -188,7 +185,6 @@ private struct ApplicationMetricTile: View {
     }
 }
 
-// MARK: - Application Card
 
 struct ApplicationTrackingCard: View {
     let application: BorrowerLoanApplication
@@ -356,7 +352,6 @@ private struct ApplicationsEmptyState: View {
     }
 }
 
-// Shared with loan wizard summary
 struct MetricBadge: View {
     let title: String
     let value: String
