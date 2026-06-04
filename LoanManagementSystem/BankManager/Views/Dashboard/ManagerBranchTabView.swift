@@ -24,8 +24,6 @@ struct ManagerBranchTabView: View {
             Section {
                 branchHeaderCard
             }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
 
             // MARK: - Consolidated Analytics Card
             Section {
@@ -227,20 +225,18 @@ struct ManagerBranchTabView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(viewModel.branchOverview.name)
-                        .font(LMSFont.title.weight(.bold))
+                        .font(LMSFont.title)
                     Text("\(viewModel.branchOverview.code) · \(viewModel.branchOverview.region)")
                         .font(LMSFont.subheadline)
                         .foregroundStyle(LMSColors.textSecondary)
                 }
                 Spacer()
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(viewModel.branchOverview.auditRating)
-                        .font(LMSFont.caption.weight(.bold))
-                        .foregroundStyle(LMSColors.emerald)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(LMSColors.emerald.opacity(0.1), in: Capsule())
-                }
+                Text(viewModel.branchOverview.auditRating)
+                    .font(LMSFont.caption.weight(.bold))
+                    .foregroundStyle(LMSColors.emerald)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(LMSColors.emerald.opacity(0.12), in: Capsule())
             }
 
             HStack(spacing: LMSSpacing.sm) {
@@ -249,9 +245,6 @@ struct ManagerBranchTabView: View {
                 headerStat(title: "Volume", value: viewModel.branchOverview.totalDisbursed.formattedAsCompactINR())
             }
         }
-        .padding(LMSSpacing.lg)
-        .background(LMSColors.surfaceElevated, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-        .padding(.horizontal, LMSSpacing.screenHorizontal)
         .padding(.vertical, LMSSpacing.sm)
     }
 
