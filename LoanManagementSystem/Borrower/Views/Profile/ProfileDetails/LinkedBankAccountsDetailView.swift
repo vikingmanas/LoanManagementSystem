@@ -44,8 +44,8 @@ struct LinkedBankAccountsDetailView: View {
         }
         .navigationTitle("Loan Account")
         .navigationBarTitleDisplayMode(.inline)
+    }
 
-    
     private func maskAccountNumber(_ number: String) -> String {
         guard number.count > 4 else { return number }
         let suffix = number.suffix(4)
