@@ -470,8 +470,14 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         print("Executing quick action: \(action)")
     }
     
-    func updateDocumentStatus(applicationId: String, docId: UUID, newStatus: DocumentStatus, rejectionReason: String? = nil) {
-        CentralLoanRepository.shared.updateDocumentStatus(applicationId: applicationId, docId: docId, status: newStatus, reason: rejectionReason)
+    @discardableResult
+    func updateDocumentStatus(applicationId: String, docId: UUID, newStatus: DocumentStatus, rejectionReason: String? = nil) -> Task<Bool, Never>? {
+        let syncTask = CentralLoanRepository.shared.updateDocumentStatus(
+            applicationId: applicationId,
+            docId: docId,
+            status: newStatus,
+            reason: rejectionReason
+        )
         refreshFromRepository()
 
         if let appIndex = applications.firstIndex(where: { $0.applicationId == applicationId }),
@@ -494,6 +500,8 @@ class LoanOfficerDashboardViewModel: ObservableObject {
                 description: newStatus == .verified ? "\(docName) verified successfully by \(officerName)." : "\(docName) rejected: \(rejectionReason ?? "Incorrect format.")"
             )
         }
+
+        return syncTask
     }
 
     func refreshDocuments(for applicationId: String) async {

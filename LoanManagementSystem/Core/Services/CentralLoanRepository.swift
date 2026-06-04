@@ -673,6 +673,7 @@ final class CentralLoanRepository: ObservableObject {
     
     // MARK: - State Transitions
     
+    @discardableResult
     func updateDocumentStatus(
         applicationId: String,
         docId: UUID,
@@ -680,8 +681,8 @@ final class CentralLoanRepository: ObservableObject {
         reason: String?,
         officerUserId: UUID? = nil,
         officerName: String? = nil
-    ) {
-        guard let index = applications.firstIndex(where: { $0.applicationId == applicationId }) else { return }
+    ) -> Task<Bool, Never>? {
+        guard let index = applications.firstIndex(where: { $0.applicationId == applicationId }) else { return nil }
         var app = applications[index]
 
         if let officerUserId, let officerName, isLoanUnassigned(app) || resolvedOfficerUserId(for: app) == officerUserId {
@@ -742,12 +743,13 @@ final class CentralLoanRepository: ObservableObject {
                 verifiedBy: verifierUUID
             )
             
-            Task {
+            let syncTask = Task {
                 do {
                     try await DatabaseService.shared.upsertDocument(dbDoc)
                     print("[CentralLoanRepository] Synced document status review update (\(statusString)) to Supabase DB.")
                 } catch {
                     print("[CentralLoanRepository] Failed to sync reviewed document to Supabase: \(error.localizedDescription)")
+                    return false
                 }
                 
                 // MARK: Notification — Document Rejected
@@ -770,10 +772,15 @@ final class CentralLoanRepository: ObservableObject {
                         message: "All documents for application \(appNumber) have been verified successfully."
                     )
                 }
+
+                return true
             }
             
             syncApplicationToSupabase(app)
+            return syncTask
         }
+
+        return nil
     }
     
     func sendForFinalApproval(applicationId: String, officerName: String = "Officer", officerId: UUID? = nil) {
