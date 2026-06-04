@@ -31,6 +31,11 @@ struct InAppVoiceOverModifier: ViewModifier {
                 .accessibilityHint(ttsManager.isSpeaking ? "Tap to stop reading." : "Tap to read the current screen out loud.")
             }
         }
+        .onAppear {
+            if enableInAppVoiceOver {
+                ttsManager.speak(text: textToRead())
+            }
+        }
         .onDisappear {
             if ttsManager.isSpeaking {
                 ttsManager.stopSpeaking()

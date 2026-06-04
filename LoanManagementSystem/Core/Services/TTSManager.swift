@@ -30,12 +30,15 @@ final class TTSManager: NSObject, ObservableObject, AVSpeechSynthesizerDelegate 
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: .duckOthers)
         try? AVAudioSession.sharedInstance().setActive(true)
         
+        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+        
         synthesizer.speak(utterance)
     }
     
     func stopSpeaking() {
         if synthesizer.isSpeaking {
             synthesizer.stopSpeaking(at: .immediate)
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         }
         try? AVAudioSession.sharedInstance().setActive(false)
     }
