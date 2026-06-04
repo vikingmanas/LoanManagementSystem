@@ -572,17 +572,7 @@ struct BorrowerLoanWizardView: View {
 
     private var wizardNavigationBar: some View {
         VStack(spacing: 8) {
-            HStack {
-                Button(action: handleBackAction) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 24, weight: .semibold))
-                        .frame(width: 44, height: 44)
-                    .foregroundStyle(LMSColors.brandNavy)
-                }
-                .accessibilityLabel(currentStep > 1 ? "Previous step" : "Back")
-                
-                Spacer()
-                
+            ZStack {
                 VStack(spacing: 1) {
                     Text(navigationTitle(for: currentStep))
                         .font(LMSFont.subheadline.weight(.semibold))
@@ -592,10 +582,20 @@ struct BorrowerLoanWizardView: View {
                         .font(LMSFont.caption2.weight(.medium))
                         .foregroundStyle(LMSColors.textSecondary)
                 }
-                
-                Spacer()
-                
-                autosavePill
+
+                HStack {
+                    Button(action: handleBackAction) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 24, weight: .semibold))
+                            .frame(width: 44, height: 44)
+                            .foregroundStyle(LMSColors.brandNavy)
+                    }
+                    .accessibilityLabel(currentStep > 1 ? "Previous step" : "Back")
+
+                    Spacer()
+
+                    autosavePill
+                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)
