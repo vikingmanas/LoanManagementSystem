@@ -415,7 +415,6 @@ private struct AdvancedRiskSection: View {
                         .foregroundStyle(LMSColors.textTertiary)
                 }
             }
-            .padding(.horizontal, LMSSpacing.screenHorizontal)
 
             VStack(spacing: LMSSpacing.lg) {
                 // Solid Stat Cards
@@ -454,7 +453,6 @@ private struct AdvancedRiskSection: View {
                     .background(applicant.riskLevel.themeColor)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
-                .padding(.horizontal, LMSSpacing.screenHorizontal)
 
                 // Risk Factors List
                 if !applicant.riskFactors.isEmpty {
@@ -482,12 +480,7 @@ private struct AdvancedRiskSection: View {
                     }
                     .padding(16)
                     .background(LMSColors.surfaceElevated)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(LMSColors.separatorLight, lineWidth: 1)
-                    )
-                    .padding(.horizontal, LMSSpacing.screenHorizontal)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
             }
         }
