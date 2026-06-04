@@ -235,6 +235,19 @@ final class ManagerDashboardViewModel {
             return false
         }
         appendAudit(action: "Approved \(applicationLabel(for: id))", severity: .success)
+        
+        Task {
+            do {
+                try await DatabaseService.shared.logAuditAction(
+                    action: "Loan Approved",
+                    entityType: "LoanApplication",
+                    entityId: id
+                )
+            } catch {
+                print("Failed to log audit action for manager approval: \(error)")
+            }
+        }
+        
         appendNotification(
             title: "Loan approved and credited",
             message: "\(applicationLabel(for: id)) was approved by \(managerProfile.name). The sanctioned amount has been credited to the borrower account.",
@@ -248,6 +261,19 @@ final class ManagerDashboardViewModel {
     func rejectApplicant(_ id: UUID, remarks: String) {
         CentralLoanRepository.shared.rejectApplication(id: id, remarks: remarks)
         appendAudit(action: "Rejected \(applicationLabel(for: id))", severity: .critical)
+        
+        Task {
+            do {
+                try await DatabaseService.shared.logAuditAction(
+                    action: "Loan Rejected",
+                    entityType: "LoanApplication",
+                    entityId: id
+                )
+            } catch {
+                print("Failed to log audit action for manager rejection: \(error)")
+            }
+        }
+        
         appendNotification(
             title: "Loan rejected",
             message: "\(applicationLabel(for: id)) was rejected after manager review.",

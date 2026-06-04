@@ -138,10 +138,13 @@ final class AdminDashboardService {
                 logType = .systemAction
             }
             
+            let userRole = usersMap[dbLog.userId]?.role.capitalized
+            
             return AuditLogEntry(
                 id: dbLog.logId,
                 userId: dbLog.userId,
                 userName: userName,
+                userRole: userRole,
                 action: dbLog.action,
                 entityType: dbLog.entityType,
                 entityId: "APP-\(dbLog.entityId.uuidString.prefix(6).uppercased())",
@@ -242,10 +245,13 @@ final class AdminDashboardService {
                 logType = .systemAction
             }
             
+            let userRole = usersMap[dbLog.userId]?.role.capitalized
+            
             return AuditLogEntry(
                 id: dbLog.logId,
                 userId: dbLog.userId,
                 userName: userName,
+                userRole: userRole,
                 action: dbLog.action,
                 entityType: dbLog.entityType,
                 entityId: "APP-\(dbLog.entityId.uuidString.prefix(6).uppercased())",

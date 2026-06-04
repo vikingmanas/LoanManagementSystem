@@ -517,6 +517,20 @@ class LoanOfficerDashboardViewModel {
             applications[idx].status = newStatus
             applications[idx].lastUpdatedDate = Date()
             
+            let id = applications[idx].id
+            
+            Task {
+                do {
+                    try await DatabaseService.shared.logAuditAction(
+                        action: "Status Updated: \(newStatus.rawValue)",
+                        entityType: "LoanApplication",
+                        entityId: id
+                    )
+                } catch {
+                    print("Failed to log audit action for status update: \(error)")
+                }
+            }
+            
             logActivity(
                 borrowerName: applications[idx].borrowerName,
                 applicationId: applicationId,
@@ -537,6 +551,20 @@ class LoanOfficerDashboardViewModel {
         CentralLoanRepository.shared.sendForFinalApproval(applicationId: applicationId, officerName: officerName)
         refreshFromRepository()
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }) {
+            let id = applications[idx].id
+            
+            Task {
+                do {
+                    try await DatabaseService.shared.logAuditAction(
+                        action: "Sent to Manager for Final Approval",
+                        entityType: "LoanApplication",
+                        entityId: id
+                    )
+                } catch {
+                    print("Failed to log audit action for final approval send: \(error)")
+                }
+            }
+            
             logActivity(
                 borrowerName: applications[idx].borrowerName,
                 applicationId: applicationId,

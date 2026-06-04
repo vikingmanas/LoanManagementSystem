@@ -866,6 +866,20 @@ final class LoanApplicationViewModel {
             
             applications[index] = draft
             CentralLoanRepository.shared.submitApplication(draft)
+            
+            // Record audit log
+            Task {
+                do {
+                    try await DatabaseService.shared.logAuditAction(
+                        action: "Loan Submitted",
+                        entityType: "LoanApplication",
+                        entityId: draft.id
+                    )
+                } catch {
+                    print("Failed to log audit action for loan submission: \(error)")
+                }
+            }
+            
             self.currentDraftID = nil
             self.showSubmissionAlert = true
             self.submissionAlertMessage = "Application \(generatedApplicationID) submitted successfully on \(now.formattedAsDDMMMYYYY())."
