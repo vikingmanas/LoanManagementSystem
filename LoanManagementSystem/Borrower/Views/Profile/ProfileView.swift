@@ -71,12 +71,8 @@ struct ProfileView: View {
                             Label("Profile Information", systemImage: "person.circle")
                         }
                         
-                        NavigationLink(destination: KYCStatusDetailView(viewModel: viewModel)) {
-                            Label("KYC Verification", systemImage: "checkmark.seal")
-                        }
-                        
                         NavigationLink(destination: LinkedBankAccountsDetailView(viewModel: viewModel)) {
-                            Label("Linked Bank Accounts", systemImage: "building.columns")
+                            Label("Loan Account", systemImage: "building.columns")
                         }
                     } header: {
                         Text("Account Details")
