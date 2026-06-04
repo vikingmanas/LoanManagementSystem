@@ -373,14 +373,14 @@ final class LoanApplicationViewModel: ObservableObject {
         guard application.currentStage == .draft else { return }
         selectedProductID = application.product.id
         currentDraftID = application.id
-        currentStepIndex = min(max(application.draftStepIndex, 1), 10)
+        currentStepIndex = min(max(application.draftStepIndex, 1), 9)
         formData = application.formData
         documents = application.documents
         lastDraftSavedAt = Date()
     }
     
     func updateDraftStep(_ step: Int) {
-        let clampedStep = min(max(step, 1), 10)
+        let clampedStep = min(max(step, 1), 9)
         currentStepIndex = clampedStep
         
         guard let currentDraftID,

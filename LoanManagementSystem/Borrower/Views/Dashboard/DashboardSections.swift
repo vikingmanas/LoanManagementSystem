@@ -419,12 +419,10 @@ struct UpcomingPaymentSection: View {
 // MARK: - Quick Actions
 
 struct DashboardQuickActionsSection: View {
-    var onApplyLoan: () -> Void
     var onPayEMI: () -> Void
     var onStatement: () -> Void
     var onSupport: () -> Void
     var onCalculator: () -> Void
-    var onForeclosure: () -> Void
     var onTopUp: () -> Void
 
     private var actions: [DashboardQuickAction] {
