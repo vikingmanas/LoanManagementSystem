@@ -209,7 +209,12 @@ enum LoanApplicationPersistence {
                 referenceMobile: app.formData.referenceMobile,
                 emergencyContactName: app.formData.emergencyContactName,
                 emergencyContactMobile: app.formData.emergencyContactMobile,
-                signatureImageData: app.formData.signatureImageData,
+                signatureImageData: {
+                    let sig = app.formData.signatureImageData
+                    // Never persist base64 blobs to UserDefaults — only URLs
+                    if sig.count > 1000, !sig.starts(with: "http") { return nil }
+                    return sig.isEmpty ? nil : sig
+                }(),
                 signatureVerificationStatus: app.formData.signatureVerificationStatus,
                 liveVerificationCompleted: app.formData.liveVerificationCompleted,
                 liveVerificationReference: app.formData.liveVerificationReference,

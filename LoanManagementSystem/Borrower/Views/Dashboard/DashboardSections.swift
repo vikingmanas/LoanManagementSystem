@@ -432,10 +432,8 @@ struct DashboardQuickActionsSection: View {
             DashboardQuickAction(title: "Pay EMI", subtitle: "Due payments", icon: "indianrupeesign", tint: LMSColors.emerald, action: onPayEMI),
             DashboardQuickAction(title: "Top Up", subtitle: "Add funds", icon: "plus.circle.fill", tint: LMSColors.coral, action: onTopUp),
             DashboardQuickAction(title: "Calculator", subtitle: "Plan EMI", icon: "plus.forwardslash.minus", tint: LMSColors.brandNavy, action: onCalculator),
-            DashboardQuickAction(title: "Apply Loan", subtitle: "New request", icon: "doc.badge.plus", tint: LMSColors.teal, action: onApplyLoan),
             DashboardQuickAction(title: "Statements", subtitle: "Download", icon: "doc.text.fill", tint: LMSColors.actionBlue, action: onStatement),
-            DashboardQuickAction(title: "Support", subtitle: "Get help", icon: "headphones", tint: LMSColors.amber, action: onSupport),
-            DashboardQuickAction(title: "Close Loan", subtitle: "Prepay & settle", icon: "checkmark.seal.fill", tint: Color.orange, action: onForeclosure)
+            DashboardQuickAction(title: "Support", subtitle: "Get help", icon: "headphones", tint: LMSColors.amber, action: onSupport)
         ]
     }
 

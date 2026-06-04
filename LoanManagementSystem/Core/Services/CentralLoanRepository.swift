@@ -568,28 +568,16 @@ final class CentralLoanRepository: ObservableObject {
             do {
                 var finalDbApp = dbApp
                 
+                // MARK: — Signature: NEVER store base64 in Supabase. Upload to Storage or clear it.
                 if finalDbApp.formData.signatureImageData.count > 1000,
                    !finalDbApp.formData.signatureImageData.starts(with: "http") {
-                   if let data = Data(base64Encoded: finalDbApp.formData.signatureImageData) {
+                    var updatedFormData = finalDbApp.formData
+                    
+                    if let data = Data(base64Encoded: finalDbApp.formData.signatureImageData) {
                         let path = "signatures/\(resolvedUUID.uuidString)_\(finalDbApp.applicationId.uuidString).png"
                         if let publicUrl = try? await StorageService.shared.uploadDocument(data: data, bucket: "documents", path: path, contentType: "image/png") {
-                            var updatedFormData = finalDbApp.formData
                             updatedFormData.signatureImageData = publicUrl.absoluteString
-                            
-                            finalDbApp = DBLoanApplication(
-                                applicationId: finalDbApp.applicationId,
-                                borrowerId: finalDbApp.borrowerId,
-                                officerId: finalDbApp.officerId,
-                                productId: finalDbApp.productId,
-                                amountRequested: finalDbApp.amountRequested,
-                                tenureMonths: finalDbApp.tenureMonths,
-                                purpose: finalDbApp.purpose,
-                                status: finalDbApp.status,
-                                formData: updatedFormData,
-                                stageHistory: finalDbApp.stageHistory,
-                                submittedAt: finalDbApp.submittedAt,
-                                updatedAt: finalDbApp.updatedAt
-                            )
+                            print("✅ [CentralLoanRepository] Signature uploaded to Storage: \(publicUrl.absoluteString)")
                             
                             Task { @MainActor in
                                 if let idx = CentralLoanRepository.shared.applications.firstIndex(where: { $0.id == app.id }) {
@@ -598,27 +586,29 @@ final class CentralLoanRepository: ObservableObject {
                                 }
                             }
                         } else {
-                            print("❌ [CentralLoanRepository] Failed to upload signature image to Storage. Aborting DB sync.")
-                            throw NSError(domain: "CentralLoanRepository", code: 400, userInfo: [NSLocalizedDescriptionKey: "Failed to upload signature image. Please ensure the 'documents' storage bucket exists and has correct RLS policies."])
+                            // Upload failed — clear the base64 completely. NEVER let it reach the DB.
+                            updatedFormData.signatureImageData = ""
+                            print("❌ [CentralLoanRepository] Signature upload failed. Cleared base64 — it will NOT be stored in DB.")
                         }
-                   } else {
-                       var updatedFormData = finalDbApp.formData
-                       updatedFormData.signatureImageData = ""
-                       finalDbApp = DBLoanApplication(
-                           applicationId: finalDbApp.applicationId,
-                           borrowerId: finalDbApp.borrowerId,
-                           officerId: finalDbApp.officerId,
-                           productId: finalDbApp.productId,
-                           amountRequested: finalDbApp.amountRequested,
-                           tenureMonths: finalDbApp.tenureMonths,
-                           purpose: finalDbApp.purpose,
-                           status: finalDbApp.status,
-                           formData: updatedFormData,
-                           stageHistory: finalDbApp.stageHistory,
-                           submittedAt: finalDbApp.submittedAt,
-                           updatedAt: finalDbApp.updatedAt
-                       )
-                   }
+                    } else {
+                        // Invalid base64 data — clear it
+                        updatedFormData.signatureImageData = ""
+                    }
+                    
+                    finalDbApp = DBLoanApplication(
+                        applicationId: finalDbApp.applicationId,
+                        borrowerId: finalDbApp.borrowerId,
+                        officerId: finalDbApp.officerId,
+                        productId: finalDbApp.productId,
+                        amountRequested: finalDbApp.amountRequested,
+                        tenureMonths: finalDbApp.tenureMonths,
+                        purpose: finalDbApp.purpose,
+                        status: finalDbApp.status,
+                        formData: updatedFormData,
+                        stageHistory: finalDbApp.stageHistory,
+                        submittedAt: finalDbApp.submittedAt,
+                        updatedAt: finalDbApp.updatedAt
+                    )
                 }
                 
                 try await ApplicationService.shared.upsertApplication(finalDbApp)

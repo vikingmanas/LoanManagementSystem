@@ -136,16 +136,31 @@ private struct WizardMobileField: View {
     }
 
     var body: some View {
-        WizardTextField(
-            label: label,
-            text: Binding(
-                get: { text },
-                set: { text = MobileNumberValidator.sanitized($0) }
-            ),
-            placeholder: placeholder,
-            keyboardType: .numberPad,
-            validationMessage: validationMessage
-        )
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(LMSFont.caption.weight(.semibold))
+                .foregroundStyle(LMSColors.textSecondary)
+
+            TextField(placeholder, text: $text)
+                .keyboardType(.numberPad)
+                .font(LMSFont.body.weight(.medium))
+                .foregroundStyle(LMSColors.textPrimary)
+                .padding(.vertical, 8)
+                .onChange(of: text) { _, newValue in
+                    let sanitized = MobileNumberValidator.sanitized(newValue)
+                    if sanitized != newValue {
+                        text = sanitized
+                    }
+                }
+
+            if let validationMessage {
+                Text(validationMessage)
+                    .font(LMSFont.caption2.weight(.semibold))
+                    .foregroundStyle(LMSColors.coral)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 
@@ -296,7 +311,7 @@ struct BorrowerLoanWizardView: View {
     @State private var creditCardOutstanding: String = ""
     @State private var savingsInvestments: String = ""
     
-    // Step 5 Bank Details, Step 8 Nominee & References
+    // Step 7 Nominee & References
     @State private var hasCoApplicantToggle: Bool = false
     @State private var coApplicantName: String = ""
     @State private var coApplicantRelation: String = ""
@@ -304,16 +319,10 @@ struct BorrowerLoanWizardView: View {
     @State private var coApplicantPAN: String = ""
     @State private var coApplicantAadhaar: String = ""
     @State private var coApplicantIncome: String = ""
-    @State private var bankName: String = ""
-    @State private var bankAccountNumber: String = ""
-    @State private var bankIFSCCode: String = ""
-    @State private var monthlySalaryDeposited: String = ""
-    @State private var autoDebitConsent: Bool = false
     @State private var nomineeName: String = ""
-    @State private var bankRegisteredMobile: String = ""
     @State private var nomineeMobile: String = ""
     
-    // Step 6 & 7 Document & OCR Local States
+    // Step 5 & 6 Document & OCR Local States
     @State private var uploadProgress: [String: Double] = [:] // Document name -> Progress (0 to 1)
     @State private var isUploading: [String: Bool] = [:]
     @State private var ocrStatus: [String: String] = [:] // Document name -> OCR Status ("None", "Scanning", "Success")
@@ -330,7 +339,7 @@ struct BorrowerLoanWizardView: View {
     @State private var imagePickerSourceType: UIImagePickerController.SourceType = .photoLibrary
     @State private var previewImage: DocumentPreviewItem?
     
-    // Step 7 OCR Extracted Editable Data -> Repurposed for Nominee / Photo
+    // Step 6 OCR Extracted Editable Data -> Repurposed for Nominee / Photo
     @State private var ocrPANNumber: String = ""
     @State private var ocrPANName: String = ""
     @State private var ocrPANFather: String = ""
@@ -345,16 +354,13 @@ struct BorrowerLoanWizardView: View {
     @State private var ocrConfidence: [String: String] = [:]
     @State private var signatureImage: UIImage?
     @State private var isSignatureEmpty = true
-    @State private var liveVerificationCompleted = false
-    @State private var liveVerificationReference: String?
-    @State private var showLiveVerification = false
     @State private var showSignaturePhotoPicker = false
     
-    // Step 8 Verification Alerts Overrides
+    // Step 7 Verification Alerts Overrides
     @State private var showVerificationResolutionSheet = false
     @State private var hasResolvedMismatches = false
 
-    // Step 10 Consent & Submission
+    // Step 9 Consent & Submission
     @State private var acceptTerms = false
     @State private var acceptBureau = false
     @State private var acceptDebit = false
@@ -363,7 +369,7 @@ struct BorrowerLoanWizardView: View {
     @State private var stepValidationMessage: String?
 
     private var progressValue: Double {
-        Double(currentStep) / 10.0
+        Double(currentStep) / 9.0
     }
 
     private var localDraftAutosaveToken: String {
@@ -391,20 +397,12 @@ struct BorrowerLoanWizardView: View {
             coApplicantPAN,
             coApplicantAadhaar,
             coApplicantIncome,
-            bankName,
-            bankAccountNumber,
-            bankIFSCCode,
-            bankRegisteredMobile,
-            monthlySalaryDeposited,
-            "\(autoDebitConsent)",
             nomineeName,
             nomineeMobile,
             ocrPANFather,
             ocrPANNumber,
             "\(signatureImage != nil)",
             "\(isSignatureEmpty)",
-            "\(liveVerificationCompleted)",
-            liveVerificationReference ?? "",
             "\(acceptTerms)",
             "\(acceptBureau)",
             "\(acceptDebit)"
@@ -466,17 +464,6 @@ struct BorrowerLoanWizardView: View {
                 }
             } onCancel: {
                 showDocumentImagePicker = false
-            }
-            .ignoresSafeArea()
-        }
-        .fullScreenCover(isPresented: $showLiveVerification) {
-            LiveFaceVerificationView { reference in
-                liveVerificationReference = reference
-                liveVerificationCompleted = true
-                showLiveVerification = false
-                HapticsManager.triggerNotification(type: .success)
-            } onCancel: {
-                showLiveVerification = false
             }
             .ignoresSafeArea()
         }
@@ -572,30 +559,30 @@ struct BorrowerLoanWizardView: View {
 
     private var wizardNavigationBar: some View {
         VStack(spacing: 8) {
-            HStack {
-                Button(action: handleBackAction) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 24, weight: .semibold))
-                        .frame(width: 44, height: 44)
-                    .foregroundStyle(LMSColors.brandNavy)
-                }
-                .accessibilityLabel(currentStep > 1 ? "Previous step" : "Back")
-                
-                Spacer()
-                
+            ZStack {
                 VStack(spacing: 1) {
                     Text(navigationTitle(for: currentStep))
                         .font(LMSFont.subheadline.weight(.semibold))
                         .foregroundStyle(LMSColors.textPrimary)
                         .lineLimit(1)
-                    Text("Step \(currentStep) of 10")
+                    Text("Step \(currentStep) of 9")
                         .font(LMSFont.caption2.weight(.medium))
                         .foregroundStyle(LMSColors.textSecondary)
                 }
-                
-                Spacer()
-                
-                autosavePill
+
+                HStack {
+                    Button(action: handleBackAction) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 24, weight: .semibold))
+                            .frame(width: 44, height: 44)
+                            .foregroundStyle(LMSColors.brandNavy)
+                    }
+                    .accessibilityLabel(currentStep > 1 ? "Previous step" : "Back")
+
+                    Spacer()
+
+                    autosavePill
+                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)
@@ -672,16 +659,7 @@ struct BorrowerLoanWizardView: View {
                     savingsInvestments: $savingsInvestments
                 )
             case 5:
-                Step5BankDetailsView(
-                    bankName: $bankName,
-                    accountNo: $bankAccountNumber,
-                    ifscCode: $bankIFSCCode,
-                    registeredMobile: $bankRegisteredMobile,
-                    monthlySalaryDeposited: $monthlySalaryDeposited,
-                    autoDebitConsent: $autoDebitConsent
-                )
-            case 6:
-                Step6DocumentCenterOverhaulView(
+                Step5DocumentCenterOverhaulView(
                     viewModel: viewModel,
                     product: product,
                     stepValidationMessage: $stepValidationMessage,
@@ -708,28 +686,24 @@ struct BorrowerLoanWizardView: View {
                         ensureRequiredDocumentsLoaded()
                     }
                 )
-            case 7:
-                Step7SignaturePhotoView(
+            case 6:
+                Step6SignaturePhotoView(
                     signatureImage: $signatureImage,
                     isSignatureEmpty: $isSignatureEmpty,
-                    liveVerificationCompleted: $liveVerificationCompleted,
-                    onStartLiveVerification: {
-                        showLiveVerification = true
-                    },
                     onPickSignaturePhoto: {
                         showSignaturePhotoPicker = true
                     }
                 )
-            case 8:
-                Step8NomineeReferencesView(
+            case 7:
+                Step7NomineeReferencesView(
                     nomineeName: $nomineeName,
                     nomineeRelation: $coApplicantRelation,
                     nomineeMobile: $nomineeMobile,
                     refName: $ocrPANFather,
                     refPhone: $ocrPANNumber
                 )
-            case 9:
-                Step9ReviewOverhaulView(
+            case 8:
+                Step8ReviewOverhaulView(
                     viewModel: viewModel,
                     product: product,
                     onEditStep: { step in
@@ -738,8 +712,8 @@ struct BorrowerLoanWizardView: View {
                         }
                     }
                 )
-            case 10:
-                Step10TermsConsentView(
+            case 9:
+                Step9TermsConsentView(
                     viewModel: viewModel,
                     product: product,
                     acceptTerms: $acceptTerms,
@@ -780,7 +754,7 @@ struct BorrowerLoanWizardView: View {
             }
 
             Button(action: handleNextAction) {
-                Text(currentStep == 10 ? "Submit Application" : "Continue")
+                Text(currentStep == 9 ? "Submit Application" : "Continue")
                     .font(LMSFont.button)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 52)
@@ -797,11 +771,11 @@ struct BorrowerLoanWizardView: View {
     }
 
     private var isCurrentStepActionDisabled: Bool {
-        guard currentStep == 10 else { return false }
-        return !isStep10ReadyForSubmission
+        guard currentStep == 9 else { return false }
+        return !isFinalStepReadyForSubmission
     }
 
-    private var isStep10ReadyForSubmission: Bool {
+    private var isFinalStepReadyForSubmission: Bool {
         isLoanPurposeValid && acceptTerms && acceptBureau && acceptDebit
     }
 
@@ -818,12 +792,11 @@ struct BorrowerLoanWizardView: View {
         case 2: return "Eligibility Plan"
         case 3: return "Personal Details"
         case 4: return "Employment Info"
-        case 5: return "Bank Details"
-        case 6: return "Documents Setup"
-        case 7: return "Signature & Selfie"
-        case 8: return "Nominee & Contact"
-        case 9: return "Review Details"
-        case 10: return "Consent & Submit"
+        case 5: return "Documents Setup"
+        case 6: return "Signature & Selfie"
+        case 7: return "Nominee & Contact"
+        case 8: return "Review Details"
+        case 9: return "Consent & Submit"
         default: return "Loan Wizard"
         }
     }
@@ -845,7 +818,7 @@ struct BorrowerLoanWizardView: View {
         }
 
         viewModel.prefillEmptyFieldsFromProfile()
-        currentStep = min(max(viewModel.currentStepIndex, 1), 10)
+        currentStep = min(max(viewModel.currentStepIndex, 1), 9)
 
         ensureRequiredDocumentsLoaded()
         hydrateWizardStateFromFormData()
@@ -906,13 +879,6 @@ struct BorrowerLoanWizardView: View {
         creditCardLimit = viewModel.formData.creditCardLimit
         savingsInvestments = viewModel.formData.savingsInvestments
 
-        bankName = viewModel.formData.bankName
-        bankAccountNumber = viewModel.formData.bankAccountNumber
-        bankIFSCCode = viewModel.formData.bankIFSCCode
-        bankRegisteredMobile = viewModel.formData.bankRegisteredMobile
-        monthlySalaryDeposited = viewModel.formData.monthlySalaryDeposited
-        autoDebitConsent = viewModel.formData.autoDebitConsent
-
         hasCoApplicantToggle = viewModel.formData.hasCoApplicant
         if viewModel.formData.hasCoApplicant, !viewModel.formData.coApplicantDetails.isEmpty {
             let details = viewModel.formData.coApplicantDetails
@@ -941,8 +907,6 @@ struct BorrowerLoanWizardView: View {
         acceptTerms = viewModel.formData.acceptedTerms
         acceptBureau = viewModel.formData.acceptedBureauConsent
         acceptDebit = viewModel.formData.acceptedDebitConsent
-        liveVerificationCompleted = viewModel.formData.liveVerificationCompleted
-        liveVerificationReference = viewModel.formData.liveVerificationReference.isEmpty ? nil : viewModel.formData.liveVerificationReference
         if !viewModel.formData.signatureImageData.isEmpty {
             if viewModel.formData.signatureImageData.starts(with: "http"), let url = URL(string: viewModel.formData.signatureImageData) {
                 Task { @MainActor in
@@ -1004,13 +968,6 @@ struct BorrowerLoanWizardView: View {
         }
         viewModel.formData.creditCardLimit = creditCardLimit
         viewModel.formData.savingsInvestments = savingsInvestments
-        viewModel.formData.bankName = bankName
-        viewModel.formData.bankAccountNumber = bankAccountNumber
-        viewModel.formData.bankIFSCCode = bankIFSCCode
-        viewModel.formData.bankRegisteredMobile = bankRegisteredMobile
-        viewModel.formData.monthlySalaryDeposited = monthlySalaryDeposited
-        viewModel.formData.autoDebitConsent = autoDebitConsent
-
         viewModel.formData.hasCoApplicant = hasCoApplicantToggle
         if hasCoApplicantToggle, !coApplicantName.isEmpty {
             viewModel.formData.coApplicantDetails = "\(coApplicantName) (\(coApplicantRelation))"
@@ -1026,11 +983,29 @@ struct BorrowerLoanWizardView: View {
         viewModel.formData.referenceMobile = ocrPANNumber
         viewModel.formData.emergencyContactName = ocrPANFather
         viewModel.formData.emergencyContactMobile = ocrPANNumber
-        viewModel.formData.liveVerificationCompleted = liveVerificationCompleted
-        viewModel.formData.liveVerificationReference = liveVerificationReference ?? ""
         if let signatureImage,
            let data = signatureImage.pngData() {
-            viewModel.formData.signatureImageData = data.base64EncodedString()
+            // Only upload if we don't already have a URL for this signature
+            if viewModel.formData.signatureImageData.starts(with: "http") {
+                // Already uploaded — keep existing URL
+            } else {
+                let draftId = viewModel.currentDraftID?.uuidString ?? UUID().uuidString
+                let path = "signatures/\(draftId).png"
+                Task {
+                    do {
+                        let url = try await StorageService.shared.uploadDocument(
+                            data: data, bucket: "documents", path: path, contentType: "image/png"
+                        )
+                        await MainActor.run {
+                            viewModel.formData.signatureImageData = url.absoluteString
+                            print("✅ [Wizard] Signature uploaded to Storage: \(url.absoluteString)")
+                        }
+                    } catch {
+                        print("❌ [Wizard] Signature upload failed: \(error.localizedDescription). Signature will not be stored.")
+                        // Do NOT fall back to base64 — leave empty and retry on next sync
+                    }
+                }
+            }
         }
         viewModel.formData.acceptedTerms = acceptTerms
         viewModel.formData.acceptedBureauConsent = acceptBureau
@@ -1066,14 +1041,14 @@ struct BorrowerLoanWizardView: View {
         syncWizardFormToViewModel()
         triggerAutosave()
 
-        if currentStep < 10 {
+        if currentStep < 9 {
             if let validationMessage = validationMessageForCurrentStep() {
                 stepValidationMessage = validationMessage
                 HapticsManager.triggerNotification(type: .warning)
                 return
             }
 
-            if currentStep == 6 {
+            if currentStep == 5 {
                 let unuploadedDocuments = viewModel.documents.filter { $0.status == .pendingUpload }
                 if !unuploadedDocuments.isEmpty {
                     stepValidationMessage = "Upload all required documents: \(unuploadedDocuments.map(\.name).joined(separator: ", "))."
@@ -1128,17 +1103,15 @@ struct BorrowerLoanWizardView: View {
                 return addressValidation
             }
             return viewModel.validationMessage(for: .preferredBranch)
-        case 5:
-            return MobileNumberValidator.message(for: bankRegisteredMobile, required: false)
-        case 7:
+        case 6:
             if isSignatureEmpty || signatureImage == nil {
                 return "Please provide your signature"
             }
             return nil
-        case 8:
+        case 7:
             if let nomineeValidation = MobileNumberValidator.message(for: nomineeMobile, required: false) { return nomineeValidation }
-            return MobileNumberValidator.validationMessage(for: ocrPANNumber)
-        case 10:
+            return MobileNumberValidator.message(for: ocrPANNumber, required: false)
+        case 9:
             if !isLoanPurposeValid {
                 return "Please provide the purpose of the loan."
             }
@@ -2053,44 +2026,8 @@ private struct Step4EmploymentOverhaulView: View {
     }
 }
 
-// MARK: - STEP 5: Bank Details View
-private struct Step5BankDetailsView: View {
-    @Binding var bankName: String
-    @Binding var accountNo: String
-    @Binding var ifscCode: String
-    @Binding var registeredMobile: String
-    @Binding var monthlySalaryDeposited: String
-    @Binding var autoDebitConsent: Bool
-
-    var body: some View {
-        VStack(spacing: LMSSpacing.lg) {
-            WizardFormSection(title: "Primary Bank Account") {
-                WizardTextField(label: "Bank Name", text: $bankName, placeholder: "HDFC Bank, ICICI Bank, etc.")
-                FormDivider()
-                WizardTextField(label: "Account Number", text: $accountNo, placeholder: "12 to 18 Digit number", keyboardType: .numberPad)
-                FormDivider()
-                WizardTextField(label: "IFSC Code", text: $ifscCode, placeholder: "IFSC code", disableAutocapitalization: true)
-            }
-            
-            WizardFormSection(title: "Salary Account details") {
-                WizardMobileField(label: "Registered Mobile Number", text: $registeredMobile, required: false)
-                FormDivider()
-                WizardTextField(label: "Average Monthly Balance / Salary Deposited", text: $monthlySalaryDeposited, placeholder: "Monthly amount", keyboardType: .numberPad)
-            }
-            
-            WizardFormSection(title: "e-Mandate / Auto-debit") {
-                WizardToggleRow(
-                    label: "Authorize Auto-Debit (e-Mandate)",
-                    subtitle: "Authorize automatic repayment deduction from this bank account for seamless billing.",
-                    isOn: $autoDebitConsent
-                )
-            }
-        }
-    }
-}
-
-// MARK: - STEP 6: Document Center
-private struct Step6DocumentCenterOverhaulView: View {
+// MARK: - STEP 5: Document Center
+private struct Step5DocumentCenterOverhaulView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     @Binding var stepValidationMessage: String?
@@ -2425,73 +2362,26 @@ private struct UploadRow: View {
     }
 }
 
-// MARK: - STEP 7: Signature & Selfie View
-private struct Step7SignaturePhotoView: View {
+// MARK: - STEP 6: Signature & Selfie View
+private struct Step6SignaturePhotoView: View {
     @Binding var signatureImage: UIImage?
     @Binding var isSignatureEmpty: Bool
-    @Binding var liveVerificationCompleted: Bool
-    let onStartLiveVerification: () -> Void
     let onPickSignaturePhoto: () -> Void
 
     var body: some View {
         VStack(spacing: LMSSpacing.lg) {
             VStack(alignment: .center, spacing: 8) {
-                Image(systemName: "face.id")
+                Image(systemName: "signature")
                     .font(.system(size: 40))
                     .foregroundStyle(LMSColors.brandNavy)
                 Text("Verification Proofs")
                     .font(LMSFont.title3.weight(.bold))
                     .foregroundStyle(LMSColors.textPrimary)
-                Text("Add a signature photo to finish identity verification. Live face check is optional.")
+                Text("Add a signature photo to finish identity verification.")
                     .font(LMSFont.caption)
                     .foregroundStyle(LMSColors.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
-            }
-
-            WizardFormSection(title: "Live Selfie Status") {
-                HStack(spacing: 16) {
-                    ZStack {
-                        Circle()
-                            .fill(LMSColors.surfaceTertiary)
-                            .frame(width: 54, height: 54)
-                        Image(systemName: "person.crop.circle.badge.checkmark")
-                            .font(.title2)
-                            .foregroundStyle(liveVerificationCompleted ? LMSColors.emerald : LMSColors.textTertiary)
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Live Facial Verification")
-                            .font(LMSFont.body.weight(.semibold))
-                            .foregroundStyle(LMSColors.textPrimary)
-                        Text(liveVerificationCompleted ? "Live verification completed" : "Optional 5 second live face check")
-                            .font(LMSFont.caption)
-                            .foregroundStyle(LMSColors.textSecondary)
-                    }
-
-                    Spacer()
-
-                    if liveVerificationCompleted {
-                        Text("Verified")
-                            .font(LMSFont.caption.weight(.bold))
-                            .foregroundStyle(LMSColors.emerald)
-                    } else {
-                        Button("Start") {
-#if targetEnvironment(simulator)
-                            liveVerificationCompleted = true
-#else
-                            onStartLiveVerification()
-#endif
-                        }
-                        .font(LMSFont.caption.weight(.bold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(LMSColors.brandNavy, in: Capsule())
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
             }
 
             WizardFormSection(title: "Digital Signature") {
@@ -2857,8 +2747,8 @@ private final class LiveFaceCameraController: NSObject, ObservableObject, AVCapt
     }
 }
 
-// MARK: - STEP 8: Nominee & References View
-private struct Step8NomineeReferencesView: View {
+// MARK: - STEP 7: Nominee & References View
+private struct Step7NomineeReferencesView: View {
     @Binding var nomineeName: String
     @Binding var nomineeRelation: String
     @Binding var nomineeMobile: String
@@ -2887,8 +2777,8 @@ private struct Step8NomineeReferencesView: View {
     }
 }
 
-// MARK: - STEP 9: Review Details View
-private struct Step9ReviewOverhaulView: View {
+// MARK: - STEP 8: Review Details View
+private struct Step8ReviewOverhaulView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     let onEditStep: (Int) -> Void
@@ -2950,8 +2840,8 @@ private struct Step9ReviewOverhaulView: View {
     }
 }
 
-// MARK: - STEP 10: Consent & Terms
-private struct Step10TermsConsentView: View {
+// MARK: - STEP 9: Consent & Terms
+private struct Step9TermsConsentView: View {
     @ObservedObject var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     @Binding var acceptTerms: Bool
@@ -2962,22 +2852,6 @@ private struct Step10TermsConsentView: View {
 
     var body: some View {
         VStack(spacing: LMSSpacing.lg) {
-            VStack(alignment: .center, spacing: 8) {
-                Image(systemName: "text.badge.checkmark")
-                    .font(.system(size: 40))
-                    .foregroundStyle(LMSColors.brandNavy)
-                
-                Text("Agreement & Submission")
-                    .font(LMSFont.title3.weight(.bold))
-                    .foregroundStyle(LMSColors.textPrimary)
-                
-                Text("Verify the final conditions. Submitting starts instant processing.")
-                    .font(LMSFont.caption)
-                    .foregroundStyle(LMSColors.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-            }
-
             loanPurposeSection
             
             WizardFormSection(title: "Consent Checklist") {
