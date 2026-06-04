@@ -1568,19 +1568,17 @@ struct BorrowerLoanWizardView: View {
     }
 
     private func extractLikelyName(from text: String, excluding blockedWords: [String]) -> String? {
-        let blocked = Set(blockedWords)
-        let lines = text
-            .components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { line in
-                let lower = line.lowercased()
-                let words = lower.components(separatedBy: .whitespaces)
-                return line.count >= 5 &&
-                    line.count <= 36 &&
-                    !line.contains(where: \.isNumber) &&
-                    !words.contains(where: blocked.contains)
-            }
-        return lines.first
+        let blocked = Set<String>(blockedWords)
+        for rawLine in text.components(separatedBy: .newlines) {
+            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard line.count >= 5, line.count <= 36 else { continue }
+            guard line.rangeOfCharacter(from: .decimalDigits) == nil else { continue }
+
+            let words = line.lowercased().components(separatedBy: .whitespaces)
+            guard blocked.isDisjoint(with: words) else { continue }
+            return line
+        }
+        return nil
     }
 
     private func extractAadhaarName(from text: String) -> String? {
@@ -1640,18 +1638,20 @@ struct BorrowerLoanWizardView: View {
 
         guard line.count >= 5, line.count <= 36 else { return nil }
         let lower = line.lowercased()
-        let blockedFragments = [
+        let blockedFragments: [String] = [
             "government", "gov", "india", "aadhaar", "aadhar", "uidai", "dob", "date",
             "birth", "male", "female", "address", "authority", "identification", "card", "number"
         ]
-        guard !blockedFragments.contains(where: { lower.contains($0) }) else { return nil }
+        for fragment in blockedFragments where lower.contains(fragment) {
+            return nil
+        }
 
         let words = line.split(separator: " ").map(String.init)
         guard words.count >= 2, words.count <= 4 else { return nil }
-        guard words.allSatisfy({ word in
+        for word in words {
             let letters = word.filter(\.isLetter)
-            return letters.count >= 2 && letters.count == word.count
-        }) else { return nil }
+            guard letters.count >= 2, letters.count == word.count else { return nil }
+        }
 
         if !allowUppercase, line == line.uppercased() {
             return nil
@@ -3213,5 +3213,12 @@ private extension CGImagePropertyOrientation {
 
 // MARK: - Preview Support
 #Preview("Loan Wizard") {
-    EmptyView()
+    NavigationStack {
+        BorrowerLoanWizardView(
+            viewModel: LoanApplicationViewModel(),
+            product: BorrowerLoanProduct.sampleProducts[0],
+            onComplete: {}
+        )
+        .environmentObject(AuthManager())
+    }
 }
