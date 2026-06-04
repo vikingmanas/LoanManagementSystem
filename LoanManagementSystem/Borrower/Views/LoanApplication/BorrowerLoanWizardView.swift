@@ -943,11 +943,19 @@ struct BorrowerLoanWizardView: View {
         acceptDebit = viewModel.formData.acceptedDebitConsent
         liveVerificationCompleted = viewModel.formData.liveVerificationCompleted
         liveVerificationReference = viewModel.formData.liveVerificationReference.isEmpty ? nil : viewModel.formData.liveVerificationReference
-        if !viewModel.formData.signatureImageData.isEmpty,
-           let data = Data(base64Encoded: viewModel.formData.signatureImageData),
-           let image = UIImage(data: data) {
-            signatureImage = image
-            isSignatureEmpty = false
+        if !viewModel.formData.signatureImageData.isEmpty {
+            if viewModel.formData.signatureImageData.starts(with: "http"), let url = URL(string: viewModel.formData.signatureImageData) {
+                Task { @MainActor in
+                    if let data = try? Data(contentsOf: url), let image = UIImage(data: data) {
+                        signatureImage = image
+                        isSignatureEmpty = false
+                    }
+                }
+            } else if let data = Data(base64Encoded: viewModel.formData.signatureImageData),
+                      let image = UIImage(data: data) {
+                signatureImage = image
+                isSignatureEmpty = false
+            }
         }
     }
 

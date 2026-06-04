@@ -1,12 +1,6 @@
-//
-//  BorrowerChatViewModel.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 02/06/26.
-//
-
 import SwiftUI
 import Combine
+import Supabase
 
 struct BorrowerConversation: Identifiable, Hashable {
     let id: UUID           // applicationId
@@ -51,6 +45,58 @@ final class BorrowerChatViewModel: ObservableObject {
     private var borrowerUserId: UUID? {
         guard let uid = AuthManager.shared.currentUser?.uid else { return nil }
         return UUID(uuidString: uid)
+    }
+    
+    private var realtimeChannel: RealtimeChannelV2?
+    
+    deinit {
+        let channel = realtimeChannel
+        Task {
+            await channel?.unsubscribe()
+        }
+    }
+
+    // MARK: - Realtime
+    func setupRealtime() async {
+        guard let userId = borrowerUserId else { return }
+        
+        if let channel = realtimeChannel {
+            await channel.unsubscribe()
+        }
+        
+        realtimeChannel = await DatabaseService.shared.subscribeToAllMessages(forUserId: userId) { [weak self] newMessage in
+            Task { @MainActor in
+                self?.handleNewRealtimeMessage(newMessage)
+            }
+        }
+    }
+    
+    private func handleNewRealtimeMessage(_ msg: DBMessage) {
+        guard let appId = msg.applicationId else { return }
+        if let idx = conversations.firstIndex(where: { $0.applicationId == appId }) {
+            var conv = conversations[idx]
+            if !conv.messages.contains(where: { $0.messageId == msg.messageId }) {
+                var newMessages = conv.messages
+                newMessages.append(msg)
+                
+                let updatedConv = BorrowerConversation(
+                    id: conv.id,
+                    applicationId: conv.applicationId,
+                    applicationDisplayId: conv.applicationDisplayId,
+                    loanProductName: conv.loanProductName,
+                    messages: newMessages.sorted { $0.sentAt < $1.sentAt }
+                )
+                conversations[idx] = updatedConv
+                
+                conversations.sort {
+                    ($0.latestMessage?.sentAt ?? .distantPast) > ($1.latestMessage?.sentAt ?? .distantPast)
+                }
+            }
+        } else {
+            Task {
+                await self.fetchConversations()
+            }
+        }
     }
 
     // MARK: - Fetch All Conversations

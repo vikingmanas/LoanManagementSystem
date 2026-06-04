@@ -96,7 +96,7 @@ struct ProfileView: View {
                             Label("Privacy Controls", systemImage: "hand.raised")
                         }
                         
-                        NavigationLink(destination: NotificationsDetailView(showSettings: true, notificationViewModel: notifVM)) {
+                        NavigationLink(destination: NotificationsDetailView(showSettings: true, showNotifications: false, notificationViewModel: notifVM)) {
                             Label("Notifications", systemImage: "bell")
                         }
                     } header: {
@@ -107,6 +107,10 @@ struct ProfileView: View {
                     Section {
                         NavigationLink(destination: SettingsDetailView()) {
                             Label("App Settings", systemImage: "gearshape")
+                        }
+                        
+                        NavigationLink(destination: AccessibilitySettingsView()) {
+                            Label("Accessibility", systemImage: "figure.walk.circle")
                         }
                         
                         NavigationLink(destination: HelpSupportDetailView()) {

@@ -1,28 +1,14 @@
 
 
-
-
-
-
-
 import Foundation
 import Combine
+import SwiftUI
 import Supabase
-
-enum BorrowerSignInMode: String, CaseIterable, Identifiable {
-    case password = "Password"
-    case emailOTP = "Email OTP"
-
-    var id: String { rawValue }
-}
 
 @MainActor
 class SignInViewModel: ObservableObject {
     @Published var emailOrPhone: String = ""
     @Published var password: String = ""
-    @Published var otpCode: String = ""
-    @Published var signInMode: BorrowerSignInMode = .password
-    @Published var isOTPSent: Bool = false
     @Published var rememberMe: Bool = false
 
     @Published var emailError: String = ""
@@ -33,20 +19,32 @@ class SignInViewModel: ObservableObject {
     @Published var showSuccess: Bool = false
     @Published var generalError: String = ""
 
+    // MARK: - OTP Step State
+    @Published var otpCode: String = ""
+    @Published var isOtpStep: Bool = false
+    @Published var otpSentMessage: String = ""
+
+    /// The cleaned email stored after credential validation, used for OTP send/verify.
+    private var validatedEmail: String = ""
+    /// The role fetched during credential validation, reused after OTP verification.
+    private var validatedRole: String?
+
     var isFormValid: Bool {
-        switch signInMode {
-        case .password:
-            return !emailOrPhone.isEmpty && !password.isEmpty
-        case .emailOTP:
-            return !emailOrPhone.isEmpty && (!isOTPSent || !otpCode.isEmpty)
-        }
+        return !emailOrPhone.isEmpty && !password.isEmpty
     }
+
+    var isOtpFormValid: Bool {
+        let digits = otpCode.filter { $0.isNumber }
+        return digits.count == 6
+    }
+
+    // MARK: - Step 1: Validate Credentials & Send OTP
 
     func signIn(authManager: AuthManager, appState: AppStateManager) async {
         emailError = ""
         passwordError = ""
         generalError = ""
-
+        otpSentMessage = ""
 
         if emailOrPhone.isEmpty {
             emailError = "Email or Phone cannot be empty"
@@ -66,67 +64,92 @@ class SignInViewModel: ObservableObject {
         }
 
         isLoading = true
+
+        // 1. Validate credentials by signing in
         let result = await authManager.signIn(email: cleanedEmail, password: password)
-        isLoading = false
 
         if result.success {
+            // Store validated data for after OTP verification
+            validatedEmail = cleanedEmail
+            validatedRole = result.role
 
-            completeSuccessfulLogin(role: result.role, email: cleanedEmail, authManager: authManager, appState: appState)
+            // 2. Sign out immediately — user must complete OTP before accessing dashboard
+            authManager.signOut()
+
+            // 3. Send OTP to the user's email
+            let otpSent = await authManager.sendEmailOTP(email: cleanedEmail)
+            isLoading = false
+
+            if otpSent {
+                // Transition to OTP entry step
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                    isOtpStep = true
+                    otpSentMessage = "A 6-digit verification code has been sent to \(cleanedEmail)"
+                }
+            } else {
+                generalError = authManager.errorMessage ?? "Failed to send verification code. Please try again."
+            }
         } else {
+            isLoading = false
             generalError = authManager.errorMessage ?? "Incorrect email or password. Please try again."
         }
     }
 
-    func sendEmailOTP(authManager: AuthManager) async {
-        emailError = ""
+    // MARK: - Step 2: Verify OTP
+
+    func verifyOTP(authManager: AuthManager, appState: AppStateManager) async {
         otpError = ""
         generalError = ""
 
-        let cleanedEmail = emailOrPhone.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard cleanedEmail.contains("@") else {
-            emailError = "Please enter your registered email address."
+        let cleanedOtp = otpCode.filter { $0.isNumber }
+        guard cleanedOtp.count == 6 else {
+            otpError = "Please enter the complete 6-digit code."
             return
         }
 
         isLoading = true
-        let success = await authManager.sendEmailOTP(email: cleanedEmail)
-        isLoading = false
-
-        if success {
-            isOTPSent = true
-        } else {
-            generalError = authManager.errorMessage ?? "Unable to send OTP. Please try again."
-        }
-    }
-
-    func verifyEmailOTP(authManager: AuthManager, appState: AppStateManager) async {
-        emailError = ""
-        otpError = ""
-        generalError = ""
-
-        let cleanedEmail = emailOrPhone.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let token = otpCode.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard cleanedEmail.contains("@") else {
-            emailError = "Please enter your registered email address."
-            return
-        }
-
-        guard token.count >= 6 else {
-            otpError = "Enter the 6-digit OTP from your email."
-            return
-        }
-
-        isLoading = true
-        let result = await authManager.verifyEmailOTP(email: cleanedEmail, token: token)
+        let result = await authManager.verifyEmailOTP(email: validatedEmail, token: cleanedOtp)
         isLoading = false
 
         if result.success {
-            completeSuccessfulLogin(role: result.role, email: cleanedEmail, authManager: authManager, appState: appState)
+            let role = result.role ?? validatedRole
+            completeSuccessfulLogin(role: role, email: validatedEmail, authManager: authManager, appState: appState)
         } else {
-            generalError = authManager.errorMessage ?? "Invalid or expired OTP."
+            otpError = authManager.errorMessage ?? "Invalid verification code. Please try again."
         }
     }
+
+    // MARK: - Resend OTP
+
+    func resendOTP(authManager: AuthManager) async {
+        generalError = ""
+        otpError = ""
+        otpSentMessage = ""
+
+        isLoading = true
+        let success = await authManager.sendEmailOTP(email: validatedEmail)
+        isLoading = false
+
+        if success {
+            otpSentMessage = "A new verification code has been sent to \(validatedEmail)"
+        } else {
+            generalError = authManager.errorMessage ?? "Failed to resend code. Please try again."
+        }
+    }
+
+    // MARK: - Go Back to Credentials Step
+
+    func goBackToCredentials() {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+            isOtpStep = false
+            otpCode = ""
+            otpError = ""
+            otpSentMessage = ""
+            generalError = ""
+        }
+    }
+
+    // MARK: - Complete Login
 
     private func completeSuccessfulLogin(role: String?, email: String, authManager: AuthManager, appState: AppStateManager) {
         if let role {

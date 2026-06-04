@@ -6,6 +6,7 @@ final class SupabaseManager {
     static let shared = SupabaseManager()
 
     let client: SupabaseClient
+    let defaultDecoder: JSONDecoder
 
     private init() {
         let dbDecoder = JSONDecoder()
@@ -60,6 +61,8 @@ final class SupabaseManager {
             let string = formatter.string(from: date)
             try container.encode(string)
         }
+
+        defaultDecoder = dbDecoder
 
         client = SupabaseClient(
             supabaseURL: AppConfiguration.supabaseURL,

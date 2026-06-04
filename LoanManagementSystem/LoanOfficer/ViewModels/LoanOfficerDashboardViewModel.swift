@@ -24,8 +24,16 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     @Published var hasError: Bool = false
     @Published var selectedTab: Int = 0              // 0=Dashboard, 1=History
     
+    private var realtimeChannel: RealtimeChannelV2?
     private var cancellables = Set<AnyCancellable>()
     private var isFetchingDashboardData = false
+    
+    deinit {
+        let channel = realtimeChannel
+        Task {
+            await channel?.unsubscribe()
+        }
+    }
     
     init() {
         refreshFromRepository()
@@ -282,6 +290,42 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         }
     }
 
+    /// Lightweight refresh that only fetches messages — used by chat tab timer
+    /// to avoid the heavy fetchDashboardData() call every polling interval.
+    func refreshMessagesOnly() async {
+        guard let officerId = self.officerProfile?.id else { return }
+        do {
+            if let dbMessages = try? await DatabaseService.shared.fetchMessages(for: officerId) {
+                var newActivityItems: [ActivityFeedItem] = []
+                let repoApps = CentralLoanRepository.shared.applications
+                for msg in dbMessages {
+                    let matchedApp = repoApps.first(where: { $0.id == msg.applicationId })
+                    let borrowerName = matchedApp?.formData.fullName.isEmpty == false ? matchedApp!.formData.fullName : "Borrower"
+                    let appDisplayId = matchedApp?.applicationId ?? matchedApp?.displayIdentifier ?? "APP-\(msg.applicationId?.uuidString.prefix(6).uppercased() ?? "UNKNOWN")"
+                    let loanType = matchedApp?.product.type.title ?? "Loan Clarification"
+                    
+                    let isRead = msg.receiverId == officerId ? msg.isRead : true
+                    
+                    let feedItem = ActivityFeedItem(
+                        id: msg.messageId,
+                        borrowerName: borrowerName,
+                        applicationId: appDisplayId,
+                        loanType: loanType,
+                        eventType: .queryRaised,
+                        eventDescription: msg.content,
+                        timestamp: msg.sentAt,
+                        isRead: isRead,
+                        requiresAction: !isRead,
+                        actionType: .replyQuery
+                    )
+                    newActivityItems.append(feedItem)
+                }
+                self.activityFeed = newActivityItems.sorted { $0.timestamp > $1.timestamp }
+            }
+            updateUnreadCount()
+        }
+    }
+
     func refreshFromRepository() {
         guard let officerProfile else {
             // Keep the queue safe and empty until the profile is successfully loaded from the DB
@@ -344,6 +388,57 @@ class LoanOfficerDashboardViewModel: ObservableObject {
             }
         }
         applicationMessages = nextMessages
+    }
+    
+    // MARK: - Realtime
+    func setupRealtime() async {
+        guard let profileId = officerProfile?.id else { return }
+        
+        if let channel = realtimeChannel {
+            await channel.unsubscribe()
+        }
+        
+        realtimeChannel = await DatabaseService.shared.subscribeToAllMessages(forUserId: profileId) { [weak self] newMessage in
+            Task { @MainActor in
+                self?.handleNewRealtimeMessage(newMessage, profileId: profileId)
+            }
+        }
+    }
+    
+    private func handleNewRealtimeMessage(_ msg: DBMessage, profileId: UUID) {
+        guard let appId = msg.applicationId else { return }
+        
+        // Append message if not already present
+        var messagesForApp = applicationMessages[appId] ?? []
+        if !messagesForApp.contains(where: { $0.messageId == msg.messageId }) {
+            messagesForApp.append(msg)
+            applicationMessages[appId] = messagesForApp.sorted { $0.sentAt < $1.sentAt }
+            
+            // Add to activity feed if received
+            if msg.receiverId == profileId && !msg.isRead {
+                let borrowerName = applications.first(where: { $0.id == appId })?.borrowerName ?? "Borrower"
+                let appDisplayId = applications.first(where: { $0.id == appId })?.applicationId ?? "APP"
+                let loanType = applications.first(where: { $0.id == appId })?.loanType.rawValue ?? ""
+                
+                let feedItem = ActivityFeedItem(
+                    id: msg.messageId,
+                    borrowerName: borrowerName,
+                    applicationId: appDisplayId,
+                    loanType: loanType,
+                    eventType: .queryRaised,
+                    eventDescription: msg.content,
+                    timestamp: msg.sentAt,
+                    isRead: false,
+                    requiresAction: true,
+                    actionType: .replyQuery
+                )
+                
+                var currentItems = activityFeed
+                currentItems.append(feedItem)
+                activityFeed = currentItems.sorted { $0.timestamp > $1.timestamp }
+                updateUnreadCount()
+            }
+        }
     }
     
     func updateUnreadCount() {

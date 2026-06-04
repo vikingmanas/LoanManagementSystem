@@ -879,6 +879,20 @@ final class DatabaseService {
             .value
     }
 
+    /// Batch-fetch documents for multiple application IDs in a single query.
+    /// Replaces the N+1 pattern of calling fetchDocuments(applicationId:) per app.
+    func fetchDocumentsBatch(applicationIds: [UUID]) async throws -> [UUID: [DBDocument]] {
+        guard !applicationIds.isEmpty else { return [:] }
+        let idStrings = applicationIds.map(\.uuidString)
+        let allDocs: [DBDocument] = try await client
+            .from("documents")
+            .select()
+            .in("application_id", values: idStrings)
+            .execute()
+            .value
+        return Dictionary(grouping: allDocs, by: \.applicationId!)
+    }
+
     // MARK: - Supabase Repayment & Account Operations
 
     func insertLoanAccount(_ account: DBLoanAccount) async throws {
@@ -1004,6 +1018,57 @@ final class DatabaseService {
             .update(ReadUpdate(isRead: true))
             .in("message_id", values: messageIds.map(\.uuidString))
             .execute()
+    }
+
+    func subscribeToMessages(forApplicationId applicationId: UUID, onInsert: @escaping (DBMessage) -> Void) async -> RealtimeChannelV2 {
+        let channel = client.channel("messages_app_\(applicationId.uuidString)")
+        
+        let stream = channel.postgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "messages",
+            filter: "application_id=eq.\(applicationId.uuidString)"
+        )
+        
+        Task {
+            for await action in stream {
+                do {
+                    let message = try action.record.decode(as: DBMessage.self, decoder: SupabaseManager.shared.defaultDecoder)
+                    onInsert(message)
+                } catch {
+                    print("[DatabaseService] Error decoding realtime message: \(error)")
+                }
+            }
+        }
+        
+        await channel.subscribe()
+        return channel
+    }
+    
+    func subscribeToAllMessages(forUserId userId: UUID, onInsert: @escaping (DBMessage) -> Void) async -> RealtimeChannelV2 {
+        let channel = client.channel("messages_user_\(userId.uuidString)")
+        
+        let stream = channel.postgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "messages"
+        )
+        
+        Task {
+            for await action in stream {
+                do {
+                    let message = try action.record.decode(as: DBMessage.self, decoder: SupabaseManager.shared.defaultDecoder)
+                    if message.senderId == userId || message.receiverId == userId {
+                        onInsert(message)
+                    }
+                } catch {
+                    print("[DatabaseService] Error decoding realtime message: \(error)")
+                }
+            }
+        }
+        
+        await channel.subscribe()
+        return channel
     }
 
     func createNotification(userId: UUID, title: String, message: String, type: String = "push") async throws {
