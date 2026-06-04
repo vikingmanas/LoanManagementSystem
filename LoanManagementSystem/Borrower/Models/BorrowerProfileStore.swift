@@ -216,15 +216,19 @@ public class BorrowerProfileStore: ObservableObject {
         if let existingIndex = linkedAccounts.firstIndex(where: {
             $0.linkedLoanApplicationId == applicationId && $0.isOverdraftAccount
         }) {
+            var hasChanges = false
             if linkedAccounts[existingIndex].balance == 0 {
                 linkedAccounts[existingIndex].balance = sanctionedAmount
+                hasChanges = true
             }
-            linkedAccounts[existingIndex].odSanctionLimit = max(
-                linkedAccounts[existingIndex].odSanctionLimit ?? 0,
-                sanctionedAmount
-            )
-            borrowerProfile.linkedAccounts = linkedAccounts
-            persistBorrowerProfile(borrowerProfile, email: normalized)
+            if (linkedAccounts[existingIndex].odSanctionLimit ?? 0) < sanctionedAmount {
+                linkedAccounts[existingIndex].odSanctionLimit = sanctionedAmount
+                hasChanges = true
+            }
+            if hasChanges {
+                borrowerProfile.linkedAccounts = linkedAccounts
+                persistBorrowerProfile(borrowerProfile, email: normalized)
+            }
             return linkedAccounts[existingIndex].accountNumber
         }
 

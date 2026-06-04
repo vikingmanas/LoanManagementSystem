@@ -32,6 +32,7 @@ public final class DashboardViewModel: ObservableObject {
     public init() {
         CentralLoanRepository.shared.$disbursementEvents
             .dropFirst()
+            .debounce(for: .seconds(2), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in
                 Task { await self?.fetchDashboardData() }
             }
@@ -39,13 +40,15 @@ public final class DashboardViewModel: ObservableObject {
 
         CentralLoanRepository.shared.$applications
             .dropFirst()
+            .debounce(for: .seconds(2), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in
                 Task { await self?.fetchDashboardData() }
             }
             .store(in: &cancellables)
 
         BorrowerProfileStore.shared.$profile
-            .receive(on: DispatchQueue.main)
+            .dropFirst()
+            .debounce(for: .seconds(2), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in
                 Task { await self?.fetchDashboardData() }
             }
