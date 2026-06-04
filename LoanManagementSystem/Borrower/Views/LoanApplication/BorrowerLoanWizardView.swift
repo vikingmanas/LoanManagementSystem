@@ -1030,7 +1030,27 @@ struct BorrowerLoanWizardView: View {
         viewModel.formData.liveVerificationReference = liveVerificationReference ?? ""
         if let signatureImage,
            let data = signatureImage.pngData() {
-            viewModel.formData.signatureImageData = data.base64EncodedString()
+            // Only upload if we don't already have a URL for this signature
+            if viewModel.formData.signatureImageData.starts(with: "http") {
+                // Already uploaded — keep existing URL
+            } else {
+                let draftId = viewModel.currentDraftID?.uuidString ?? UUID().uuidString
+                let path = "signatures/\(draftId).png"
+                Task {
+                    do {
+                        let url = try await StorageService.shared.uploadDocument(
+                            data: data, bucket: "documents", path: path, contentType: "image/png"
+                        )
+                        await MainActor.run {
+                            viewModel.formData.signatureImageData = url.absoluteString
+                            print("✅ [Wizard] Signature uploaded to Storage: \(url.absoluteString)")
+                        }
+                    } catch {
+                        print("❌ [Wizard] Signature upload failed: \(error.localizedDescription). Signature will not be stored.")
+                        // Do NOT fall back to base64 — leave empty and retry on next sync
+                    }
+                }
+            }
         }
         viewModel.formData.acceptedTerms = acceptTerms
         viewModel.formData.acceptedBureauConsent = acceptBureau
