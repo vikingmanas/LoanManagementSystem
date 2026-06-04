@@ -4,6 +4,15 @@ import SwiftUI
 struct ManagerSettingsView: View {
     @Environment(\.dismiss) var dismiss
 
+    @State private var settingsAlertTitle = ""
+    @State private var settingsAlertMessage = ""
+    @State private var showSettingsAlert = false
+
+    @AppStorage("managerHomeLoanLimit") private var homeLoanLimit = "5.0"
+    @AppStorage("managerPersonalLoanLimit") private var personalLoanLimit = "1.0"
+    @AppStorage("managerBusinessLoanLimit") private var businessLoanLimit = "3.0"
+    @AppStorage("managerMinCIBILScore") private var minCIBILScore = "650"
+    @AppStorage("managerMaxDebtToIncome") private var maxDebtToIncome = "50"
     @AppStorage("managerTwoFactorEnabled") private var twoFactorEnabled = true
     @AppStorage("managerSessionTimeout") private var sessionTimeout = "30"
     @AppStorage("managerNotifApprovals") private var notifApprovals = true
@@ -15,6 +24,62 @@ struct ManagerSettingsView: View {
 
     var body: some View {
         List {
+
+            Section {
+                HStack {
+                    Text("Home Loan Limit (₹ Cr)")
+                    Spacer()
+                    TextField("", text: $homeLoanLimit)
+                        .keyboardType(.decimalPad)
+                        .frame(width: 60)
+                        .multilineTextAlignment(.trailing)
+                        .font(.body.bold())
+                }
+                HStack {
+                    Text("Personal Loan Limit (₹ Cr)")
+                    Spacer()
+                    TextField("", text: $personalLoanLimit)
+                        .keyboardType(.decimalPad)
+                        .frame(width: 60)
+                        .multilineTextAlignment(.trailing)
+                        .font(.body.bold())
+                }
+                HStack {
+                    Text("Business Loan Limit (₹ Cr)")
+                    Spacer()
+                    TextField("", text: $businessLoanLimit)
+                        .keyboardType(.decimalPad)
+                        .frame(width: 60)
+                        .multilineTextAlignment(.trailing)
+                        .font(.body.bold())
+                }
+            } header: {
+                Label("Branch Loan Configuration", systemImage: "building.columns.fill")
+            }
+
+            Section {
+                HStack {
+                    Text("Minimum CIBIL Score")
+                    Spacer()
+                    TextField("", text: $minCIBILScore)
+                        .keyboardType(.numberPad)
+                        .frame(width: 60)
+                        .multilineTextAlignment(.trailing)
+                        .font(.body.bold())
+                }
+                HStack {
+                    Text("Max Debt-to-Income (%)")
+                    Spacer()
+                    TextField("", text: $maxDebtToIncome)
+                        .keyboardType(.numberPad)
+                        .frame(width: 60)
+                        .multilineTextAlignment(.trailing)
+                        .font(.body.bold())
+                }
+            } header: {
+                Label("Risk Thresholds", systemImage: "shield.fill")
+            }
+
             Section {
                 Toggle(isOn: Binding(
                     get: { biometricEnabled },
@@ -80,9 +145,55 @@ struct ManagerSettingsView: View {
             } header: {
                 Text("General")
             }
+
+            Section {
+                Button(action: {
+                    Task { await saveBranchSettings() }
+                }) {
+                    HStack {
+                        Spacer()
+                        Text("Save Settings")
+                            .bold()
+                        Spacer()
+                    }
+                }
+                .foregroundStyle(.white)
+                .listRowBackground(LMSColors.brandNavy)
+            }
         }
-        .navigationTitle("App Settings")
+        .navigationTitle("Branch Settings")
         .navigationBarTitleDisplayMode(.inline)
+        .alert(settingsAlertTitle, isPresented: $showSettingsAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(settingsAlertMessage)
+        }
+    }
+
+    private func saveBranchSettings() async {
+        let rules = GlobalLoanRules(
+            minCibilScore: Int(minCIBILScore) ?? CentralLoanRepository.shared.globalRules.minCibilScore,
+            maxDTI: Double(maxDebtToIncome) ?? CentralLoanRepository.shared.globalRules.maxDTI,
+            maxLTV: CentralLoanRepository.shared.globalRules.maxLTV
+        )
+
+        do {
+            try await AdminDashboardService.shared.updateGlobalRules(rules)
+            CentralLoanRepository.shared.globalRules = rules
+            if let encoded = try? JSONEncoder().encode(rules) {
+                UserDefaults.standard.set(encoded, forKey: "GlobalLoanRules")
+            }
+            HapticsManager.triggerNotification(type: .success)
+            settingsAlertTitle = "Settings Saved"
+            settingsAlertMessage = "Branch limits and risk thresholds were updated."
+            showSettingsAlert = true
+            dismiss()
+        } catch {
+            HapticsManager.triggerNotification(type: .error)
+            settingsAlertTitle = "Save Failed"
+            settingsAlertMessage = "Could not sync risk thresholds."
+            showSettingsAlert = true
+        }
     }
 }
 
@@ -107,4 +218,3 @@ private struct PermissionRow: View {
         }
     }
 }
-
