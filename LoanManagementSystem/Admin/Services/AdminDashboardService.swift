@@ -469,15 +469,16 @@ final class AdminDashboardService {
             guard !users.isEmpty else { return }
             
             let actions = [
-                ("Approved Loan Application", "Loan", "Verified bank details and signed off on home loan."),
-                ("Rejected Document", "Document", "Aadhaar card image was blurry. Requested re-upload."),
-                ("Created Staff User", "User", "Added Raj Kumar as a new Loan Officer."),
-                ("System Database Backup", "System", "Automated daily snapshot saved successfully."),
-                ("Disbursed Funds", "Loan", "Transferred funds to borrower bank account.")
+                ("Approved Loan Application", "Loan", "Verified bank details and signed off on home loan.", "manager"),
+                ("Rejected Document", "Document", "Aadhaar card image was blurry. Requested re-upload.", "loan_officer"),
+                ("Created Staff User", "User", "Added Raj Kumar as a new Loan Officer.", "admin"),
+                ("System Database Backup", "System", "Automated daily snapshot saved successfully.", "admin"),
+                ("Disbursed Funds", "Loan", "Transferred funds to borrower bank account.", "manager")
             ]
             
-            for (action, entityType, _) in actions {
-                let user = users.randomElement()!
+            for (action, entityType, _, role) in actions {
+                let validUsers = users.filter { $0.role == role }
+                let user = validUsers.randomElement() ?? users.randomElement()!
                 let entityId = UUID()
                 
                 let insertData: [String: String] = [

@@ -225,6 +225,13 @@ final class CentralLoanRepository: ObservableObject {
         let borrowerName = updatedApp.formData.fullName.isEmpty ? "Borrower" : updatedApp.formData.fullName
         if updatedApp.currentStage == .submitted {
             Task {
+                await AuditLogService.shared.logAction(
+                    action: "Submitted Loan Application",
+                    entityType: "Loan",
+                    entityId: updatedApp.id,
+                    details: "Borrower submitted loan application."
+                )
+                
                 // Notify borrower
                 if let borrowerId = updatedApp.borrowerId {
                     await NotificationService.shared.insertNotification(
@@ -964,6 +971,13 @@ final class CentralLoanRepository: ObservableObject {
         let approvalFormattedAmount = CurrencyFormatter.shared.format(approvedAmount)
         let approvalMaskedAccount = maskedAccountNumber(odAccountNumber)
         Task {
+            await AuditLogService.shared.logAction(
+                action: "Approved Loan Application",
+                entityType: "Loan",
+                entityId: id,
+                details: "Verified bank details and signed off on loan."
+            )
+            
             // Notify borrower
             if let borrowerId = resolvedBorrowerId {
                 await NotificationService.shared.insertNotification(
@@ -1004,6 +1018,13 @@ final class CentralLoanRepository: ObservableObject {
         let appNumber = app.applicationId ?? app.displayIdentifier
         let rejectionNote = remarks.isEmpty ? "Rejected by Branch Manager." : remarks
         Task {
+            await AuditLogService.shared.logAction(
+                action: "Rejected Loan Application",
+                entityType: "Loan",
+                entityId: id,
+                details: rejectionNote
+            )
+            
             // Notify borrower
             if let borrowerId = app.borrowerId {
                 await NotificationService.shared.insertNotification(
