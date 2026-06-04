@@ -1028,34 +1028,40 @@ struct BorrowerLoanWizardView: View {
         viewModel.formData.emergencyContactMobile = ocrPANNumber
         viewModel.formData.liveVerificationCompleted = liveVerificationCompleted
         viewModel.formData.liveVerificationReference = liveVerificationReference ?? ""
-        if let signatureImage,
-           let data = signatureImage.pngData() {
-            // Only upload if we don't already have a URL for this signature
-            if viewModel.formData.signatureImageData.starts(with: "http") {
-                // Already uploaded — keep existing URL
-            } else {
-                let draftId = viewModel.currentDraftID?.uuidString ?? UUID().uuidString
-                let path = "signatures/\(draftId).png"
-                Task {
-                    do {
-                        let url = try await StorageService.shared.uploadDocument(
-                            data: data, bucket: "documents", path: path, contentType: "image/png"
-                        )
-                        await MainActor.run {
-                            viewModel.formData.signatureImageData = url.absoluteString
-                            print("✅ [Wizard] Signature uploaded to Storage: \(url.absoluteString)")
-                        }
-                    } catch {
-                        print("❌ [Wizard] Signature upload failed: \(error.localizedDescription). Signature will not be stored.")
-                        // Do NOT fall back to base64 — leave empty and retry on next sync
-                    }
-                }
-            }
-        }
+        uploadSignatureIfNeeded()
         viewModel.formData.acceptedTerms = acceptTerms
         viewModel.formData.acceptedBureauConsent = acceptBureau
         viewModel.formData.acceptedDebitConsent = acceptDebit
 
+    }
+
+    private func uploadSignatureIfNeeded() {
+        guard !viewModel.formData.signatureImageData.starts(with: "http"),
+              let signatureData = signatureImage?.pngData() else {
+            return
+        }
+
+        let draftID = viewModel.currentDraftID?.uuidString ?? UUID().uuidString
+        let path = "signatures/\(draftID).png"
+
+        Task {
+            await uploadSignature(signatureData, path: path)
+        }
+    }
+
+    private func uploadSignature(_ data: Data, path: String) async {
+        do {
+            let url = try await StorageService.shared.uploadDocument(
+                data: data,
+                bucket: "documents",
+                path: path,
+                contentType: "image/png"
+            )
+            viewModel.formData.signatureImageData = url.absoluteString
+            print("✅ [Wizard] Signature uploaded to Storage: \(url.absoluteString)")
+        } catch {
+            print("❌ [Wizard] Signature upload failed: \(error.localizedDescription). Signature will not be stored.")
+        }
     }
 
     private func persistCurrentDraftImmediately() {
