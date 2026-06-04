@@ -130,9 +130,22 @@ struct LoanOfficerProfileView: View {
                 // 5. SYSTEM SETTINGS
                 Section("System Settings") {
                     
-                    Toggle(isOn: $biometricEnabled) {
+                    Toggle(isOn: Binding(
+                        get: { biometricEnabled },
+                        set: { newValue in
+                            if newValue {
+                                Task {
+                                    let success = await localSecurity.authenticate(reason: "Verify identity to enable biometric login")
+                                    biometricEnabled = success
+                                }
+                            } else {
+                                biometricEnabled = false
+                            }
+                        }
+                    )) {
                         Label("\(localSecurity.biometricTypeName) Login", systemImage: "faceid")
                     }
+                    .disabled(!localSecurity.canUseBiometrics())
                     
                     Button {
                         showChangePassword = true
