@@ -5,6 +5,17 @@ enum StaffRole: String, Codable, CaseIterable, Identifiable {
     case loanOfficer = "loan_officer"
     case bankManager = "manager"
 
+    init?(rawValue: String) {
+        switch rawValue {
+        case Self.loanOfficer.rawValue:
+            self = .loanOfficer
+        case Self.bankManager.rawValue, "loan_manager":
+            self = .bankManager
+        default:
+            return nil
+        }
+    }
+
     var id: String { rawValue }
 
     var displayName: String {
@@ -78,4 +89,3 @@ struct BranchInfo: Identifiable, Codable, Hashable {
 
     var id: UUID { branchId }
 }
-

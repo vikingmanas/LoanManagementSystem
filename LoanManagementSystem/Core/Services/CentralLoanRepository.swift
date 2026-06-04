@@ -1311,12 +1311,17 @@ final class CentralLoanRepository: ObservableObject {
     }
     
     func toManagerApplicant(from app: BorrowerLoanApplication) -> ManagerApplicant? {
-        // Manager only sees items that are sent for approval or higher
+        let sentToManagerDate = app.stageHistory.last(where: { $0.stage == .bankManagerReview })?.timestamp
+        let sentBackDate = app.stageHistory.last(where: { $0.stage == .underReview && $0.note.contains("Returned by Manager") })?.timestamp
+        let isNeedsClarification = sentBackDate != nil && sentToManagerDate != nil && sentBackDate! > sentToManagerDate! && app.currentStage == .underReview
+
+        // Manager only sees items that are sent for approval or higher, OR sent back by manager
         guard app.currentStage == .bankManagerReview
             || app.currentStage == .approved
             || app.currentStage == .disbursed
             || app.currentStage == .rejected
-            || app.currentStage == .escalated else {
+            || app.currentStage == .escalated
+            || isNeedsClarification else {
             return nil
         }
         
@@ -1331,13 +1336,17 @@ final class CentralLoanRepository: ObservableObject {
         }
         
         let status: ManagerApplicantStatus
-        switch app.currentStage {
-        case .bankManagerReview: status = .sentToManager
-        case .approved: status = .approved
-        case .rejected: status = .rejected
-        case .disbursed: status = .disbursed
-        case .escalated: status = .escalated
-        default: status = .sentToManager
+        if isNeedsClarification {
+            status = .needsClarification
+        } else {
+            switch app.currentStage {
+            case .bankManagerReview: status = .sentToManager
+            case .approved: status = .approved
+            case .rejected: status = .rejected
+            case .disbursed: status = .disbursed
+            case .escalated: status = .escalated
+            default: status = .sentToManager
+            }
         }
         
         let initials = app.formData.fullName.components(separatedBy: " ").compactMap { $0.first }.map { String($0) }.joined().uppercased()
