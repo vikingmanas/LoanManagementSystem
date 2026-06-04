@@ -262,8 +262,6 @@ struct ApplicationTrackingCard: View {
                 ProgressView(value: progress)
                     .tint(LMSColors.brandNavy)
             }
-
-            ApplicationTimelinePreview(application: application)
         }
         .padding(LMSSpacing.lg)
         .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
