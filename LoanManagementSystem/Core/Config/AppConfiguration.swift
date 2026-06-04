@@ -9,7 +9,7 @@ import Foundation
 
 struct AppConfiguration {
     static var supabaseURL: URL {
-        let fallbackURLString = "https://zufrhozjfmvvucswmudj.supabase.co"
+        let fallbackURLString = "https://cizshycoedfsysfdfkav.supabase.co"
         let urlString = ProcessInfo.processInfo.environment["SUPABASE_URL"]
             ?? Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String
             ?? fallbackURLString
@@ -21,7 +21,7 @@ struct AppConfiguration {
     }
 
     static var supabaseKey: String {
-        let fallbackKey = "sb_publishable_C8TSNkIM4-1f4zJuPTeqYA_bTEGFtFe"
+        let fallbackKey = "sb_publishable_gdjiLrW6eSrQxm7b7r1kiw_U4mx_tZ6"
         let key = ProcessInfo.processInfo.environment["SUPABASE_KEY"]
             ?? Bundle.main.object(forInfoDictionaryKey: "SUPABASE_KEY") as? String
             ?? fallbackKey
@@ -31,7 +31,7 @@ struct AppConfiguration {
 
 
     static var supabaseServiceRoleKey: String {
-        let fallbackKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1ZnJob3pqZm12dnVjc3dtdWRqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTQwODUyNywiZXhwIjoyMDk0OTg0NTI3fQ.4s7NAypvWIFMcncs72zdrnFlULVPNfpP98eNybX6Rno"
+        let fallbackKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNpenNoeWNvZWRmc3lzZmRma2F2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDUzNTk0NiwiZXhwIjoyMDk2MTExOTQ2fQ.K4b94armK5EvDsxZVPAlpozNp_EhAlAsnoq6hKYQ-90"
         let key = ProcessInfo.processInfo.environment["SUPABASE_SERVICE_ROLE_KEY"]
             ?? Bundle.main.object(forInfoDictionaryKey: "SUPABASE_SERVICE_ROLE_KEY") as? String
             ?? fallbackKey
