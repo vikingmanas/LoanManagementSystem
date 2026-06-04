@@ -6,7 +6,7 @@ struct ManagerProfileView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var appState: AppStateManager
     @EnvironmentObject var authManager: AuthManager
-    @AppStorage("isDarkMode") private var isDarkMode = false
+
     @State private var showChangePassword = false
 
     private var profile: ManagerStaffProfile {
@@ -124,10 +124,10 @@ struct ManagerProfileView: View {
                 }
             }
         }
-        .sheet(isPresented: $showChangePassword) {
+        .accessibleSheet(isPresented: $showChangePassword) {
             ChangePasswordSheet()
         }
-        .preferredColorScheme(isDarkMode ? .dark : .light)
+
     }
 }
 

@@ -109,7 +109,7 @@ struct SecurityDetailView: View {
         }
         .navigationTitle("Security")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showOTPSheet) {
+        .accessibleSheet(isPresented: $showOTPSheet) {
             EmailOTPSetupSheet(isEnabled: $doubleAuthEnabled)
                 .environmentObject(authManager)
         }

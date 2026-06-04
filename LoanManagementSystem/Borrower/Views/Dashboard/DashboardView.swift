@@ -1905,7 +1905,7 @@ struct StatementWorkflowView: View {
         .navigationTitle("Statements")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { selectedAccountID = selectedAccountID ?? selectedAccount?.id }
-        .sheet(isPresented: $showShare) {
+        .accessibleSheet(isPresented: $showShare) {
             if let generatedURL {
                 DashboardShareSheet(items: [generatedURL])
             }
@@ -2080,7 +2080,7 @@ struct TopUpWorkflowView: View {
         .onAppear {
             destinationLoanID = destinationLoanID ?? viewModel.loanAccounts.first?.id
         }
-        .fullScreenCover(item: $topUpGatewayItem) { item in
+        .accessibleFullScreenCover(item: $topUpGatewayItem) { item in
             TopUpGatewaySimulationView(
                 item: item,
                 onCancel: {
@@ -2095,7 +2095,7 @@ struct TopUpWorkflowView: View {
                 }
             )
         }
-        .fullScreenCover(isPresented: $showSuccess) {
+        .accessibleFullScreenCover(isPresented: $showSuccess) {
             TopUpSuccessView(amount: amount) {
                 showSuccess = false
             }

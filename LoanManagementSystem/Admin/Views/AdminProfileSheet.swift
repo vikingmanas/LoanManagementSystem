@@ -6,7 +6,7 @@ struct AdminProfileSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     @AppStorage("biometricEnabled") private var biometricEnabled = false
-    @AppStorage("isDarkMode") private var isDarkMode = false
+
     @StateObject private var localSecurity = LocalSecurityService.shared
     
     var body: some View {
@@ -71,11 +71,7 @@ struct AdminProfileSheet: View {
                     }
                 }
                 
-                Section("Display") {
-                    Toggle(isOn: $isDarkMode) {
-                        Label("Dark Mode", systemImage: "moon.fill")
-                    }
-                }
+
                 
                 Section("Security") {
                     Toggle(isOn: $biometricEnabled) {
@@ -102,7 +98,7 @@ struct AdminProfileSheet: View {
                     }
                 }
 
-                Section("App Settings") {
+                Section("General") {
                     NavigationLink(destination: AccessibilitySettingsView()) {
                         Label("Accessibility", systemImage: "figure.walk.circle")
                     }

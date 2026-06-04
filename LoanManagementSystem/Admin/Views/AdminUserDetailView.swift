@@ -50,7 +50,7 @@ struct AdminUserDetailView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingEditSheet) {
+        .accessibleSheet(isPresented: $showingEditSheet) {
             AdminEditUserSheet(viewModel: viewModel, member: member)
         }
         .confirmationDialog(

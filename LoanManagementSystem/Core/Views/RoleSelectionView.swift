@@ -121,7 +121,7 @@ struct RoleSelectionView: View {
                 .padding(.bottom, LMSSpacing.xxxl)
             }
         }
-        .sheet(isPresented: $showAdminSignUp) {
+        .accessibleSheet(isPresented: $showAdminSignUp) {
             AdminSignUpView()
         }
     }

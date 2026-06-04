@@ -54,7 +54,7 @@ struct LoanOfficerDashboardView: View {
                 notificationViewModel.configure(userId: uuid)
             }
         }
-        .sheet(isPresented: $showingProfile) {
+        .accessibleSheet(isPresented: $showingProfile) {
             LoanOfficerProfileView()
         }
     }
@@ -161,7 +161,7 @@ private struct LoanOfficerTodayView: View {
         } message: {
             Text("The monthly branch performance report is being prepared.")
         }
-        .sheet(isPresented: $showingEscalationSheet) {
+        .accessibleSheet(isPresented: $showingEscalationSheet) {
             OfficerEscalationSheet(viewModel: viewModel)
         }
         .navigationDestination(isPresented: $showingPendingAppsList) {
@@ -662,7 +662,7 @@ private struct OfficerAnalyticsSection: View {
             .buttonStyle(.plain)
             .padding(.horizontal, LMSSpacing.screenHorizontal)
         }
-        .sheet(isPresented: $showPipelineDetails) {
+        .accessibleSheet(isPresented: $showPipelineDetails) {
             LoanOfficerPipelineDetailsSheet(viewModel: viewModel)
         }
     }

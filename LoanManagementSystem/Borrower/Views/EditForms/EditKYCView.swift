@@ -178,7 +178,7 @@ struct EditKYCView: View {
         } message: {
             Text("Use the camera for a fresh scan or choose an existing PDF/image.")
         }
-        .sheet(isPresented: $showingCamera) {
+        .accessibleSheet(isPresented: $showingCamera) {
             CameraCaptureView { image in
                 guard let docType = documentUploading,
                       let url = saveCapturedImage(image, docType: docType) else {

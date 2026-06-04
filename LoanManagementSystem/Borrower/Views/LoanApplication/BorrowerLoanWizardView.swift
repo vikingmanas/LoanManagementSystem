@@ -433,7 +433,7 @@ struct BorrowerLoanWizardView: View {
                     handleBackAction()
                 }
         )
-        .sheet(isPresented: $showUploadSourceSheet) {
+        .accessibleSheet(isPresented: $showUploadSourceSheet) {
             UploadSourceSelectionSheet(
                 isPresented: $showUploadSourceSheet,
                 selectedSource: $uploadSource,
@@ -458,7 +458,7 @@ struct BorrowerLoanWizardView: View {
                 processSelectedDocumentFile(result, for: docId)
             }
         }
-        .fullScreenCover(isPresented: $showDocumentImagePicker) {
+        .accessibleFullScreenCover(isPresented: $showDocumentImagePicker) {
             DocumentImagePicker(sourceType: imagePickerSourceType) { image in
                 showDocumentImagePicker = false
                 if let docId = selectedUploadDocId {
@@ -469,7 +469,7 @@ struct BorrowerLoanWizardView: View {
             }
             .ignoresSafeArea()
         }
-        .fullScreenCover(isPresented: $showLiveVerification) {
+        .accessibleFullScreenCover(isPresented: $showLiveVerification) {
             LiveFaceVerificationView { reference in
                 liveVerificationReference = reference
                 liveVerificationCompleted = true
@@ -480,7 +480,7 @@ struct BorrowerLoanWizardView: View {
             }
             .ignoresSafeArea()
         }
-        .fullScreenCover(isPresented: $showSignaturePhotoPicker) {
+        .accessibleFullScreenCover(isPresented: $showSignaturePhotoPicker) {
             DocumentImagePicker(sourceType: .photoLibrary) { image in
                 signatureImage = image
                 isSignatureEmpty = false
@@ -490,7 +490,7 @@ struct BorrowerLoanWizardView: View {
             }
             .ignoresSafeArea()
         }
-        .sheet(item: $previewImage) { preview in
+        .accessibleSheet(item: $previewImage) { preview in
             NavigationStack {
                 Group {
                     if let image = preview.image {

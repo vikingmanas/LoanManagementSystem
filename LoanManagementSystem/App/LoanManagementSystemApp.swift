@@ -15,26 +15,29 @@ struct LoanManagementSystemApp: App {
     @StateObject private var authManager = AuthManager.shared
     @AppStorage("isDarkMode") private var isDarkMode = false
     
-    // Accessibility Overrides
-    @AppStorage("forceHighContrast") private var forceHighContrast = false
-    @AppStorage("forceBoldText") private var forceBoldText = false
-    @AppStorage("reduceMotion") private var reduceMotion = false
-    
     init() {}
     
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(authManager)
-                .preferredColorScheme(isDarkMode ? .dark : .light)
-                .bold(forceBoldText)
-                .contrast(forceHighContrast ? 1.2 : 1.0)
-                .transaction { transaction in
-                    if reduceMotion {
-                        transaction.disablesAnimations = true
-                        transaction.animation = nil
-                    }
-                }
+                .accessibilityOverrides()
+                .onAppear { applyDarkModeToAllWindows() }
+                .onChange(of: isDarkMode) { _ in applyDarkModeToAllWindows() }
+        }
+    }
+    
+    /// Applies the dark mode override to EVERY connected UIWindow,
+    /// including sheet / fullScreenCover presentation windows.
+    /// This ensures toggling Dark Mode in Accessibility settings
+    /// takes effect immediately, even on already-open sheets.
+    private func applyDarkModeToAllWindows() {
+        let style: UIUserInterfaceStyle = isDarkMode ? .dark : .light
+        for scene in UIApplication.shared.connectedScenes {
+            guard let windowScene = scene as? UIWindowScene else { continue }
+            for window in windowScene.windows {
+                window.overrideUserInterfaceStyle = style
+            }
         }
     }
 }

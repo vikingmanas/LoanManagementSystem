@@ -156,7 +156,7 @@ struct LoanApplicationReviewDetailView: View {
         } message: {
             Text("Add a reason for the borrower and audit trail.")
         }
-        .sheet(isPresented: $showSanctionShareSheet) {
+        .accessibleSheet(isPresented: $showSanctionShareSheet) {
             OfficerSanctionShareSheet(activityItems: sanctionShareItems)
         }
         .alert("Export Failed", isPresented: Binding(

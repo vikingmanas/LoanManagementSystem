@@ -32,7 +32,7 @@ struct AdminDashboardView: View {
                 }
                 .tag(AdminTab.templates)
         }
-        .sheet(isPresented: $showingProfile) {
+        .accessibleSheet(isPresented: $showingProfile) {
             AdminProfileSheet()
         }
     }

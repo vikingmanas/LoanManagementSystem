@@ -90,7 +90,7 @@ struct AdminAuditTrailView: View {
             }
             Button("Cancel", role: .cancel) {}
         }
-        .sheet(isPresented: $isShowingShareSheet) {
+        .accessibleSheet(isPresented: $isShowingShareSheet) {
             if let url = shareURL {
                 AdminAuditShareSheet(items: [url])
             }
