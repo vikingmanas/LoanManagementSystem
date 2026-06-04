@@ -6,7 +6,6 @@ struct ChatsFeedTabView: View {
     @State private var searchText = ""
     @State private var showUnreadOnly = false
     @State private var showingCompose = false
-    private let refreshTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     private var conversations: [OfficerConversation] {
         OfficerConversation.make(from: viewModel.activityFeed)
@@ -90,10 +89,8 @@ struct ChatsFeedTabView: View {
                 }
             }
             .refreshable { await viewModel.fetchDashboardData() }
-            .onReceive(refreshTimer) { _ in
-                Task {
-                    await viewModel.fetchDashboardData()
-                }
+            .task {
+                await viewModel.setupRealtime()
             }
             .sheet(isPresented: $showingCompose) {
                 OfficerComposeMessageSheet(viewModel: viewModel)
@@ -202,7 +199,6 @@ private struct OfficerMessageThreadView: View {
     @State private var messageText = ""
     @State private var messages: [OfficerThreadMessage]
     @FocusState private var isComposerFocused: Bool
-    private let refreshTimer = Timer.publish(every: 4, on: .main, in: .common).autoconnect()
 
     init(conversation: OfficerConversation, viewModel: LoanOfficerDashboardViewModel) {
         self.conversation = conversation
@@ -251,7 +247,7 @@ private struct OfficerMessageThreadView: View {
                 await loadMessages()
             }
         }
-        .onReceive(refreshTimer) { _ in
+        .onChange(of: viewModel.applicationMessages) { _, _ in
             Task {
                 await loadMessages()
             }
@@ -262,29 +258,25 @@ private struct OfficerMessageThreadView: View {
     private func loadMessages() async {
         guard let app = CentralLoanRepository.shared.applications.first(where: { $0.applicationId == conversation.applicationId || $0.displayIdentifier == conversation.applicationId }) else { return }
         let appId = app.id
-        do {
-            let dbMsgs = try await DatabaseService.shared.fetchMessagesForApplication(applicationId: appId)
-            if !dbMsgs.isEmpty {
-                self.messages = dbMsgs.map { dbMsg in
-                    let isOfficerSender = dbMsg.senderId == viewModel.officerProfile?.id
-                    return OfficerThreadMessage(
-                        id: dbMsg.messageId,
-                        sender: isOfficerSender ? .officer : .borrower,
-                        text: dbMsg.content,
-                        timestamp: dbMsg.sentAt
-                    )
-                }
-                if let officerId = viewModel.officerProfile?.id {
-                    let unreadIncoming = dbMsgs
-                        .filter { $0.receiverId == officerId && !$0.isRead }
-                        .map(\.messageId)
-                    try? await DatabaseService.shared.markMessagesRead(messageIds: unreadIncoming)
-                }
-            } else {
-                self.messages = []
+        
+        let dbMsgs = viewModel.applicationMessages[appId] ?? []
+        self.messages = dbMsgs.map { dbMsg in
+            let isOfficerSender = dbMsg.senderId == viewModel.officerProfile?.id
+            return OfficerThreadMessage(
+                id: dbMsg.messageId,
+                sender: isOfficerSender ? .officer : .borrower,
+                text: dbMsg.content,
+                timestamp: dbMsg.sentAt
+            )
+        }.sorted { $0.timestamp < $1.timestamp }
+        
+        if let officerId = viewModel.officerProfile?.id {
+            let unreadIncoming = dbMsgs
+                .filter { $0.receiverId == officerId && !$0.isRead }
+                .map(\.messageId)
+            if !unreadIncoming.isEmpty {
+                try? await DatabaseService.shared.markMessagesRead(messageIds: unreadIncoming)
             }
-        } catch {
-            print("Failed to fetch messages: \(error)")
         }
     }
 

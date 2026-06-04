@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import Supabase
 
 /// Shared ViewModel for in-app notifications, usable by all user roles.
 /// Fetches notifications from Supabase and auto-polls for new ones.
@@ -10,7 +11,7 @@ public final class NotificationViewModel: ObservableObject {
     @Published public var unreadCount: Int = 0
     @Published public var isLoading: Bool = false
     
-    private var pollingTimer: Timer?
+    private var realtimeChannel: RealtimeChannelV2?
     private var userId: UUID?
     
     public init() {}
@@ -21,26 +22,53 @@ public final class NotificationViewModel: ObservableObject {
     }
     
     deinit {
-        pollingTimer?.invalidate()
+        let channel = realtimeChannel
+        Task {
+            await channel?.unsubscribe()
+        }
     }
     
     // MARK: - Configuration
     
-    /// Configures the view model with the current user's ID and starts polling.
+    /// Configures the view model with the current user's ID and starts realtime listener.
     public func configure(userId: UUID) {
         guard self.userId != userId else { return } // already configured for this user
         self.userId = userId
         print("[NotificationVM] ✅ Configured for user: \(userId.uuidString.prefix(8))")
         Task {
             await loadNotifications()
+            await setupRealtime(for: userId)
         }
-        startPolling()
     }
     
-    /// Stops polling (call when user logs out or view disappears).
+    private func setupRealtime(for userId: UUID) async {
+        if let channel = realtimeChannel {
+            await channel.unsubscribe()
+        }
+        
+        realtimeChannel = await NotificationService.shared.subscribeToNotifications(forUserId: userId) { [weak self] newNotification in
+            Task { @MainActor in
+                self?.handleNewRealtimeNotification(newNotification)
+            }
+        }
+    }
+    
+    private func handleNewRealtimeNotification(_ notif: DBNotification) {
+        if !notifications.contains(where: { $0.notificationId == notif.notificationId }) {
+            notifications.insert(notif, at: 0) // Most recent first
+            if !notif.isRead {
+                unreadCount += 1
+            }
+        }
+    }
+    
+    /// Stops listening.
     public func stopPolling() {
-        pollingTimer?.invalidate()
-        pollingTimer = nil
+        let channel = realtimeChannel
+        Task {
+            await channel?.unsubscribe()
+        }
+        realtimeChannel = nil
     }
     
     // MARK: - Load
@@ -114,14 +142,5 @@ public final class NotificationViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Polling
-    
-    private func startPolling() {
-        pollingTimer?.invalidate()
-        pollingTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                await self?.loadNotifications()
-            }
-        }
-    }
+
 }
