@@ -273,9 +273,10 @@ private struct OfficerMessageThreadView: View {
         if let officerId = viewModel.officerProfile?.id {
             let unreadIncoming = dbMsgs
                 .filter { $0.receiverId == officerId && !$0.isRead }
-                .map(\.messageId)
             if !unreadIncoming.isEmpty {
-                try? await DatabaseService.shared.markMessagesRead(messageIds: unreadIncoming)
+                Task {
+                    await viewModel.markMessagesAsRead(for: appId, incomingMessages: unreadIncoming)
+                }
             }
         }
     }
@@ -295,26 +296,7 @@ private struct OfficerMessageThreadView: View {
         messages.append(officerMsg)
 
         Task {
-            let dbMsg = DBMessage(
-                messageId: officerMsgId,
-                senderId: officerId,
-                receiverId: borrowerId,
-                applicationId: appId,
-                content: trimmed,
-                sentAt: Date(),
-                isRead: false
-            )
-            do {
-                try await DatabaseService.shared.sendMessage(dbMsg)
-                try? await DatabaseService.shared.createNotification(
-                    userId: borrowerId,
-                    title: "New message from your loan officer",
-                    message: trimmed
-                )
-                await viewModel.fetchDashboardData()
-            } catch {
-                print("Failed to send officer message to DB: \(error)")
-            }
+            await viewModel.sendChatMessage(to: borrowerId, for: appId, content: trimmed)
         }
     }
 }
@@ -482,30 +464,9 @@ private struct OfficerComposeMessageSheet: View {
         let borrowerId = app.borrowerId
         let appId = app.id
         
-        let messageId = UUID()
-        
         Task {
-            let dbMsg = DBMessage(
-                messageId: messageId,
-                senderId: officerId,
-                receiverId: borrowerId,
-                applicationId: appId,
-                content: trimmed,
-                sentAt: Date(),
-                isRead: false
-            )
-            do {
-                try await DatabaseService.shared.sendMessage(dbMsg)
-                try? await DatabaseService.shared.createNotification(
-                    userId: borrowerId,
-                    title: "New message from your loan officer",
-                    message: trimmed
-                )
-                print("Message composed and sent successfully.")
-                await viewModel.fetchDashboardData()
-            } catch {
-                print("Failed to send composed message to DB: \(error)")
-            }
+            await viewModel.sendChatMessage(to: borrowerId, for: appId, content: trimmed)
+            print("Message composed and sent successfully.")
         }
     }
 }

@@ -1091,30 +1091,19 @@ private struct BorrowerActivityShareSheet: UIViewControllerRepresentable {
 }
 
 private struct BorrowerOfficerChatView: View {
-    let application: BorrowerLoanApplication
-    let borrowerUserId: UUID?
-
+    @State private var viewModel: BorrowerOfficerChatViewModel
     @Environment(\.dismiss) private var dismiss
-    @State private var messages: [DBMessage] = []
-    @State private var messageText = ""
-    @State private var officerUserId: UUID?
-    @State private var isLoading = true
-    @State private var isSending = false
-    @State private var errorMessage: String?
 
-    private var canSend: Bool {
-        borrowerUserId != nil &&
-        officerUserId != nil &&
-        !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !isSending
+    init(application: BorrowerLoanApplication, borrowerUserId: UUID?) {
+        _viewModel = State(initialValue: BorrowerOfficerChatViewModel(application: application, borrowerUserId: borrowerUserId))
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            if isLoading {
+            if viewModel.isLoading {
                 ProgressView("Loading conversation...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let errorMessage {
+            } else if let errorMessage = viewModel.errorMessage {
                 ContentUnavailableView(
                     "Messaging unavailable",
                     systemImage: "message.badge",
@@ -1124,15 +1113,15 @@ private struct BorrowerOfficerChatView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 10) {
-                            ForEach(messages) { message in
+                            ForEach(viewModel.messages) { message in
                                 BorrowerMessageBubble(
                                     message: message,
-                                    isOutgoing: message.senderId == borrowerUserId
+                                    isOutgoing: message.senderId == viewModel.borrowerUserId
                                 )
                                 .id(message.id)
                             }
 
-                            if messages.isEmpty {
+                            if viewModel.messages.isEmpty {
                                 ContentUnavailableView(
                                     "No messages yet",
                                     systemImage: "message",
@@ -1144,8 +1133,8 @@ private struct BorrowerOfficerChatView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 14)
                     }
-                    .onChange(of: messages.count) { _, _ in
-                        if let last = messages.last?.id {
+                    .onChange(of: viewModel.messages.count) { _, _ in
+                        if let last = viewModel.messages.last?.id {
                             withAnimation(.easeOut(duration: 0.2)) {
                                 proxy.scrollTo(last, anchor: .bottom)
                             }
@@ -1156,7 +1145,7 @@ private struct BorrowerOfficerChatView: View {
                 Divider()
 
                 HStack(alignment: .bottom, spacing: 10) {
-                    TextField("Message loan officer", text: $messageText, axis: .vertical)
+                    TextField("Message loan officer", text: $viewModel.messageText, axis: .vertical)
                         .lineLimit(1...4)
                         .textFieldStyle(.plain)
                         .padding(.horizontal, 12)
@@ -1164,15 +1153,15 @@ private struct BorrowerOfficerChatView: View {
                         .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
 
                     Button {
-                        Task { await sendMessage() }
+                        Task { await viewModel.sendMessage() }
                     } label: {
                         Image(systemName: "paperplane.fill")
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(.white)
                             .frame(width: 42, height: 42)
-                            .background(canSend ? LMSColors.brandNavy : LMSColors.textTertiary, in: Circle())
+                            .background(viewModel.canSend ? LMSColors.brandNavy : LMSColors.textTertiary, in: Circle())
                     }
-                    .disabled(!canSend)
+                    .disabled(!viewModel.canSend)
                     .accessibilityLabel("Send message")
                 }
                 .padding(12)
@@ -1180,7 +1169,7 @@ private struct BorrowerOfficerChatView: View {
             }
         }
         .background(LMSColors.background)
-        .navigationTitle(application.displayIdentifier)
+        .navigationTitle(viewModel.application.displayIdentifier)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -1188,75 +1177,8 @@ private struct BorrowerOfficerChatView: View {
             }
         }
         .task {
-            await loadConversation()
+            await viewModel.loadConversation()
         }
-    }
-
-    private func loadConversation() async {
-        isLoading = true
-        errorMessage = nil
-
-        do {
-            guard borrowerUserId != nil else {
-                errorMessage = "Sign in again to message your loan officer."
-                isLoading = false
-                return
-            }
-
-            if let assignedUserId = application.assignedOfficer?.userId {
-                officerUserId = assignedUserId
-            } else if application.assignedOfficerId != nil {
-                officerUserId = try await DatabaseService.shared.fetchAssignedLoanOfficerUserId(applicationId: application.id)
-            } else {
-                officerUserId = nil
-            }
-            guard officerUserId != nil else {
-                errorMessage = "No loan officer is available for this application yet."
-                isLoading = false
-                return
-            }
-
-            messages = try await DatabaseService.shared.fetchMessagesForApplication(applicationId: application.id)
-            isLoading = false
-        } catch {
-            errorMessage = "Could not load messages. Please try again."
-            isLoading = false
-        }
-    }
-
-    private func sendMessage() async {
-        guard let borrowerUserId,
-              let officerUserId else { return }
-
-        let trimmed = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-
-        isSending = true
-        messageText = ""
-        let outgoing = DBMessage(
-            messageId: UUID(),
-            senderId: borrowerUserId,
-            receiverId: officerUserId,
-            applicationId: application.id,
-            content: trimmed,
-            sentAt: Date(),
-            isRead: false
-        )
-        messages.append(outgoing)
-
-        do {
-            try await DatabaseService.shared.sendMessage(outgoing)
-            try? await DatabaseService.shared.createNotification(
-                userId: officerUserId,
-                title: "New borrower message",
-                message: "\(application.displayIdentifier): \(trimmed)"
-            )
-        } catch {
-            messages.removeAll { $0.id == outgoing.id }
-            messageText = trimmed
-            errorMessage = "Message could not be sent. Please try again."
-        }
-        isSending = false
     }
 }
 
