@@ -369,7 +369,7 @@ public struct LMSNotificationRow: View {
 
     private var timeText: String {
         let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .narrow
+        formatter.unitsStyle = .abbreviated
         return formatter.localizedString(for: notification.timestamp, relativeTo: Date())
     }
 
