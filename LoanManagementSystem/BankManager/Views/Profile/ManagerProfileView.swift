@@ -15,8 +15,7 @@ struct ManagerProfileView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            List {
+        List {
                 // Header Section
                 Section {
                     VStack(spacing: LMSSpacing.md) {
@@ -116,15 +115,8 @@ struct ManagerProfileView: View {
                     }
                 }
             }
-            .navigationTitle("My Profile")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .bold()
-                }
-            }
-        }
+        .navigationTitle("My Profile")
+        .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(isDarkMode ? .dark : .light)
         .accessibleSheet(isPresented: $showChangePassword) {
             ChangePasswordSheet()
@@ -228,4 +220,3 @@ private struct ManagerStatBox: View {
         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
     }
 }
-

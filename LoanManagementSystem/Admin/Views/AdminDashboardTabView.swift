@@ -2,7 +2,6 @@ import SwiftUI
 
 struct AdminDashboardTabView: View {
     @ObservedObject var viewModel: AdminDashboardViewModel
-    @Binding var showingProfile: Bool
     
     @EnvironmentObject private var authManager: AuthManager
     
@@ -68,8 +67,8 @@ struct AdminDashboardTabView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showingProfile = true
+                    NavigationLink {
+                        AdminProfileSheet()
                     } label: {
                         ZStack {
                             Circle()
@@ -227,6 +226,6 @@ struct AdminDashboardTabView: View {
     let auth = AuthManager()
     auth.currentUser = AuthSessionUser(uid: "preview", email: "admin@lms.com", displayName: "US Admin")
 
-    return AdminDashboardTabView(viewModel: vm, showingProfile: .constant(false))
+    return AdminDashboardTabView(viewModel: vm)
         .environmentObject(auth)
 }

@@ -49,8 +49,7 @@ struct LoanOfficerProfileView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            List {
+        List {
                 // 1. OFFICER PROFILE HEADER CARD
                 Section {
                     VStack(spacing: 12) {
@@ -210,17 +209,11 @@ struct LoanOfficerProfileView: View {
                     }
                 }
             }
-            .listStyle(.insetGrouped)
-            .navigationTitle("My Profile")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
-            }
-            .accessibleSheet(isPresented: $showChangePassword) {
-                ChangePasswordSheet()
-            }
+        .listStyle(.insetGrouped)
+        .navigationTitle("My Profile")
+        .navigationBarTitleDisplayMode(.inline)
+        .accessibleSheet(isPresented: $showChangePassword) {
+            ChangePasswordSheet()
         }
         .preferredColorScheme(isDarkMode ? .dark : .light)
     }

@@ -6,7 +6,6 @@ struct LoanOfficerDashboardView: View {
     @StateObject private var viewModel = LoanOfficerDashboardViewModel()
     @StateObject private var notificationViewModel = NotificationViewModel()
     @State private var selectedTab: OfficerWorkspaceTab = .dashboard
-    @State private var showingProfile = false
 
     private var appsRequiringReviewCount: Int {
         viewModel.applications.filter { app in
@@ -20,8 +19,7 @@ struct LoanOfficerDashboardView: View {
                 LoanOfficerTodayView(
                     viewModel: viewModel,
                     selectedTab: $selectedTab,
-                    notificationViewModel: notificationViewModel,
-                    onProfile: { showingProfile = true }
+                    notificationViewModel: notificationViewModel
                 )
             }
             .tabItem { Label("Dashboard", systemImage: "square.grid.2x2") }
@@ -54,9 +52,6 @@ struct LoanOfficerDashboardView: View {
                 notificationViewModel.configure(userId: uuid)
             }
         }
-        .accessibleSheet(isPresented: $showingProfile) {
-            LoanOfficerProfileView()
-        }
     }
 }
 
@@ -74,7 +69,6 @@ private struct LoanOfficerTodayView: View {
     @ObservedObject var viewModel: LoanOfficerDashboardViewModel
     @Binding var selectedTab: OfficerWorkspaceTab
     @ObservedObject var notificationViewModel: NotificationViewModel
-    var onProfile: () -> Void
 
     @State private var selectedMetricStatus: OfficerApplicationStatus?
     @State private var selectedApplication: OfficerLoanApplication?
@@ -140,7 +134,9 @@ private struct LoanOfficerTodayView: View {
                 }
                 .accessibilityLabel("Notifications")
 
-                Button(action: onProfile) {
+                NavigationLink {
+                    LoanOfficerProfileView()
+                } label: {
                     Text(authManager.currentStaffProfile?.initials ?? "AK")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(.white)

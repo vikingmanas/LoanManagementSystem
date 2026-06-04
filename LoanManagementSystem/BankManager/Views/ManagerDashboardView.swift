@@ -6,7 +6,6 @@ struct ManagerDashboardView: View {
     @StateObject private var notificationViewModel = NotificationViewModel()
 
     @State private var selectedTab: ManagerWorkspaceTab = .dashboard
-    @State private var showProfileSheet = false
     @State private var showSearchSheet = false
     @State private var selectedApplicant: ManagerApplicant?
 
@@ -67,9 +66,6 @@ struct ManagerDashboardView: View {
             guard let tab = ManagerWorkspaceTab(rawValue: rawValue), tab != selectedTab else { return }
             selectedTab = tab
         }
-        .accessibleSheet(isPresented: $showProfileSheet) {
-            ManagerProfileView(viewModel: viewModel)
-        }
         .accessibleSheet(isPresented: $showSearchSheet) {
             ManagerSearchSheet(viewModel: viewModel) { applicant in
                 showSearchSheet = false
@@ -81,11 +77,11 @@ struct ManagerDashboardView: View {
     @ToolbarContentBuilder
     private var dashboardToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            HStack(spacing: 4) {
+            HStack(spacing: 2) {
                 notificationButton
                 profileButton
             }
-            .padding(.horizontal, 5)
+            .padding(.horizontal, 3)
             .padding(.vertical, 3)
             .glassEffect(.regular, in: Capsule())
         }
@@ -112,7 +108,9 @@ struct ManagerDashboardView: View {
     }
 
     private var profileButton: some View {
-        Button(action: { showProfileSheet = true }) {
+        NavigationLink {
+            ManagerProfileView(viewModel: viewModel)
+        } label: {
             Text(viewModel.managerProfile.initials)
                 .font(.caption.weight(.bold))
                 .foregroundStyle(.white)

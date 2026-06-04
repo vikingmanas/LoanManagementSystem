@@ -11,8 +11,7 @@ struct AdminProfileSheet: View {
     @StateObject private var localSecurity = LocalSecurityService.shared
     
     var body: some View {
-        NavigationStack {
-            List {
+        List {
                 Section {
                     HStack(spacing: LMSSpacing.md) {
                         ZStack {
@@ -129,15 +128,9 @@ struct AdminProfileSheet: View {
                     }
                 }
             }
-            .listStyle(.insetGrouped)
-            .navigationTitle("Profile")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
-                }
-            }
-        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Profile")
+        .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(isDarkMode ? .dark : .light)
     }
 }
