@@ -9,7 +9,7 @@ struct ManagerApplicantDetailView: View {
     @State private var managerRemarks = ""
 
     enum ActionType: Identifiable {
-        case approve, reject, sendBack, escalate
+        case approve, reject, escalate
         var id: String { String(describing: self) }
     }
 
@@ -91,17 +91,11 @@ struct ManagerApplicantDetailView: View {
                     }
                 }
 
-                // MARK: - Credit Risk
-                Section("Credit & Risk") {
-                    NavigationLink {
-                        CIBILDetailView(
-                            score: applicant.cibilScore,
-                            insight: LoanRiskInsightService.insight(for: applicant)
-                        )
-                    } label: {
-                        CIBILScoreRow(score: applicant.cibilScore)
-                    }
-                }
+                // MARK: - Advanced Risk Engine
+                AdvancedRiskSection(applicant: applicant)
+                    .listRowInsets(EdgeInsets(top: LMSSpacing.lg, leading: 0, bottom: LMSSpacing.lg, trailing: 0))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
 
                 // MARK: - Documents
                 Section("Documents") {
@@ -174,16 +168,6 @@ struct ManagerApplicantDetailView: View {
                                 Spacer()
                             }
                         }
-
-                        Button(action: { actionType = .sendBack }) {
-                            HStack {
-                                Spacer()
-                                Text("Request Clarification")
-                                    .font(LMSFont.body.weight(.semibold))
-                                Spacer()
-                            }
-                        }
-                        .tint(LMSColors.brandNavy)
                     }
                 }
             }
@@ -455,5 +439,111 @@ private struct CIBILDetailView: View {
         .listStyle(.insetGrouped)
         .navigationTitle("Credit & Risk")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - Advanced Risk UI
+
+private struct AdvancedRiskSection: View {
+    let applicant: ManagerApplicant
+    @State private var appearAnimation = false
+    
+    private var riskPillStyle: LMSStatusPill.Style {
+        switch applicant.riskLevel {
+        case .low: return .success
+        case .medium: return .warning
+        case .high, .critical: return .error
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LMSSpacing.md) {
+            HStack {
+                HStack(spacing: 4) {
+                    Image(systemName: "sparkles")
+                        .foregroundStyle(applicant.riskLevel.themeColor)
+                    Text("INTELLIRISK ENGINE™")
+                        .font(.system(size: 10, weight: .heavy, design: .rounded))
+                        .foregroundStyle(LMSColors.textSecondary)
+                }
+                Spacer()
+                LMSStatusPill(text: applicant.riskLevel.rawValue, style: riskPillStyle, icon: applicant.riskLevel.icon)
+            }
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
+
+            VStack(spacing: LMSSpacing.lg) {
+                // Solid Stat Cards
+                HStack(spacing: 16) {
+                    // CIBIL Box
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("CIBIL SCORE")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.8))
+                        
+                        Text("\(Int(applicant.cibilScore))")
+                            .font(.system(size: 28, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(applicant.cibilScore >= 750 ? LMSColors.emerald : (applicant.cibilScore >= 650 ? LMSColors.amber : LMSColors.coral))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    
+                    // Composite Score Box
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("COMPOSITE RISK")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.8))
+                        
+                        Text("\(applicant.compositeRiskScore)")
+                            .font(.system(size: 28, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(applicant.riskLevel.themeColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .padding(.horizontal, LMSSpacing.screenHorizontal)
+
+                // Risk Factors List
+                if !applicant.riskFactors.isEmpty {
+                    VStack(spacing: 12) {
+                        ForEach(Array(applicant.riskFactors.enumerated()), id: \.element.id) { index, factor in
+                            HStack(alignment: .top, spacing: 12) {
+                                Image(systemName: factor.isPositive ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                                    .foregroundStyle(factor.isPositive ? LMSColors.emerald : LMSColors.amber)
+                                    .font(.system(size: 18))
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(factor.title)
+                                        .font(.subheadline.bold())
+                                        .foregroundStyle(LMSColors.textPrimary)
+                                    Text(factor.description)
+                                        .font(.caption)
+                                        .foregroundStyle(LMSColors.textSecondary)
+                                }
+                                Spacer()
+                            }
+                            if index < applicant.riskFactors.count - 1 {
+                                Divider()
+                            }
+                        }
+                    }
+                    .padding(16)
+                    .background(LMSColors.surfaceElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(LMSColors.separatorLight, lineWidth: 1)
+                    )
+                    .padding(.horizontal, LMSSpacing.screenHorizontal)
+                }
+            }
+        }
     }
 }

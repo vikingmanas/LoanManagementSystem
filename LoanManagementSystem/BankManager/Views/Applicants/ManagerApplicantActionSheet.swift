@@ -113,9 +113,6 @@ struct ManagerApplicantActionSheet: View {
         case .reject:
             viewModel.rejectApplicant(applicant.id, remarks: trimmedRemarks)
             succeeded = true
-        case .sendBack:
-            viewModel.sendBackApplicant(applicant.id, remarks: trimmedRemarks)
-            succeeded = true
         case .escalate:
             viewModel.escalateApplicant(applicant.id)
             succeeded = true
@@ -137,7 +134,6 @@ struct ManagerApplicantActionSheet: View {
         switch actionType {
         case .approve:  return "Approve Application"
         case .reject:   return "Reject Application"
-        case .sendBack: return "Request Clarification"
         case .escalate: return "Escalate to Admin"
         }
     }
@@ -146,7 +142,6 @@ struct ManagerApplicantActionSheet: View {
         switch actionType {
         case .approve:  return "Confirm Approval"
         case .reject:   return "Confirm Rejection"
-        case .sendBack: return "Send Back to Officer"
         case .escalate: return "Escalate Now"
         }
     }
@@ -155,7 +150,6 @@ struct ManagerApplicantActionSheet: View {
         switch actionType {
         case .approve:  return "checkmark.seal.fill"
         case .reject:   return "xmark.octagon.fill"
-        case .sendBack: return "arrow.uturn.backward.circle.fill"
         case .escalate: return "arrow.up.forward.circle.fill"
         }
     }
@@ -164,7 +158,6 @@ struct ManagerApplicantActionSheet: View {
         switch actionType {
         case .approve:  return LMSColors.emerald
         case .reject:   return LMSColors.coral
-        case .sendBack: return LMSColors.brandNavy
         case .escalate: return Color.purple
         }
     }
