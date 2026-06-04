@@ -771,7 +771,7 @@ struct TransactionHistoryFullScreen: View {
         .refreshable {
             await viewModel.fetchDashboardData()
         }
-        .sheet(isPresented: $showingAccountSelector) {
+        .accessibleSheet(isPresented: $showingAccountSelector) {
             AccountFilterSheet(
                 accounts: viewModel.bankAccounts,
                 selectedAccountID: $selectedAccountID

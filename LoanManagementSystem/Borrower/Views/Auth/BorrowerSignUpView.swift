@@ -131,7 +131,7 @@ struct BorrowerSignUpView: View {
                 appState.login(requiresBorrowerOnboarding: true)
             }
         }
-        .sheet(isPresented: $showTermsSheet) {
+        .accessibleSheet(isPresented: $showTermsSheet) {
             TermsAndConditionsSheet()
         }
     }

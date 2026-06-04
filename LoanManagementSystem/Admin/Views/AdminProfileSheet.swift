@@ -6,7 +6,7 @@ struct AdminProfileSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     @AppStorage("biometricEnabled") private var biometricEnabled = false
-    @AppStorage("isDarkMode") private var isDarkMode = false
+
     @StateObject private var localSecurity = LocalSecurityService.shared
     
     var body: some View {
@@ -71,16 +71,25 @@ struct AdminProfileSheet: View {
                     }
                 }
                 
-                Section("Display") {
-                    Toggle(isOn: $isDarkMode) {
-                        Label("Dark Mode", systemImage: "moon.fill")
-                    }
-                }
+
                 
                 Section("Security") {
-                    Toggle(isOn: $biometricEnabled) {
+                    Toggle(isOn: Binding(
+                        get: { biometricEnabled },
+                        set: { newValue in
+                            if newValue {
+                                Task {
+                                    let success = await localSecurity.authenticate(reason: "Verify identity to enable biometric login")
+                                    biometricEnabled = success
+                                }
+                            } else {
+                                biometricEnabled = false
+                            }
+                        }
+                    )) {
                         Label("\(localSecurity.biometricTypeName) Login", systemImage: "faceid")
                     }
+                    .disabled(!localSecurity.canUseBiometrics())
                     Button(action: {
                         // In a real app this would present a password change sheet
                     }) {
@@ -102,7 +111,7 @@ struct AdminProfileSheet: View {
                     }
                 }
 
-                Section("App Settings") {
+                Section("General") {
                     NavigationLink(destination: AccessibilitySettingsView()) {
                         Label("Accessibility", systemImage: "figure.walk.circle")
                     }

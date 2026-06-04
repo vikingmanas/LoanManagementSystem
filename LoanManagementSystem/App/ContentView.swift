@@ -22,6 +22,9 @@ struct ContentView: View {
     @AppStorage("biometricEnabled") private var biometricEnabled = false
     @State private var isAppUnlocked = false
 
+    // Scene phase for re-locking on background
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some View {
         ZStack {
 
@@ -153,10 +156,24 @@ struct ContentView: View {
         }
         .onChange(of: authManager.isAuthenticated) {
             syncBorrowerProfileIfNeeded()
+            // Re-lock when user logs out so next login requires biometric
+            if !authManager.isAuthenticated {
+                isAppUnlocked = false
+            }
         }
         .onChange(of: authManager.userEmail) {
             syncBorrowerProfileIfNeeded()
         }
+        .onChange(of: scenePhase) {
+            // Re-lock the app whenever it goes to the background
+            if scenePhase == .background && biometricEnabled {
+                isAppUnlocked = false
+            }
+        }
+        .animation(
+            .easeInOut(duration: 0.3),
+            value: isAppUnlocked
+        )
     }
 
     private var isCurrentRoleAuthenticated: Bool {

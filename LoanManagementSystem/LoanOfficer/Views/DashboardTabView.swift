@@ -87,7 +87,7 @@ struct DashboardTabView: View {
             await viewModel.fetchDashboardData()
         }
         // Sheets triggered from interactions
-        .sheet(isPresented: $showingPortfolioMetrics) {
+        .accessibleSheet(isPresented: $showingPortfolioMetrics) {
             PortfolioMetricsSheet(viewModel: viewModel)
         }
         .navigationDestination(item: $selectedDocumentForReview) { docItem in

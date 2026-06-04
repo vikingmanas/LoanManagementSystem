@@ -91,7 +91,7 @@ struct AdminApplicationListSheet: View {
                     .foregroundStyle(LMSColors.brandNavy)
                 }
             }
-            .sheet(item: $selectedApplication) { app in
+            .accessibleSheet(item: $selectedApplication) { app in
                 AdminApplicationDetailSheet(app: app)
             }
         }

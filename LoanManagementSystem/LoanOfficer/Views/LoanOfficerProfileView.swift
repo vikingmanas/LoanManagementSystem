@@ -6,7 +6,7 @@ struct LoanOfficerProfileView: View {
     @EnvironmentObject var authManager: AuthManager
     
     @AppStorage("biometricEnabled") private var biometricEnabled = false
-    @AppStorage("isDarkMode") private var isDarkMode = false
+
     @StateObject private var localSecurity = LocalSecurityService.shared
     @State private var showChangePassword = false
     
@@ -129,13 +129,23 @@ struct LoanOfficerProfileView: View {
                 
                 // 5. SYSTEM SETTINGS
                 Section("System Settings") {
-                    Toggle(isOn: $isDarkMode) {
-                        Label("Dark Mode", systemImage: "moon.fill")
-                    }
                     
-                    Toggle(isOn: $biometricEnabled) {
+                    Toggle(isOn: Binding(
+                        get: { biometricEnabled },
+                        set: { newValue in
+                            if newValue {
+                                Task {
+                                    let success = await localSecurity.authenticate(reason: "Verify identity to enable biometric login")
+                                    biometricEnabled = success
+                                }
+                            } else {
+                                biometricEnabled = false
+                            }
+                        }
+                    )) {
                         Label("\(localSecurity.biometricTypeName) Login", systemImage: "faceid")
                     }
+                    .disabled(!localSecurity.canUseBiometrics())
                     
                     Button {
                         showChangePassword = true
@@ -170,7 +180,7 @@ struct LoanOfficerProfileView: View {
                     Button("Done") { dismiss() }
                 }
             }
-            .sheet(isPresented: $showChangePassword) {
+            .accessibleSheet(isPresented: $showChangePassword) {
                 ChangePasswordSheet()
             }
         }

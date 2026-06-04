@@ -70,7 +70,7 @@ struct AdminTemplatesTabView: View {
                     }
                 }
             }
-            .sheet(isPresented: Binding(
+            .accessibleSheet(isPresented: Binding(
                 get: { showingEditSheet || selectedTemplate != nil },
                 set: { isPresented in
                     if !isPresented {

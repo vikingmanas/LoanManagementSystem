@@ -101,7 +101,7 @@ struct AdminUsersTabView: View {
                     }
                 }
             }
-            .sheet(isPresented: $isShowingAddSheet) {
+            .accessibleSheet(isPresented: $isShowingAddSheet) {
                 AdminAddUserSheet(viewModel: viewModel)
             }
             .task {

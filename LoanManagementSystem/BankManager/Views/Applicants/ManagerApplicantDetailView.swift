@@ -206,7 +206,7 @@ struct ManagerApplicantDetailView: View {
                         .bold()
                 }
             }
-            .sheet(item: $actionType) { action in
+            .accessibleSheet(item: $actionType) { action in
                 ManagerApplicantActionSheet(
                     applicant: applicant,
                     actionType: action,
@@ -214,7 +214,7 @@ struct ManagerApplicantDetailView: View {
                     onComplete: { dismiss() }
                 )
             }
-            .sheet(isPresented: $showReassignSheet) {
+            .accessibleSheet(isPresented: $showReassignSheet) {
                 ReassignOfficerSheet(
                     applicant: applicant,
                     officers: viewModel.officers,
@@ -224,7 +224,7 @@ struct ManagerApplicantDetailView: View {
                     }
                 )
             }
-            .sheet(isPresented: $showCIBILSheet) {
+            .accessibleSheet(isPresented: $showCIBILSheet) {
                 CIBILDetailSheet(
                     score: applicant.cibilScore,
                     insight: LoanRiskInsightService.insight(for: applicant)

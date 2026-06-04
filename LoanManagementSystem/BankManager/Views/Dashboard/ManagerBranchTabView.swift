@@ -279,16 +279,16 @@ struct ManagerBranchTabView: View {
         .refreshable {
             await viewModel.refreshData()
         }
-        .sheet(isPresented: $showBranchOverview) {
+        .accessibleSheet(isPresented: $showBranchOverview) {
             BranchOverviewDetailSheet(overview: viewModel.branchOverview)
         }
-        .sheet(isPresented: $showOfficerPerformance) {
+        .accessibleSheet(isPresented: $showOfficerPerformance) {
             OfficerPerformanceReportSheet(viewModel: viewModel)
         }
-        .sheet(isPresented: $showReportSheet) {
+        .accessibleSheet(isPresented: $showReportSheet) {
             ManagerReportSheet(viewModel: viewModel)
         }
-        .sheet(isPresented: $showAuditLog) {
+        .accessibleSheet(isPresented: $showAuditLog) {
             ManagerAuditLogSheet(events: viewModel.auditEvents)
         }
     }

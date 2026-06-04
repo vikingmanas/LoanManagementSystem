@@ -3,7 +3,7 @@ import SwiftUI
 
 struct ManagerSettingsView: View {
     @Environment(\.dismiss) var dismiss
-    @AppStorage("isDarkMode") private var isDarkMode = false
+
     @State private var settingsAlertTitle = ""
     @State private var settingsAlertMessage = ""
     @State private var showSettingsAlert = false
@@ -24,11 +24,6 @@ struct ManagerSettingsView: View {
 
     var body: some View {
         List {
-            Section("Display Mode") {
-                Toggle(isOn: $isDarkMode) {
-                    Label("Dark Mode", systemImage: "moon.fill")
-                }
-            }
 
             Section {
                 HStack {
@@ -104,9 +99,22 @@ struct ManagerSettingsView: View {
             }
 
             Section {
-                Toggle(isOn: $biometricEnabled) {
+                Toggle(isOn: Binding(
+                    get: { biometricEnabled },
+                    set: { newValue in
+                        if newValue {
+                            Task {
+                                let success = await localSecurity.authenticate(reason: "Verify identity to enable biometric login")
+                                biometricEnabled = success
+                            }
+                        } else {
+                            biometricEnabled = false
+                        }
+                    }
+                )) {
                     Label("\(localSecurity.biometricTypeName) Login", systemImage: "faceid")
                 }
+                .disabled(!localSecurity.canUseBiometrics())
                 Toggle(isOn: $twoFactorEnabled) {
                     Text("Two-Factor Authentication")
                 }
@@ -153,7 +161,7 @@ struct ManagerSettingsView: View {
                     Label("Accessibility", systemImage: "figure.walk.circle")
                 }
             } header: {
-                Text("App Settings")
+                Text("General")
             }
 
             Section {

@@ -41,10 +41,10 @@ struct ManagerReportsView: View {
                     .padding(.horizontal, LMSSpacing.screenHorizontal)
             }
         }
-        .sheet(isPresented: $showReportSheet) {
+        .accessibleSheet(isPresented: $showReportSheet) {
             ManagerReportSheet(viewModel: viewModel)
         }
-        .sheet(isPresented: $showAuditLog) {
+        .accessibleSheet(isPresented: $showAuditLog) {
             ManagerAuditLogSheet(events: viewModel.auditEvents)
         }
     }
@@ -375,7 +375,7 @@ struct ManagerReportSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .sheet(isPresented: $showShareSheet) {
+            .accessibleSheet(isPresented: $showShareSheet) {
                 ShareSheet(activityItems: shareItems)
             }
             .alert("Export Failed", isPresented: Binding(
