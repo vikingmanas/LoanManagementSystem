@@ -297,16 +297,15 @@ public struct DashboardView: View {
     }
 
     private var dashboardToolbarActions: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 12) {
             Button {
                 navigationPath.append(.notifications)
             } label: {
                 Image(systemName: viewModel.dashboardNotifications.contains(where: \.isUnread)
                       ? "bell.badge.fill" : "bell")
                     .symbolRenderingMode(.hierarchical)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(LMSColors.brandNavy)
-                    .frame(width: 44, height: 44)
             }
             .accessibilityLabel("Notifications")
 
@@ -319,13 +318,9 @@ public struct DashboardView: View {
                         authManager: authManager
                     )
                 )
-                .frame(width: 44, height: 44)
             }
             .accessibilityLabel("Profile")
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .glassEffect(.regular, in: Capsule())
     }
 }
 
