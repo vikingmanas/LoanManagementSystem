@@ -58,7 +58,7 @@ public struct BorrowerProfile: Codable, Equatable {
     
     public var profileCompletionPercentage: Int {
         var completedScore = 0
-        let totalPossible = 130
+        let totalPossible = 110
         
         // 1. Personal Info
         if !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 10 }
@@ -84,22 +84,12 @@ public struct BorrowerProfile: Codable, Equatable {
         if !occupation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         if income.monthlyIncome > 0 { completedScore += 10 }
         
-        // 5. Bank Account
-        if !bankDetails.bankName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-           !bankDetails.accountNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-           !bankDetails.ifscCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
-        
-        // 6. Onboarding Questionnaire Details
+        // 5. Onboarding Questionnaire Details
         if !preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 10 }
         if !nomineeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
            !nomineeRelationship.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         
-        // 7. KYC Uploads
-        if kycVerification.aadhaarFileName != nil { completedScore += 5 }
-        if kycVerification.panFileName != nil { completedScore += 5 }
-        if kycVerification.addressProofFileName != nil { completedScore += 5 }
-        
-        // 8. Profile Picture
+        // 6. Profile Picture
         if profileImageData != nil { completedScore += 5 }
         
         let percentage = (Double(completedScore) / Double(totalPossible)) * 100

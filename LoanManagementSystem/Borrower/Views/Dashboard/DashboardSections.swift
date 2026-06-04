@@ -90,7 +90,7 @@ struct ProfileCompletionCardSection: View {
                         }
                     }
 
-                    DashboardFilledButton(title: "Continue Verification", action: onContinue)
+                    DashboardFilledButton(title: "Continue Profile Setup", action: onContinue)
                 }
             }
         }

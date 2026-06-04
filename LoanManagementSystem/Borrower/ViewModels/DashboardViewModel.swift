@@ -155,7 +155,7 @@ public final class DashboardViewModel: ObservableObject {
 
     public var profileMissingRequirements: [String] {
         guard let profile = BorrowerProfileStore.shared.profile else {
-            return ["Complete personal details", "Verify contact information", "Link your bank account"]
+            return ["Complete personal details", "Verify contact information", "Add profile photo"]
         }
         var missing: [String] = []
         if profile.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -166,12 +166,6 @@ public final class DashboardViewModel: ObservableObject {
         }
         if !profile.isPhoneVerified {
             missing.append("Verify mobile number")
-        }
-        if profile.bankDetails.accountNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            missing.append("Link bank account")
-        }
-        if profile.kycVerification.aadhaarStatus != .verified {
-            missing.append("Complete KYC verification")
         }
         if profile.profileImageData == nil {
             missing.append("Add profile photo")
