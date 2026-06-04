@@ -14,7 +14,6 @@ struct ManagerSettingsView: View {
     @AppStorage("managerMinCIBILScore") private var minCIBILScore = "650"
     @AppStorage("managerMaxDebtToIncome") private var maxDebtToIncome = "50"
     @AppStorage("managerTwoFactorEnabled") private var twoFactorEnabled = true
-    @AppStorage("managerSessionTimeout") private var sessionTimeout = "30"
     @AppStorage("managerNotifApprovals") private var notifApprovals = true
     @AppStorage("managerNotifEscalations") private var notifEscalations = true
     @AppStorage("managerNotifReports") private var notifReports = true
@@ -99,15 +98,6 @@ struct ManagerSettingsView: View {
                 .disabled(!localSecurity.canUseBiometrics())
                 Toggle(isOn: $twoFactorEnabled) {
                     Text("Two-Factor Authentication")
-                }
-                HStack {
-                    Text("Session Timeout (mins)")
-                    Spacer()
-                    TextField("", text: $sessionTimeout)
-                        .keyboardType(.numberPad)
-                        .frame(width: 60)
-                        .multilineTextAlignment(.trailing)
-                        .font(.body.bold())
                 }
             } header: {
                 Label("Security", systemImage: "lock.shield.fill")
