@@ -139,6 +139,7 @@ final class CentralLoanRepository: ObservableObject {
 
     func isVisibleToOfficer(_ app: BorrowerLoanApplication, userId: UUID) -> Bool {
         guard app.currentStage != .draft else { return false }
+        if isLoanUnassigned(app) { return true }
         // Officer can only see applications explicitly assigned to them
         return resolvedOfficerUserId(for: app) == userId
     }

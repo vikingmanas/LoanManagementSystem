@@ -37,5 +37,14 @@ struct AppConfiguration {
             ?? fallbackKey
         return key.trimmingCharacters(in: .whitespacesAndNewlines)
     }
+    
+    static var googleAppsScriptURL: URL {
+        let fallbackString = "https://script.google.com/macros/s/AKfycbwMzB9kRDbjkIiMYXjZ1FaMlbh7ZfVD31p87f-mgvzOYwhQA62ulG6v4DGU22sb7mWZ/exec"
+        let urlString = ProcessInfo.processInfo.environment["GOOGLE_APPS_SCRIPT_URL"]
+            ?? Bundle.main.object(forInfoDictionaryKey: "GOOGLE_APPS_SCRIPT_URL") as? String
+            ?? fallbackString
+            
+        return URL(string: urlString.trimmingCharacters(in: .whitespacesAndNewlines))!
+    }
 }
 

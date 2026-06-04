@@ -299,8 +299,8 @@
 				INFOPLIST_KEY_NSCameraUsageDescription = "LoanManagementSystem needs camera access to capture and verify your KYC documents.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "This app uses Face ID to securely authenticate and protect your account.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "LoanManagementSystem needs photo library access so you can upload and verify document images.";
-				INFOPLIST_KEY_SUPABASE_KEY = "sb_publishable_C8TSNkIM4-1f4zJuPTeqYA_bTEGFtFe";
-				INFOPLIST_KEY_SUPABASE_URL = "https://zufrhozjfmvvucswmudj.supabase.co";
+				INFOPLIST_KEY_SUPABASE_KEY = sb_publishable_gdjiLrW6eSrQxm7b7r1kiw_U4mx_tZ6;
+				INFOPLIST_KEY_SUPABASE_URL = "https://cizshycoedfsysfdfkav.supabase.co";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -350,8 +350,8 @@
 				INFOPLIST_KEY_NSCameraUsageDescription = "LoanManagementSystem needs camera access to capture and verify your KYC documents.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "This app uses Face ID to securely authenticate and protect your account.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "LoanManagementSystem needs photo library access so you can upload and verify document images.";
-				INFOPLIST_KEY_SUPABASE_KEY = "sb_publishable_C8TSNkIM4-1f4zJuPTeqYA_bTEGFtFe";
-				INFOPLIST_KEY_SUPABASE_URL = "https://zufrhozjfmvvucswmudj.supabase.co";
+				INFOPLIST_KEY_SUPABASE_KEY = sb_publishable_gdjiLrW6eSrQxm7b7r1kiw_U4mx_tZ6;
+				INFOPLIST_KEY_SUPABASE_URL = "https://cizshycoedfsysfdfkav.supabase.co";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

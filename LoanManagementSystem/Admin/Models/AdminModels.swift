@@ -51,6 +51,16 @@ enum AuditLogType: String, Codable, CaseIterable {
     var color: Color {
         return LMSColors.textPrimary
     }
+    
+    /// The tinted icon color used in the purple card design
+    var cardIconColor: Color {
+        switch self {
+        case .userAction: return Color(hex: "7C5CFC") // Purple
+        case .documentAction: return Color(hex: "7C5CFC") // Purple
+        case .loanAction: return LMSColors.emerald
+        case .systemAction: return LMSColors.textSecondary
+        }
+    }
 }
 
 struct AuditLogEntry: Identifiable, Codable, Hashable {
@@ -86,6 +96,54 @@ struct AuditLogEntry: Identifiable, Codable, Hashable {
             }
         }
         return LMSColors.textPrimary
+    }
+    
+    /// Color used for the icon background tint in the card-style layout
+    var cardIconColor: Color {
+        if type == .loanAction {
+            if action.lowercased().contains("disburs") {
+                return LMSColors.emerald
+            }
+            if action.lowercased().contains("approv") {
+                return LMSColors.actionBlue
+            }
+        }
+        return type.cardIconColor
+    }
+    
+    /// A human-readable role badge derived from the entity type context
+    var roleBadge: String {
+        let actionLower = action.lowercased()
+        if actionLower.contains("staff") || actionLower.contains("created staff") {
+            return "Admin"
+        }
+        if actionLower.contains("escalat") {
+            return "Officer"
+        }
+        if type == .documentAction {
+            return "Borrower"
+        }
+        if type == .loanAction {
+            if actionLower.contains("created") || actionLower.contains("submit") {
+                return "Borrower"
+            }
+            return "Officer"
+        }
+        if type == .userAction {
+            return "Admin"
+        }
+        return "System"
+    }
+    
+    /// Color for the role badge pill
+    var roleBadgeColor: Color {
+        switch roleBadge {
+        case "Officer": return LMSColors.emerald
+        case "Admin": return LMSColors.actionBlue
+        case "Borrower": return LMSColors.textSecondary
+        case "System": return LMSColors.amber
+        default: return LMSColors.textSecondary
+        }
     }
 }
 

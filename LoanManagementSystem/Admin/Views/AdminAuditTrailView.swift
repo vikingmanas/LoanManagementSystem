@@ -5,53 +5,52 @@ struct AdminAuditTrailView: View {
     @State private var showingExportOptions = false
     @State private var shareURL: URL?
     @State private var isShowingShareSheet = false
+    @State private var expandedLogId: UUID?
     
     var body: some View {
-        List {
-            if viewModel.isLoading && viewModel.auditEntries.isEmpty {
-                ProgressView()
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .listRowBackground(Color.clear)
-            } else if viewModel.filteredEntries.isEmpty {
-                Text("No audit logs found.")
-                    .font(LMSFont.body)
-                    .foregroundStyle(LMSColors.textSecondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .listRowBackground(Color.clear)
-            } else {
-                ForEach(viewModel.filteredEntries) { entry in
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Image(systemName: entry.displayIcon)
-                                .symbolVariant(.fill)
-                                .foregroundStyle(entry.displayColor)
-                            
-                            Text(entry.action)
-                                .font(LMSFont.headline)
-                            
-                            Spacer()
-                            
-                            Text(entry.timestamp.formatted(date: .abbreviated, time: .shortened))
-                                .font(LMSFont.caption)
-                                .foregroundStyle(LMSColors.textSecondary)
-                        }
-                        
-                        Text("\(entry.userName) • \(entry.entityType) (\(entry.entityId))")
-                            .font(LMSFont.subheadline)
-                            .foregroundStyle(LMSColors.textPrimary)
-                        
-                        Text(entry.details)
+        ScrollView {
+            VStack(spacing: 0) {
+                if viewModel.isLoading && viewModel.auditEntries.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, minHeight: 200)
+                } else if viewModel.filteredEntries.isEmpty {
+                    ContentUnavailableView.search(text: viewModel.searchText)
+                        .padding(.top, 60)
+                } else {
+                    // Log count header
+                    HStack {
+                        Text("\(viewModel.filteredEntries.count) of \(viewModel.auditEntries.count) logs")
                             .font(LMSFont.caption)
                             .foregroundStyle(LMSColors.textSecondary)
+                        Spacer()
                     }
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, LMSSpacing.screenHorizontal)
+                    .padding(.top, LMSSpacing.sm)
+                    .padding(.bottom, LMSSpacing.md)
+                    
+                    // Audit log cards
+                    LazyVStack(spacing: 10) {
+                        ForEach(viewModel.filteredEntries) { entry in
+                            AuditLogCard(
+                                entry: entry,
+                                isExpanded: expandedLogId == entry.id,
+                                onToggle: {
+                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                        expandedLogId = expandedLogId == entry.id ? nil : entry.id
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    .padding(.horizontal, LMSSpacing.screenHorizontal)
+                    .padding(.bottom, LMSSpacing.lg)
                 }
             }
         }
-        .listStyle(.insetGrouped)
-        .navigationTitle("Audit Trail")
-        .navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $viewModel.searchText, prompt: "Search logs...")
+        .background(LMSColors.background.ignoresSafeArea())
+        .navigationTitle("Audit Logs")
+        .navigationBarTitleDisplayMode(.large)
+        .searchable(text: $viewModel.searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search logs…")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 HStack(spacing: 16) {
@@ -99,6 +98,92 @@ struct AdminAuditTrailView: View {
             if viewModel.auditEntries.isEmpty {
                 await viewModel.loadAuditLog()
             }
+        }
+    }
+}
+
+// MARK: - Audit Log Card (Expandable card matching dashboard theme)
+private struct AuditLogCard: View {
+    let entry: AuditLogEntry
+    let isExpanded: Bool
+    let onToggle: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Main card content (always visible)
+            Button(action: onToggle) {
+                HStack(spacing: 12) {
+                    // Simple Icon matching dashboard
+                    ZStack {
+                        Image(systemName: entry.displayIcon)
+                            .symbolVariant(.fill)
+                            .font(.title3)
+                            .foregroundStyle(entry.displayColor)
+                    }
+                    .frame(width: 32, height: 32)
+                    .clipShape(Circle())
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(entry.action)
+                            .font(LMSFont.subheadline.weight(.medium))
+                            .foregroundStyle(LMSColors.textPrimary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                        
+                        Text("\(entry.userName) • \(entry.entityId)")
+                            .font(LMSFont.caption)
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+                    
+                    Spacer(minLength: 4)
+                    
+                    VStack(alignment: .trailing, spacing: 6) {
+                        Text(RelativeDateFormatter.shared.relativeString(from: entry.timestamp))
+                            .font(LMSFont.caption2)
+                            .foregroundStyle(LMSColors.textTertiary)
+                        
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(LMSColors.textTertiary)
+                            .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                    }
+                }
+                .padding(14)
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            // Expandable details section
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 10) {
+                    Divider()
+                        .padding(.horizontal, 14)
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        detailRow(label: "Entity", value: "\(entry.entityType) (\(entry.entityId))")
+                        detailRow(label: "Performed By", value: entry.userName)
+                        detailRow(label: "Timestamp", value: entry.timestamp.formatted(date: .abbreviated, time: .shortened))
+                        if !entry.details.isEmpty {
+                            detailRow(label: "Details", value: entry.details)
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 14)
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
+    }
+    
+    private func detailRow(label: String, value: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(label)
+                .font(LMSFont.caption.weight(.medium))
+                .foregroundStyle(LMSColors.textTertiary)
+                .frame(width: 72, alignment: .leading)
+            Text(value)
+                .font(LMSFont.caption)
+                .foregroundStyle(LMSColors.textSecondary)
         }
     }
 }
