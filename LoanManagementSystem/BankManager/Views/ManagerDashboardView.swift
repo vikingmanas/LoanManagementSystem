@@ -61,6 +61,7 @@ struct ManagerDashboardView: View {
         }
         .onChange(of: selectedTab) { _, tab in
             viewModel.selectedTab = tab.rawValue
+            VoiceOverManager.shared.speak("\(String(describing: tab).capitalized) tab selected")
         }
         .onChange(of: viewModel.selectedTab) { _, rawValue in
             guard let tab = ManagerWorkspaceTab(rawValue: rawValue), tab != selectedTab else { return }

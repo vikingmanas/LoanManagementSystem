@@ -275,5 +275,6 @@ struct LoanCard: View {
                 .stroke(Color.white.opacity(0.12), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 6)
+        .voiceOverCard(text: "\(title), \(subtitle). Outstanding amount: \(outstandingAmount.formattedAsINR()). Next EMI: \(nextEMIDateText).")
     }
 }

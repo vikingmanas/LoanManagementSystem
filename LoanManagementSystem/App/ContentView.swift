@@ -12,6 +12,7 @@ struct ContentView: View {
     @State private var showSplash = true
 
     @AppStorage("biometricEnabled") private var biometricEnabled = false
+    @AppStorage("reduceMotion") private var reduceMotion = false
     @State private var isAppUnlocked = false
 
     @Environment(\.scenePhase) private var scenePhase
@@ -160,6 +161,11 @@ struct ContentView: View {
             .easeInOut(duration: 0.3),
             value: isAppUnlocked
         )
+        .transaction { transaction in
+            if reduceMotion {
+                transaction.animation = nil
+            }
+        }
     }
 
     private var isCurrentRoleAuthenticated: Bool {

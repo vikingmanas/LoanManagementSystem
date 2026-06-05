@@ -54,6 +54,9 @@ struct LoanOfficerDashboardView: View {
                 notificationViewModel.configure(userId: uuid)
             }
         }
+        .onChange(of: selectedTab) { _, tab in
+            VoiceOverManager.shared.speak("\(String(describing: tab).capitalized) tab selected")
+        }
         .accessibleSheet(isPresented: $showingProfile) {
             NavigationStack {
                 LoanOfficerProfileView()

@@ -52,21 +52,7 @@ struct BorrowerSignUpView: View {
                     }
                 }
                 
-                Section(header: Text("Optional Details")) {
-                    HStack {
-                        Text("Alt. Mobile")
-                            .frame(width: 95, alignment: .leading)
-                        TextField("Optional", text: $viewModel.alternatePhone)
-                            .keyboardType(.phonePad)
-                    }
-                    
-                    HStack {
-                        Text("Referral")
-                            .frame(width: 95, alignment: .leading)
-                        TextField("Code", text: $viewModel.referralCode)
-                            .textInputAutocapitalization(.characters)
-                    }
-                }
+
                 
                 Section(header: Text("Security"), footer: passwordRequirementsFooter) {
                     SecureField("Password", text: $viewModel.password)
@@ -132,7 +118,7 @@ struct BorrowerSignUpView: View {
         }
         .onChange(of: viewModel.showSuccess) { _, success in
             if success {
-                appState.login(requiresBorrowerOnboarding: true)
+                appState.login(requiresBorrowerOnboarding: false)
             }
         }
         .accessibleSheet(isPresented: $showTermsSheet) {

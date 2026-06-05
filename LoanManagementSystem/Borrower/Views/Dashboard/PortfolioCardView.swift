@@ -199,6 +199,7 @@ struct TotalLoanOutstandingCard: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
         .shadow(color: LMSColors.brandNavy.opacity(0.25), radius: 12, x: 0, y: 6)
+        .voiceOverCard(text: "Total Active Loans: \(viewModel.loanAccounts.count). Total Outstanding: \(viewModel.totalOutstanding.formattedAsINR()).")
     }
 }
 
@@ -310,6 +311,7 @@ private struct LoanAccountCardRefined: View {
         .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 5)
         .contentShape(Rectangle())
         .onTapGesture { onOpen() }
+        .voiceOverCard(text: "Loan Account \(loan.loanType). Status: \(statusText). Outstanding: \(loan.principalOutstanding.formattedAsINR())")
     }
 }
 
@@ -366,6 +368,7 @@ private struct BankAccountCardRefined: View {
         )
         .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 5)
         .onTapGesture { onTransfer() }
+        .voiceOverCard(text: "Bank Account \(account.bankName). Available Balance: \(account.availableBalance.formattedAsINR())")
     }
 }
 
@@ -434,6 +437,7 @@ struct LoanProtectionCardRefined: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
         .shadow(color: Color(hex: "667EEA").opacity(0.3), radius: 12, x: 0, y: 6)
+        .voiceOverCard(text: "Loan Protection. Active. Coverage Up To ₹ 15,00,000")
     }
 }
 
