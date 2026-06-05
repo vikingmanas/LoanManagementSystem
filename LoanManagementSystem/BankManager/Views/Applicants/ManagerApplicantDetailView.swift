@@ -98,9 +98,7 @@ struct ManagerApplicantDetailView: View {
                             ))
                             .opacity(0)
                         )
-                        .listRowInsets(EdgeInsets(top: LMSSpacing.md, leading: 0, bottom: LMSSpacing.md, trailing: 0))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
+                        .padding(.vertical, 8)
                 } header: {
                     Text("Risk Analysis")
                 }
