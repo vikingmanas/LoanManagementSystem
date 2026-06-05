@@ -45,12 +45,8 @@ private struct ActionItemsRow: View {
     @Bindable var viewModel: ManagerDashboardViewModel
     @Binding var selectedTab: ManagerWorkspaceTab
     @State private var showDecisionsDueSheet = false
-    @State private var showEscalatedSheet = false
 
     private var pendingCount: Int { viewModel.pendingApplicants.count }
-    private var escalatedCount: Int {
-        viewModel.officerEscalatedApplicants.count
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
@@ -59,31 +55,18 @@ private struct ActionItemsRow: View {
                 .foregroundStyle(LMSColors.textPrimary)
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
 
-            HStack(spacing: LMSSpacing.md) {
-                ActionItemCard(
-                    title: "Under Review",
-                    value: "\(pendingCount)",
-                    icon: "checklist.checked",
-                    tint: pendingCount == 0 ? LMSColors.emerald : LMSColors.amber,
-                    action: {
-                        if pendingCount > 0 {
-                            showDecisionsDueSheet = true
-                        }
+            ActionItemCard(
+                title: "Under Review",
+                subtitle: pendingCount == 1 ? "1 application needs your approval" : "\(pendingCount) applications need your approval",
+                value: "\(pendingCount)",
+                icon: "checklist.checked",
+                tint: pendingCount == 0 ? LMSColors.emerald : LMSColors.amber,
+                action: {
+                    if pendingCount > 0 {
+                        showDecisionsDueSheet = true
                     }
-                )
-
-                ActionItemCard(
-                    title: "Manager Review",
-                    value: "\(escalatedCount)",
-                    icon: "arrow.up.forward.circle.fill",
-                    tint: escalatedCount == 0 ? LMSColors.emerald : LMSColors.coral,
-                    action: {
-                        if escalatedCount > 0 {
-                            showEscalatedSheet = true
-                        }
-                    }
-                )
-            }
+                }
+            )
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, LMSSpacing.screenHorizontal)
         }
@@ -96,20 +79,12 @@ private struct ActionItemsRow: View {
                 viewModel: viewModel
             )
         }
-        .accessibleSheet(isPresented: $showEscalatedSheet) {
-            ManagerApplicantListSheet(
-                title: "Manager Review",
-                systemImage: "arrow.up.forward.circle.fill",
-                description: "These applications were escalated by loan officers for your review.",
-                applicants: viewModel.officerEscalatedApplicants,
-                viewModel: viewModel
-            )
-        }
     }
 }
 
 private struct ActionItemCard: View {
     let title: String
+    var subtitle: String? = nil
     let value: String
     let icon: String
     let tint: Color
@@ -151,6 +126,12 @@ private struct ActionItemCard: View {
                     .foregroundStyle(LMSColors.textSecondary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.8)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(LMSColors.textTertiary)
+                        .padding(.top, 4)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
