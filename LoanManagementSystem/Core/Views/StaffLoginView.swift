@@ -11,6 +11,9 @@ struct StaffLoginView: View {
     @State private var passwordError: String = ""
     @State private var generalError: String = ""
     @State private var isLoading: Bool = false
+    @State private var showOTPVerification: Bool = false
+    @State private var pendingRole: String = ""
+    @State private var emailForOTP: String = ""
 
     var isFormValid: Bool {
         return !employeeID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -131,6 +134,9 @@ struct StaffLoginView: View {
                 }
             }
             .hideNavigationBar()
+            .navigationDestination(isPresented: $showOTPVerification) {
+                StaffOTPVerificationView(email: emailForOTP, pendingRole: pendingRole)
+            }
         }
     }
 
@@ -165,27 +171,24 @@ struct StaffLoginView: View {
         isLoading = true
 
         Task {
-            let result = await authManager.signIn(email: emailToAuthenticate, password: password)
+            let result = await authManager.verifyPasswordAndTriggerOTP(email: emailToAuthenticate, password: password)
             self.isLoading = false
 
             if result.success {
-
                 if let role = result.role {
-                    switch role {
-                    case "admin":
+                    if role == "admin" {
                         appState.selectedRole = .admin
-                    case "manager", "loan_manager":
-                        appState.selectedRole = .bankManager
-                    case "loan_officer":
-                        appState.selectedRole = .loanOfficer
-                    default:
-                        appState.selectedRole = .customer
+                        HapticsManager.triggerImpact(style: .heavy)
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                            appState.login()
+                        }
+                    } else {
+                        // Manager or Loan Officer: Needs OTP
+                        HapticsManager.triggerImpact(style: .medium)
+                        self.pendingRole = role
+                        self.emailForOTP = emailToAuthenticate
+                        self.showOTPVerification = true
                     }
-                }
-
-                HapticsManager.triggerImpact(style: .heavy)
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                    appState.login()
                 }
             } else {
                 HapticsManager.triggerImpact(style: .light)

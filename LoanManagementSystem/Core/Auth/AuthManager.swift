@@ -138,6 +138,48 @@ final class AuthManager {
     }
 
     @discardableResult
+    func verifyPasswordAndTriggerOTP(email: String, password: String) async -> (success: Bool, role: String?) {
+        clearError()
+        isLoading = true
+
+        do {
+            let session = try await AuthService.shared.signIn(email: email, password: password)
+            let user = session.user
+            let role = try await AuthService.shared.fetchUserRole(uid: user.id)
+            
+            if role == "admin" {
+                // Admin bypasses OTP
+                self.currentUser = AuthSessionUser(
+                    uid: user.id.uuidString,
+                    email: user.email,
+                    displayName: user.userMetadata["display_name"]?.description ?? "User"
+                )
+                Task { await PushNotificationService.shared.registerCurrentDeviceTokenIfPossible() }
+                self.isAuthenticated = true
+                self.isLoading = false
+                return (true, role)
+            } else if role == "loan_officer" || role == "manager" || role == "loan_manager" {
+                // Wipe the temporary session and trigger OTP
+                try? await AuthService.shared.signOut()
+                try await AuthService.shared.sendEmailOTP(email: email)
+                
+                self.isLoading = false
+                return (true, role)
+            } else {
+                // Not a staff role
+                try? await AuthService.shared.signOut()
+                self.errorMessage = "Access Denied: Invalid role."
+                self.isLoading = false
+                return (false, nil)
+            }
+        } catch {
+            self.errorMessage = mapSupabaseError(error)
+            self.isLoading = false
+            return (false, nil)
+        }
+    }
+
+    @discardableResult
     func sendEmailOTP(email: String) async -> Bool {
         clearError()
         isLoading = true
