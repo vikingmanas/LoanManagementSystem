@@ -1,6 +1,5 @@
 import SwiftUI
 
-
 struct ManagerProfileView: View {
     @Bindable var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
@@ -16,7 +15,7 @@ struct ManagerProfileView: View {
 
     var body: some View {
         List {
-                // Header Section
+
                 Section {
                     VStack(spacing: LMSSpacing.md) {
                         ZStack {
@@ -50,7 +49,6 @@ struct ManagerProfileView: View {
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
 
-                // Performance Section (Native Grid)
                 Section("Branch Performance") {
                     VStack(spacing: 16) {
                         HStack(spacing: 16) {
@@ -65,7 +63,6 @@ struct ManagerProfileView: View {
                     .padding(.vertical, 8)
                 }
 
-                // Employee Info Section
                 Section("Employee Information") {
                     LabeledContent("Employee ID", value: profile.employeeCode.isEmpty ? "Not assigned" : profile.employeeCode)
                     LabeledContent("Department", value: "Retail Lending")
@@ -73,13 +70,11 @@ struct ManagerProfileView: View {
                     LabeledContent("Joined", value: profile.joinedAt?.formattedAsDDMMMYYYY() ?? "N/A")
                 }
 
-                // Contact Section
                 Section("Contact Information") {
                     LabeledContent("Official Email", value: profile.email)
                     LabeledContent("Work Phone", value: profile.phone)
                 }
 
-                // System Actions Section
                 Section("System Settings") {
                     NavigationLink {
                         ManagerSettingsView()
@@ -95,10 +90,8 @@ struct ManagerProfileView: View {
                     }
                     .foregroundStyle(Color(.label))
 
-
                 }
 
-                // Logout Section
                 Section {
                     Button(role: .destructive) {
                         HapticsManager.triggerImpact(style: .medium)
@@ -125,7 +118,6 @@ struct ManagerProfileView: View {
     }
 }
 
-// MARK: - Native Stat Pill
 private struct StatPill: View {
     let title: String
     let value: String
@@ -155,7 +147,6 @@ private struct StatPill: View {
     }
 }
 
-
 private struct ManagerProfileSection<Content: View>: View {
     let title: String
     @ViewBuilder let content: Content
@@ -176,7 +167,6 @@ private struct ManagerProfileSection<Content: View>: View {
     }
 }
 
-
 private struct ManagerProfileDetailRow: View {
     let label: String
     let value: String
@@ -195,7 +185,6 @@ private struct ManagerProfileDetailRow: View {
         .padding(.horizontal, LMSSpacing.lg)
     }
 }
-
 
 private struct ManagerStatBox: View {
     let title: String

@@ -109,4 +109,3 @@ struct PrimaryButton: View {
     PrimaryButton(title: "Continue", action: {})
         .padding()
 }
-

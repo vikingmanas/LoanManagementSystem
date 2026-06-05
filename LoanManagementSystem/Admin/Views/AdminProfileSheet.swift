@@ -71,8 +71,6 @@ struct AdminProfileSheet: View {
                     }
                 }
                 
-
-                
                 Section("Security") {
                     Toggle(isOn: Binding(
                         get: { biometricEnabled },
@@ -91,7 +89,7 @@ struct AdminProfileSheet: View {
                     }
                     .disabled(!localSecurity.canUseBiometrics())
                     Button(action: {
-                        // In a real app this would present a password change sheet
+
                     }) {
                         Label("Change Password", systemImage: "lock.rotation")
                     }

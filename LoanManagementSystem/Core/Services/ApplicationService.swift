@@ -1,9 +1,3 @@
-//
-//  ApplicationService.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 26/05/26.
-//
 
 import Foundation
 import Supabase
@@ -16,7 +10,6 @@ class ApplicationService {
     
     private init() {}
     
-    /// Fetches all active and draft applications for a specific borrower from Supabase.
     func fetchApplications(borrowerId: UUID) async throws -> [DBLoanApplication] {
         logger.info("ApplicationService: Fetching applications for borrower ID: \(borrowerId)...")
         do {
@@ -35,7 +28,6 @@ class ApplicationService {
         }
     }
     
-    /// Fetches all submitted (non-draft) applications from Supabase for loan officer view.
     func fetchAllSubmittedApplications() async throws -> [DBLoanApplication] {
         logger.info("ApplicationService: Fetching all submitted applications for officer dashboard...")
         do {
@@ -54,7 +46,6 @@ class ApplicationService {
         }
     }
     
-    /// Inserts or updates an application record in Supabase.
     func upsertApplication(_ app: DBLoanApplication) async throws {
         logger.info("ApplicationService: Upserting application ID: \(app.applicationId) with borrower_id: \(app.borrowerId), product_id: \(app.productId), status: \(app.status)")
         do {
@@ -69,7 +60,6 @@ class ApplicationService {
         }
     }
     
-    /// Deletes an application record from Supabase.
     func deleteApplication(id: UUID) async throws {
         logger.info("ApplicationService: Deleting application ID: \(id.uuidString)")
         do {
@@ -85,4 +75,3 @@ class ApplicationService {
         }
     }
 }
-

@@ -11,7 +11,6 @@ final class AdminStaffViewModel {
     var isLoading: Bool = false
     var errorMessage: String? = nil
 
-
     var searchText: String = ""
     var selectedRoleFilter: StaffRole? = nil
     var selectedStatusFilter: StaffStatus? = nil
@@ -46,7 +45,6 @@ final class AdminStaffViewModel {
         return staffMembers.filter { $0.branchId == branchId }
     }
 
-
     func loadData() async {
         guard !isLoading else { return }
         isLoading = true
@@ -67,7 +65,6 @@ final class AdminStaffViewModel {
         isLoading = false
     }
 
-
     func createStaff(
         payload: AdminStaffService.CreateStaffPayload
     ) async -> Bool {
@@ -87,7 +84,6 @@ final class AdminStaffViewModel {
             return false
         }
     }
-
 
     func updateStaff(
         id: UUID,
@@ -125,7 +121,6 @@ final class AdminStaffViewModel {
         }
     }
 
-
     func deleteStaff(id: UUID) async -> Bool {
         isLoading = true
         errorMessage = nil
@@ -160,4 +155,3 @@ final class AdminStaffViewModel {
         }
     }
 }
-

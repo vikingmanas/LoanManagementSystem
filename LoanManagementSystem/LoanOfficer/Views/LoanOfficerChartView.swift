@@ -111,7 +111,6 @@ struct LoanOfficerChartView: View {
             }
             .buttonStyle(PlainButtonStyle())
 
-
             HStack {
                 Spacer()
                 Picker("Time Filter", selection: $timeFilter) {
@@ -122,7 +121,6 @@ struct LoanOfficerChartView: View {
                 .pickerStyle(SegmentedPickerStyle())
             }
             .padding(.bottom, 8)
-
 
             if chartData.isEmpty {
                 ContentUnavailableView("No Data", systemImage: "chart.bar.xaxis")
@@ -179,5 +177,3 @@ struct LoanOfficerChartView: View {
         )
     }
 }
-
-

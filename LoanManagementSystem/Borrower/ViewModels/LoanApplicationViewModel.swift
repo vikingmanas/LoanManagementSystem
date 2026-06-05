@@ -97,7 +97,6 @@ final class LoanApplicationViewModel {
         loadBranches()
     }
     
-    /// Loads active loan products dynamically from the Supabase database.
     func loadProducts() {
         Task {
             let fetchedProducts = await ProductService.shared.fetchLoanProducts()
@@ -105,7 +104,6 @@ final class LoanApplicationViewModel {
         }
     }
 
-    /// Loads active branches dynamically from the Supabase database.
     func loadBranches() {
         Task {
             do {
@@ -730,7 +728,6 @@ final class LoanApplicationViewModel {
         let app = applications[appIndex]
         CentralLoanRepository.shared.submitApplication(app)
         
-        // Sync to Supabase Storage & Database
         Task {
             do {
                 guard let dummyData = Data("Re-upload payload unavailable for \(fileName)".utf8) as Data? else { return }
@@ -790,12 +787,11 @@ final class LoanApplicationViewModel {
         }
         
         func runBulkVerification() {
-            // Documents stay as .uploaded — actual verification is done by the Loan Officer.
-            // This method only ensures all documents have been uploaded (completeness check).
+
             for index in documents.indices {
                 guard !documents[index].isLocked else { continue }
                 if documents[index].status == .pendingUpload {
-                    // Mark as needing attention but don't auto-verify
+
                     documents[index].lastUpdated = Date()
                 }
             }
@@ -807,7 +803,7 @@ final class LoanApplicationViewModel {
         }
         
         func verifyAndShowResult() {
-            // Don't auto-verify — just mark completeness check as done
+
             runBulkVerification()
             verificationComplete = true
             showVerificationResult = true
@@ -815,7 +811,7 @@ final class LoanApplicationViewModel {
         
         @discardableResult
         func submitCurrentApplication() -> BorrowerLoanApplication? {
-            // Cancel any pending autosave task to prevent post-submit race conditions
+
             autosaveTask?.cancel()
             
             if formData.monthlyIncomeValue > 0,
@@ -832,7 +828,6 @@ final class LoanApplicationViewModel {
             let now = Date()
             var draft = applications[index]
             
-            // Copy latest user input to the draft before status transition
             draft.formData = formData
             draft.documents = documents
             let generatedApplicationID = draft.applicationId ?? generateApplicationID()
@@ -867,7 +862,6 @@ final class LoanApplicationViewModel {
             applications[index] = draft
             CentralLoanRepository.shared.submitApplication(draft)
             
-            // Record audit log
             Task {
                 do {
                     try await DatabaseService.shared.logAuditAction(
@@ -981,7 +975,7 @@ final class LoanApplicationViewModel {
         }
         
         private func seedInitialApplications() {
-            // Clear all mock data
+
         }
         
         func setBorrowerAuthContext(email: String, displayName: String) {

@@ -6,6 +6,7 @@ struct AccessibilitySettingsView: View {
     @AppStorage("forceBoldText") private var forceBoldText = false
     @AppStorage("reduceMotion") private var reduceMotion = false
     @AppStorage("enableHaptics") private var enableHaptics = true
+    @AppStorage("enableVoiceOver") private var enableVoiceOver = false
     
     var body: some View {
         Form {
@@ -23,11 +24,13 @@ struct AccessibilitySettingsView: View {
                 }
             } header: {
                 Text("Display")
-            } footer: {
-                Text("These settings override the system defaults specifically for this app.")
             }
             
             Section {
+                Toggle(isOn: $enableVoiceOver) {
+                    Label("VoiceOver", systemImage: "waveform")
+                }
+                
                 Toggle(isOn: $reduceMotion) {
                     Label("Reduce Motion", systemImage: "hare.fill")
                 }
@@ -37,8 +40,6 @@ struct AccessibilitySettingsView: View {
                 }
             } header: {
                 Text("Motion & Feedback")
-            } footer: {
-                Text("Reduce motion disables most animations and transitions.")
             }
         }
         .navigationTitle("Accessibility")

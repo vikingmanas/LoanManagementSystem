@@ -1,13 +1,9 @@
 import SwiftUI
 
-/// Reusable full-screen notification list view used by all user roles.
-/// Displays real notifications from Supabase via NotificationViewModel.
 struct NotificationsListView: View {
     @Bindable var viewModel: NotificationViewModel
     @Environment(\.dismiss) private var dismiss
     
-    /// Determines if the view is being pushed into a NavigationStack or presented as a sheet.
-    /// If true, it omits its own NavigationStack and the 'Close' button.
     var isPushed: Bool = false
     
     var body: some View {
@@ -60,8 +56,6 @@ struct NotificationsListView: View {
         }
     }
     
-    // MARK: - Subviews
-    
     private var loadingView: some View {
         VStack(spacing: 16) {
             ProgressView()
@@ -85,7 +79,7 @@ struct NotificationsListView: View {
     
     private var notificationsList: some View {
         List {
-            // Unread section
+
             let unread = viewModel.notifications.filter { !$0.isRead }
             if !unread.isEmpty {
                 Section {
@@ -110,7 +104,6 @@ struct NotificationsListView: View {
                 }
             }
             
-            // Read section
             let read = viewModel.notifications.filter { $0.isRead }
             if !read.isEmpty {
                 Section {

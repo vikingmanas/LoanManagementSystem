@@ -1,6 +1,5 @@
 import SwiftUI
 
-
 enum ManagerApplicantStatus: String, CaseIterable, Codable, Hashable {
     case sentToManager = "Pending Review"
     case needsClarification = "Needs Clarification"
@@ -34,7 +33,6 @@ enum ManagerApplicantStatus: String, CaseIterable, Codable, Hashable {
     }
 }
 
-
 enum ManagerRiskLevel: String, CaseIterable, Codable, Hashable {
     case low = "Low"
     case medium = "Medium"
@@ -67,7 +65,6 @@ struct ManagerRiskFactor: Identifiable, Hashable {
     var isPositive: Bool
 }
 
-
 enum ManagerLoanType: String, CaseIterable, Codable, Hashable {
     case home = "Home Loan"
     case personal = "Personal Loan"
@@ -95,7 +92,6 @@ enum ManagerLoanType: String, CaseIterable, Codable, Hashable {
         }
     }
 }
-
 
 struct ManagerApplicant: Identifiable, Hashable {
     let id: UUID
@@ -125,7 +121,6 @@ struct ManagerApplicant: Identifiable, Hashable {
         assignedOfficerId != id && !assignedOfficer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
-
 
 struct ManagerDocument: Identifiable, Hashable {
     let id: UUID
@@ -158,7 +153,6 @@ enum ManagerDocStatus: String, CaseIterable, Codable, Hashable {
         }
     }
 }
-
 
 struct ManagerOfficer: Identifiable, Hashable {
     let id: UUID
@@ -251,8 +245,6 @@ struct ManagerStaffProfile: Hashable {
     )
 }
 
-
-
 struct ManagerNotificationItem: Identifiable, Hashable {
     let id: UUID
     var title: String
@@ -285,7 +277,6 @@ struct ManagerNotificationItem: Identifiable, Hashable {
     }
 }
 
-
 struct ManagerChatConversation: Identifiable, Hashable {
     let id: UUID
     var officerUserId: UUID
@@ -312,7 +303,6 @@ struct ManagerChatConversation: Identifiable, Hashable {
     }
 }
 
-
 struct ManagerChatMessage: Identifiable, Hashable {
     let id: UUID
     var senderName: String
@@ -323,7 +313,6 @@ struct ManagerChatMessage: Identifiable, Hashable {
     var referencedApplicantId: UUID?
     var referencedApplicantName: String?
 }
-
 
 struct BranchOverview: Hashable {
     var name: String
@@ -337,7 +326,6 @@ struct BranchOverview: Hashable {
     var auditRating: String
     var monthlyTarget: Double
 }
-
 
 struct ManagerAuditEvent: Identifiable, Hashable {
     let id: UUID

@@ -15,12 +15,11 @@ struct ProfileHeaderView: View {
     
     var body: some View {
         VStack(spacing: 16) {
-            // Native circular avatar
+
             PhotosPicker(selection: $selectedItem, matching: .images) {
                 ZStack(alignment: .bottomTrailing) {
                     avatarImage
                     
-                    // Edit button badge
                     Image(systemName: "camera.fill")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(.white)
@@ -43,7 +42,6 @@ struct ProfileHeaderView: View {
                 }
             }
             
-            // Name and Details
             VStack(spacing: 4) {
                 HStack(spacing: 4) {
                     Text(name)
@@ -57,9 +55,6 @@ struct ProfileHeaderView: View {
                     }
                 }
                 
-
-                
-                // Native-style progress indicator
                 if completionPercentage < 100 {
                     VStack(spacing: 6) {
                         ProgressView(value: Double(completionPercentage), total: 100)

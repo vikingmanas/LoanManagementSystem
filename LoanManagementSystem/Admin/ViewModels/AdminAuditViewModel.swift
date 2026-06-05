@@ -40,7 +40,7 @@ final class AdminAuditViewModel {
         
         do {
             let logs = try await AdminDashboardService.shared.fetchAllAuditLogs()
-            // Filter out system actions from the main list as they are developer-only
+
             auditEntries = logs.filter { $0.type != .systemAction }
         } catch {
             logger.error("AdminAuditViewModel: Failed to load audit logs: \(error.localizedDescription)")

@@ -45,8 +45,6 @@ struct LoanProductDetailView: View {
         }
     }
 
-    // MARK: - Hero
-
     private var heroSection: some View {
         ZStack(alignment: .bottomLeading) {
             RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous)
@@ -118,8 +116,6 @@ struct LoanProductDetailView: View {
                 .foregroundStyle(.white)
         }
     }
-
-    // MARK: - Sections
 
     private var benefitsSection: some View {
         detailSection(title: "Key Benefits", subtitle: "Why borrowers choose this product") {

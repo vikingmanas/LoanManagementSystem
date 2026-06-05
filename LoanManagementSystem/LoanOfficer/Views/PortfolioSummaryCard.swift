@@ -37,7 +37,6 @@ struct PortfolioSummaryCard: View {
                 .accessibilityLabel("View entire loan portfolio list")
             }
 
-
             HStack(spacing: LMSSpacing.lg) {
                 portfolioStatColumn(
                     loanCount: viewModel.totalApplications,
@@ -58,7 +57,6 @@ struct PortfolioSummaryCard: View {
                 )
             }
 
-
             VStack(spacing: 8) {
                 HStack {
                     Text("Monthly Target: ₹ 15 Cr")
@@ -72,7 +70,6 @@ struct PortfolioSummaryCard: View {
                         .foregroundStyle(.white)
                 }
 
-
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 3)
@@ -85,7 +82,6 @@ struct PortfolioSummaryCard: View {
                     }
                 }
                 .frame(height: 6)
-
 
                 HStack {
                     Spacer()
@@ -143,5 +139,3 @@ struct PortfolioSummaryCard: View {
         .accessibilityLabel("\(label): \(loanCount) loans, total \(CurrencyFormatter.shared.format(amount)).")
     }
 }
-
-

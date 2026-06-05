@@ -1,6 +1,5 @@
 import SwiftUI
 
-
 struct ManagerApprovalQueueView: View {
     @Bindable var viewModel: ManagerDashboardViewModel
     var onViewAll: () -> Void
@@ -71,7 +70,6 @@ struct ManagerApprovalQueueView: View {
         }
     }
 }
-
 
 private struct ApprovalQueueCard: View {
     let applicant: ManagerApplicant
@@ -148,5 +146,3 @@ private struct ApprovalQueueCard: View {
         .shadow(color: .black.opacity(0.03), radius: 6, x: 0, y: 2)
     }
 }
-
-

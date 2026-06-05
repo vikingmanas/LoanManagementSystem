@@ -19,7 +19,6 @@ struct RoleSelectionView: View {
             )
             .ignoresSafeArea()
 
-
             VStack {
                 HStack {
                     Circle()
@@ -67,7 +66,6 @@ struct RoleSelectionView: View {
                 .padding(.top, LMSSpacing.xxxl)
                 .padding(.bottom, LMSSpacing.sm)
 
-
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: LMSSpacing.md) {
                         ForEach(PortalRole.allCases) { role in
@@ -86,7 +84,6 @@ struct RoleSelectionView: View {
                     .padding(.horizontal, LMSSpacing.xxl)
                     .padding(.vertical, LMSSpacing.sm)
                 }
-
 
                 VStack(spacing: LMSSpacing.lg) {
                     Button(action: {
@@ -127,7 +124,6 @@ struct RoleSelectionView: View {
     }
 }
 
-
 struct RoleCardView: View {
     let role: PortalRole
     let isSelected: Bool
@@ -147,7 +143,6 @@ struct RoleCardView: View {
                         .foregroundStyle(isSelected ? .white : .white.opacity(0.7))
                 }
 
-
                 VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                     Text(role.rawValue)
                         .font(LMSFont.callout.weight(.bold))
@@ -161,7 +156,6 @@ struct RoleCardView: View {
                 }
 
                 Spacer()
-
 
                 ZStack {
                     Circle()
@@ -198,4 +192,3 @@ struct RoleCardView: View {
     RoleSelectionView()
         .environment(AppStateManager())
 }
-

@@ -1,6 +1,5 @@
 import SwiftUI
 
-
 struct ManagerDashboardTabView: View {
     @Bindable var viewModel: ManagerDashboardViewModel
     @Binding var selectedTab: ManagerWorkspaceTab
@@ -12,11 +11,9 @@ struct ManagerDashboardTabView: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: LMSSpacing.xl) {
 
-                // Key Performance Indicators
                 ActionItemsRow(viewModel: viewModel, selectedTab: $selectedTab)
                     .padding(.top, LMSSpacing.md)
 
-                // Approval Request
                 ManagerApprovalQueueView(
                     viewModel: viewModel,
                     onViewAll: {
@@ -43,12 +40,6 @@ struct ManagerDashboardTabView: View {
         }
     }
 }
-
-
-
-
-
-// MARK: - Action Items Row (replaces 4-card Branch Command Center)
 
 private struct ActionItemsRow: View {
     @Bindable var viewModel: ManagerDashboardViewModel
@@ -158,9 +149,6 @@ private struct ActionItemCard: View {
     }
 }
 
-
-// MARK: - Branch quick access (full analytics live on Branch tab)
-
 private struct BranchDashboardPromoCard: View {
     @Bindable var viewModel: ManagerDashboardViewModel
     @Binding var showBranchOverview: Bool
@@ -236,9 +224,6 @@ private struct BranchDashboardPromoCard: View {
         .background(LMSColors.background, in: RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous))
     }
 }
-
-
-// MARK: - Team Insights Row
 
 private struct TeamInsightsRow: View {
     @Bindable var viewModel: ManagerDashboardViewModel
@@ -328,9 +313,6 @@ private struct TeamInsightsOfficerCard: View {
         .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
     }
 }
-
-
-// MARK: - Officer Performance Report Sheet
 
 struct OfficerPerformanceReportSheet: View {
     @Bindable var viewModel: ManagerDashboardViewModel
@@ -634,4 +616,3 @@ private struct PerformanceMetric: View {
         .frame(maxWidth: .infinity)
     }
 }
-

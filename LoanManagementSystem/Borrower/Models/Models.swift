@@ -1,11 +1,4 @@
 
-
-
-
-
-
-
-
 import Foundation
 
 public struct DashboardLoanAccount: Identifiable, Hashable, Sendable {

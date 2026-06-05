@@ -5,7 +5,6 @@ struct LoanOfficerDetailedAnalyticsSheet: View {
     @Bindable var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) var dismiss
 
-
     private var statusData: [(status: String, count: Int, color: Color)] {
         let applications = viewModel.applications
 
@@ -39,13 +38,11 @@ struct LoanOfficerDetailedAnalyticsSheet: View {
             ScrollView {
                 VStack(spacing: 24) {
 
-
                     HStack(spacing: 16) {
                         metricCard(title: "Total Loans", value: "\(viewModel.totalApplications)", icon: "doc.on.doc.fill", color: AppTheme.brandNavy)
                         metricCard(title: "Total Value", value: CurrencyFormatter.shared.format(viewModel.totalPortfolioValue), icon: "indianrupeesign.circle.fill", color: AppTheme.actionBlue)
                     }
                     .padding(.horizontal)
-
 
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Application Status Breakdown")
@@ -69,7 +66,6 @@ struct LoanOfficerDetailedAnalyticsSheet: View {
                         }
                         .frame(height: 220)
 
-
                         HStack {
                             ForEach(statusData, id: \.status) { item in
                                 HStack(spacing: 4) {
@@ -88,7 +84,6 @@ struct LoanOfficerDetailedAnalyticsSheet: View {
                     .background(Color(.systemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .padding(.horizontal)
-
 
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Loan Types Distribution")
@@ -159,5 +154,3 @@ struct LoanOfficerDetailedAnalyticsSheet: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }
-
-

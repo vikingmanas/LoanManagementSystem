@@ -148,7 +148,7 @@ struct AdminApplicationDetailSheet: View {
                         let isLast = idx == app.stageHistory.count - 1
                         
                         HStack(alignment: .top, spacing: 12) {
-                            // Timeline dot & line
+
                             VStack(spacing: 0) {
                                 Circle()
                                     .fill(isLast ? LMSColors.emerald : LMSColors.brandNavy)

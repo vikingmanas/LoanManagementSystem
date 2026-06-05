@@ -1,6 +1,5 @@
 import SwiftUI
 
-
 struct ManagerApplicantsTabView: View {
     @Bindable var viewModel: ManagerDashboardViewModel
     var onSelectApplicant: (ManagerApplicant) -> Void
@@ -160,10 +159,6 @@ struct ManagerApplicantsTabView: View {
     }
 }
 
-
-
-
-
 struct ApplicantListCard: View {
     let applicant: ManagerApplicant
 
@@ -191,7 +186,6 @@ struct ApplicantListCard: View {
                         .foregroundStyle(LMSColors.textPrimary)
                 }
 
-
                 HStack {
                     Text(applicant.applicationId)
                         .font(.system(.caption2, design: .monospaced))
@@ -201,7 +195,6 @@ struct ApplicantListCard: View {
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(LMSColors.textSecondary)
                 }
-
 
                 HStack {
                     Text("CIBIL: \(applicant.cibilScore)")
@@ -245,4 +238,3 @@ struct ApplicantListCard: View {
         return LMSColors.coral
     }
 }
-

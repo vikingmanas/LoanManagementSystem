@@ -29,13 +29,11 @@ final class AdminDashboardViewModel {
         errorMessage = nil
         
         do {
-            // 1. Fetch main dashboard data from Supabase
+
             let data = try await AdminDashboardService.shared.fetchDashboardData()
             
-            // 2. Fetch branches from Supabase
             let branches = try await AdminStaffService.shared.fetchBranches()
             
-            // 3. Fetch profiles & loan officers to align applications with branches
             let client = SupabaseManager.shared.client
             
             struct DBProfileMin: Codable {
@@ -61,7 +59,6 @@ final class AdminDashboardViewModel {
                 .value) ?? []
             let officerToBranchMap = Dictionary(uniqueKeysWithValues: dbOfficers.map { ($0.officerId, $0.branchId) })
             
-            // Map applications to Branch ID
             var appsByBranchId: [UUID: [DBLoanApplication]] = [:]
             for app in data.rawApplications {
                 var branchId: UUID? = nil
@@ -82,7 +79,6 @@ final class AdminDashboardViewModel {
                 appsByBranchId[finalBranchId, default: []].append(app)
             }
             
-            // Calculate trends helper
             let calculateTrend: (Int, Int) -> Double = { current, previous in
                 if previous == 0 {
                     return current > 0 ? 100.0 : 0.0
@@ -98,7 +94,6 @@ final class AdminDashboardViewModel {
             
             let pendingStatuses = ["submitted", "under_review", "document_verification", "officer_review", "manager_review"]
             
-            // Pre-calculate branch breakdowns
             var breakdowns: [String: [KPIBranchData]] = [:]
             var totalAppsBranchData: [KPIBranchData] = []
             var activeLoansBranchData: [KPIBranchData] = []
@@ -108,7 +103,6 @@ final class AdminDashboardViewModel {
             for branch in branches {
                 let branchApps = appsByBranchId[branch.branchId] ?? []
                 
-                // Total Applications
                 let totalAppsCount = branchApps.count
                 let last30Apps = branchApps.filter { ($0.submittedAt ?? $0.updatedAt) >= thirtyDaysAgo }
                 let prev30Apps = branchApps.filter { ($0.submittedAt ?? $0.updatedAt) >= sixtyDaysAgo && ($0.submittedAt ?? $0.updatedAt) < thirtyDaysAgo }
@@ -120,7 +114,6 @@ final class AdminDashboardViewModel {
                     trend: totalAppsTrend
                 ))
                 
-                // Active Loans
                 let activeApps = branchApps.filter { $0.status == "disbursed" || $0.status == "approved" }
                 let activeCount = activeApps.count
                 let last30Active = last30Apps.filter { $0.status == "disbursed" || $0.status == "approved" }.count
@@ -133,7 +126,6 @@ final class AdminDashboardViewModel {
                     trend: activeTrend
                 ))
                 
-                // Pending Approvals
                 let pendingApps = branchApps.filter { pendingStatuses.contains($0.status) }
                 let pendingCount = pendingApps.count
                 let last30Pending = last30Apps.filter { pendingStatuses.contains($0.status) }.count
@@ -146,7 +138,6 @@ final class AdminDashboardViewModel {
                     trend: pendingTrend
                 ))
                 
-                // Total Disbursed
                 let totalDisbursedAmt = activeApps.reduce(0.0) { $0 + Double($1.amountRequested) }
                 let last30Disbursed = last30Apps.filter { $0.status == "disbursed" || $0.status == "approved" }.reduce(0.0) { $0 + Double($1.amountRequested) }
                 let prev30Disbursed = prev30Apps.filter { $0.status == "disbursed" || $0.status == "approved" }.reduce(0.0) { $0 + Double($1.amountRequested) }
@@ -176,7 +167,6 @@ final class AdminDashboardViewModel {
             
             self.branchBreakdowns = breakdowns
             
-            // 4. Set KPIs
             let formattedTotalApps = "\(data.totalApplications)"
             let formattedActiveLoans = "\(data.activeLoans)"
             let formattedPendingApprovals = "\(data.pendingApprovals)"
@@ -197,13 +187,11 @@ final class AdminDashboardViewModel {
                 AdminKPI(title: "Total Disbursed", value: formattedTotalDisbursed, icon: "indianrupeesign.circle", trend: data.totalDisbursedTrend, themeColor: LMSColors.emerald)
             ]
             
-            // 5. Set approval breakdown
             let approvedCount = data.rawApplications.filter { $0.status == "disbursed" || $0.status == "approved" }.count
             let rejectedCount = data.rawApplications.filter { $0.status == "rejected" }.count
             let pendingCount = data.rawApplications.filter { pendingStatuses.contains($0.status) }.count
             approvalBreakdown = (approved: approvedCount, rejected: rejectedCount, pending: pendingCount)
             
-            // 6. Set system health and logs
             systemHealth = SystemHealth(
                 serverUptime: data.serverUptime,
                 activeSessions: data.activeSessions,

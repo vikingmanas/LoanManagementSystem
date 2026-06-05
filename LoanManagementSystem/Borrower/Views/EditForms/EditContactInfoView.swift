@@ -131,4 +131,3 @@ struct EditContactInfoView: View {
 #Preview {
     EditContactInfoView(viewModel: BorrowerProfileViewModel())
 }
-

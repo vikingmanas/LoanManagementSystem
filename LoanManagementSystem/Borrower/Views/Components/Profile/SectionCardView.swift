@@ -1,7 +1,5 @@
 import SwiftUI
 
-
-
 struct SectionCardView<Content: View>: View {
     var title: String
     var icon: String
@@ -36,7 +34,6 @@ struct SectionCardView<Content: View>: View {
             }
 
             Divider()
-
 
             content()
         }

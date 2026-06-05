@@ -1,28 +1,10 @@
-//
-//  EmailService.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 04/06/26.
-//
 
 import Foundation
 
-/// Lightweight service to send transactional emails via the Resend API.
-/// Used by Admin to send welcome/credential emails to newly created staff.
 final class EmailService {
     static let shared = EmailService()
     private init() {}
     
-    // MARK: - Send Welcome Email
-    
-    /// Sends a professional welcome email with login credentials to a newly created staff member.
-    /// - Parameters:
-    ///   - recipientEmail: The staff member's email address.
-    ///   - recipientName: The staff member's full name.
-    ///   - password: The temporary password set by the admin.
-    ///   - role: "Loan Officer" or "Bank Manager".
-    ///   - branchName: The branch the staff is assigned to.
-    ///   - employeeCode: The assigned employee code.
     func sendWelcomeEmail(
         recipientEmail: String,
         recipientName: String,
@@ -71,8 +53,6 @@ final class EmailService {
             print("❌ [EmailService] Network error sending email: \(error.localizedDescription)")
         }
     }
-    
-    // MARK: - HTML Template
     
     private func buildWelcomeHTML(
         name: String,

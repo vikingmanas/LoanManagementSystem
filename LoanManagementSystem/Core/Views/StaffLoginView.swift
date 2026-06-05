@@ -25,7 +25,6 @@ struct StaffLoginView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
 
-
                         Button(action: {
                             HapticsManager.triggerImpact(style: .medium)
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
@@ -45,26 +44,9 @@ struct StaffLoginView: View {
                         .buttonStyle(.plain)
                         .padding(.top, 16)
 
-
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(spacing: 12) {
-//                                ZStack {
-//                                    RoundedRectangle(cornerRadius: 12)
-//                                        .fill(Color.AppTheme.primary.opacity(0.12))
-//                                        .frame(width: 44, height: 44)
-//
-//                                    Image(systemName: appState.selectedRole.icon)
-//                                        .font(.title3)
-//                                        .foregroundColor(Color.AppTheme.primary)
-//                                }
-//
-//                                Text("Branch Staff")
-//                                    .font(.system(.caption, design: .rounded).weight(.bold))
-//                                    .foregroundColor(.secondary)
-//                                    .padding(.horizontal, 10)
-//                                    .padding(.vertical, 4)
-//                                    .background(Color.secondary.opacity(0.1))
-//                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
                             }
 
                             Text("\(appState.selectedRole.rawValue) Portal")
@@ -75,8 +57,6 @@ struct StaffLoginView: View {
                                 .font(Font.AppTheme.subtitle)
                                 .foregroundColor(Color.AppTheme.textSecondary)
                         }
-//                        .padding(.top, 12)
-
 
                         if !generalError.isEmpty {
                             HStack(alignment: .top, spacing: 8) {
@@ -92,7 +72,6 @@ struct StaffLoginView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                             .transition(.move(edge: .top).combined(with: .opacity))
                         }
-
 
                         VStack(alignment: .leading, spacing: 20) {
                             VStack(alignment: .leading, spacing: 6) {
@@ -155,11 +134,9 @@ struct StaffLoginView: View {
         }
     }
 
-
     private var employeeIDPlaceholder: String {
         "Staff email address"
     }
-
 
     private func handleStaffLogin() {
 
@@ -168,7 +145,6 @@ struct StaffLoginView: View {
         generalError = ""
 
         let cleanedID = employeeID.trimmingCharacters(in: .whitespacesAndNewlines)
-
 
         if cleanedID.isEmpty {
             employeeIDError = "Staff email cannot be empty"
@@ -179,7 +155,6 @@ struct StaffLoginView: View {
             passwordError = "Password cannot be empty"
             return
         }
-
 
         guard cleanedID.contains("@") else {
             employeeIDError = "Enter the staff email address created by the admin."
@@ -219,4 +194,3 @@ struct StaffLoginView: View {
         }
     }
 }
-

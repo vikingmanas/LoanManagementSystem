@@ -39,7 +39,7 @@ struct ProfileView: View {
                 email: authManager.userEmail,
                 displayName: authManager.userDisplayName
             )
-            // Configure notification VM with current user ID
+
             if let profile = BorrowerProfileStore.shared.profile,
                let userId = UUID(uuidString: profile.id) {
                 notifVM.configure(userId: userId)
@@ -48,11 +48,10 @@ struct ProfileView: View {
         .preferredColorScheme(isDarkMode ? .dark : .light)
     }
 
-
     @ViewBuilder
     private func profileForm(_ profile: BorrowerProfile) -> some View {
                 Form {
-                    // MARK: - Header Section
+
                     Section {
                         ProfileHeaderView(
                             name: profile.fullName,
@@ -68,7 +67,6 @@ struct ProfileView: View {
                         .listRowInsets(EdgeInsets())
                     }
                     
-                    // MARK: - Account Information
                     Section {
                         NavigationLink(destination: ProfileInfoDetailView(viewModel: viewModel)) {
                             Label("Profile Information", systemImage: "person.circle")
@@ -81,7 +79,6 @@ struct ProfileView: View {
                         Text("Account Details")
                     }
                     
-                    // MARK: - Security & Privacy
                     Section {
                         NavigationLink(destination: SecurityDetailView()) {
                             Label("Security", systemImage: "lock.shield")
@@ -102,7 +99,6 @@ struct ProfileView: View {
                         Text("Security & Privacy")
                     }
                     
-                    // MARK: - Support & General
                     Section {
                         NavigationLink(destination: SettingsDetailView()) {
                             Label("App Settings", systemImage: "gearshape")
@@ -119,7 +115,6 @@ struct ProfileView: View {
                         Text("General")
                     }
                     
-                    // MARK: - Sign Out
                     Section {
                         Button(role: .destructive) {
                             HapticsManager.triggerImpact(style: .medium)

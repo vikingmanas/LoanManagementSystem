@@ -7,7 +7,6 @@ public struct TransactionRowView: View {
         self.transaction = transaction
     }
 
-
     private var formattedDateTime: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "d MMM yyyy • h:mm a"
@@ -27,7 +26,6 @@ public struct TransactionRowView: View {
                     .symbolRenderingMode(.hierarchical)
             }
 
-
             VStack(alignment: .leading, spacing: 4) {
                 Text(transaction.title)
                     .font(LMSFont.subheadline.weight(.semibold))
@@ -44,7 +42,6 @@ public struct TransactionRowView: View {
 
             Spacer()
 
-
             Text(amountText)
                 .font(LMSFont.subheadline.weight(.bold))
                 .monospacedDigit()
@@ -54,7 +51,6 @@ public struct TransactionRowView: View {
         .padding(.vertical, LMSSpacing.md)
         .contentShape(Rectangle())
     }
-
 
     private var iconName: String {
         switch transaction.type {
@@ -98,7 +94,6 @@ public struct TransactionRowView: View {
         isDebit ? LMSColors.coral : LMSColors.emerald
     }
 }
-
 
 public struct TransactionRowSkeleton: View {
     public init() {}

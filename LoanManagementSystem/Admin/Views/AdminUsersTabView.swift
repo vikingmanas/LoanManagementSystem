@@ -111,9 +111,6 @@ struct AdminUsersTabView: View {
     }
 }
 
-
-
-
 struct StaffMemberRow: View {
     let member: StaffMember
 
@@ -137,7 +134,6 @@ struct StaffMemberRow: View {
                         .foregroundStyle(LMSColors.textPrimary)
 
                     Spacer()
-
 
                     LMSStatusPill(
                         text: member.status.displayName,

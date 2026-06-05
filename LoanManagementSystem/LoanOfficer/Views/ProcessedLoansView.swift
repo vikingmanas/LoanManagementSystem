@@ -27,7 +27,6 @@ struct ProcessedLoansView: View {
             }
             .padding(.horizontal, 16)
 
-
             VStack(spacing: 0) {
                 let items = viewModel.pendingManagerActionApps
                 if items.isEmpty {
@@ -75,7 +74,6 @@ struct ProcessedLoanRow: View {
                     .foregroundStyle(app.loanType.themeColor)
             }
 
-
             VStack(alignment: .leading, spacing: 3) {
                 Text("\(app.borrowerName) · \(app.loanType.rawValue)")
                     .font(.system(.callout, design: .rounded).bold())
@@ -93,7 +91,6 @@ struct ProcessedLoanRow: View {
             }
 
             Spacer()
-
 
             if let status = app.managerStatus {
                 VStack(alignment: .trailing, spacing: 6) {

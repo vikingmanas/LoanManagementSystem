@@ -767,7 +767,6 @@ final class ManagerDashboardViewModel {
         return applicant.riskLevel == .critical || applicant.riskLevel == .high
     }
 
-
     private func rebuildNotifications() {
         let generated = pendingApplicants.prefix(5).map { applicant in
             ManagerNotificationItem(

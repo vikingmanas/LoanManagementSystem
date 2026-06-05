@@ -57,7 +57,7 @@ final class AuditReportExporter {
         let format = UIGraphicsPDFRendererFormat()
         format.documentInfo = pdfMetaData as [String: Any]
         
-        let pageWidth = 8.5 * 72.0 // Letter size
+        let pageWidth = 8.5 * 72.0
         let pageHeight = 11.0 * 72.0
         let pageRect = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
         
@@ -97,7 +97,6 @@ final class AuditReportExporter {
                 .font: UIFont.systemFont(ofSize: 10)
             ]
             
-            // Draw Table Header
             "Action".draw(at: CGPoint(x: 20, y: currentY), withAttributes: headerAttributes)
             "User".draw(at: CGPoint(x: 180, y: currentY), withAttributes: headerAttributes)
             "Entity".draw(at: CGPoint(x: 320, y: currentY), withAttributes: headerAttributes)
@@ -105,7 +104,6 @@ final class AuditReportExporter {
             
             currentY += 20
             
-            // Draw line
             context.cgContext.move(to: CGPoint(x: 20, y: currentY))
             context.cgContext.addLine(to: CGPoint(x: pageWidth - 20, y: currentY))
             context.cgContext.setStrokeColor(UIColor.lightGray.cgColor)
@@ -118,7 +116,6 @@ final class AuditReportExporter {
                     currentY = 20
                 }
                 
-                // Keep long text contained in rects to avoid overlapping
                 let actionRect = CGRect(x: 20, y: currentY, width: 150, height: 30)
                 let userRect = CGRect(x: 180, y: currentY, width: 130, height: 30)
                 let entityRect = CGRect(x: 320, y: currentY, width: 120, height: 30)
@@ -129,14 +126,13 @@ final class AuditReportExporter {
                 "\(entry.entityType)\n\(entry.entityId)".draw(in: entityRect, withAttributes: bodyAttributes)
                 dateFormatter.string(from: entry.timestamp).draw(in: dateRect, withAttributes: bodyAttributes)
                 
-                currentY += 30 // Space for multiline text
+                currentY += 30
                 
                 let detailRect = CGRect(x: 20, y: currentY, width: pageWidth - 40, height: 40)
                 entry.details.draw(in: detailRect, withAttributes: subtitleAttributes)
                 
                 currentY += 25
                 
-                // Draw a subtle line between items
                 context.cgContext.move(to: CGPoint(x: 20, y: currentY))
                 context.cgContext.addLine(to: CGPoint(x: pageWidth - 20, y: currentY))
                 context.cgContext.setStrokeColor(UIColor.systemGroupedBackground.cgColor)

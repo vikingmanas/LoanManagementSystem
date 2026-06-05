@@ -1,7 +1,6 @@
 import SwiftUI
 import UIKit
 
-// MARK: - Navigation Destinations
 public enum DashboardRoute: Hashable {
     case loanDetails(DashboardLoanAccount)
     case portfolioLoans
@@ -22,14 +21,13 @@ public enum DashboardRoute: Hashable {
     case support
 }
 
-// MARK: - Native Status Banner Section
 struct StatusBannerSection: View {
     @Bindable var viewModel: DashboardViewModel
     @Binding var navigationPath: [DashboardRoute]
 
     var body: some View {
         VStack(spacing: 12) {
-            // Profile Completion Row (Priority 1)
+
             if viewModel.profileCompletionPercentage < 100 {
                 Button {
                     navigationPath.append(.profile)
@@ -68,14 +66,13 @@ struct StatusBannerSection: View {
                 .buttonStyle(DashboardPressableStyle())
             }
             
-            // Account Health Status Row (High-Signal Urgent Alert)
             Button {
                 handleAlertTap()
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: viewModel.isAccountHealthy ? "shield.checkered" : "exclamationmark.shield.fill")
                         .font(.title3)
-                        .foregroundStyle(viewModel.isAccountHealthy ? LMSColors.emerald : LMSColors.coral) // Premium Coral Red
+                        .foregroundStyle(viewModel.isAccountHealthy ? LMSColors.emerald : LMSColors.coral)
                     
                     VStack(alignment: .leading, spacing: 2) {
                         Text(viewModel.isAccountHealthy ? "Account Secure" : "Action Required")
@@ -116,7 +113,6 @@ struct StatusBannerSection: View {
     }
 }
 
-// MARK: - Native Quick Actions Section
 struct QuickActionGridSection: View {
     var onPay: () -> Void
     var onStatement: () -> Void
@@ -167,8 +163,6 @@ struct QuickActionButton: View {
         .buttonStyle(DashboardPressableStyle())
     }
 }
-
-// MARK: - Dashboard View
 
 public struct DashboardView: View {
     @Environment(AppStateManager.self) var appState: AppStateManager
@@ -334,8 +328,6 @@ public struct DashboardView: View {
         }
     }
 }
-
-// MARK: - Repayment Schedule
 
 private enum RepaymentScheduleStatus: String {
     case paid = "Paid"
@@ -663,7 +655,6 @@ private struct RepaymentScheduleRow: View {
     }
 }
 
-// MARK: - Section 6: Govt Schemes
 struct GovernmentSchemesSection: View {
     @Bindable var viewModel: DashboardViewModel
     let onSchemeTap: (GovernmentScheme) -> Void
@@ -713,8 +704,6 @@ struct GovernmentSchemesSection: View {
         }
     }
 }
-
-// MARK: - EMI Calculator
 
 private enum EMICalculatorTenureUnit: String, CaseIterable, Identifiable {
     case months = "Months"
@@ -1023,8 +1012,6 @@ private struct EMICalculatorView: View {
     }
 }
 
-// MARK: - Quick Action Action Sheets
-
 private enum EMIPaymentStep: Int, CaseIterable {
     case selectLoan, details, options, confirm
     var title: String {
@@ -1129,7 +1116,7 @@ struct PayEMIWorkflowView: View {
                 stickyCTA
             }
         }
-        } // End Group
+        }
         }
         .withWindowAccessor(window: $window)
     }
@@ -1956,7 +1943,7 @@ struct StatementWorkflowView: View {
                 $0.title.localizedCaseInsensitiveContains(loan.accountNumber) ||
                 $0.referenceNo.localizedCaseInsensitiveContains(loan.accountNumber)
             }
-            // Older transaction records may not carry a loan/account identifier.
+
             return (matched.isEmpty ? periodTransactions : matched).sorted { $0.date > $1.date }
         }
         return periodTransactions.sorted { $0.date > $1.date }
@@ -3600,8 +3587,6 @@ struct TopUpSheet: View {
 
 }
 
-// MARK: - Premium Detail Views
-
 private struct PortfolioLoansView: View {
     @Bindable var viewModel: DashboardViewModel
     let onLoanTap: (DashboardLoanAccount) -> Void
@@ -3797,7 +3782,6 @@ struct InsuranceDetailsView: View {
     }
 }
 
-
 struct AllPendingEMIsView: View {
     @Bindable var viewModel: DashboardViewModel
     
@@ -3914,8 +3898,6 @@ struct SchemeDetailsView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
-
-// MARK: - Helpers
 
 private func dashboardInitials(viewModel: DashboardViewModel, authManager: AuthManager) -> String {
     let profileStore = BorrowerProfileStore.shared

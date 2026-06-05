@@ -5,15 +5,13 @@ import Supabase
 @MainActor
 @Observable
 final class OnboardingViewModel {
-    // Dependencies
+
     private let authManager = AuthManager.shared
     private let profileStore = BorrowerProfileStore.shared
     
-    // Step indicator: 0 = Professional, 1 = Financial
     var currentStep = 0
     let totalSteps = 2
     
-    // Step 1: Professional Details
     var occupation = ""
     var employmentType = "Salaried"
     var companyName = ""
@@ -23,7 +21,6 @@ final class OnboardingViewModel {
     var annualIncome = ""
     var gstNumber = ""
     
-    // Step 2: Financial Details
     var hasExistingBankAccount = false
     var emergencyContactName = ""
     var emergencyContactRelationship = "Spouse"
@@ -37,12 +34,10 @@ final class OnboardingViewModel {
     var isShowingAddAccountForm = false
     var branchesList: [BranchInfo] = []
     
-    // Loading & validation state
     var isLoading = false
     var errorMessage = ""
     var showValidationError = false
     
-    // UI Helpers
     var stepTitle: String {
         currentStep == 0 ? "Professional Details" : "Financial Profile"
     }

@@ -3,8 +3,6 @@ import SwiftUI
 import Combine
 import Supabase
 
-/// Shared ViewModel for in-app notifications, usable by all user roles.
-/// Fetches notifications from Supabase and auto-polls for new ones.
 @MainActor
 @Observable
 public final class NotificationViewModel {
@@ -18,7 +16,6 @@ public final class NotificationViewModel {
     
     public init() {}
     
-    /// The notifications converted to LMSNotification for UI rendering.
     public var lmsNotifications: [LMSNotification] {
         notifications.map { $0.toLMSNotification() }
     }
@@ -30,11 +27,8 @@ public final class NotificationViewModel {
         }
     }
     
-    // MARK: - Configuration
-    
-    /// Configures the view model with the current user's ID and starts realtime listener.
     public func configure(userId: UUID) {
-        guard self.userId != userId else { return } // already configured for this user
+        guard self.userId != userId else { return }
         self.userId = userId
         print("[NotificationVM] ✅ Configured for user: \(userId.uuidString.prefix(8))")
         Task {
@@ -57,14 +51,13 @@ public final class NotificationViewModel {
     
     private func handleNewRealtimeNotification(_ notif: DBNotification) {
         if !notifications.contains(where: { $0.notificationId == notif.notificationId }) {
-            notifications.insert(notif, at: 0) // Most recent first
+            notifications.insert(notif, at: 0)
             if !notif.isRead {
                 unreadCount += 1
             }
         }
     }
     
-    /// Stops listening.
     public func stopPolling() {
         let channel = realtimeChannel
         Task {
@@ -73,9 +66,6 @@ public final class NotificationViewModel {
         realtimeChannel = nil
     }
     
-    // MARK: - Load
-    
-    /// Fetches all notifications from Supabase for the current user.
     public func loadNotifications() async {
         guard let userId else { return }
         
@@ -93,9 +83,6 @@ public final class NotificationViewModel {
         isLoading = false
     }
     
-    // MARK: - Mark as Read
-    
-    /// Marks a single notification as read.
     public func markRead(id: UUID) {
         guard let index = notifications.firstIndex(where: { $0.notificationId == id }) else { return }
         guard !notifications[index].isRead else { return }
@@ -112,7 +99,6 @@ public final class NotificationViewModel {
         }
     }
     
-    /// Marks all notifications as read.
     public func markAllRead() {
         guard let userId else { return }
         
@@ -130,7 +116,6 @@ public final class NotificationViewModel {
         }
     }
     
-    /// Deletes a notification.
     public func deleteNotification(id: UUID) {
         notifications.removeAll { $0.notificationId == id }
         unreadCount = notifications.filter { !$0.isRead }.count
@@ -144,5 +129,4 @@ public final class NotificationViewModel {
         }
     }
     
-
 }

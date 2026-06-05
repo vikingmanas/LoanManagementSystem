@@ -5,15 +5,13 @@ struct OnboardingQuestionnaireView: View {
     @Environment(AppStateManager.self) private var appState: AppStateManager
     @State private var viewModel = OnboardingViewModel()
     
-    // Lists of Options
     private let employmentTypes = ["Salaried", "Self-Employed", "Business Owner"]
     private let relationships = ["Spouse", "Parent", "Sibling", "Friend", "Relative", "Other"]
 
-    
     var body: some View {
         NavigationStack {
             Form {
-                // Progress & Instructions
+
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(viewModel.stepTitle)
@@ -32,14 +30,12 @@ struct OnboardingQuestionnaireView: View {
                     .listRowInsets(EdgeInsets(top: 20, leading: 0, bottom: 20, trailing: 0))
                 }
                 
-                // Form Content
                 if viewModel.currentStep == 0 {
                     professionalSection
                 } else {
                     financialSection
                 }
                 
-                // Error Section
                 if viewModel.showValidationError {
                     Section {
                         Label(viewModel.errorMessage, systemImage: "exclamationmark.triangle.fill")
@@ -72,7 +68,7 @@ struct OnboardingQuestionnaireView: View {
                         Task {
                             if await viewModel.validateAndProceed() {
                                 if viewModel.currentStep == viewModel.totalSteps {
-                                    // Finished
+
                                     appState.requiresBorrowerOnboarding = false
                                 }
                             }
@@ -96,8 +92,6 @@ struct OnboardingQuestionnaireView: View {
             }
         }
     }
-    
-    // MARK: - Sections
     
     private var professionalSection: some View {
         Group {
@@ -280,13 +274,12 @@ struct OnboardingQuestionnaireView: View {
     }
 }
 
-// MARK: - Premium Bank Account Insight Card View
 struct BankAccountInsightCardView: View {
     let account: LinkedBankAccount
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header: Bank Name and Icon
+
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(account.bankName)
@@ -314,7 +307,6 @@ struct BankAccountInsightCardView: View {
             Divider()
                 .background(Color.white.opacity(0.2))
             
-            // Body: Details
             VStack(spacing: 12) {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
@@ -366,7 +358,6 @@ struct BankAccountInsightCardView: View {
             Divider()
                 .background(Color.white.opacity(0.2))
             
-            // Balance Footer
             HStack {
                 Text("Available Balance")
                     .font(.system(.subheadline, design: .rounded))

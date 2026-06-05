@@ -17,7 +17,7 @@ struct AdminAuditTrailView: View {
                     ContentUnavailableView.search(text: viewModel.searchText)
                         .padding(.top, 60)
                 } else {
-                    // Log count header
+
                     HStack {
                         Text("\(viewModel.filteredEntries.count) of \(viewModel.auditEntries.count) logs")
                             .font(LMSFont.caption)
@@ -28,7 +28,6 @@ struct AdminAuditTrailView: View {
                     .padding(.top, LMSSpacing.sm)
                     .padding(.bottom, LMSSpacing.md)
                     
-                    // Audit log cards
                     LazyVStack(spacing: 10) {
                         ForEach(viewModel.filteredEntries) { entry in
                             AuditLogCard(
@@ -102,7 +101,6 @@ struct AdminAuditTrailView: View {
     }
 }
 
-// MARK: - Audit Log Card (Expandable card matching dashboard theme)
 private struct AuditLogCard: View {
     let entry: AuditLogEntry
     let isExpanded: Bool
@@ -110,10 +108,10 @@ private struct AuditLogCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Main card content (always visible)
+
             Button(action: onToggle) {
                 HStack(spacing: 12) {
-                    // Simple Icon matching dashboard
+
                     ZStack {
                         Image(systemName: entry.displayIcon)
                             .symbolVariant(.fill)
@@ -152,7 +150,6 @@ private struct AuditLogCard: View {
             }
             .buttonStyle(PlainButtonStyle())
             
-            // Expandable details section
             if isExpanded {
                 VStack(alignment: .leading, spacing: 10) {
                     Divider()

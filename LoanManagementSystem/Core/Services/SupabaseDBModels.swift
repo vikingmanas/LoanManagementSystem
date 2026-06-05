@@ -1,6 +1,5 @@
 import Foundation
 
-/// Swift representation of the `public.documents` database table.
 struct DBDocument: Codable, Identifiable, Sendable {
     var id: UUID { documentId }
     
@@ -15,7 +14,6 @@ struct DBDocument: Codable, Identifiable, Sendable {
     let verifiedBy: UUID?
 }
 
-/// Swift representation of the `public.loan_accounts` database table.
 struct DBLoanAccount: Codable, Identifiable, Sendable {
     var id: UUID { accountId }
     
@@ -32,7 +30,6 @@ struct DBLoanAccount: Codable, Identifiable, Sendable {
     let createdAt: Date
 }
 
-/// Swift representation of the `public.emi_schedule` database table.
 struct DBEMISchedule: Codable, Identifiable, Sendable {
     var id: UUID { emiId }
     
@@ -49,7 +46,6 @@ struct DBEMISchedule: Codable, Identifiable, Sendable {
     let createdAt: Date
 }
 
-/// Swift representation of the `public.messages` database table.
 struct DBMessage: Codable, Identifiable, Sendable, Equatable {
     var id: UUID { messageId }
     
@@ -62,7 +58,6 @@ struct DBMessage: Codable, Identifiable, Sendable, Equatable {
     let isRead: Bool
 }
 
-/// Swift representation of the assigned loan officer.
 struct AssignedLoanOfficer: Codable, Identifiable, Sendable, Equatable, Hashable {
     var id: UUID { officerId }
     

@@ -66,8 +66,6 @@ private struct MobileNumberValidator {
     }
 }
 
-// MARK: - Reusable UI Components for Wizard Form
-
 private struct WizardFormSection<Content: View>: View {
     let title: String
     @ViewBuilder let content: () -> Content
@@ -261,7 +259,6 @@ private struct FormDivider: View {
     }
 }
 
-// MARK: - Main Wizard View Overhaul
 struct BorrowerLoanWizardView: View {
     @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
@@ -275,11 +272,9 @@ struct BorrowerLoanWizardView: View {
     @State private var lastAutosavedTime: Date = Date()
     @State private var isAutosaving: Bool = false
     
-    // Step 2 & 4 Eligibility & Pre-Check Local States
     @State private var desiredAmount: Double = 500000
     @State private var loanTenureMonths: Double = 60
     
-    // Step 4 Employment & Income States
     @State private var salariedCompany: String = ""
     @State private var salariedEmpID: String = ""
     @State private var salariedDesignation: String = ""
@@ -296,7 +291,6 @@ struct BorrowerLoanWizardView: View {
     @State private var creditCardOutstanding: String = ""
     @State private var savingsInvestments: String = ""
     
-    // Step 5 Bank Details, Step 8 Nominee & References
     @State private var hasCoApplicantToggle: Bool = false
     @State private var coApplicantName: String = ""
     @State private var coApplicantRelation: String = ""
@@ -313,10 +307,9 @@ struct BorrowerLoanWizardView: View {
     @State private var bankRegisteredMobile: String = ""
     @State private var nomineeMobile: String = ""
     
-    // Step 6 & 7 Document & OCR Local States
-    @State private var uploadProgress: [String: Double] = [:] // Document name -> Progress (0 to 1)
+    @State private var uploadProgress: [String: Double] = [:]
     @State private var isUploading: [String: Bool] = [:]
-    @State private var ocrStatus: [String: String] = [:] // Document name -> OCR Status ("None", "Scanning", "Success")
+    @State private var ocrStatus: [String: String] = [:]
     @State private var uploadLifecycle: [UUID: DocumentUploadLifecycle] = [:]
     @State private var documentThumbnails: [UUID: UIImage] = [:]
     @State private var documentUploadDates: [UUID: Date] = [:]
@@ -330,7 +323,6 @@ struct BorrowerLoanWizardView: View {
     @State private var imagePickerSourceType: UIImagePickerController.SourceType = .photoLibrary
     @State private var previewImage: DocumentPreviewItem?
     
-    // Step 7 OCR Extracted Editable Data -> Repurposed for Nominee / Photo
     @State private var ocrPANNumber: String = ""
     @State private var ocrPANName: String = ""
     @State private var ocrPANFather: String = ""
@@ -341,7 +333,6 @@ struct BorrowerLoanWizardView: View {
     @State private var ocrAadhaarGender: String = ""
     @State private var ocrAadhaarAddress: String = ""
     
-    // OCR Confidence Ratings
     @State private var ocrConfidence: [String: String] = [:]
     @State private var signatureImage: UIImage?
     @State private var isSignatureEmpty = true
@@ -351,11 +342,9 @@ struct BorrowerLoanWizardView: View {
     @State private var showSignaturePhotoPicker = false
     @State private var step7PickerSourceType: UIImagePickerController.SourceType = .photoLibrary
     
-    // Step 8 Verification Alerts Overrides
     @State private var showVerificationResolutionSheet = false
     @State private var hasResolvedMismatches = false
 
-    // Step 10 Consent & Submission
     @State private var acceptTerms = false
     @State private var acceptBureau = false
     @State private var acceptDebit = false
@@ -813,8 +802,6 @@ struct BorrowerLoanWizardView: View {
         return count >= 10 && count <= 500
     }
     
-    // MARK: - Helper Methods
-    
     private func navigationTitle(for step: Int) -> String {
         switch step {
         case 1: return "Overview"
@@ -1041,7 +1028,7 @@ struct BorrowerLoanWizardView: View {
         if let selfieImage,
            let data = selfieImage.pngData() {
             if viewModel.formData.liveVerificationReference.starts(with: "http") {
-                // Already uploaded
+
             } else {
                 let draftId = viewModel.currentDraftID?.uuidString ?? UUID().uuidString
                 let path = "selfies/\(draftId).png"
@@ -1062,9 +1049,9 @@ struct BorrowerLoanWizardView: View {
         }
         if let signatureImage,
            let data = signatureImage.pngData() {
-            // Only upload if we don't already have a URL for this signature
+
             if viewModel.formData.signatureImageData.starts(with: "http") {
-                // Already uploaded — keep existing URL
+
             } else {
                 let draftId = viewModel.currentDraftID?.uuidString ?? UUID().uuidString
                 let path = "signatures/\(draftId).png"
@@ -1079,7 +1066,7 @@ struct BorrowerLoanWizardView: View {
                         }
                     } catch {
                         print("❌ [Wizard] Signature upload failed: \(error.localizedDescription). Signature will not be stored.")
-                        // Do NOT fall back to base64 — leave empty and retry on next sync
+
                     }
                 }
             }
@@ -1710,8 +1697,6 @@ struct BorrowerLoanWizardView: View {
     }
 }
 
-// MARK: - Premium UI Components
-
 private struct LoanContextChip: View {
     let product: BorrowerLoanProduct
     let amount: Double
@@ -1754,7 +1739,6 @@ private struct LoanContextChip: View {
     }
 }
 
-// MARK: - STEP 1: Overview
 private struct Step1OverviewView: View {
     let product: BorrowerLoanProduct
 
@@ -1802,7 +1786,6 @@ private struct Step1OverviewView: View {
     }
 }
 
-// MARK: - STEP 2: Eligibility Check
 private struct Step2EligibilityCheckView: View {
     @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
@@ -1987,7 +1970,6 @@ private struct Step2EligibilityCheckView: View {
     }
 }
 
-// MARK: - STEP 3: Personal Details
 private struct Step3PersonalInfoOverhaulView: View {
     @Bindable var viewModel: LoanApplicationViewModel
     
@@ -2026,7 +2008,6 @@ private struct Step3PersonalInfoOverhaulView: View {
     }
 }
 
-// MARK: - STEP 4: Employment & Income
 private struct Step4EmploymentOverhaulView: View {
     @Bindable var viewModel: LoanApplicationViewModel
     
@@ -2049,7 +2030,7 @@ private struct Step4EmploymentOverhaulView: View {
 
     var body: some View {
         VStack(spacing: LMSSpacing.lg) {
-            // Segmented selection
+
             Picker("Employment Type", selection: $viewModel.formData.employmentType) {
                 ForEach(viewModel.employmentTypes, id: \.self) { type in
                     Text(type).tag(type)
@@ -2108,7 +2089,6 @@ private struct Step4EmploymentOverhaulView: View {
     }
 }
 
-// MARK: - STEP 5: Bank Details View
 private struct Step5BankDetailsView: View {
     @Binding var bankName: String
     @Binding var accountNo: String
@@ -2130,7 +2110,6 @@ private struct Step5BankDetailsView: View {
     }
 }
 
-// MARK: - STEP 6: Document Center
 private struct Step6DocumentCenterOverhaulView: View {
     @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
@@ -2240,7 +2219,6 @@ private struct Step6DocumentCenterOverhaulView: View {
     }
 }
 
-// Upload Row Component
 private struct UploadRow: View {
     let doc: BorrowerLoanDocumentItem
     let progress: Double
@@ -2466,7 +2444,6 @@ private struct UploadRow: View {
     }
 }
 
-// MARK: - STEP 7: Signature & Selfie View
 private struct Step7SignaturePhotoView: View {
     @Binding var signatureImage: UIImage?
     @Binding var isSignatureEmpty: Bool
@@ -2941,7 +2918,6 @@ private final class LiveFaceCameraController: NSObject, ObservableObject, AVCapt
     }
 }
 
-// MARK: - STEP 8: Nominee & References View
 private struct Step8NomineeReferencesView: View {
     @Binding var nomineeName: String
     @Binding var nomineeRelation: String
@@ -2971,7 +2947,6 @@ private struct Step8NomineeReferencesView: View {
     }
 }
 
-// MARK: - STEP 9: Review Details View
 private struct Step9ReviewOverhaulView: View {
     @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
@@ -3034,7 +3009,6 @@ private struct Step9ReviewOverhaulView: View {
     }
 }
 
-// MARK: - STEP 10: Consent & Terms
 private struct Step10TermsConsentView: View {
     @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
@@ -3147,8 +3121,6 @@ private struct Step10TermsConsentView: View {
     }
 }
 
-
-// MARK: - Upload Source Selection Sheet
 private struct UploadSourceSelectionSheet: View {
     @Binding var isPresented: Bool
     @Binding var selectedSource: BorrowerDocumentUploadSource
@@ -3274,7 +3246,6 @@ private extension CGImagePropertyOrientation {
     }
 }
 
-// MARK: - Preview Support
 #Preview("Loan Wizard") {
     EmptyView()
 }

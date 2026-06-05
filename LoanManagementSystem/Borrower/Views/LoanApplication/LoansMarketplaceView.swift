@@ -1,7 +1,5 @@
 import SwiftUI
 
-// MARK: - Loans Tab (Marketplace)
-
 struct LoansMarketplaceView: View {
     @Bindable var viewModel: LoanApplicationViewModel
     let onProductDetail: (BorrowerLoanProduct) -> Void
@@ -39,8 +37,6 @@ struct LoansMarketplaceView: View {
     }
 }
 
-// MARK: - Product Card
-
 struct PremiumLoanProductCard: View {
     let product: BorrowerLoanProduct
     let onApply: () -> Void
@@ -59,7 +55,7 @@ struct PremiumLoanProductCard: View {
                 .offset(x: 22, y: 18)
 
             VStack(alignment: .leading, spacing: LMSSpacing.lg) {
-            // Header
+
             HStack(alignment: .top, spacing: LMSSpacing.md) {
                 Image(systemName: product.type.iconName)
                     .font(.system(size: 22, weight: .semibold))
@@ -79,7 +75,6 @@ struct PremiumLoanProductCard: View {
                 }
             }
 
-            // Metrics
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: LMSSpacing.sm) {
                 LoanMetricTile(title: product.type.primaryAmountLabel, value: product.maximumAmount.formattedAsCompactINR(), icon: "indianrupeesign.circle.fill")
                 LoanMetricTile(title: product.type.interestMetricLabel, value: product.interestRateRange, icon: product.type.interestMetricIcon)
@@ -87,7 +82,6 @@ struct PremiumLoanProductCard: View {
                 LoanMetricTile(title: "Special Benefit", value: product.type.specialBenefit, icon: product.type.specialBenefitIcon, valueTint: product.type.marketplaceTint)
             }
 
-            // Footer CTAs
             HStack(spacing: LMSSpacing.md) {
                 Button(action: onLearnMore) {
                     Text("Learn More")
@@ -259,8 +253,6 @@ private extension BorrowerLoanProductType {
         }
     }
 }
-
-// MARK: - Government Schemes
 
 private struct GovernmentSchemesBenefitsSection: View {
     private let schemes = GovernmentSchemeCardModel.featured
@@ -701,7 +693,6 @@ private struct LoansEmptyState: View {
     }
 }
 
-// Private Search bar
 private struct LoansSearchBar: View {
     @Binding var text: String
 

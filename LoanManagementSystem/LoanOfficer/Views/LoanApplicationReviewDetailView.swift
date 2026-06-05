@@ -14,7 +14,6 @@ struct LoanApplicationReviewDetailView: View {
     @Bindable var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) var dismiss
     
-
     @State private var selectedDocForPreview: LoanDocument? = nil
     @State private var showingActionSheetForDoc: LoanDocument? = nil
     @State private var rejectionText = ""
@@ -84,8 +83,6 @@ struct LoanApplicationReviewDetailView: View {
             selectedDocForPreview = document
         }
     }
-    
-    // MARK: - Main Content
     
     @ViewBuilder
     private func applicationContent(_ currentApp: LoanApplication) -> some View {
@@ -318,8 +315,6 @@ struct LoanApplicationReviewDetailView: View {
             : "Reviewed by loan officer."
     }
     
-    // MARK: - Application Header
-    
     private func applicationHeaderSection(_ app: LoanApplication) -> some View {
         Section {
             HStack(spacing: 14) {
@@ -346,10 +341,6 @@ struct LoanApplicationReviewDetailView: View {
         }
     }
     
-
-    
-    // MARK: - Personal Details
-    
     private func personalDetailsSection(_ app: LoanApplication) -> some View {
         Section("Personal Information") {
             VStack(spacing: 0) {
@@ -366,8 +357,6 @@ struct LoanApplicationReviewDetailView: View {
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         }
     }
-    
-    // MARK: - Loan & Employment
     
     private func loanEmploymentSection(_ app: LoanApplication) -> some View {
         Section("Loan & Employment") {
@@ -396,10 +385,6 @@ struct LoanApplicationReviewDetailView: View {
         }
     }
     
-
-    
-    // MARK: - Document Checklist
-    
     private func documentChecklistSection(_ app: LoanApplication) -> some View {
         Section("Documents (\(loanDocuments.filter { $0.status == .verified }.count)/\(loanDocuments.count) verified)") {
             if loanDocuments.isEmpty {
@@ -420,14 +405,12 @@ struct LoanApplicationReviewDetailView: View {
         }
     }
     
-
-    
     private func creditRiskSection(_ app: LoanApplication) -> some View {
         let metrics = viewModel.computeRiskMetrics(for: app)
         
         return Section {
             VStack(spacing: LMSSpacing.lg) {
-                // Header Badge
+
                 HStack {
                     HStack(spacing: 4) {
                         Image(systemName: "sparkles")
@@ -446,9 +429,8 @@ struct LoanApplicationReviewDetailView: View {
                         .clipShape(Capsule())
                 }
                 
-                // Solid Stat Cards
                 HStack(spacing: 16) {
-                    // CIBIL Box
+
                     VStack(alignment: .leading, spacing: 8) {
                         Text("CIBIL SCORE")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
@@ -465,7 +447,6 @@ struct LoanApplicationReviewDetailView: View {
                     .background(metrics.cibil >= 750 ? LMSColors.emerald : (metrics.cibil >= metrics.minCibilScore ? LMSColors.amber : LMSColors.coral))
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     
-                    // DTI Box
                     let dtiColor = metrics.dtiRatio <= 40 ? LMSColors.emerald : (metrics.dtiRatio <= metrics.maxDTI ? LMSColors.amber : LMSColors.coral)
                     VStack(alignment: .leading, spacing: 8) {
                         Text("DTI RATIO")
@@ -484,7 +465,6 @@ struct LoanApplicationReviewDetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 
-                // Financial Details
                 VStack(spacing: 12) {
                     HStack {
                         Text("Monthly Income")
@@ -537,9 +517,6 @@ struct LoanApplicationReviewDetailView: View {
         .listRowSeparator(.hidden)
     }
 
-    
-    // MARK: - Sanction Letter
-    
     @ViewBuilder
     private func sanctionLetterSection(_ app: LoanApplication) -> some View {
         if [.approved, .disbursed].contains(app.status) {
@@ -588,8 +565,6 @@ struct LoanApplicationReviewDetailView: View {
         }
     }
 
-    // MARK: - Approval
-    
     @ViewBuilder
     private func approvalSection(_ app: LoanApplication) -> some View {
         if shouldShowOfficerActions(for: app) {
@@ -647,8 +622,6 @@ struct LoanApplicationReviewDetailView: View {
         }
     }
     
-    // MARK: - Helpers
-
     private func shouldShowOfficerActions(for app: LoanApplication) -> Bool {
         switch app.status {
         case .approved, .rejected, .disbursed, .sentToManager, .finalApprovalPending:
@@ -666,13 +639,10 @@ struct LoanApplicationReviewDetailView: View {
         [.pending, .applied, .documentsPending, .documentsRejected, .underReview, .verificationCompleted].contains(app.status)
     }
     
-
     private func cibilColor(for score: Int) -> Color {
         viewModel.cibilColor(for: score)
     }
 }
-
-// MARK: - Supporting Views
 
 struct InfoCell: View {
     let label: String
@@ -1013,10 +983,6 @@ struct DocumentChecklistItemRow: View {
         .padding(.horizontal, 14)
     }
 }
-
-// MARK: - Credit Risk Supporting Views
-
-
 
 private struct OfficerSanctionShareSheet: UIViewControllerRepresentable {
     let activityItems: [Any]

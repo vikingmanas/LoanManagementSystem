@@ -50,7 +50,7 @@ struct ManagerDashboardView: View {
         .tint(LMSColors.brandNavy)
         .task {
             await viewModel.fetchDashboardData(authManager: authManager)
-            // Configure notification VM with current user ID
+
             if let userId = authManager.currentUser?.uid,
                let uuid = UUID(uuidString: userId) {
                 notificationViewModel.configure(userId: uuid)

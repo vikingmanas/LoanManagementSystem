@@ -2,9 +2,6 @@ import Foundation
 import Supabase
 import SwiftUI
 
-/// Swift representation of the `public.notifications` database table.
-/// NOTE: No CodingKeys needed — SupabaseManager's decoder uses .convertFromSnakeCase
-/// and encoder uses .convertToSnakeCase automatically.
 public struct DBNotification: Codable, Identifiable, Sendable {
     public var id: UUID { notificationId }
     
@@ -16,7 +13,6 @@ public struct DBNotification: Codable, Identifiable, Sendable {
     public var isRead: Bool
     public let createdAt: Date
     
-    /// Convert to the LMSNotification UI model used by LMSNotificationRow.
     public func toLMSNotification() -> LMSNotification {
         let icon: String
         let tint: Color
@@ -63,9 +59,6 @@ public struct DBNotification: Codable, Identifiable, Sendable {
     }
 }
 
-// MARK: - Insert-Only DTO
-
-/// Lightweight struct used only for INSERT operations.
 private struct DBNotificationInsert: Codable {
     let notificationId: UUID
     let userId: UUID
@@ -76,7 +69,6 @@ private struct DBNotificationInsert: Codable {
     let createdAt: Date
 }
 
-/// Centralized service for all notification CRUD operations against the Supabase `notifications` table.
 final class NotificationService {
     static let shared = NotificationService()
     private init() {}
@@ -85,9 +77,6 @@ final class NotificationService {
         SupabaseManager.shared.client
     }
     
-    // MARK: - Insert
-    
-    /// Creates a new notification in Supabase for the given user.
     func insertNotification(userId: UUID, title: String, message: String, notifType: String = "push") async {
         let row = DBNotificationInsert(
             notificationId: UUID(),
@@ -110,7 +99,6 @@ final class NotificationService {
         }
     }
     
-    /// Sends the same notification to multiple users at once.
     func insertNotifications(userIds: [UUID], title: String, message: String, notifType: String = "push") async {
         let rows = userIds.map { userId in
             DBNotificationInsert(
@@ -137,9 +125,6 @@ final class NotificationService {
         }
     }
     
-    // MARK: - Fetch
-    
-    /// Fetches all notifications for the given user, ordered by most recent first.
     func fetchNotifications(userId: UUID) async throws -> [DBNotification] {
         let notifications: [DBNotification] = try await client
             .from("notifications")
@@ -152,7 +137,6 @@ final class NotificationService {
         return notifications
     }
     
-    /// Subscribes to new notifications via Realtime.
     func subscribeToNotifications(forUserId userId: UUID, onInsert: @escaping (DBNotification) -> Void) async -> RealtimeChannelV2 {
         let channel = client.channel("notifications_user_\(userId.uuidString)")
         
@@ -178,7 +162,6 @@ final class NotificationService {
         return channel
     }
     
-    /// Returns the count of unread notifications for the given user.
     func unreadCount(userId: UUID) async throws -> Int {
         struct NotificationIdOnly: Codable {
             let notificationId: UUID
@@ -193,9 +176,6 @@ final class NotificationService {
         return notifications.count
     }
     
-    // MARK: - Update
-    
-    /// Marks a single notification as read.
     func markAsRead(notificationId: UUID) async throws {
         struct ReadUpdate: Codable {
             let isRead: Bool
@@ -207,7 +187,6 @@ final class NotificationService {
             .execute()
     }
     
-    /// Marks all notifications for a user as read.
     func markAllAsRead(userId: UUID) async throws {
         struct ReadUpdate: Codable {
             let isRead: Bool
@@ -220,9 +199,6 @@ final class NotificationService {
             .execute()
     }
     
-    // MARK: - Delete
-    
-    /// Deletes a single notification.
     func deleteNotification(notificationId: UUID) async throws {
         try await client
             .from("notifications")
@@ -231,10 +207,6 @@ final class NotificationService {
             .execute()
     }
     
-    // MARK: - User Lookup Helpers
-    
-    /// Fetches all user IDs with a specific role (e.g., "loan_officer", "manager").
-    /// For "manager", also matches "loan_manager" to handle role-naming inconsistencies.
     func fetchUserIds(byRole role: String) async -> [UUID] {
         struct UserIdRow: Codable {
             let id: UUID
@@ -244,7 +216,6 @@ final class NotificationService {
                 .from("users")
                 .select("id")
             
-            // Handle both "manager" and "loan_manager" role variants
             let filteredQuery: PostgrestFilterBuilder
             if role == "manager" {
                 filteredQuery = query.in("role", values: ["manager", "loan_manager"])
@@ -263,8 +234,6 @@ final class NotificationService {
         }
     }
     
-    /// Fetches the manager_id for the branch matching the given branch name.
-    /// Falls back to all managers if the branch manager is not specified.
     func fetchManagerIds(forBranchName branchName: String) async -> [UUID] {
         struct DBBranch: Codable {
             let branchId: UUID
@@ -298,8 +267,6 @@ final class NotificationService {
             print("[NotificationService] ❌ Failed to fetch manager for branch '\(branchName)': \(error)")
         }
         
-        // Fallback: notify all branch managers if branch manager is null or lookup failed
         return await fetchUserIds(byRole: "manager")
     }
 }
-

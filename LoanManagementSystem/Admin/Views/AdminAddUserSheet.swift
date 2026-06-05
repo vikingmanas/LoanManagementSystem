@@ -12,7 +12,6 @@ struct AdminAddUserSheet: View {
 
     @State private var entityType: AddEntityType = .loanOfficer
 
-    // Staff fields
     @State private var email = ""
     @State private var password = ""
     @State private var fullName = ""
@@ -22,7 +21,6 @@ struct AdminAddUserSheet: View {
     @State private var designation = ""
     @State private var region = ""
 
-    // Additional Native Fields
     @State private var dateOfBirth = Date()
     @State private var dateOfJoining = Date()
     @State private var address = ""
@@ -30,7 +28,6 @@ struct AdminAddUserSheet: View {
     @State private var employmentType = "Full-Time"
     let employmentTypes = ["Full-Time", "Part-Time", "Contract", "Intern"]
 
-    // Branch fields
     @State private var branchName = ""
     @State private var branchCode = ""
     @State private var branchRegion = ""
@@ -117,8 +114,6 @@ struct AdminAddUserSheet: View {
         }
     }
 
-    // MARK: - Branch Form Sections
-
     @ViewBuilder
     private var branchFormSections: some View {
         Section {
@@ -163,8 +158,6 @@ struct AdminAddUserSheet: View {
                 .font(LMSFont.caption.weight(.bold))
         }
     }
-
-    // MARK: - Staff Form Sections
 
     @ViewBuilder
     private var staffFormSections: some View {
@@ -233,8 +226,6 @@ struct AdminAddUserSheet: View {
                 .font(LMSFont.caption.weight(.bold))
         }
     }
-
-    // MARK: - Validation & Submission
 
     private func validateStaffForm() -> Bool {
         validationErrors.removeAll()

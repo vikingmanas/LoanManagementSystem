@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 import Foundation
 
 struct AppConfiguration {
@@ -28,8 +22,6 @@ struct AppConfiguration {
         return key.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-
-
     static var supabaseServiceRoleKey: String {
         let fallbackKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNpenNoeWNvZWRmc3lzZmRma2F2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDUzNTk0NiwiZXhwIjoyMDk2MTExOTQ2fQ.K4b94armK5EvDsxZVPAlpozNp_EhAlAsnoq6hKYQ-90"
         let key = ProcessInfo.processInfo.environment["SUPABASE_SERVICE_ROLE_KEY"]
@@ -47,4 +39,3 @@ struct AppConfiguration {
         return URL(string: urlString.trimmingCharacters(in: .whitespacesAndNewlines))!
     }
 }
-

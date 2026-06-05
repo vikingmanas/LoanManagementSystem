@@ -185,4 +185,3 @@ struct EditPersonalInfoView: View {
 #Preview {
     EditPersonalInfoView(viewModel: BorrowerProfileViewModel())
 }
-

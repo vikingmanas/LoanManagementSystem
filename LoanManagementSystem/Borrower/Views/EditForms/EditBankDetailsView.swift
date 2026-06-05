@@ -125,4 +125,3 @@ struct EditBankDetailsView: View {
 #Preview {
     EditBankDetailsView(viewModel: BorrowerProfileViewModel())
 }
-

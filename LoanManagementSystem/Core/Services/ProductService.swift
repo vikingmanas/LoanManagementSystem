@@ -1,9 +1,3 @@
-//
-//  ProductService.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 26/05/26.
-//
 
 import Foundation
 import Supabase
@@ -16,7 +10,6 @@ class ProductService {
     
     private init() {}
     
-    /// Fetches all active loan products from the Supabase 'loan_products' table.
     func fetchLoanProducts() async -> [BorrowerLoanProduct] {
         do {
             logger.info("ProductService: Fetching live loan products from Supabase...")

@@ -1,12 +1,10 @@
 import SwiftUI
 
-
 enum DashboardSpacing {
     static let screenHorizontal: CGFloat = LMSSpacing.screenHorizontal
     static let sectionVertical: CGFloat = LMSSpacing.sectionGap
     static let cardCornerRadius: CGFloat = LMSRadius.card
 }
-
 
 struct DashboardPressableStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -16,7 +14,6 @@ struct DashboardPressableStyle: ButtonStyle {
             .animation(.spring(response: 0.25, dampingFraction: 0.75), value: configuration.isPressed)
     }
 }
-
 
 struct DashboardCardModifier: ViewModifier {
     func body(content: Content) -> some View {
@@ -31,7 +28,6 @@ extension View {
     }
 }
 
-/// Standard inner card used for every dashboard section body.
 struct DashboardSectionCard<Content: View>: View {
     @ViewBuilder let content: Content
 
@@ -143,7 +139,6 @@ struct DashboardFilledButton: View {
     }
 }
 
-
 struct SectionContainer<Content: View, Trailing: View>: View {
     let title: LocalizedStringKey
     let subtitle: String?
@@ -195,7 +190,6 @@ extension SectionContainer where Trailing == EmptyView {
     }
 }
 
-
 struct LoanCard: View {
     let title: String
     let subtitle: String
@@ -237,7 +231,6 @@ struct LoanCard: View {
                         .background(.white.opacity(0.16), in: Capsule())
                 }
 
-
                 VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                     Text("Outstanding")
                         .font(LMSFont.caption)
@@ -249,11 +242,9 @@ struct LoanCard: View {
                         .contentTransition(.numericText())
                 }
 
-
                 ProgressView(value: clampedFraction)
                     .tint(accent)
                     .animation(.easeInOut(duration: 0.35), value: clampedFraction)
-
 
                 HStack(spacing: LMSSpacing.lg) {
                     VStack(alignment: .leading, spacing: 3) {
@@ -286,4 +277,3 @@ struct LoanCard: View {
         .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 6)
     }
 }
-

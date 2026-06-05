@@ -1,7 +1,5 @@
 import SwiftUI
 
-// MARK: - Scroll Header (replaces "Dashboard" large title)
-
 struct DashboardScrollHeader: View {
     let greeting: String
     let subtitle: String
@@ -21,8 +19,6 @@ struct DashboardScrollHeader: View {
         .padding(.horizontal, LMSSpacing.screenHorizontal)
     }
 }
-
-// MARK: - Profile Completion
 
 struct ProfileCompletionCardSection: View {
     let percentage: Int
@@ -97,8 +93,6 @@ struct ProfileCompletionCardSection: View {
         .padding(.horizontal, LMSSpacing.screenHorizontal)
     }
 }
-
-// MARK: - Loan Portfolio Summary
 
 struct LoanPortfolioSummarySection: View {
     @Bindable var viewModel: DashboardViewModel
@@ -192,8 +186,6 @@ struct LoanPortfolioSummaryCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
-
-// MARK: - Active Loan Accounts
 
 struct ActiveLoanAccountsSection: View {
     @Bindable var viewModel: DashboardViewModel
@@ -338,8 +330,6 @@ struct ActiveLoanAccountCard: View {
     }
 }
 
-// MARK: - Upcoming Payment
-
 struct UpcomingPaymentSection: View {
     @Bindable var viewModel: DashboardViewModel
     var onPayNow: () -> Void
@@ -419,8 +409,6 @@ struct UpcomingPaymentSection: View {
         .padding(.horizontal, LMSSpacing.screenHorizontal)
     }
 }
-
-// MARK: - Quick Actions
 
 struct DashboardQuickActionsSection: View {
     var onPayEMI: () -> Void
@@ -517,8 +505,6 @@ struct DashboardQuickActionTile: View {
         action.icon
     }
 }
-
-// MARK: - Transaction History
 
 enum DashboardTransactionFilter: String, CaseIterable, Identifiable {
     case all = "All"
@@ -1053,8 +1039,6 @@ private extension TransactionType {
         }
     }
 }
-
-// MARK: - Notifications
 
 struct DashboardNotificationsSection: View {
     let notifications: [LMSNotification]

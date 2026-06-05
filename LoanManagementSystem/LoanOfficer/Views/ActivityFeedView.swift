@@ -29,7 +29,6 @@ struct ActivityFeedView: View {
             }
             .padding(.horizontal, 16)
 
-
             VStack(spacing: 0) {
                 if viewModel.activityFeed.isEmpty {
                     ContentUnavailableView(
@@ -41,7 +40,6 @@ struct ActivityFeedView: View {
                     .background(LMSColors.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 } else {
-
 
                     List {
                         ForEach(viewModel.activityFeed.prefix(8)) { item in
@@ -71,7 +69,6 @@ struct ActivityFeedView: View {
 
                     .frame(height: CGFloat(min(viewModel.activityFeed.count, 8) * 88))
 
-
                     Button(action: {
                         HapticsManager.triggerImpact(style: .light)
                         onViewAllPressed()
@@ -96,5 +93,3 @@ struct ActivityFeedView: View {
         }
     }
 }
-
-
