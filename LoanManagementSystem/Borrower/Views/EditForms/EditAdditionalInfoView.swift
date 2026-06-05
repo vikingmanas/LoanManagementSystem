@@ -2,7 +2,7 @@ import SwiftUI
 
 struct EditAdditionalInfoView: View {
     @Environment(\.presentationMode) var presentationMode
-    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Bindable var viewModel: BorrowerProfileViewModel
 
     @State private var occupation: String
     @State private var hasExistingBankAccount: Bool

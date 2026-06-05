@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HistoryTabView: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @State private var transactionFilter: TransactionType? = nil
     @State private var selectedBankAccountId: UUID? = nil
 

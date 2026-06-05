@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LinkedBankAccountsDetailView: View {
-    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Bindable var viewModel: BorrowerProfileViewModel
 
     private var loanAccounts: [DashboardLoanAccount] {
         CentralLoanRepository.shared.applications

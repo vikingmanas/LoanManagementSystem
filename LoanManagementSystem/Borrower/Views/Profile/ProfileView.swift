@@ -6,10 +6,10 @@ enum ProfileEditSheet: Identifiable {
 }
 
 struct ProfileView: View {
-    @EnvironmentObject var appState: AppStateManager
-    @EnvironmentObject var authManager: AuthManager
-    @StateObject private var viewModel = BorrowerProfileViewModel()
-    @StateObject private var notifVM = NotificationViewModel()
+    @Environment(AppStateManager.self) var appState: AppStateManager
+    @Environment(AuthManager.self) var authManager: AuthManager
+    @State private var viewModel = BorrowerProfileViewModel()
+    @State private var notifVM = NotificationViewModel()
     @AppStorage("isDarkMode") private var isDarkMode = false
     @State private var activeSheet: ProfileEditSheet?
 
@@ -178,7 +178,7 @@ struct ProfileView: View {
 #Preview {
     NavigationStack {
         ProfileView()
-            .environmentObject(AppStateManager())
-            .environmentObject(AuthManager())
+            .environment(AppStateManager())
+            .environment(AuthManager())
     }
 }

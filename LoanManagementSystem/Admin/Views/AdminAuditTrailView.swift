@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AdminAuditTrailView: View {
-    @StateObject private var viewModel = AdminAuditViewModel()
+    @State private var viewModel = AdminAuditViewModel()
     @State private var showingExportOptions = false
     @State private var shareURL: URL?
     @State private var isShowingShareSheet = false
@@ -130,7 +130,7 @@ private struct AuditLogCard: View {
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
                         
-                        Text("\(entry.userName) • \(entry.entityId)")
+                        Text("\(entry.userName) • \(entry.userRole ?? entry.roleBadge)")
                             .font(LMSFont.caption)
                             .foregroundStyle(LMSColors.textSecondary)
                     }
@@ -160,7 +160,7 @@ private struct AuditLogCard: View {
                     
                     VStack(alignment: .leading, spacing: 8) {
                         detailRow(label: "Entity", value: "\(entry.entityType) (\(entry.entityId))")
-                        detailRow(label: "Performed By", value: entry.userName)
+                        detailRow(label: "Performed By", value: "\(entry.userName) (\(entry.userRole ?? entry.roleBadge))")
                         detailRow(label: "Timestamp", value: entry.timestamp.formatted(date: .abbreviated, time: .shortened))
                         if !entry.details.isEmpty {
                             detailRow(label: "Details", value: entry.details)

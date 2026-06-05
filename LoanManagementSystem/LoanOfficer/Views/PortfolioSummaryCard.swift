@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct PortfolioSummaryCard: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     var onViewAllPressed: () -> Void
 
     private let targetAmount: Double = 150_000_000.0

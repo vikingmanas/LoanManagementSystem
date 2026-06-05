@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: - Unified Content View (Shared Logic)
 struct UnifiedProfileEditContentView: View {
-    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Bindable var viewModel: BorrowerProfileViewModel
     
     // States
     @State private var fullName: String = ""
@@ -317,7 +317,7 @@ struct UnifiedProfileEditContentView: View {
 // MARK: - Legacy View (Modal Wrapper)
 struct UnifiedProfileEditView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Bindable var viewModel: BorrowerProfileViewModel
     
     var body: some View {
         NavigationStack {

@@ -1176,6 +1176,27 @@ final class DatabaseService {
             .execute()
             .value
     }
+    
+    // MARK: - Audit Log Operations
+    func logAuditAction(action: String, entityType: String, entityId: UUID) async throws {
+        guard let userId = client.auth.currentSession?.user.id else {
+            print("[DatabaseService] Warning: No user session found. Skipping audit log.")
+            return
+        }
+        
+        let insertData: [String: String] = [
+            "user_id": userId.uuidString,
+            "action": action,
+            "entity_type": entityType,
+            "entity_id": entityId.uuidString,
+            "ip_address": "" // Blank or fetched from client if possible
+        ]
+        
+        try await client
+            .from("audit_logs")
+            .insert(insertData)
+            .execute()
+    }
 }
 
 private extension String {

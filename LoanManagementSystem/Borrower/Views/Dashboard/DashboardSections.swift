@@ -90,7 +90,7 @@ struct ProfileCompletionCardSection: View {
                         }
                     }
 
-                    DashboardFilledButton(title: "Continue Profile Setup", action: onContinue)
+                    DashboardFilledButton(title: "Continue Verification", action: onContinue)
                 }
             }
         }
@@ -101,8 +101,7 @@ struct ProfileCompletionCardSection: View {
 // MARK: - Loan Portfolio Summary
 
 struct LoanPortfolioSummarySection: View {
-    @ObservedObject var viewModel: DashboardViewModel
-    let onTap: () -> Void
+    @Bindable var viewModel: DashboardViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
@@ -116,11 +115,7 @@ struct LoanPortfolioSummarySection: View {
                     .frame(height: 168)
                     .shimmer(active: true)
             } else {
-                Button(action: onTap) {
-                    LoanPortfolioSummaryCard(viewModel: viewModel)
-                }
-                .buttonStyle(DashboardPressableStyle())
-                .accessibilityLabel("Open all loans")
+                LoanPortfolioSummaryCard(viewModel: viewModel)
             }
         }
         .padding(.horizontal, LMSSpacing.screenHorizontal)
@@ -128,7 +123,7 @@ struct LoanPortfolioSummarySection: View {
 }
 
 struct LoanPortfolioSummaryCard: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
 
     var body: some View {
         ZStack {
@@ -194,46 +189,10 @@ struct LoanPortfolioSummaryCard: View {
     }
 }
 
-// MARK: - Portfolio Loans
-
-struct PortfolioLoansView: View {
-    @ObservedObject var viewModel: DashboardViewModel
-    let onLoanTap: (DashboardLoanAccount) -> Void
-
-    var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            LazyVStack(spacing: LMSSpacing.md) {
-                if viewModel.loanAccounts.isEmpty {
-                    ContentUnavailableView(
-                        "No Loans",
-                        systemImage: "building.columns",
-                        description: Text("Your approved loans will appear here.")
-                    )
-                    .padding(.top, LMSSpacing.xxxl)
-                } else {
-                    ForEach(viewModel.loanAccounts) { loan in
-                        ActiveLoanAccountCard(
-                            loan: loan,
-                            currentBalance: viewModel.currentAccountBalance(for: loan)
-                        ) {
-                            onLoanTap(loan)
-                        }
-                    }
-                }
-            }
-            .padding(.horizontal, LMSSpacing.screenHorizontal)
-            .padding(.vertical, LMSSpacing.lg)
-        }
-        .background(LMSColors.background)
-        .navigationTitle("All Loans")
-        .navigationBarTitleDisplayMode(.large)
-    }
-}
-
 // MARK: - Active Loan Accounts
 
 struct ActiveLoanAccountsSection: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     let onLoanTap: (DashboardLoanAccount) -> Void
     let onApplyLoan: () -> Void
 
@@ -271,7 +230,7 @@ struct ActiveLoanAccountsSection: View {
 }
 
 struct ActiveLoansCarousel: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     let loans: [DashboardLoanAccount]
     let onLoanTap: (DashboardLoanAccount) -> Void
     @State private var selectedIndex = 0
@@ -378,7 +337,7 @@ struct ActiveLoanAccountCard: View {
 // MARK: - Upcoming Payment
 
 struct UpcomingPaymentSection: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     var onPayNow: () -> Void
     var onViewAll: () -> Void
     var onSchedule: () -> Void
@@ -682,7 +641,7 @@ private struct AccountFilterSheet: View {
 }
 
 struct TransactionHistoryFullScreen: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @State private var searchText = ""
     @State private var selectedFilter: DashboardTransactionFilter = .all
     @State private var selectedSort: DashboardTransactionSort = .newest

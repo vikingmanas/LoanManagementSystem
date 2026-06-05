@@ -3,9 +3,9 @@ import SwiftUI
 // MARK: - Applications Tab
 
 struct BorrowerApplicationsTabView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
-    @EnvironmentObject private var authManager: AuthManager
-    @EnvironmentObject private var tabRouter: BorrowerTabRouter
+    @Bindable var viewModel: LoanApplicationViewModel
+    @Environment(AuthManager.self) private var authManager: AuthManager
+    @Environment(BorrowerTabRouter.self) private var tabRouter: BorrowerTabRouter
     @State private var navigationPath = NavigationPath()
 
     var body: some View {
@@ -57,7 +57,7 @@ struct BorrowerApplicationsTabView: View {
                     BorrowerLoanWizardView(viewModel: viewModel, product: product) {
                         navigationPath = NavigationPath()
                     }
-                    .environmentObject(authManager)
+                    .environment(authManager)
                 case .tracking(let application):
                     LoanApplicationTrackingScreen(
                         viewModel: viewModel,
@@ -84,7 +84,7 @@ struct BorrowerApplicationsTabView: View {
 // MARK: - Hub Content
 
 struct BorrowerApplicationsHub: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let onSelectApplication: (BorrowerLoanApplication) -> Void
     let onApplyForLoan: () -> Void
 

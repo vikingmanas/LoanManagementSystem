@@ -1,28 +1,30 @@
 
 
+import Observation
 import Foundation
 import Combine
 import SwiftUI
 import Supabase
 
 @MainActor
-class SignInViewModel: ObservableObject {
-    @Published var emailOrPhone: String = ""
-    @Published var password: String = ""
-    @Published var rememberMe: Bool = false
+@Observable
+class SignInViewModel {
+    var emailOrPhone: String = ""
+    var password: String = ""
+    var rememberMe: Bool = false
 
-    @Published var emailError: String = ""
-    @Published var passwordError: String = ""
-    @Published var otpError: String = ""
+    var emailError: String = ""
+    var passwordError: String = ""
+    var otpError: String = ""
 
-    @Published var isLoading: Bool = false
-    @Published var showSuccess: Bool = false
-    @Published var generalError: String = ""
+    var isLoading: Bool = false
+    var showSuccess: Bool = false
+    var generalError: String = ""
 
     // MARK: - OTP Step State
-    @Published var otpCode: String = ""
-    @Published var isOtpStep: Bool = false
-    @Published var otpSentMessage: String = ""
+    var otpCode: String = ""
+    var isOtpStep: Bool = false
+    var otpSentMessage: String = ""
 
     /// The cleaned email stored after credential validation, used for OTP send/verify.
     private var validatedEmail: String = ""

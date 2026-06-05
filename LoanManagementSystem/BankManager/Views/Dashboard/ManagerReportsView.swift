@@ -2,7 +2,7 @@ import SwiftUI
 
 
 struct ManagerReportsView: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @State private var showReportSheet = false
     @State private var showAuditLog = false
 
@@ -104,7 +104,7 @@ private struct ReportButton: View {
 
 
 private struct ManagerInsightCard: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     private var snapshot: BranchLoanReportSnapshot {
         BranchLoanReportSnapshot(applicants: viewModel.applicants, officers: viewModel.officers)
     }
@@ -173,7 +173,7 @@ private struct ManagerInsightCard: View {
 
 
 struct ManagerReportSheet: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
     @State private var showShareSheet = false
     @State private var shareItems: [Any] = []

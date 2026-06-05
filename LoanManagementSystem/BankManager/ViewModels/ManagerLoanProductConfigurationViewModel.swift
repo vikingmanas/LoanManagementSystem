@@ -1,15 +1,17 @@
+import Observation
 import Foundation
 import Combine
 import OSLog
 import UIKit
 
 @MainActor
-final class ManagerLoanProductConfigurationViewModel: ObservableObject {
-    @Published var products: [AdminLoanProduct] = []
-    @Published var isLoading = false
-    @Published var isSaving = false
-    @Published var errorMessage: String?
-    @Published var successMessage: String?
+@Observable
+final class ManagerLoanProductConfigurationViewModel {
+    var products: [AdminLoanProduct] = []
+    var isLoading = false
+    var isSaving = false
+    var errorMessage: String?
+    var successMessage: String?
 
     private let logger = Logger(subsystem: "galgotias.in.akash", category: "ManagerLoanProducts")
 

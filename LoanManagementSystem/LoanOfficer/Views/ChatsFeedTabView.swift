@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 struct ChatsFeedTabView: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @State private var searchText = ""
     @State private var showUnreadOnly = false
     @State private var showingCompose = false
@@ -194,7 +194,7 @@ private struct OfficerConversationRow: View {
 
 private struct OfficerMessageThreadView: View {
     let conversation: OfficerConversation
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
 
     @State private var messageText = ""
     @State private var messages: [OfficerThreadMessage]
@@ -273,9 +273,10 @@ private struct OfficerMessageThreadView: View {
         if let officerId = viewModel.officerProfile?.id {
             let unreadIncoming = dbMsgs
                 .filter { $0.receiverId == officerId && !$0.isRead }
-                .map(\.messageId)
             if !unreadIncoming.isEmpty {
-                try? await DatabaseService.shared.markMessagesRead(messageIds: unreadIncoming)
+                Task {
+                    await viewModel.markMessagesAsRead(for: appId, incomingMessages: unreadIncoming)
+                }
             }
         }
     }
@@ -286,7 +287,6 @@ private struct OfficerMessageThreadView: View {
         messageText = ""
 
         guard let app = CentralLoanRepository.shared.applications.first(where: { $0.applicationId == conversation.applicationId || $0.displayIdentifier == conversation.applicationId }) else { return }
-        let officerId = viewModel.officerProfile?.id ?? UUID()
         let borrowerId = app.borrowerId ?? app.id
         let appId = app.id
 
@@ -295,26 +295,7 @@ private struct OfficerMessageThreadView: View {
         messages.append(officerMsg)
 
         Task {
-            let dbMsg = DBMessage(
-                messageId: officerMsgId,
-                senderId: officerId,
-                receiverId: borrowerId,
-                applicationId: appId,
-                content: trimmed,
-                sentAt: Date(),
-                isRead: false
-            )
-            do {
-                try await DatabaseService.shared.sendMessage(dbMsg)
-                try? await DatabaseService.shared.createNotification(
-                    userId: borrowerId,
-                    title: "New message from your loan officer",
-                    message: trimmed
-                )
-                await viewModel.fetchDashboardData()
-            } catch {
-                print("Failed to send officer message to DB: \(error)")
-            }
+            await viewModel.sendChatMessage(to: borrowerId, for: appId, content: trimmed)
         }
     }
 }
@@ -429,7 +410,7 @@ private struct OfficerThreadMessage: Identifiable, Hashable {
 }
 
 private struct OfficerComposeMessageSheet: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var selectedApplicationId = ""
     @State private var message = ""
@@ -478,34 +459,12 @@ private struct OfficerComposeMessageSheet: View {
         let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         guard let app = activeApps.first(where: { $0.applicationId == selectedApplicationId }) else { return }
-        let officerId = viewModel.officerProfile?.id ?? UUID()
         let borrowerId = app.borrowerId
         let appId = app.id
         
-        let messageId = UUID()
-        
         Task {
-            let dbMsg = DBMessage(
-                messageId: messageId,
-                senderId: officerId,
-                receiverId: borrowerId,
-                applicationId: appId,
-                content: trimmed,
-                sentAt: Date(),
-                isRead: false
-            )
-            do {
-                try await DatabaseService.shared.sendMessage(dbMsg)
-                try? await DatabaseService.shared.createNotification(
-                    userId: borrowerId,
-                    title: "New message from your loan officer",
-                    message: trimmed
-                )
-                print("Message composed and sent successfully.")
-                await viewModel.fetchDashboardData()
-            } catch {
-                print("Failed to send composed message to DB: \(error)")
-            }
+            await viewModel.sendChatMessage(to: borrowerId, for: appId, content: trimmed)
+            print("Message composed and sent successfully.")
         }
     }
 }

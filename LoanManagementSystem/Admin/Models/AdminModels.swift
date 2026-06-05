@@ -67,6 +67,7 @@ struct AuditLogEntry: Identifiable, Codable, Hashable {
     let id: UUID
     let userId: UUID
     let userName: String
+    let userRole: String?
     let action: String
     let entityType: String
     let entityId: String

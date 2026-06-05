@@ -1,18 +1,20 @@
+import Observation
 import SwiftUI
 import Combine
 
 @MainActor
-final class ManagerDashboardViewModel: ObservableObject {
-    @Published var selectedTab: Int = 0
+@Observable
+final class ManagerDashboardViewModel {
+    var selectedTab: Int = 0
 
-    @Published var isLoading: Bool = false
-    @Published var isRefreshing: Bool = false
+    var isLoading: Bool = false
+    var isRefreshing: Bool = false
 
-    @Published var applicants: [ManagerApplicant] = []
-    @Published var officers: [ManagerOfficer] = []
-    @Published var notifications: [ManagerNotificationItem] = []
-    @Published var conversations: [ManagerChatConversation] = []
-    @Published var branchOverview: BranchOverview = BranchOverview(
+    var applicants: [ManagerApplicant] = []
+    var officers: [ManagerOfficer] = []
+    var notifications: [ManagerNotificationItem] = []
+    var conversations: [ManagerChatConversation] = []
+    var branchOverview: BranchOverview = BranchOverview(
         name: "Assigned Branch",
         code: "BR",
         region: "Regional Office",
@@ -24,21 +26,21 @@ final class ManagerDashboardViewModel: ObservableObject {
         auditRating: "Pending",
         monthlyTarget: 0
     )
-    @Published var auditEvents: [ManagerAuditEvent] = []
-    @Published var managerProfile: ManagerStaffProfile = .empty
-    @Published var lastReportPublishedAt: Date?
-    @Published var storedReports: [StoredManagerReport] = []
-    @Published var isGeneratingReports = false
+    var auditEvents: [ManagerAuditEvent] = []
+    var managerProfile: ManagerStaffProfile = .empty
+    var lastReportPublishedAt: Date?
+    var storedReports: [StoredManagerReport] = []
+    var isGeneratingReports = false
 
-    @Published var applicantSearchQuery: String = ""
-    @Published var selectedStatusFilter: ManagerApplicantStatus? = nil
-    @Published var selectedOfficerFilter: UUID? = nil
-    @Published var selectedRiskFilter: ManagerRiskLevel? = nil
-    @Published var selectedLoanTypeFilter: ManagerLoanType? = nil
-    @Published var applicantSortOrder: ApplicantSortOrder = .dateDesc
+    var applicantSearchQuery: String = ""
+    var selectedStatusFilter: ManagerApplicantStatus? = nil
+    var selectedOfficerFilter: UUID? = nil
+    var selectedRiskFilter: ManagerRiskLevel? = nil
+    var selectedLoanTypeFilter: ManagerLoanType? = nil
+    var applicantSortOrder: ApplicantSortOrder = .dateDesc
 
-    @Published var chatSearchQuery: String = ""
-    @Published var selectedChatFilter: ChatFilterMode = .all
+    var chatSearchQuery: String = ""
+    var selectedChatFilter: ChatFilterMode = .all
 
     private var cancellables = Set<AnyCancellable>()
     private var currentManagerUserId: UUID?
@@ -60,16 +62,6 @@ final class ManagerDashboardViewModel: ObservableObject {
     }
 
     init() {
-        CentralLoanRepository.shared.$applications
-            .map { apps in
-                apps.compactMap { CentralLoanRepository.shared.toManagerApplicant(from: $0) }
-            }
-            .sink { [weak self] mappedApplicants in
-                guard let self else { return }
-                self.allApplicants = mappedApplicants
-                self.filterApplicantsByManagerBranch()
-            }
-            .store(in: &cancellables)
     }
 
     func filterApplicantsByManagerBranch() {
@@ -199,6 +191,8 @@ final class ManagerDashboardViewModel: ObservableObject {
         isLoading = true
 
         await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
+        self.allApplicants = CentralLoanRepository.shared.applications.compactMap { CentralLoanRepository.shared.toManagerApplicant(from: $0) }
+        self.filterApplicantsByManagerBranch()
 
             if let authManager {
                 configureProfileFromAuth(authManager)
@@ -219,6 +213,8 @@ final class ManagerDashboardViewModel: ObservableObject {
         isRefreshing = true
 
         await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
+        self.allApplicants = CentralLoanRepository.shared.applications.compactMap { CentralLoanRepository.shared.toManagerApplicant(from: $0) }
+        self.filterApplicantsByManagerBranch()
         if currentManagerUserId != nil {
             await loadStaffContext(userId: currentManagerUserId?.uuidString)
             await loadMessageThreads()
@@ -239,6 +235,19 @@ final class ManagerDashboardViewModel: ObservableObject {
             return false
         }
         appendAudit(action: "Approved \(applicationLabel(for: id))", severity: .success)
+        
+        Task {
+            do {
+                try await DatabaseService.shared.logAuditAction(
+                    action: "Loan Approved",
+                    entityType: "LoanApplication",
+                    entityId: id
+                )
+            } catch {
+                print("Failed to log audit action for manager approval: \(error)")
+            }
+        }
+        
         appendNotification(
             title: "Loan approved and credited",
             message: "\(applicationLabel(for: id)) was approved by \(managerProfile.name). The sanctioned amount has been credited to the borrower account.",
@@ -252,6 +261,19 @@ final class ManagerDashboardViewModel: ObservableObject {
     func rejectApplicant(_ id: UUID, remarks: String) {
         CentralLoanRepository.shared.rejectApplication(id: id, remarks: remarks)
         appendAudit(action: "Rejected \(applicationLabel(for: id))", severity: .critical)
+        
+        Task {
+            do {
+                try await DatabaseService.shared.logAuditAction(
+                    action: "Loan Rejected",
+                    entityType: "LoanApplication",
+                    entityId: id
+                )
+            } catch {
+                print("Failed to log audit action for manager rejection: \(error)")
+            }
+        }
+        
         appendNotification(
             title: "Loan rejected",
             message: "\(applicationLabel(for: id)) was rejected after manager review.",

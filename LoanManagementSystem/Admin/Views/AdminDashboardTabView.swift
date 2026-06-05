@@ -1,9 +1,10 @@
 import SwiftUI
 
 struct AdminDashboardTabView: View {
-    @ObservedObject var viewModel: AdminDashboardViewModel
+    @Bindable var viewModel: AdminDashboardViewModel
+    @Binding var showingProfile: Bool
     
-    @EnvironmentObject private var authManager: AuthManager
+    @Environment(AuthManager.self) private var authManager: AuthManager
     
     let columns = [GridItem(.flexible()), GridItem(.flexible())]
 
@@ -67,8 +68,8 @@ struct AdminDashboardTabView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        AdminProfileSheet()
+                    Button {
+                        showingProfile = true
                     } label: {
                         ZStack {
                             Circle()
@@ -180,7 +181,7 @@ struct AdminDashboardTabView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(log.action)
                                     .font(LMSFont.subheadline.weight(.medium))
-                                Text("\(log.userName) • \(log.entityId)")
+                                Text("\(log.userName) • \(log.userRole ?? log.roleBadge)")
                                     .font(LMSFont.caption)
                                     .foregroundStyle(LMSColors.textSecondary)
                             }
@@ -216,16 +217,16 @@ struct AdminDashboardTabView: View {
         AdminKPI(title: "Total Disbursed",     value: "₹12.25 L", icon: "indianrupeesign.circle", trend: 14.0, themeColor: LMSColors.textPrimary)
     ]
     vm.recentAuditLogs = [
-        AuditLogEntry(id: UUID(), userId: UUID(), userName: "ADI BM", action: "Disbursed Funds",          entityType: "Loan",     entityId: "APP-862AE4", timestamp: Date(timeIntervalSinceNow: -86400), details: "", type: .loanAction),
-        AuditLogEntry(id: UUID(), userId: UUID(), userName: "User",   action: "Created Staff User",       entityType: "Staff",    entityId: "APP-7D9AC2", timestamp: Date(timeIntervalSinceNow: -86400), details: "", type: .userAction),
-        AuditLogEntry(id: UUID(), userId: UUID(), userName: "User",   action: "Rejected Document",        entityType: "Document", entityId: "APP-23EBC3", timestamp: Date(timeIntervalSinceNow: -86400), details: "", type: .documentAction),
-        AuditLogEntry(id: UUID(), userId: UUID(), userName: "User",   action: "Approved Loan Application", entityType: "Loan",    entityId: "APP-6014C9", timestamp: Date(timeIntervalSinceNow: -86400), details: "", type: .loanAction)
+        AuditLogEntry(id: UUID(), userId: UUID(), userName: "ADI BM", userRole: "Manager", action: "Disbursed Funds",          entityType: "Loan",     entityId: "APP-862AE4", timestamp: Date(timeIntervalSinceNow: -86400), details: "", type: .loanAction),
+        AuditLogEntry(id: UUID(), userId: UUID(), userName: "User",   userRole: "Admin", action: "Created Staff User",       entityType: "Staff",    entityId: "APP-7D9AC2", timestamp: Date(timeIntervalSinceNow: -86400), details: "", type: .userAction),
+        AuditLogEntry(id: UUID(), userId: UUID(), userName: "User",   userRole: "Borrower", action: "Rejected Document",        entityType: "Document", entityId: "APP-23EBC3", timestamp: Date(timeIntervalSinceNow: -86400), details: "", type: .documentAction),
+        AuditLogEntry(id: UUID(), userId: UUID(), userName: "User",   userRole: "Officer", action: "Approved Loan Application", entityType: "Loan",    entityId: "APP-6014C9", timestamp: Date(timeIntervalSinceNow: -86400), details: "", type: .loanAction)
     ]
 
     // Mock AuthManager with a display name so initials render correctly
     let auth = AuthManager()
     auth.currentUser = AuthSessionUser(uid: "preview", email: "admin@lms.com", displayName: "US Admin")
 
-    return AdminDashboardTabView(viewModel: vm)
-        .environmentObject(auth)
+    return AdminDashboardTabView(viewModel: vm, showingProfile: .constant(false))
+        .environment(auth)
 }
