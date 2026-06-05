@@ -26,7 +26,7 @@ class LoanOfficerDashboardViewModel {
     var hasError: Bool = false
     var selectedTab: Int = 0              // 0=Dashboard, 1=History
     
-    nonisolated(unsafe) private var realtimeChannel: RealtimeChannelV2?
+    @ObservationIgnored private var realtimeChannel: RealtimeChannelV2?
     private var cancellables = Set<AnyCancellable>()
     private var isFetchingDashboardData = false
     

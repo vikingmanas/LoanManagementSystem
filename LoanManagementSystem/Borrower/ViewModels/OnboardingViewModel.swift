@@ -53,11 +53,11 @@ final class OnboardingViewModel {
 
     func prepopulateFieldsIfPossible() {
         if let profile = profileStore.profile {
-            occupation = profile.occupation ?? ""
+            occupation = profile.occupation
             employmentType = profile.employment.employmentType
             companyName = profile.employment.companyName
             yearsOfExperience = "\(profile.employment.workExperienceYears)"
-            industry = profile.industry ?? ""
+            industry = profile.industry
             monthlyIncome = profile.income.monthlyIncome > 0 ? String(format: "%.0f", profile.income.monthlyIncome) : ""
             annualIncome = profile.income.annualIncome > 0 ? String(format: "%.0f", profile.income.annualIncome) : ""
             gstNumber = profile.gstNumber ?? ""

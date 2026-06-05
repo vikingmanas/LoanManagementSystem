@@ -6,97 +6,91 @@ struct BorrowerForgotPasswordView: View {
     @State private var viewModel = ForgotPasswordViewModel()
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.AppTheme.background.ignoresSafeArea()
+        ZStack {
+            Color.AppTheme.background.ignoresSafeArea()
 
-                VStack(alignment: .leading, spacing: LMSSpacing.xxl) {
-                    
-                    // Title Header Section
-                    VStack(alignment: .leading, spacing: LMSSpacing.sm) {
-                        Text(headerTitle)
-                            .font(LMSFont.largeTitle)
-                            .foregroundStyle(Color.AppTheme.textPrimary)
+            VStack(alignment: .leading, spacing: LMSSpacing.xxl) {
+                
+                // Title Header Section
+                VStack(alignment: .leading, spacing: LMSSpacing.sm) {
+                    Text(headerTitle)
+                        .font(LMSFont.largeTitle)
+                        .foregroundStyle(Color.AppTheme.textPrimary)
 
-                        Text(headerSubtitle)
-                            .font(LMSFont.subheadline)
-                            .foregroundStyle(Color.AppTheme.textSecondary)
-                    }
-                    .padding(.top, 20)
-
-                    // Error Message Banner
-                    if !viewModel.errorMessage.isEmpty {
-                        HStack(spacing: LMSSpacing.xs) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                            Text(viewModel.errorMessage)
-                                .font(LMSFont.caption)
-                            Spacer()
-                        }
-                        .padding()
-                        .background(Color.AppTheme.error.opacity(0.1))
-                        .foregroundStyle(Color.AppTheme.error)
-                        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                    } 
-                    
-                    // Success Message Banner
-                    if viewModel.showSuccessMessage {
-                        HStack(spacing: LMSSpacing.xs) {
-                            Image(systemName: "checkmark.seal.fill")
-                            Text("Password updated successfully! Please log in with your new password.")
-                                .font(LMSFont.caption)
-                            Spacer()
-                        }
-                        .padding()
-                        .background(Color.AppTheme.success.opacity(0.1))
-                        .foregroundStyle(Color.AppTheme.success)
-                        .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                    }
-
-                    // Content based on Current Step
-                    switch viewModel.currentStep {
-                    case .email:
-                        emailStepView
-                    case .otp:
-                        otpStepView
-                    case .resetPassword:
-                        resetPasswordStepView
-                    }
-
-                    Spacer()
-
-                    // Action Button
-                    PrimaryButton(
-                        title: buttonTitle,
-                        isLoading: viewModel.isLoading,
-                        isDisabled: isButtonDisabled || viewModel.showSuccessMessage,
-                        action: {
-                            Task {
-                                await handleButtonAction()
-                            }
-                        }
-                    )
-                    .padding(.bottom, 20)
+                    Text(headerSubtitle)
+                        .font(LMSFont.subheadline)
+                        .foregroundStyle(Color.AppTheme.textSecondary)
                 }
-                .padding(.horizontal, 24)
+                .padding(.top, 20)
+
+                // Error Message Banner
+                if !viewModel.errorMessage.isEmpty {
+                    HStack(spacing: LMSSpacing.xs) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                        Text(viewModel.errorMessage)
+                            .font(LMSFont.caption)
+                        Spacer()
+                    }
+                    .padding()
+                    .background(Color.AppTheme.error.opacity(0.1))
+                    .foregroundStyle(Color.AppTheme.error)
+                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                } 
+                
+                // Success Message Banner
+                if viewModel.showSuccessMessage {
+                    HStack(spacing: LMSSpacing.xs) {
+                        Image(systemName: "checkmark.seal.fill")
+                        Text("Password updated successfully! Please log in with your new password.")
+                            .font(LMSFont.caption)
+                        Spacer()
+                    }
+                    .padding()
+                    .background(Color.AppTheme.success.opacity(0.1))
+                    .foregroundStyle(Color.AppTheme.success)
+                    .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
+                // Content based on Current Step
+                switch viewModel.currentStep {
+                case .email:
+                    emailStepView
+                case .otp:
+                    otpStepView
+                case .resetPassword:
+                    resetPasswordStepView
+                }
+
+                Spacer()
+
+                // Action Button
+                PrimaryButton(
+                    title: buttonTitle,
+                    isLoading: viewModel.isLoading,
+                    isDisabled: isButtonDisabled || viewModel.showSuccessMessage,
+                    action: {
+                        Task {
+                            await handleButtonAction()
+                        }
+                    }
+                )
+                .padding(.bottom, 20)
             }
-            .navigationBarBackButtonHidden(true)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
-                        handleBackButton()
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                                .fontWeight(.bold)
-                            Text(backButtonText)
-                                .font(LMSFont.body)
-                        }
+            .padding(.horizontal, 24)
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    handleBackButton()
+                }) {
+                    Image(systemName: "chevron.left")
+                        .font(.body.weight(.bold))
                         .foregroundStyle(Color.AppTheme.primary)
-                    }
-                    .disabled(viewModel.isLoading || viewModel.showSuccessMessage)
                 }
+                .disabled(viewModel.isLoading || viewModel.showSuccessMessage)
             }
         }
     }
@@ -205,15 +199,6 @@ struct BorrowerForgotPasswordView: View {
             return "Verify Code"
         case .resetPassword:
             return "Reset Password"
-        }
-    }
-
-    private var backButtonText: String {
-        switch viewModel.currentStep {
-        case .email:
-            return "Back"
-        default:
-            return "Cancel"
         }
     }
 

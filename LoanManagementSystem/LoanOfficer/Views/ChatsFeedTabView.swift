@@ -287,7 +287,6 @@ private struct OfficerMessageThreadView: View {
         messageText = ""
 
         guard let app = CentralLoanRepository.shared.applications.first(where: { $0.applicationId == conversation.applicationId || $0.displayIdentifier == conversation.applicationId }) else { return }
-        let officerId = viewModel.officerProfile?.id ?? UUID()
         let borrowerId = app.borrowerId ?? app.id
         let appId = app.id
 
@@ -460,7 +459,6 @@ private struct OfficerComposeMessageSheet: View {
         let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         guard let app = activeApps.first(where: { $0.applicationId == selectedApplicationId }) else { return }
-        let officerId = viewModel.officerProfile?.id ?? UUID()
         let borrowerId = app.borrowerId
         let appId = app.id
         
