@@ -2,42 +2,45 @@ import SwiftUI
 
 struct NotificationsDetailView: View {
     var showSettings: Bool = true
+    var showNotifications: Bool = true
     @State private var loanUpdates = true
     @State private var paymentReminders = true
     @State private var securityAlerts = true
     @State private var promoOffers = false
-    @ObservedObject var notificationViewModel: NotificationViewModel
+    @Bindable var notificationViewModel: NotificationViewModel
 
     var body: some View {
         Form {
-            Section {
-                if notificationViewModel.notifications.isEmpty {
-                    ContentUnavailableView(
-                        "No Messages",
-                        systemImage: "bell.slash",
-                        description: Text("Loan approval and payment updates will appear here.")
-                    )
-                } else {
-                    ForEach(notificationViewModel.lmsNotifications) { notification in
-                        LMSNotificationRow(notification: notification)
-                            .onTapGesture {
+            if showNotifications {
+                Section {
+                    if notificationViewModel.notifications.isEmpty {
+                        ContentUnavailableView(
+                            "No Messages",
+                            systemImage: "bell.slash",
+                            description: Text("Loan approval and payment updates will appear here.")
+                        )
+                    } else {
+                        ForEach(notificationViewModel.lmsNotifications) { notification in
+                            LMSNotificationRow(notification: notification)
+                                .onTapGesture {
+                                    withAnimation {
+                                        notificationViewModel.markRead(id: notification.id)
+                                    }
+                                }
+                        }
+                    }
+                } header: {
+                    HStack {
+                        Text("Messages")
+                        Spacer()
+                        if notificationViewModel.unreadCount > 0 {
+                            Button("Mark All Read") {
                                 withAnimation {
-                                    notificationViewModel.markRead(id: notification.id)
+                                    notificationViewModel.markAllRead()
                                 }
                             }
-                    }
-                }
-            } header: {
-                HStack {
-                    Text("Messages")
-                    Spacer()
-                    if notificationViewModel.unreadCount > 0 {
-                        Button("Mark All Read") {
-                            withAnimation {
-                                notificationViewModel.markAllRead()
-                            }
+                            .font(.caption)
                         }
-                        .font(.caption)
                     }
                 }
             }

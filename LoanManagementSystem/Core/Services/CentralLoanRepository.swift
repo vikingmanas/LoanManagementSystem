@@ -1,3 +1,4 @@
+import Observation
 import Foundation
 import Combine
 import SwiftUI
@@ -45,13 +46,15 @@ struct ManagerOfficerAssignment {
     static let unassignedOfficerId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
 }
 
-final class CentralLoanRepository: ObservableObject {
+@MainActor
+@Observable
+final class CentralLoanRepository {
     static let shared = CentralLoanRepository()
     
-    @Published var applications: [BorrowerLoanApplication] = []
-    @Published var disbursementEvents: [LoanDisbursementEvent] = []
-    @Published var borrowerNotifications: [LMSNotification] = []
-    @Published var globalRules = GlobalLoanRules(minCibilScore: 700, maxDTI: 50.0, maxLTV: 80.0)
+    var applications: [BorrowerLoanApplication] = []
+    var disbursementEvents: [LoanDisbursementEvent] = []
+    var borrowerNotifications: [LMSNotification] = []
+    var globalRules = GlobalLoanRules(minCibilScore: 700, maxDTI: 50.0, maxLTV: 80.0)
 
     private var officerRecordIdByUserId: [UUID: UUID] = [:]
     private var officerUserIdByRecordId: [UUID: UUID] = [:]
@@ -138,6 +141,7 @@ final class CentralLoanRepository: ObservableObject {
 
     func isVisibleToOfficer(_ app: BorrowerLoanApplication, userId: UUID) -> Bool {
         guard app.currentStage != .draft else { return false }
+        if isLoanUnassigned(app) { return true }
         // Officer can only see applications explicitly assigned to them
         return resolvedOfficerUserId(for: app) == userId
     }
@@ -354,23 +358,25 @@ final class CentralLoanRepository: ObservableObject {
             let products = await ProductService.shared.fetchLoanProducts()
             let dbApps = try await ApplicationService.shared.fetchApplications(borrowerId: borrowerId)
             
+            // Batch-fetch all documents in a single query instead of N+1 per application
+            let allAppIds = dbApps.map(\.applicationId)
+            let docsByAppId: [UUID: [DBDocument]]
+            do {
+                docsByAppId = try await DatabaseService.shared.fetchDocumentsBatch(applicationIds: allAppIds)
+                print("[CentralLoanRepository] Borrower batch-fetched documents for \(allAppIds.count) applications in 1 query")
+            } catch {
+                print("❌ [CentralLoanRepository] Borrower batch document fetch failed: \(error)")
+                docsByAppId = [:]
+            }
+
             var mappedApps: [BorrowerLoanApplication] = []
             for dbApp in dbApps {
                 let product = products.first(where: { $0.id == dbApp.productId })
                     ?? BorrowerLoanProduct.sampleProducts.first(where: { $0.id == dbApp.productId })
                     ?? BorrowerLoanProduct.sampleProducts[0]
                 
-                var docs: [BorrowerLoanDocumentItem] = []
-                do {
-                    let dbDocs = try await DatabaseService.shared.fetchDocuments(applicationId: dbApp.applicationId)
-                    print("[CentralLoanRepository] Borrower fetch: \(dbDocs.count) documents for app \(dbApp.applicationId)")
-                    for dbDoc in dbDocs {
-                        print("[CentralLoanRepository]   → doc_type=\(dbDoc.docType), file_url=\(dbDoc.fileUrl.isEmpty ? "EMPTY" : dbDoc.fileUrl.prefix(80).description), status=\(dbDoc.status)")
-                    }
-                    docs = dbDocs.map { self.mapToDocumentItem(from: $0) }
-                } catch {
-                    print("❌ [CentralLoanRepository] Borrower fetch docs error for app \(dbApp.applicationId): \(error)")
-                }
+                let dbDocs = docsByAppId[dbApp.applicationId] ?? []
+                let docs = dbDocs.map { self.mapToDocumentItem(from: $0) }
                 
                 let app = dbApp.toBorrowerApplication(product: product, documents: docs)
                 let enrichedApp = await enrichAssignedOfficerIfNeeded(app)
@@ -430,23 +436,25 @@ final class CentralLoanRepository: ObservableObject {
             let products = await ProductService.shared.fetchLoanProducts()
             let dbApps = try await ApplicationService.shared.fetchAllSubmittedApplications()
             
+            // Batch-fetch all documents in a single query instead of N+1 per application
+            let allAppIds = dbApps.map(\.applicationId)
+            let docsByAppId: [UUID: [DBDocument]]
+            do {
+                docsByAppId = try await DatabaseService.shared.fetchDocumentsBatch(applicationIds: allAppIds)
+                print("[CentralLoanRepository] Batch-fetched documents for \(allAppIds.count) applications in 1 query")
+            } catch {
+                print("❌ [CentralLoanRepository] Batch document fetch failed: \(error)")
+                docsByAppId = [:]
+            }
+
             var mappedApps: [BorrowerLoanApplication] = []
             for dbApp in dbApps {
                 let product = products.first(where: { $0.id == dbApp.productId })
                     ?? BorrowerLoanProduct.sampleProducts.first(where: { $0.id == dbApp.productId })
                     ?? BorrowerLoanProduct.sampleProducts[0]
                 
-                var docs: [BorrowerLoanDocumentItem] = []
-                do {
-                    let dbDocs = try await DatabaseService.shared.fetchDocuments(applicationId: dbApp.applicationId)
-                    print("[CentralLoanRepository] Fetched \(dbDocs.count) documents for application \(dbApp.applicationId)")
-                    for dbDoc in dbDocs {
-                        print("[CentralLoanRepository]   → doc_type=\(dbDoc.docType), file_url=\(dbDoc.fileUrl.isEmpty ? "EMPTY" : dbDoc.fileUrl.prefix(80).description), status=\(dbDoc.status)")
-                    }
-                    docs = dbDocs.map { self.mapToDocumentItem(from: $0) }
-                } catch {
-                    print("❌ [CentralLoanRepository] Failed to fetch documents for app \(dbApp.applicationId): \(error)")
-                }
+                let dbDocs = docsByAppId[dbApp.applicationId] ?? []
+                let docs = dbDocs.map { self.mapToDocumentItem(from: $0) }
                 
                 var app = dbApp.toBorrowerApplication(product: product, documents: docs)
                 app = normalizeOfficerAssignment(app)
@@ -561,7 +569,52 @@ final class CentralLoanRepository: ObservableObject {
         }
         Task {
             do {
-                try await ApplicationService.shared.upsertApplication(dbApp)
+                var finalDbApp = dbApp
+                
+                // MARK: — Signature: NEVER store base64 in Supabase. Upload to Storage or clear it.
+                if finalDbApp.formData.signatureImageData.count > 1000,
+                   !finalDbApp.formData.signatureImageData.starts(with: "http") {
+                    var updatedFormData = finalDbApp.formData
+                    
+                    if let data = Data(base64Encoded: finalDbApp.formData.signatureImageData) {
+                        let path = "signatures/\(resolvedUUID.uuidString)_\(finalDbApp.applicationId.uuidString).png"
+                        if let publicUrl = try? await StorageService.shared.uploadDocument(data: data, bucket: "documents", path: path, contentType: "image/png") {
+                            updatedFormData.signatureImageData = publicUrl.absoluteString
+                            print("✅ [CentralLoanRepository] Signature uploaded to Storage: \(publicUrl.absoluteString)")
+                            
+                            Task { @MainActor in
+                                if let idx = CentralLoanRepository.shared.applications.firstIndex(where: { $0.id == app.id }) {
+                                    CentralLoanRepository.shared.applications[idx].formData.signatureImageData = publicUrl.absoluteString
+                                    CentralLoanRepository.shared.persistState()
+                                }
+                            }
+                        } else {
+                            // Upload failed — clear the base64 completely. NEVER let it reach the DB.
+                            updatedFormData.signatureImageData = ""
+                            print("❌ [CentralLoanRepository] Signature upload failed. Cleared base64 — it will NOT be stored in DB.")
+                        }
+                    } else {
+                        // Invalid base64 data — clear it
+                        updatedFormData.signatureImageData = ""
+                    }
+                    
+                    finalDbApp = DBLoanApplication(
+                        applicationId: finalDbApp.applicationId,
+                        borrowerId: finalDbApp.borrowerId,
+                        officerId: finalDbApp.officerId,
+                        productId: finalDbApp.productId,
+                        amountRequested: finalDbApp.amountRequested,
+                        tenureMonths: finalDbApp.tenureMonths,
+                        purpose: finalDbApp.purpose,
+                        status: finalDbApp.status,
+                        formData: updatedFormData,
+                        stageHistory: finalDbApp.stageHistory,
+                        submittedAt: finalDbApp.submittedAt,
+                        updatedAt: finalDbApp.updatedAt
+                    )
+                }
+                
+                try await ApplicationService.shared.upsertApplication(finalDbApp)
                 print("[CentralLoanRepository] Successfully synced application \(app.displayIdentifier) to Supabase.")
                 
                 // Sync all application documents to Supabase DB to track verification updates
@@ -622,6 +675,7 @@ final class CentralLoanRepository: ObservableObject {
     
     // MARK: - State Transitions
     
+    @discardableResult
     func updateDocumentStatus(
         applicationId: String,
         docId: UUID,
@@ -629,8 +683,8 @@ final class CentralLoanRepository: ObservableObject {
         reason: String?,
         officerUserId: UUID? = nil,
         officerName: String? = nil
-    ) {
-        guard let index = applications.firstIndex(where: { $0.applicationId == applicationId }) else { return }
+    ) -> Task<Bool, Never>? {
+        guard let index = applications.firstIndex(where: { $0.applicationId == applicationId }) else { return nil }
         var app = applications[index]
 
         if let officerUserId, let officerName, isLoanUnassigned(app) || resolvedOfficerUserId(for: app) == officerUserId {
@@ -691,12 +745,13 @@ final class CentralLoanRepository: ObservableObject {
                 verifiedBy: verifierUUID
             )
             
-            Task {
+            let syncTask = Task {
                 do {
                     try await DatabaseService.shared.upsertDocument(dbDoc)
                     print("[CentralLoanRepository] Synced document status review update (\(statusString)) to Supabase DB.")
                 } catch {
                     print("[CentralLoanRepository] Failed to sync reviewed document to Supabase: \(error.localizedDescription)")
+                    return false
                 }
                 
                 // MARK: Notification — Document Rejected
@@ -719,10 +774,15 @@ final class CentralLoanRepository: ObservableObject {
                         message: "All documents for application \(appNumber) have been verified successfully."
                     )
                 }
+
+                return true
             }
             
             syncApplicationToSupabase(app)
+            return syncTask
         }
+
+        return nil
     }
     
     func sendForFinalApproval(applicationId: String, officerName: String = "Officer", officerId: UUID? = nil) {
@@ -1251,12 +1311,17 @@ final class CentralLoanRepository: ObservableObject {
     }
     
     func toManagerApplicant(from app: BorrowerLoanApplication) -> ManagerApplicant? {
-        // Manager only sees items that are sent for approval or higher
+        let sentToManagerDate = app.stageHistory.last(where: { $0.stage == .bankManagerReview })?.timestamp
+        let sentBackDate = app.stageHistory.last(where: { $0.stage == .underReview && $0.note.contains("Returned by Manager") })?.timestamp
+        let isNeedsClarification = sentBackDate != nil && sentToManagerDate != nil && sentBackDate! > sentToManagerDate! && app.currentStage == .underReview
+
+        // Manager only sees items that are sent for approval or higher, OR sent back by manager
         guard app.currentStage == .bankManagerReview
             || app.currentStage == .approved
             || app.currentStage == .disbursed
             || app.currentStage == .rejected
-            || app.currentStage == .escalated else {
+            || app.currentStage == .escalated
+            || isNeedsClarification else {
             return nil
         }
         
@@ -1271,13 +1336,17 @@ final class CentralLoanRepository: ObservableObject {
         }
         
         let status: ManagerApplicantStatus
-        switch app.currentStage {
-        case .bankManagerReview: status = .sentToManager
-        case .approved: status = .approved
-        case .rejected: status = .rejected
-        case .disbursed: status = .disbursed
-        case .escalated: status = .escalated
-        default: status = .sentToManager
+        if isNeedsClarification {
+            status = .needsClarification
+        } else {
+            switch app.currentStage {
+            case .bankManagerReview: status = .sentToManager
+            case .approved: status = .approved
+            case .rejected: status = .rejected
+            case .disbursed: status = .disbursed
+            case .escalated: status = .escalated
+            default: status = .sentToManager
+            }
         }
         
         let initials = app.formData.fullName.components(separatedBy: " ").compactMap { $0.first }.map { String($0) }.joined().uppercased()
@@ -1285,6 +1354,15 @@ final class CentralLoanRepository: ObservableObject {
         let officerUserId = resolvedOfficerUserId(for: app)
         let assignedOfficerName = resolvedOfficerName(for: app)
         let assignedOfficerId = officerUserId ?? ManagerOfficerAssignment.unassignedOfficerId
+        
+        let resolvedBranchName: String
+        if let officerId = officerUserId, let officerBranch = officerBranchNameByUserId[officerId] {
+            resolvedBranchName = officerBranch
+        } else {
+            resolvedBranchName = app.formData.preferredBranch
+        }
+
+        let advancedRisk = AdvancedRiskEngine.assessRisk(for: app)
 
         return ManagerApplicant(
             id: app.id,
@@ -1295,7 +1373,7 @@ final class CentralLoanRepository: ObservableObject {
             requestedAmount: app.formData.requestedAmountValue,
             cibilScore: app.formData.creditScoreValue > 0 ? app.formData.creditScoreValue : 750,
             status: status,
-            riskLevel: app.formData.creditScoreValue >= 750 ? .low : (app.formData.creditScoreValue >= self.globalRules.minCibilScore ? .medium : .high),
+            riskLevel: advancedRisk.riskLevel,
             assignedOfficer: assignedOfficerName,
             assignedOfficerId: assignedOfficerId,
             submissionDate: app.submittedAt ?? Date(),
@@ -1304,9 +1382,11 @@ final class CentralLoanRepository: ObservableObject {
             managerRemarks: app.stageHistory.last(where: { $0.stage == .approved })?.note ?? "",
             verificationProgress: app.documents.isEmpty ? 0 : Double(app.documents.filter { $0.status == .verified }.count) / Double(app.documents.count),
             tenure: app.formData.preferredTenureMonths,
-            interestRate: 10.5,
-            branchName: app.formData.preferredBranch,
-            escalatedAt: app.stageHistory.last(where: { $0.stage == .escalated })?.timestamp
+            interestRate: app.product.baseInterestRate > 0 ? app.product.baseInterestRate : 10.5,
+            branchName: resolvedBranchName,
+            escalatedAt: app.stageHistory.last(where: { $0.stage == .escalated })?.timestamp,
+            riskFactors: advancedRisk.factors,
+            compositeRiskScore: advancedRisk.compositeScore
         )
     }
     

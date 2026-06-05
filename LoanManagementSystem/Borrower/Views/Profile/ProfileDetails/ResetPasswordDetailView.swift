@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ResetPasswordDetailView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var authManager: AuthManager
+    @Environment(AuthManager.self) var authManager: AuthManager
     @State private var currentPassword = ""
     @State private var newPassword = ""
     @State private var confirmPassword = ""
@@ -103,6 +103,6 @@ struct ResetPasswordDetailView: View {
 #Preview {
     NavigationStack {
         ResetPasswordDetailView()
-            .environmentObject(AuthManager())
+            .environment(AuthManager())
     }
 }

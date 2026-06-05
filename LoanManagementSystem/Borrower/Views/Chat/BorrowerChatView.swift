@@ -11,9 +11,8 @@ import Combine
 // MARK: - Conversations List (Tab Root)
 
 struct BorrowerChatView: View {
-    @StateObject private var viewModel = BorrowerChatViewModel()
+    @State private var viewModel = BorrowerChatViewModel()
     @State private var searchText = ""
-    private let refreshTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     private var filteredConversations: [BorrowerConversation] {
         if searchText.isEmpty {
@@ -43,11 +42,7 @@ struct BorrowerChatView: View {
             }
             .task {
                 await viewModel.fetchConversations()
-            }
-            .onReceive(refreshTimer) { _ in
-                Task {
-                    await viewModel.fetchConversations()
-                }
+                await viewModel.setupRealtime()
             }
         }
     }
@@ -113,17 +108,22 @@ private struct BorrowerConversationRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            // Unread dot
-            Circle()
-                .fill(conversation.unreadCount > 0 ? LMSColors.actionBlue : Color.clear)
-                .frame(width: 10, height: 10)
+            ZStack(alignment: .topTrailing) {
+                BorrowerChatAvatar(
+                    name: "Loan Officer",
+                    icon: "person.badge.shield.checkmark.fill",
+                    tint: LMSColors.brandNavy
+                )
 
-            // Avatar
-            BorrowerChatAvatar(
-                name: "Loan Officer",
-                icon: "person.badge.shield.checkmark.fill",
-                tint: LMSColors.brandNavy
-            )
+                if conversation.unreadCount > 0 {
+                    Circle()
+                        .fill(.red)
+                        .frame(width: 12, height: 12)
+                        .overlay(Circle().stroke(LMSColors.surface, lineWidth: 2))
+                        .offset(x: 1, y: -1)
+                        .accessibilityHidden(true)
+                }
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .top) {
@@ -177,12 +177,11 @@ private struct BorrowerConversationRow: View {
 
 private struct BorrowerMessageThreadView: View {
     let conversation: BorrowerConversation
-    @ObservedObject var viewModel: BorrowerChatViewModel
+    @Bindable var viewModel: BorrowerChatViewModel
 
     @State private var messageText = ""
     @State private var messages: [DBMessage] = []
     @FocusState private var isComposerFocused: Bool
-    private let refreshTimer = Timer.publish(every: 4, on: .main, in: .common).autoconnect()
 
     /// The officer's user ID for this conversation (derived from message participants).
     private var officerUserId: UUID? {
@@ -242,12 +241,13 @@ private struct BorrowerMessageThreadView: View {
                 await viewModel.markMessagesAsRead(messages: messages)
             }
         }
-        .onReceive(refreshTimer) { _ in
-            Task {
-                let freshMsgs = await viewModel.fetchMessagesForThread(applicationId: conversation.applicationId)
-                if freshMsgs != messages {
-                    messages = freshMsgs
-                    await viewModel.markMessagesAsRead(messages: messages)
+        .onChange(of: viewModel.conversations) { _, newConvos in
+            if let updated = newConvos.first(where: { $0.applicationId == conversation.applicationId }) {
+                if updated.messages.count != messages.count {
+                    messages = updated.messages
+                    Task {
+                        await viewModel.markMessagesAsRead(messages: messages)
+                    }
                 }
             }
         }
@@ -395,5 +395,5 @@ private struct BorrowerChatAvatar: View {
 
 #Preview {
     BorrowerChatView()
-        .environmentObject(AuthManager())
+        .environment(AuthManager())
 }

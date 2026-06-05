@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AdminTemplatesTabView: View {
-    @StateObject private var viewModel = AdminTemplatesViewModel()
+    @State private var viewModel = AdminTemplatesViewModel()
     @State private var showingEditSheet = false
     @State private var selectedTemplate: MessageTemplate? = nil
     
@@ -70,7 +70,7 @@ struct AdminTemplatesTabView: View {
                     }
                 }
             }
-            .sheet(isPresented: Binding(
+            .accessibleSheet(isPresented: Binding(
                 get: { showingEditSheet || selectedTemplate != nil },
                 set: { isPresented in
                     if !isPresented {

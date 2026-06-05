@@ -23,7 +23,7 @@ public enum DashboardRoute: Hashable {
 
 // MARK: - Native Status Banner Section
 struct StatusBannerSection: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @Binding var navigationPath: [DashboardRoute]
 
     var body: some View {
@@ -170,12 +170,12 @@ struct QuickActionButton: View {
 // MARK: - Dashboard View
 
 public struct DashboardView: View {
-    @EnvironmentObject var appState: AppStateManager
-    @EnvironmentObject var authManager: AuthManager
-    @EnvironmentObject var tabRouter: BorrowerTabRouter
-    @ObservedObject var viewModel: DashboardViewModel
+    @Environment(AppStateManager.self) var appState: AppStateManager
+    @Environment(AuthManager.self) var authManager: AuthManager
+    @Environment(BorrowerTabRouter.self) var tabRouter: BorrowerTabRouter
+    @Bindable var viewModel: DashboardViewModel
     
-    @StateObject private var profileViewModel = BorrowerProfileViewModel()
+    @State private var profileViewModel = BorrowerProfileViewModel()
     @State private var navigationPath = [DashboardRoute]()
     @AppStorage("dashboard.dismissedProfileCompletionPercentage") private var dismissedProfileCompletionPercentage = -1
 
@@ -208,12 +208,10 @@ public struct DashboardView: View {
                     LoanPortfolioSummarySection(viewModel: viewModel)
 
                     DashboardQuickActionsSection(
-                        onApplyLoan: { tabRouter.select(.loans) },
                         onPayEMI: { navigationPath.append(.payEMI) },
                         onStatement: { navigationPath.append(.statement) },
                         onSupport: { navigationPath.append(.support) },
                         onCalculator: { navigationPath.append(.emiCalculator) },
-                        onForeclosure: { navigationPath.append(.foreclosure) },
                         onTopUp: { navigationPath.append(.topUp) }
                     )
 
@@ -271,14 +269,14 @@ public struct DashboardView: View {
                     SchemeDetailsView(scheme: scheme)
                 case .profile:
                     ProfileView()
-                        .environmentObject(authManager)
-                        .environmentObject(appState)
+                        .environment(authManager)
+                        .environment(appState)
                 case .linkedBankAccounts:
                     LinkedBankAccountsDetailView(viewModel: profileViewModel)
                 case .profileInfo:
                     ProfileInfoDetailView(viewModel: profileViewModel)
                 case .notifications:
-                    NotificationsDetailView(notificationViewModel: viewModel.notificationViewModel)
+                    NotificationsDetailView(showSettings: false, showNotifications: true, notificationViewModel: viewModel.notificationViewModel)
                 case .payEMI:
                     PayEMIWorkflowView(viewModel: viewModel)
                 case .repaymentSchedule(let loan):
@@ -299,16 +297,15 @@ public struct DashboardView: View {
     }
 
     private var dashboardToolbarActions: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 12) {
             Button {
                 navigationPath.append(.notifications)
             } label: {
                 Image(systemName: viewModel.dashboardNotifications.contains(where: \.isUnread)
                       ? "bell.badge.fill" : "bell")
                     .symbolRenderingMode(.hierarchical)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(LMSColors.brandNavy)
-                    .frame(width: 44, height: 44)
             }
             .accessibilityLabel("Notifications")
 
@@ -321,14 +318,9 @@ public struct DashboardView: View {
                         authManager: authManager
                     )
                 )
-                .frame(width: 44, height: 44)
             }
             .accessibilityLabel("Profile")
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(.regularMaterial, in: Capsule())
-        .frame(width: 104, height: 52)
     }
 }
 
@@ -371,7 +363,7 @@ private struct RepaymentScheduleItem: Identifiable, Hashable {
 }
 
 private struct RepaymentScheduleView: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @State private var selectedLoanID: UUID?
 
     init(viewModel: DashboardViewModel, initialLoan: DashboardLoanAccount?) {
@@ -662,7 +654,7 @@ private struct RepaymentScheduleRow: View {
 
 // MARK: - Section 6: Govt Schemes
 struct GovernmentSchemesSection: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     let onSchemeTap: (GovernmentScheme) -> Void
     @State private var showingPlaceholderAlert = false
     
@@ -1044,7 +1036,7 @@ private enum EMIPaymentOption: String, CaseIterable, Identifiable {
 }
 
 struct PayEMIWorkflowView: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var step: EMIPaymentStep = .selectLoan
     @State private var selectedLoan: DashboardLoanAccount?
@@ -1054,7 +1046,7 @@ struct PayEMIWorkflowView: View {
     @State private var successTransactionID: String?
     @State private var successAmount: Double = 0
     @State private var successPenalty: Double = 0
-    @State private var gatewayItem: EMIGatewayItem?
+    @State private var window: UIWindow?
 
     private var selectedAccount: BankAccount? {
         guard let selectedLoan else { return nil }
@@ -1093,10 +1085,14 @@ struct PayEMIWorkflowView: View {
     }
 
     var body: some View {
-        Form {
-            workflowHeader
-            stepContent
-        }
+        Group {
+            if let transactionID = successTransactionID {
+                successScreen(transactionID: transactionID)
+            } else {
+                Form {
+                    workflowHeader
+                    stepContent
+                }
         .scrollContentBackground(.hidden)
         .background(LMSColors.background)
         .navigationTitle("Pay EMI")
@@ -1122,23 +1118,9 @@ struct PayEMIWorkflowView: View {
                 stickyCTA
             }
         }
-        .fullScreenCover(item: $gatewayItem) { item in
-            EMIRazorpayPaymentSimulationView(
-                item: item,
-                onCancel: {
-                    gatewayItem = nil
-                    isProcessing = false
-                },
-                onPaymentAuthorized: {
-                    completePayment()
-                },
-                onDone: {
-                    gatewayItem = nil
-                    successTransactionID = nil
-                    dismiss()
-                }
-            )
+        } // End Group
         }
+        .withWindowAccessor(window: $window)
     }
 
     @ViewBuilder
@@ -1286,15 +1268,62 @@ struct PayEMIWorkflowView: View {
     }
 
     private func confirmPayment() {
-        guard let selectedLoan else { return }
-        gatewayItem = EMIGatewayItem(
-            loan: selectedLoan,
-            amount: selectedTotalDebit,
-            emiAmount: selectedLoan.totalEMI,
-            penalty: selectedEMIPenalty,
-            accountSuffix: String((selectedAccount?.accountNumber ?? selectedLoan.accountNumber).suffix(4)),
-            paymentDate: paymentOption == .schedule ? scheduledDate : Date()
+        guard selectedLoan != nil else { return }
+        
+        guard let rootVC = window?.rootViewController else {
+            print("No window found")
+            return
+        }
+        
+        isProcessing = true
+        
+        RazorpayPaymentManager.shared.onPaymentSuccess = { paymentId in
+            isProcessing = false
+            let _ = completePayment()
+            successTransactionID = paymentId
+        }
+        
+        RazorpayPaymentManager.shared.onPaymentFailure = { error in
+            isProcessing = false
+        }
+        
+        RazorpayPaymentManager.shared.presentPayment(
+            amountInINR: selectedTotalDebit,
+            receiptId: "receipt_\(UUID().uuidString.prefix(8))",
+            from: rootVC.topMostViewController
         )
+    }
+
+    private func successScreen(transactionID: String) -> some View {
+        VStack(spacing: 24) {
+            Spacer()
+            ZStack {
+                Circle().fill(LMSColors.emerald.opacity(0.12)).frame(width: 100, height: 100)
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 60))
+                    .foregroundStyle(LMSColors.emerald)
+            }
+            VStack(spacing: 8) {
+                Text("Payment Successful")
+                    .font(.title2.bold())
+                Text("Your EMI has been paid successfully.")
+                    .font(.subheadline)
+                    .foregroundStyle(LMSColors.textSecondary)
+                Text("TXN: \(transactionID)")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(LMSColors.textTertiary)
+                    .padding(.top, 4)
+            }
+            Spacer()
+            DashboardFilledButton(title: "Done") {
+                successTransactionID = nil
+                dismiss()
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
+        }
+        .frame(maxWidth: .infinity)
+        .background(LMSColors.background)
     }
 
     private func completePayment() -> EMIGatewayResult? {
@@ -1767,7 +1796,7 @@ private enum StatementFormat: String, CaseIterable, Identifiable {
 }
 
 struct StatementWorkflowView: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @State private var selectedAccountID: String?
     @State private var period: StatementPeriod = .days30
     @State private var format: StatementFormat = .pdf
@@ -1868,7 +1897,7 @@ struct StatementWorkflowView: View {
         .navigationTitle("Statements")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { selectedAccountID = selectedAccountID ?? selectedAccount?.id }
-        .sheet(isPresented: $showShare) {
+        .accessibleSheet(isPresented: $showShare) {
             if let generatedURL {
                 DashboardShareSheet(items: [generatedURL])
             }
@@ -1973,7 +2002,7 @@ private enum TopUpMode {
 }
 
 struct TopUpWorkflowView: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var step: TopUpStep = .home
     @State private var mode: TopUpMode?
@@ -2043,7 +2072,7 @@ struct TopUpWorkflowView: View {
         .onAppear {
             destinationLoanID = destinationLoanID ?? viewModel.loanAccounts.first?.id
         }
-        .fullScreenCover(item: $topUpGatewayItem) { item in
+        .accessibleFullScreenCover(item: $topUpGatewayItem) { item in
             TopUpGatewaySimulationView(
                 item: item,
                 onCancel: {
@@ -2058,7 +2087,7 @@ struct TopUpWorkflowView: View {
                 }
             )
         }
-        .fullScreenCover(isPresented: $showSuccess) {
+        .accessibleFullScreenCover(isPresented: $showSuccess) {
             TopUpSuccessView(amount: amount) {
                 showSuccess = false
             }
@@ -2604,7 +2633,7 @@ private struct TopUpSuccessView: View {
 }
 
 struct QuickPaySheet: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @Environment(\.dismiss) var dismiss
     @State private var successMessage = ""
     @State private var showSuccessAlert = false
@@ -2800,7 +2829,7 @@ struct QuickPaySheet: View {
 }
 
 struct StatementSheet: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
@@ -2851,7 +2880,7 @@ struct StatementSheet: View {
 }
 
 struct CloseLoanSheet: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @State private var selectedLoan: DashboardLoanAccount?
     @State private var acceptedClosure = false
     @State private var selectedPaymentAccountID: UUID?
@@ -3258,7 +3287,7 @@ struct SupportSheet: View {
 }
 
 struct TopUpSheet: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     @Environment(\.dismiss) var dismiss
     @State private var topUpAmount = 10000.0
     @State private var destinationAccountID: UUID?
@@ -3487,7 +3516,7 @@ struct LoanDetailsView: View {
 
 struct BankDetailsView: View {
     let bank: BankAccount
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     
     var body: some View {
         List {
@@ -3580,7 +3609,7 @@ struct InsuranceDetailsView: View {
 
 
 struct AllPendingEMIsView: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     
     var body: some View {
         List {

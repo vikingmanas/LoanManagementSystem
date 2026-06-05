@@ -4,7 +4,7 @@ import Supabase
 
 /// A database-safe representation of BorrowerProfile that matches
 /// the Supabase `profiles` table schema.
-/// `profileImageData` is stored as a Base64-encoded string to match the `text` column.
+/// `profileImageData` stores a public URL pointing to the image in Supabase Storage (bucket: `avatars`).
 private struct DBProfile: Codable {
     let id: String
     var fullName: String
@@ -32,7 +32,7 @@ private struct DBProfile: Codable {
     var kycVerification: KYCVerification
     var loanOverview: LoanOverview
 
-    var profileImageData: String?  // Base64-encoded string — DB column is `text`
+    var profileImageData: String?  // Public URL to avatar in Supabase Storage — DB column is `text`
     var linkedAccounts: [LinkedBankAccount]?
     var gstNumber: String?
 
@@ -178,7 +178,7 @@ private struct DBProfile: Codable {
             bankDetails: profile.bankDetails,
             kycVerification: profile.kycVerification,
             loanOverview: profile.loanOverview,
-            profileImageData: profile.profileImageData?.base64EncodedString(),
+            profileImageData: nil, // Image URL is set separately after Storage upload — never store base64
             linkedAccounts: profile.linkedAccounts,
             gstNumber: profile.gstNumber,
             occupation: profile.occupation,
@@ -204,7 +204,7 @@ private struct DBProfile: Codable {
 
     // MARK: - Mapping to BorrowerProfile
 
-    func toBorrowerProfile(linkedAccounts: [LinkedBankAccount]? = nil, gstNumber: String? = nil) -> BorrowerProfile {
+    func toBorrowerProfile(linkedAccounts: [LinkedBankAccount]? = nil, gstNumber: String? = nil, prefetchedImageData: Data? = nil) -> BorrowerProfile {
         let resolvedLinkedAccounts = linkedAccounts ?? self.linkedAccounts
         let resolvedGSTNumber = gstNumber ?? self.gstNumber
 
@@ -231,7 +231,7 @@ private struct DBProfile: Codable {
             gstNumber: resolvedGSTNumber,
             kycVerification: kycVerification,
             loanOverview: loanOverview,
-            profileImageData: profileImageData.flatMap { Data(base64Encoded: $0) },
+            profileImageData: prefetchedImageData ?? profileImageData.flatMap { Data(base64Encoded: $0) },
             occupation: occupation,
             industry: industry,
             yearsOfExperience: yearsOfExperience,
@@ -604,9 +604,20 @@ final class DatabaseService {
             let cached = loadProfileLocally(userId: userId)
             let cachedLinkedAccounts = cached?.linkedAccounts?.isEmpty == false ? cached?.linkedAccounts : nil
             let cachedGSTNumber = cached?.gstNumber?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? cached?.gstNumber : nil
+            
+            var prefetchedImageData: Data? = nil
+            if let dbImageString = dbProfile.profileImageData {
+                if dbImageString.starts(with: "http"), let url = URL(string: dbImageString) {
+                    if let (data, _) = try? await URLSession.shared.data(from: url) {
+                        prefetchedImageData = data
+                    }
+                }
+            }
+
             var profile = dbProfile.toBorrowerProfile(
                 linkedAccounts: cachedLinkedAccounts,
-                gstNumber: cachedGSTNumber
+                gstNumber: cachedGSTNumber,
+                prefetchedImageData: prefetchedImageData
             )
             profile.linkedAccounts = await mergedLinkedAccounts(
                 profile: profile,
@@ -625,7 +636,10 @@ final class DatabaseService {
     func updateProfile(_ profile: BorrowerProfile) async throws {
         var profileToSave = profile
 
-        if let existingProfile = try await fetchRawProfile(userId: profile.id),
+        // Fetch the existing remote profile first — we need the existing avatar URL.
+        let existingRemote = try? await fetchRawProfile(userId: profile.id)
+
+        if let existingProfile = existingRemote,
            shouldProtectRemoteProfile(existingProfile, from: profile) {
             profileToSave = mergeMissingProfileDetails(from: existingProfile, into: profile)
             print("[DatabaseService] Protected existing Supabase profile details from sparse local overwrite.")
@@ -653,8 +667,42 @@ final class DatabaseService {
             }
         }
 
-        // Convert to the DB-safe struct that matches the profiles table schema.
-        let dbProfile = DBProfile.from(profileToSave)
+        // Fetch the raw DB string for the existing avatar URL (it's a String in DB, not Data)
+        let existingAvatarURL: String? = await fetchExistingAvatarURL(userId: profileToSave.id)
+
+        // Convert to DB-safe struct — never encode image as base64 here.
+        var dbProfile = DBProfile.from(profileToSave)
+
+        // --- Profile Image: Upload to Storage, NEVER save base64 to Postgres ---
+        if let imageData = profileToSave.profileImageData, !imageData.isEmpty {
+            do {
+                // Use a subfolder named after the user's ID to satisfy Storage RLS policies.
+                // IMPORTANT: Must be lowercased — Supabase auth.uid() returns lowercase UUIDs,
+                // and the RLS policy compares auth.uid()::text against the folder name.
+                let path = "\(profileToSave.id.lowercased())/avatar.png"
+                let url = try await StorageService.shared.uploadDocument(
+                    data: imageData,
+                    bucket: "avatars",
+                    path: path,
+                    contentType: "image/png"
+                )
+                dbProfile.profileImageData = url.absoluteString
+                print("✅ [DatabaseService] Avatar uploaded to Storage: \(url.absoluteString)")
+            } catch {
+                // IMPORTANT: Never fall back to base64. Preserve the existing URL if available.
+                // A missing image is better than blowing up your database with megabytes of text.
+                print("❌ [DatabaseService] Avatar upload failed: \(error)")
+                print("❌ [DatabaseService] Avatar upload localized error: \(error.localizedDescription)")
+                if let storageError = error as? StorageError {
+                    print("❌ [DatabaseService] StorageError details: \(storageError)")
+                }
+                dbProfile.profileImageData = existingAvatarURL
+            }
+        } else {
+            // No new image — preserve existing URL so we don't wipe it on every profile save
+            dbProfile.profileImageData = existingAvatarURL
+        }
+
         print("UPDATE REQUEST - Table: profiles, ID: \(profileToSave.id)")
         do {
             try await client
@@ -670,6 +718,24 @@ final class DatabaseService {
         }
     }
 
+    /// Fetches only the raw `profile_image_data` string from the DB (a URL or nil — never base64).
+    private func fetchExistingAvatarURL(userId: String) async -> String? {
+        struct AvatarOnly: Codable {
+            let profileImageData: String?
+        }
+        let rows: [AvatarOnly]? = try? await client
+            .from("profiles")
+            .select("profile_image_data")
+            .eq("id", value: userId)
+            .limit(1)
+            .execute()
+            .value
+        guard let raw = rows?.first?.profileImageData, raw.hasPrefix("http") else {
+            return nil
+        }
+        return raw
+    }
+
     private func fetchRawProfile(userId: String) async throws -> BorrowerProfile? {
         let dbProfiles: [DBProfile] = try await client
             .from("profiles")
@@ -679,7 +745,18 @@ final class DatabaseService {
             .execute()
             .value
 
-        return dbProfiles.first?.toBorrowerProfile()
+        guard let dbProfile = dbProfiles.first else { return nil }
+        
+        var prefetchedImageData: Data? = nil
+        if let dbImageString = dbProfile.profileImageData {
+            if dbImageString.starts(with: "http"), let url = URL(string: dbImageString) {
+                if let (data, _) = try? await URLSession.shared.data(from: url) {
+                    prefetchedImageData = data
+                }
+            }
+        }
+
+        return dbProfile.toBorrowerProfile(prefetchedImageData: prefetchedImageData)
     }
 
     private func shouldProtectRemoteProfile(_ remote: BorrowerProfile, from local: BorrowerProfile) -> Bool {
@@ -879,6 +956,20 @@ final class DatabaseService {
             .value
     }
 
+    /// Batch-fetch documents for multiple application IDs in a single query.
+    /// Replaces the N+1 pattern of calling fetchDocuments(applicationId:) per app.
+    func fetchDocumentsBatch(applicationIds: [UUID]) async throws -> [UUID: [DBDocument]] {
+        guard !applicationIds.isEmpty else { return [:] }
+        let idStrings = applicationIds.map(\.uuidString)
+        let allDocs: [DBDocument] = try await client
+            .from("documents")
+            .select()
+            .in("application_id", values: idStrings)
+            .execute()
+            .value
+        return Dictionary(grouping: allDocs, by: \.applicationId!)
+    }
+
     // MARK: - Supabase Repayment & Account Operations
 
     func insertLoanAccount(_ account: DBLoanAccount) async throws {
@@ -1006,6 +1097,57 @@ final class DatabaseService {
             .execute()
     }
 
+    func subscribeToMessages(forApplicationId applicationId: UUID, onInsert: @escaping (DBMessage) -> Void) async -> RealtimeChannelV2 {
+        let channel = client.channel("messages_app_\(applicationId.uuidString)")
+        
+        let stream = channel.postgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "messages",
+            filter: .eq("application_id", value: applicationId.uuidString)
+        )
+        
+        Task {
+            for await action in stream {
+                do {
+                    let message = try action.record.decode(as: DBMessage.self, decoder: SupabaseManager.shared.defaultDecoder)
+                    onInsert(message)
+                } catch {
+                    print("[DatabaseService] Error decoding realtime message: \(error)")
+                }
+            }
+        }
+        
+        try? await channel.subscribeWithError()
+        return channel
+    }
+    
+    func subscribeToAllMessages(forUserId userId: UUID, onInsert: @escaping (DBMessage) -> Void) async -> RealtimeChannelV2 {
+        let channel = client.channel("messages_user_\(userId.uuidString)")
+        
+        let stream = channel.postgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "messages"
+        )
+        
+        Task {
+            for await action in stream {
+                do {
+                    let message = try action.record.decode(as: DBMessage.self, decoder: SupabaseManager.shared.defaultDecoder)
+                    if message.senderId == userId || message.receiverId == userId {
+                        onInsert(message)
+                    }
+                } catch {
+                    print("[DatabaseService] Error decoding realtime message: \(error)")
+                }
+            }
+        }
+        
+        try? await channel.subscribeWithError()
+        return channel
+    }
+
     func createNotification(userId: UUID, title: String, message: String, type: String = "push") async throws {
         struct NotificationInsert: Encodable {
             let userId: UUID
@@ -1033,6 +1175,27 @@ final class DatabaseService {
             .select()
             .execute()
             .value
+    }
+    
+    // MARK: - Audit Log Operations
+    func logAuditAction(action: String, entityType: String, entityId: UUID) async throws {
+        guard let userId = client.auth.currentSession?.user.id else {
+            print("[DatabaseService] Warning: No user session found. Skipping audit log.")
+            return
+        }
+        
+        let insertData: [String: String] = [
+            "user_id": userId.uuidString,
+            "action": action,
+            "entity_type": entityType,
+            "entity_id": entityId.uuidString,
+            "ip_address": "" // Blank or fetched from client if possible
+        ]
+        
+        try await client
+            .from("audit_logs")
+            .insert(insertData)
+            .execute()
     }
 }
 

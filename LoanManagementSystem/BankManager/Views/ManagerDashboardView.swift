@@ -1,9 +1,9 @@
 import SwiftUI
 
 struct ManagerDashboardView: View {
-    @EnvironmentObject private var authManager: AuthManager
-    @StateObject private var viewModel = ManagerDashboardViewModel()
-    @StateObject private var notificationViewModel = NotificationViewModel()
+    @Environment(AuthManager.self) private var authManager: AuthManager
+    @State private var viewModel = ManagerDashboardViewModel()
+    @State private var notificationViewModel = NotificationViewModel()
 
     @State private var selectedTab: ManagerWorkspaceTab = .dashboard
     @State private var showProfileSheet = false
@@ -21,6 +21,9 @@ struct ManagerDashboardView: View {
                 .navigationTitle("\(viewModel.branchOverview.name)")
                 .navigationBarTitleDisplayMode(.large)
                 .toolbar { dashboardToolbar }
+                .navigationDestination(item: $selectedApplicant) { applicant in
+                    ManagerApplicantDetailView(applicant: applicant, viewModel: viewModel)
+                }
             }
             .tabItem { Label("Dashboard", systemImage: "square.grid.2x2") }
             .tag(ManagerWorkspaceTab.dashboard)
@@ -31,6 +34,9 @@ struct ManagerDashboardView: View {
                     onSelectApplicant: { selectedApplicant = $0 }
                 )
                 .navigationTitle("Applicants")
+                .navigationDestination(item: $selectedApplicant) { applicant in
+                    ManagerApplicantDetailView(applicant: applicant, viewModel: viewModel)
+                }
             }
             .tabItem { Label("Applicants", systemImage: "person.2") }
             .badge(viewModel.pendingApplicants.count > 0 ? viewModel.pendingApplicants.count : 0)
@@ -61,17 +67,14 @@ struct ManagerDashboardView: View {
             guard let tab = ManagerWorkspaceTab(rawValue: rawValue), tab != selectedTab else { return }
             selectedTab = tab
         }
-        .sheet(isPresented: $showProfileSheet) {
+        .accessibleSheet(isPresented: $showProfileSheet) {
             ManagerProfileView(viewModel: viewModel)
         }
-        .sheet(isPresented: $showSearchSheet) {
+        .accessibleSheet(isPresented: $showSearchSheet) {
             ManagerSearchSheet(viewModel: viewModel) { applicant in
                 showSearchSheet = false
                 selectedApplicant = applicant
             }
-        }
-        .sheet(item: $selectedApplicant) { applicant in
-            ManagerApplicantDetailView(applicant: applicant, viewModel: viewModel)
         }
     }
 
@@ -120,7 +123,7 @@ enum ManagerWorkspaceTab: Int, Hashable {
 }
 
 private struct ManagerSearchSheet: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     var onSelectApplicant: (ManagerApplicant) -> Void
     @Environment(\.dismiss) var dismiss
     @State private var query = ""
@@ -213,4 +216,3 @@ private struct ManagerSearchSheet: View {
         }
     }
 }
-

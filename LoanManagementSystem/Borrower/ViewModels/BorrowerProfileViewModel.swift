@@ -1,3 +1,4 @@
+import Observation
 import Foundation
 import Combine
 import Supabase
@@ -6,24 +7,15 @@ enum KYCDocumentType {
     case aadhaar, pan, addressProof
 }
 
-class BorrowerProfileViewModel: ObservableObject {
-    @Published var profile: BorrowerProfile?
-    @Published var isLoading: Bool = false
+@Observable
+class BorrowerProfileViewModel {
+    var profile: BorrowerProfile?
+    var isLoading: Bool = false
     
     private var cancellables = Set<AnyCancellable>()
     
     init() {
         profile = BorrowerProfileStore.shared.profile
-
-        BorrowerProfileStore.shared.$profile
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] updatedProfile in
-                self?.profile = updatedProfile
-                if updatedProfile != nil {
-                    self?.isLoading = false
-                }
-            }
-            .store(in: &cancellables)
     }
 
     @MainActor

@@ -2,9 +2,9 @@ import SwiftUI
 import UIKit
 
 struct LoanOfficerDashboardView: View {
-    @EnvironmentObject private var authManager: AuthManager
-    @StateObject private var viewModel = LoanOfficerDashboardViewModel()
-    @StateObject private var notificationViewModel = NotificationViewModel()
+    @Environment(AuthManager.self) private var authManager: AuthManager
+    @State private var viewModel = LoanOfficerDashboardViewModel()
+    @State private var notificationViewModel = NotificationViewModel()
     @State private var selectedTab: OfficerWorkspaceTab = .dashboard
     @State private var showingProfile = false
 
@@ -54,7 +54,7 @@ struct LoanOfficerDashboardView: View {
                 notificationViewModel.configure(userId: uuid)
             }
         }
-        .sheet(isPresented: $showingProfile) {
+        .accessibleSheet(isPresented: $showingProfile) {
             LoanOfficerProfileView()
         }
     }
@@ -70,10 +70,10 @@ enum OfficerWorkspaceTab: Hashable {
 // MARK: - Dashboard Main View
 
 private struct LoanOfficerTodayView: View {
-    @EnvironmentObject var authManager: AuthManager
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Environment(AuthManager.self) var authManager: AuthManager
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @Binding var selectedTab: OfficerWorkspaceTab
-    @ObservedObject var notificationViewModel: NotificationViewModel
+    @Bindable var notificationViewModel: NotificationViewModel
     var onProfile: () -> Void
 
     @State private var selectedMetricStatus: OfficerApplicationStatus?
@@ -161,7 +161,7 @@ private struct LoanOfficerTodayView: View {
         } message: {
             Text("The monthly branch performance report is being prepared.")
         }
-        .sheet(isPresented: $showingEscalationSheet) {
+        .accessibleSheet(isPresented: $showingEscalationSheet) {
             OfficerEscalationSheet(viewModel: viewModel)
         }
         .navigationDestination(isPresented: $showingPendingAppsList) {
@@ -188,7 +188,7 @@ private struct LoanOfficerTodayView: View {
 // MARK: - Action Items
 
 private struct OfficerActionItemsRow: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @Binding var selectedTab: OfficerWorkspaceTab
     @Binding var showingEscalationSheet: Bool
     @Binding var showingPendingAppsList: Bool
@@ -326,7 +326,7 @@ private struct OfficerNextActionCard: View {
 // MARK: - Review Queue Snapshot
 
 private struct OfficerReviewSnapshotView: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @Binding var selectedTab: OfficerWorkspaceTab
     @Binding var selectedApplication: OfficerLoanApplication?
 
@@ -589,7 +589,7 @@ private struct CalculatorInputRow: View {
 // MARK: - Escalations Section
 
 private struct OfficerEscalationsSection: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @Binding var selectedApplication: OfficerLoanApplication?
 
     var body: some View {
@@ -628,7 +628,7 @@ private struct OfficerEscalationsSection: View {
 // MARK: - Analytics Section
 
 private struct OfficerAnalyticsSection: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @State private var showPipelineDetails = false
 
     private var stats: (pending: Int, underReview: Int, sentToManager: Int, completed: Int) {
@@ -662,7 +662,7 @@ private struct OfficerAnalyticsSection: View {
             .buttonStyle(.plain)
             .padding(.horizontal, LMSSpacing.screenHorizontal)
         }
-        .sheet(isPresented: $showPipelineDetails) {
+        .accessibleSheet(isPresented: $showPipelineDetails) {
             LoanOfficerPipelineDetailsSheet(viewModel: viewModel)
         }
     }
@@ -782,7 +782,7 @@ private struct PipelineBarRow: View {
 // MARK: - Today's approval List
 
 private struct OfficerTodayReviewQueueListView: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
 
     private var todayApplications: [(application: OfficerLoanApplication, matchingDocuments: [LoanDocument])] {
         viewModel.applications.compactMap { application in
@@ -824,7 +824,7 @@ private struct OfficerTodayReviewQueueListView: View {
 // MARK: - Review Queue Tab
 
 private struct LoanOfficerReviewQueueView: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @State private var query = ""
     @State private var selectedStatus: OfficerDocumentStatus?
 
@@ -886,7 +886,7 @@ private struct LoanOfficerReviewQueueView: View {
 // MARK: - Escalation Sheet
 
 private struct OfficerEscalationSheet: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var reason = ""
     @State private var priority = "Normal"
@@ -1078,7 +1078,7 @@ struct OfficerAvatar: View {
 // MARK: - Notifications Sheet
 
 struct NotificationsFeedSheet: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -1140,7 +1140,7 @@ struct NotificationsFeedSheet: View {
     }
 }
 private struct LoanOfficerPipelineDetailsSheet: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) var dismiss
 
     private var pendingApps: [OfficerLoanApplication] {
@@ -1250,7 +1250,7 @@ private struct OfficerApplicationListSheet: View {
     let applications: [OfficerLoanApplication]
     
     @Environment(\.dismiss) var dismiss
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @State private var selectedApplication: OfficerLoanApplication?
     
     var body: some View {
@@ -1301,7 +1301,7 @@ private struct OfficerPushApplicationListView: View {
     let description: String
     let applications: [OfficerLoanApplication]
     
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @State private var selectedApplication: OfficerLoanApplication?
     
     var body: some View {
@@ -1344,7 +1344,7 @@ private struct OfficerPushApplicationListView: View {
 struct OfficerApplicationReviewCard: View {
     let application: OfficerLoanApplication
     let matchingDocuments: [LoanDocument]
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {

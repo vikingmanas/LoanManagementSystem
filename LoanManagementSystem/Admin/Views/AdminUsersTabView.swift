@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AdminUsersTabView: View {
-    @ObservedObject var viewModel: AdminStaffViewModel
+    @Bindable var viewModel: AdminStaffViewModel
     @State private var isShowingAddSheet = false
 
     var body: some View {
@@ -101,7 +101,7 @@ struct AdminUsersTabView: View {
                     }
                 }
             }
-            .sheet(isPresented: $isShowingAddSheet) {
+            .accessibleSheet(isPresented: $isShowingAddSheet) {
                 AdminAddUserSheet(viewModel: viewModel)
             }
             .task {

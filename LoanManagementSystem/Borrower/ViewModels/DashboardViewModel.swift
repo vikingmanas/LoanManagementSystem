@@ -5,24 +5,26 @@
 //  Created by Antigravity on 19/05/26.
 //
 
+import Observation
 import SwiftUI
 import Combine
 import Supabase
 
 @MainActor
-public final class DashboardViewModel: ObservableObject {
+@Observable
+public final class DashboardViewModel {
     public static let emiShortfallPenalty: Double = 500
 
-    @Published public var loanAccounts: [DashboardLoanAccount] = []
-    @Published public var bankAccount: BankAccount = BankAccount(accountNumber: "", accountType: .savings, availableBalance: 0)
-    @Published public var bankAccounts: [BankAccount] = []
-    @Published public var pendingEMIs: [EMIRecord] = []
-    @Published public var transactions: [Transaction] = []
-    @Published public var schemes: [GovernmentScheme] = []
-    @Published public var foreclosureRequests: [ForeclosureRequest] = []
-    @Published public var isLoading: Bool = true
-    @Published public var profileName: String = ""
-    @Published public var profileCompletionPercentage: Int = 0
+    public var loanAccounts: [DashboardLoanAccount] = []
+    public var bankAccount: BankAccount = BankAccount(accountNumber: "", accountType: .savings, availableBalance: 0)
+    public var bankAccounts: [BankAccount] = []
+    public var pendingEMIs: [EMIRecord] = []
+    public var transactions: [Transaction] = []
+    public var schemes: [GovernmentScheme] = []
+    public var foreclosureRequests: [ForeclosureRequest] = []
+    public var isLoading: Bool = true
+    public var profileName: String = ""
+    public var profileCompletionPercentage: Int = 0
     
     // Notification support
     public let notificationViewModel = NotificationViewModel()
@@ -30,26 +32,6 @@ public final class DashboardViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     public init() {
-        CentralLoanRepository.shared.$disbursementEvents
-            .dropFirst()
-            .sink { [weak self] _ in
-                Task { await self?.fetchDashboardData() }
-            }
-            .store(in: &cancellables)
-
-        CentralLoanRepository.shared.$applications
-            .dropFirst()
-            .sink { [weak self] _ in
-                Task { await self?.fetchDashboardData() }
-            }
-            .store(in: &cancellables)
-
-        BorrowerProfileStore.shared.$profile
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                Task { await self?.fetchDashboardData() }
-            }
-            .store(in: &cancellables)
     }
     
     public var totalOutstanding: Double { loanAccounts.map(\.principalOutstanding).reduce(0, +) }
@@ -466,9 +448,7 @@ public final class DashboardViewModel: ObservableObject {
         }
         
         // Trigger haptic feedback
-        let feedback = UIImpactFeedbackGenerator(style: .medium)
-        feedback.prepare()
-        feedback.impactOccurred()
+        HapticsManager.triggerImpact(style: .medium)
         
         guard let repaymentAccount = emiRepaymentAccount(),
               repaymentAccount.availableBalance >= emi.amount else {
@@ -538,9 +518,7 @@ public final class DashboardViewModel: ObservableObject {
             return (false, nil, 0, 0)
         }
 
-        let feedback = UIImpactFeedbackGenerator(style: .medium)
-        feedback.prepare()
-        feedback.impactOccurred()
+        HapticsManager.triggerImpact(style: .medium)
 
         let account = ensureRepaymentAccount(for: loan)
         let principalComponent = min(loan.principalOutstanding, loan.totalEMI)
@@ -605,8 +583,7 @@ public final class DashboardViewModel: ObservableObject {
     }
     
     public func topUpAccount(amount: Double, to account: BankAccount? = nil) {
-        let feedback = UIImpactFeedbackGenerator(style: .light)
-        feedback.impactOccurred()
+        HapticsManager.triggerImpact(style: .light)
         
         withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
             let destinationID = account?.id ?? bankAccount.id

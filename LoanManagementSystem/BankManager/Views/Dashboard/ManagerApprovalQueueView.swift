@@ -2,7 +2,7 @@ import SwiftUI
 
 
 struct ManagerApprovalQueueView: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     var onViewAll: () -> Void
     var onSelectApplicant: (ManagerApplicant) -> Void
 

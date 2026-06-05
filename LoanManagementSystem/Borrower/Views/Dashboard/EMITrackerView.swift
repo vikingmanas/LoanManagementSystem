@@ -1,7 +1,7 @@
 import SwiftUI
 
 public struct EMITrackerView: View {
-    @ObservedObject var viewModel: DashboardViewModel
+    @Bindable var viewModel: DashboardViewModel
     var onPayTap: () -> Void
     var onViewAllPendingTap: () -> Void
     

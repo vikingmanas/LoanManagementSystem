@@ -1,12 +1,6 @@
-//
-//  BorrowerChatViewModel.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 02/06/26.
-//
-
 import SwiftUI
 import Combine
+import Supabase
 
 struct BorrowerConversation: Identifiable, Hashable {
     let id: UUID           // applicationId
@@ -16,12 +10,13 @@ struct BorrowerConversation: Identifiable, Hashable {
     let messages: [DBMessage]
 
     var latestMessage: DBMessage? {
-        messages.sorted { $0.sentAt > $1.sentAt }.first
+        messages.max { $0.sentAt < $1.sentAt }
     }
 
     var unreadCount: Int {
-        // Unread = messages where borrower is receiver AND not yet read
-        messages.filter { !$0.isRead }.count
+        guard let uid = AuthManager.shared.currentUser?.uid,
+              let borrowerId = UUID(uuidString: uid) else { return 0 }
+        return messages.filter { $0.receiverId == borrowerId && !$0.isRead }.count
     }
 
     // Custom Hashable & Equatable conformance
@@ -30,17 +25,23 @@ struct BorrowerConversation: Identifiable, Hashable {
     }
 
     static func == (lhs: BorrowerConversation, rhs: BorrowerConversation) -> Bool {
-        lhs.id == rhs.id
+        lhs.id == rhs.id &&
+        lhs.applicationDisplayId == rhs.applicationDisplayId &&
+        lhs.loanProductName == rhs.loanProductName &&
+        lhs.messages == rhs.messages
     }
 }
 
+import Observation
+
 @MainActor
-final class BorrowerChatViewModel: ObservableObject {
+@Observable
+final class BorrowerChatViewModel {
 
     // MARK: - Published State
-    @Published var conversations: [BorrowerConversation] = []
-    @Published var isLoading: Bool = false
-    @Published var hasError: Bool = false
+    var conversations: [BorrowerConversation] = []
+    var isLoading: Bool = false
+    var hasError: Bool = false
 
     /// Total unread messages across all conversations (for tab badge).
     var totalUnreadCount: Int {
@@ -51,6 +52,58 @@ final class BorrowerChatViewModel: ObservableObject {
     private var borrowerUserId: UUID? {
         guard let uid = AuthManager.shared.currentUser?.uid else { return nil }
         return UUID(uuidString: uid)
+    }
+    
+    @ObservationIgnored private var realtimeChannel: RealtimeChannelV2?
+    
+    deinit {
+        let channel = realtimeChannel
+        Task {
+            await channel?.unsubscribe()
+        }
+    }
+
+    // MARK: - Realtime
+    func setupRealtime() async {
+        guard let userId = borrowerUserId else { return }
+        
+        if let channel = realtimeChannel {
+            await channel.unsubscribe()
+        }
+        
+        realtimeChannel = await DatabaseService.shared.subscribeToAllMessages(forUserId: userId) { [weak self] newMessage in
+            Task { @MainActor in
+                self?.handleNewRealtimeMessage(newMessage)
+            }
+        }
+    }
+    
+    private func handleNewRealtimeMessage(_ msg: DBMessage) {
+        guard let appId = msg.applicationId else { return }
+        if let idx = conversations.firstIndex(where: { $0.applicationId == appId }) {
+            let conv = conversations[idx]
+            if !conv.messages.contains(where: { $0.messageId == msg.messageId }) {
+                var newMessages = conv.messages
+                newMessages.append(msg)
+                
+                let updatedConv = BorrowerConversation(
+                    id: conv.id,
+                    applicationId: conv.applicationId,
+                    applicationDisplayId: conv.applicationDisplayId,
+                    loanProductName: conv.loanProductName,
+                    messages: newMessages.sorted { $0.sentAt < $1.sentAt }
+                )
+                conversations[idx] = updatedConv
+                
+                conversations.sort {
+                    ($0.latestMessage?.sentAt ?? .distantPast) > ($1.latestMessage?.sentAt ?? .distantPast)
+                }
+            }
+        } else {
+            Task {
+                await self.fetchConversations()
+            }
+        }
     }
 
     // MARK: - Fetch All Conversations
@@ -162,6 +215,7 @@ final class BorrowerChatViewModel: ObservableObject {
 
         do {
             try await DatabaseService.shared.sendMessage(newMsg)
+            appendMessageToConversation(newMsg, borrowerSent: true)
 
             // Send a notification to the officer
             try? await DatabaseService.shared.createNotification(
@@ -177,6 +231,39 @@ final class BorrowerChatViewModel: ObservableObject {
         }
     }
 
+    private func appendMessageToConversation(_ message: DBMessage, borrowerSent: Bool) {
+        guard let applicationId = message.applicationId,
+              let index = conversations.firstIndex(where: { $0.applicationId == applicationId }) else {
+            return
+        }
+
+        let conversation = conversations[index]
+        guard !conversation.messages.contains(where: { $0.messageId == message.messageId }) else { return }
+
+        let cachedMessage = borrowerSent
+            ? DBMessage(
+                messageId: message.messageId,
+                senderId: message.senderId,
+                receiverId: message.receiverId,
+                applicationId: message.applicationId,
+                content: message.content,
+                sentAt: message.sentAt,
+                isRead: true
+            )
+            : message
+
+        conversations[index] = BorrowerConversation(
+            id: conversation.id,
+            applicationId: conversation.applicationId,
+            applicationDisplayId: conversation.applicationDisplayId,
+            loanProductName: conversation.loanProductName,
+            messages: (conversation.messages + [cachedMessage]).sorted { $0.sentAt < $1.sentAt }
+        )
+        conversations.sort {
+            ($0.latestMessage?.sentAt ?? .distantPast) > ($1.latestMessage?.sentAt ?? .distantPast)
+        }
+    }
+
     // MARK: - Mark Messages as Read
     func markMessagesAsRead(messages: [DBMessage]) async {
         guard let userId = borrowerUserId else { return }
@@ -188,6 +275,28 @@ final class BorrowerChatViewModel: ObservableObject {
 
         do {
             try await DatabaseService.shared.markMessagesRead(messageIds: unreadIds)
+            let unreadIdSet = Set(unreadIds)
+            conversations = conversations.map { conversation in
+                let updatedMessages = conversation.messages.map { message in
+                    guard unreadIdSet.contains(message.messageId) else { return message }
+                    return DBMessage(
+                        messageId: message.messageId,
+                        senderId: message.senderId,
+                        receiverId: message.receiverId,
+                        applicationId: message.applicationId,
+                        content: message.content,
+                        sentAt: message.sentAt,
+                        isRead: true
+                    )
+                }
+                return BorrowerConversation(
+                    id: conversation.id,
+                    applicationId: conversation.applicationId,
+                    applicationDisplayId: conversation.applicationDisplayId,
+                    loanProductName: conversation.loanProductName,
+                    messages: updatedMessages
+                )
+            }
         } catch {
             print("[BorrowerChatVM] Failed to mark messages as read: \(error)")
         }

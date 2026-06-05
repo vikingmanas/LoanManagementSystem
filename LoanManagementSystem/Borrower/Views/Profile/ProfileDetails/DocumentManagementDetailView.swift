@@ -3,7 +3,7 @@ import UIKit
 @preconcurrency import Vision
 
 struct DocumentManagementDetailView: View {
-    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Bindable var viewModel: BorrowerProfileViewModel
 
     @State private var documents: [VaultDocument] = []
     @State private var searchText = ""
@@ -94,7 +94,7 @@ struct DocumentManagementDetailView: View {
         } message: {
             Text("Select Document Source")
         }
-        .fullScreenCover(isPresented: $showingImagePicker) {
+        .accessibleFullScreenCover(isPresented: $showingImagePicker) {
             VaultImagePicker(sourceType: imagePickerSourceType) { image in
                 showingImagePicker = false
                 if let selectedDocumentID {
@@ -105,14 +105,14 @@ struct DocumentManagementDetailView: View {
             }
             .ignoresSafeArea()
         }
-        .fullScreenCover(item: $previewDocument) { document in
+        .accessibleFullScreenCover(item: $previewDocument) { document in
             VaultDocumentPreview(
                 document: document,
                 onDownload: { download(document) },
                 onShare: { share(document) }
             )
         }
-        .sheet(item: shareItemBinding) { item in
+        .accessibleSheet(item: shareItemBinding) { item in
             VaultShareSheet(items: [item.url])
         }
         .alert("Documents", isPresented: alertBinding) {

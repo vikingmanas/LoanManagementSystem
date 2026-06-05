@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 private struct DocumentRejectionPrompt: Identifiable {
     let document: LoanDocument
@@ -10,24 +11,23 @@ struct LoanApplicationReviewDetailView: View {
     typealias LoanApplication = OfficerLoanApplication
     let applicationId: String
     let initialDocumentId: UUID?
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) var dismiss
     
-    @State private var isRunningAIAudit = false
-    @State private var aiAuditRun = false
-    @State private var aiStatusText = ""
-    
+
     @State private var selectedDocForPreview: LoanDocument? = nil
     @State private var showingActionSheetForDoc: LoanDocument? = nil
     @State private var rejectionText = ""
     @State private var rejectionPrompt: DocumentRejectionPrompt?
     @State private var documentActionStatus: OfficerDocumentStatus = .rejectFlag
-    @State private var escalationReason = ""
-    @State private var showingEscalationAlert = false
-    @State private var escalationAlertMessage = ""
+    @State private var showingActionAlert = false
+    @State private var actionAlertMessage = ""
     @State private var showingApplicationRejectPrompt = false
     @State private var applicationRejectReason = ""
     @State private var hasPresentedInitialDocument = false
+    @State private var showSanctionShareSheet = false
+    @State private var sanctionShareItems: [Any] = []
+    @State private var sanctionExportError: String?
 
     init(applicationId: String, initialDocumentId: UUID? = nil, viewModel: LoanOfficerDashboardViewModel) {
         self.applicationId = applicationId
@@ -66,11 +66,7 @@ struct LoanApplicationReviewDetailView: View {
     }
 
     private func claimApplicationIfNeeded(_ app: LoanApplication) {
-        guard let officerId = viewModel.officerProfile?.id,
-              let officerName = viewModel.officerProfile?.fullName,
-              CentralLoanRepository.shared.isLoanUnassigned(applicationId: app.id) else { return }
-        CentralLoanRepository.shared.assignOfficer(userId: officerId, name: officerName, toApplicationId: app.id)
-        viewModel.refreshFromRepository()
+        viewModel.claimApplicationIfNeeded(applicationId: app.id)
     }
 
     private func presentInitialDocumentIfNeeded(in app: LoanApplication) {
@@ -91,12 +87,11 @@ struct LoanApplicationReviewDetailView: View {
         ZStack {
             List {
                 applicationHeaderSection(currentApp)
-                progressSection(currentApp)
                 personalDetailsSection(currentApp)
                 loanEmploymentSection(currentApp)
-                aiAuditSection(currentApp)
+                creditRiskSection(currentApp)
                 documentChecklistSection(currentApp)
-                timelineSection(currentApp)
+                sanctionLetterSection(currentApp)
                 approvalSection(currentApp)
             }
             .listStyle(.insetGrouped)
@@ -150,6 +145,17 @@ struct LoanApplicationReviewDetailView: View {
         } message: {
             Text("Add a reason for the borrower and audit trail.")
         }
+        .accessibleSheet(isPresented: $showSanctionShareSheet) {
+            OfficerSanctionShareSheet(activityItems: sanctionShareItems)
+        }
+        .alert("Export Failed", isPresented: Binding(
+            get: { sanctionExportError != nil },
+            set: { if !$0 { sanctionExportError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(sanctionExportError ?? "")
+        }
         .alert("Reject Application", isPresented: $showingApplicationRejectPrompt) {
             TextField("Reason for borrower", text: $applicationRejectReason)
             Button("Reject Application", role: .destructive) {
@@ -160,8 +166,8 @@ struct LoanApplicationReviewDetailView: View {
                     dismiss()
                 } else {
                     applicationRejectReason = ""
-                    escalationAlertMessage = "Could not reject this application right now."
-                    showingEscalationAlert = true
+                    actionAlertMessage = "Could not reject this application right now."
+                    showingActionAlert = true
                 }
             }
             Button("Cancel", role: .cancel) {
@@ -335,43 +341,7 @@ struct LoanApplicationReviewDetailView: View {
         }
     }
     
-    // MARK: - Progress
-    
-    private func progressSection(_ app: LoanApplication) -> some View {
-        let verifiedCount = loanDocuments.filter { $0.status == .verified }.count
-        let pendingCount = loanDocuments.filter { $0.status != .verified && $0.status != .rejectFlag }.count
-        let rejectedCount = loanDocuments.filter { $0.status == .rejectFlag }.count
-        let totalDocs = loanDocuments.count
-        let completionPct = totalDocs > 0 ? Double(verifiedCount) / Double(totalDocs) : 0
-        
-        return Section("Verification Progress") {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("\(Int(completionPct * 100))% Complete")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(LMSColors.actionBlue)
-                    Spacer()
-                    Text("\(verifiedCount) of \(totalDocs) verified")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                
-                ProgressView(value: completionPct)
-                    .tint(completionPct >= 1.0 ? LMSColors.emerald : LMSColors.actionBlue)
 
-                HStack(spacing: 12) {
-                    Label("\(verifiedCount) Verified", systemImage: "checkmark.seal.fill")
-                        .foregroundStyle(LMSColors.emerald)
-                    Label("\(pendingCount) Pending", systemImage: "clock.fill")
-                        .foregroundStyle(LMSColors.amber)
-                    Label("\(rejectedCount) Rejected", systemImage: "xmark.octagon.fill")
-                        .foregroundStyle(LMSColors.coral)
-                }
-                .font(.caption2.weight(.semibold))
-            }
-            .padding(.vertical, 4)
-        }
-    }
     
     // MARK: - Personal Details
     
@@ -383,7 +353,7 @@ struct LoanApplicationReviewDetailView: View {
                 ApplicationDetailRow("Age", value: borrowerData.age)
                 ApplicationDetailRow("Gender", value: borrowerData.gender)
                 ApplicationDetailRow("PAN Number", value: borrowerData.pan)
-                ApplicationDetailRow("CIBIL Score", value: app.cibilScore.map(String.init) ?? "Not provided", valueColor: app.cibilScore.map(cibilColor(for:)) ?? .secondary)
+                ApplicationDetailRow("CIBIL Score", value: app.cibilScore.map(String.init) ?? "Not provided", valueColor: app.cibilScore.map(viewModel.cibilColor(for:)) ?? .secondary)
                 ApplicationDetailRow("Email", value: borrowerData.email)
                 ApplicationDetailRow("Phone", value: borrowerData.phone)
                 ApplicationDetailRow("Address", value: borrowerData.address, isLast: true)
@@ -421,54 +391,7 @@ struct LoanApplicationReviewDetailView: View {
         }
     }
     
-    // MARK: - AI Audit
-    
-    private func aiAuditSection(_ app: LoanApplication) -> some View {
-        Section("AI / OCR Validation") {
-            if isRunningAIAudit {
-                HStack(spacing: 12) {
-                    ProgressView()
-                        .tint(LMSColors.actionBlue)
-                    Text(aiStatusText)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 4)
-            } else if aiAuditRun {
-                Label("OCR Audit Completed", systemImage: "cpu.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(LMSColors.emerald)
-                
-                ForEach(loanDocuments) { doc in
-                    AIFindingRow(
-                        type: doc.status == .rejectFlag ? .critical : (doc.status == .verified ? .success : .warning),
-                        docName: doc.docType.rawValue,
-                        desc: "\(doc.ocrStatus). \(doc.status.rawValue)."
-                    )
-                }
-            } else {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Auto OCR Bureau Scans")
-                            .font(.subheadline.weight(.semibold))
-                        Text("Scans for blur, mismatches, and date validity.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    Button("Run Audit") {
-                        runAIAudit()
-                    }
-                    .font(.caption.weight(.bold))
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                }
-                .padding(.vertical, 2)
-            }
-        }
-    }
+
     
     // MARK: - Document Checklist
     
@@ -492,114 +415,229 @@ struct LoanApplicationReviewDetailView: View {
         }
     }
     
-    // MARK: - Timeline
+
     
-    private func timelineSection(_ app: LoanApplication) -> some View {
-        let timelineItems = viewModel.activityFeed.filter { $0.applicationId == app.applicationId }
+    private func creditRiskSection(_ app: LoanApplication) -> some View {
+        let metrics = viewModel.computeRiskMetrics(for: app)
         
-        return Group {
-            if !timelineItems.isEmpty {
-                Section("Activity Timeline") {
-                    ForEach(timelineItems) { item in
-                        HStack(alignment: .top, spacing: 12) {
-                            Image(systemName: item.eventType.symbol)
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(item.eventType.themeColor)
-                                .frame(width: 28, height: 28)
-                                .background(item.eventType.themeColor.opacity(0.12), in: Circle())
-                            
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(item.eventDescription)
-                                    .font(.caption.weight(.medium))
-                                
-                                Text(RelativeDateFormatter.shared.relativeString(from: item.timestamp))
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(.vertical, 2)
+        return Section {
+            VStack(spacing: LMSSpacing.lg) {
+                // Header Badge
+                HStack {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                            .foregroundStyle(metrics.riskColor)
+                        Text("INTELLIRISK ENGINE™")
+                            .font(.system(size: 10, weight: .heavy, design: .rounded))
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+                    Spacer()
+                    Text(metrics.riskLevel.uppercased())
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(metrics.riskColor)
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
+                }
+                
+                // Solid Stat Cards
+                HStack(spacing: 16) {
+                    // CIBIL Box
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("CIBIL SCORE")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.8))
+                        
+                        Text("\(Int(metrics.cibil))")
+                            .font(.system(size: 28, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(metrics.cibil >= 750 ? LMSColors.emerald : (metrics.cibil >= metrics.minCibilScore ? LMSColors.amber : LMSColors.coral))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    
+                    // DTI Box
+                    let dtiColor = metrics.dtiRatio <= 40 ? LMSColors.emerald : (metrics.dtiRatio <= metrics.maxDTI ? LMSColors.amber : LMSColors.coral)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("DTI RATIO")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.8))
+                        
+                        Text(String(format: "%.1f%%", metrics.dtiRatio))
+                            .font(.system(size: 28, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(dtiColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                
+                // Financial Details
+                VStack(spacing: 12) {
+                    HStack {
+                        Text("Monthly Income")
+                            .font(.subheadline)
+                            .foregroundStyle(LMSColors.textSecondary)
+                        Spacer()
+                        Text(metrics.monthlyIncome)
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    Divider()
+                    HStack {
+                        Text("Existing EMIs")
+                            .font(.subheadline)
+                            .foregroundStyle(LMSColors.textSecondary)
+                        Spacer()
+                        Text(metrics.existingEMIs)
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    Divider()
+                    HStack {
+                        Text("Proposed EMI")
+                            .font(.subheadline)
+                            .foregroundStyle(LMSColors.textSecondary)
+                        Spacer()
+                        Text(CurrencyFormatter.shared.format(metrics.proposedEMI))
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    Divider()
+                    HStack {
+                        Text("Work Experience")
+                            .font(.subheadline)
+                            .foregroundStyle(LMSColors.textSecondary)
+                        Spacer()
+                        Text(app.borrowerDetails.workExperience)
+                            .font(.subheadline.weight(.semibold))
                     }
                 }
+                .padding(16)
+                .background(LMSColors.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(LMSColors.separatorLight, lineWidth: 1)
+                )
+            }
+            .padding(.vertical, 8)
+        } header: {
+            Label("Credit History & Risk Assessment", systemImage: "chart.bar.doc.horizontal")
+        }
+        .listRowSeparator(.hidden)
+    }
+
+    
+    // MARK: - Sanction Letter
+    
+    @ViewBuilder
+    private func sanctionLetterSection(_ app: LoanApplication) -> some View {
+        if [.approved, .disbursed].contains(app.status) {
+            Section {
+                HStack(alignment: .center, spacing: 14) {
+                    Image(systemName: "doc.richtext.fill")
+                        .font(.title2)
+                        .foregroundStyle(LMSColors.emerald)
+                        .frame(width: 42, height: 42)
+                        .background(LMSColors.emerald.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Sanction Letter")
+                            .font(.subheadline.weight(.bold))
+                        Text("Generate and share the loan sanction document digitally.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Button {
+                        exportSanctionLetter(for: app)
+                    } label: {
+                        Label("Export", systemImage: "square.and.arrow.up")
+                            .font(.caption.weight(.bold))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(LMSColors.brandNavy)
+                }
+                .padding(.vertical, 4)
+            } header: {
+                Label("Sanction Letter", systemImage: "doc.badge.arrow.up")
             }
         }
     }
     
+    private func exportSanctionLetter(for app: LoanApplication) {
+        do {
+            let url = try viewModel.generateSanctionLetter(for: app)
+            HapticsManager.triggerImpact(style: .medium)
+            sanctionShareItems = [url]
+            showSanctionShareSheet = true
+        } catch {
+            sanctionExportError = error.localizedDescription
+        }
+    }
+
     // MARK: - Approval
     
     @ViewBuilder
     private func approvalSection(_ app: LoanApplication) -> some View {
         if shouldShowOfficerActions(for: app) {
             Section {
-                if canSendForFinalApproval(app) {
+                VStack(spacing: 12) {
                     Button {
                         HapticsManager.triggerImpact(style: .heavy)
                         viewModel.sendForFinalApproval(applicationId: app.applicationId)
                         dismiss()
                     } label: {
-                        Text("Send for Final Approval")
+                        Label("Send for Approval", systemImage: "paperplane.fill")
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(.blue)
                             .frame(maxWidth: .infinity)
-                            .multilineTextAlignment(.center)
+                            .frame(minHeight: 28)
                     }
-                } else {
-                    HStack {
-                        Spacer()
-                        Label("Verification incomplete - resolve all documents first.", systemImage: "lock.fill")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                    }
-                    .padding(.vertical, 4)
-                }
+                    .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.roundedRectangle(radius: 12))
+                    .controlSize(.large)
+                    .disabled(!canSendForFinalApproval(app))
 
-                if canRejectCompleteApplication(app) {
-                    Button(role: .destructive) {
-                        HapticsManager.triggerImpact(style: .medium)
-                        applicationRejectReason = ""
-                        showingApplicationRejectPrompt = true
-                    } label: {
-                        VStack(spacing: 3) {
-                            Text("Reject Application")
+                    if canRejectCompleteApplication(app) {
+                        Button(role: .destructive) {
+                            HapticsManager.triggerImpact(style: .medium)
+                            applicationRejectReason = ""
+                            showingApplicationRejectPrompt = true
+                        } label: {
+                            Label("Reject Application", systemImage: "xmark.circle")
                                 .font(.body.weight(.semibold))
-                            Text("Rejects the complete application")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity)
+                                .frame(minHeight: 28)
                         }
-                        .frame(maxWidth: .infinity)
-                        .multilineTextAlignment(.center)
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.roundedRectangle(radius: 12))
+                        .controlSize(.large)
+                        .tint(.red)
+                    }
+
+                    if !canSendForFinalApproval(app) {
+                        Label("Verify all documents before sending for approval.", systemImage: "lock.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
-
-                TextField("Escalation reason for branch manager", text: $escalationReason, axis: .vertical)
-                    .lineLimit(2...4)
-
-                Button {
-                    let reason = escalationReason.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !reason.isEmpty else {
-                        escalationAlertMessage = "Add a short reason before escalating to your manager."
-                        showingEscalationAlert = true
-                        return
-                    }
-                    if viewModel.escalateApplication(applicationId: app.applicationId, reason: reason) {
-                        HapticsManager.triggerNotification(type: .success)
-                        dismiss()
-                    } else {
-                        escalationAlertMessage = "Could not escalate this application right now."
-                        showingEscalationAlert = true
-                    }
-                } label: {
-                    Text("Escalate to Branch Manager")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(Color.purple)
-                        .frame(maxWidth: .infinity)
-                        .multilineTextAlignment(.center)
-                }
+                .padding(.vertical, 4)
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
-            .alert("Escalation", isPresented: $showingEscalationAlert) {
+            .alert("Application Action", isPresented: $showingActionAlert) {
                 Button("OK", role: .cancel) {}
             } message: {
-                Text(escalationAlertMessage)
+                Text(actionAlertMessage)
             }
         }
     }
@@ -623,26 +661,9 @@ struct LoanApplicationReviewDetailView: View {
         [.pending, .applied, .documentsPending, .documentsRejected, .underReview, .verificationCompleted].contains(app.status)
     }
     
-    private func runAIAudit() {
-        HapticsManager.triggerImpact(style: .medium)
-        isRunningAIAudit = true
-        aiStatusText = "Extracting document boundaries..."
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-            aiStatusText = "Scanning against Bureau databases..."
-        }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-            isRunningAIAudit = false
-            aiAuditRun = true
-            HapticsManager.triggerImpact(style: .heavy)
-        }
-    }
-    
+
     private func cibilColor(for score: Int) -> Color {
-        if score >= 750 { return LMSColors.emerald }
-        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return LMSColors.amber }
-        return LMSColors.coral
+        viewModel.cibilColor(for: score)
     }
 }
 
@@ -986,4 +1007,18 @@ struct DocumentChecklistItemRow: View {
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
     }
+}
+
+// MARK: - Credit Risk Supporting Views
+
+
+
+private struct OfficerSanctionShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+    
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+    
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

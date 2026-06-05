@@ -6,10 +6,11 @@ enum ProfileEditSheet: Identifiable {
 }
 
 struct ProfileView: View {
-    @EnvironmentObject var appState: AppStateManager
-    @EnvironmentObject var authManager: AuthManager
-    @StateObject private var viewModel = BorrowerProfileViewModel()
-    @StateObject private var notifVM = NotificationViewModel()
+    @Environment(AppStateManager.self) var appState: AppStateManager
+    @Environment(AuthManager.self) var authManager: AuthManager
+    @State private var viewModel = BorrowerProfileViewModel()
+    @State private var notifVM = NotificationViewModel()
+    @AppStorage("isDarkMode") private var isDarkMode = false
     @State private var activeSheet: ProfileEditSheet?
 
     var body: some View {
@@ -44,7 +45,9 @@ struct ProfileView: View {
                 notifVM.configure(userId: userId)
             }
         }
+        .preferredColorScheme(isDarkMode ? .dark : .light)
     }
+
 
     @ViewBuilder
     private func profileForm(_ profile: BorrowerProfile) -> some View {
@@ -71,12 +74,8 @@ struct ProfileView: View {
                             Label("Profile Information", systemImage: "person.circle")
                         }
                         
-                        NavigationLink(destination: KYCStatusDetailView(viewModel: viewModel)) {
-                            Label("KYC Verification", systemImage: "checkmark.seal")
-                        }
-                        
                         NavigationLink(destination: LinkedBankAccountsDetailView(viewModel: viewModel)) {
-                            Label("Linked Bank Accounts", systemImage: "building.columns")
+                            Label("Loan Account", systemImage: "building.columns")
                         }
                     } header: {
                         Text("Account Details")
@@ -96,7 +95,7 @@ struct ProfileView: View {
                             Label("Privacy Controls", systemImage: "hand.raised")
                         }
                         
-                        NavigationLink(destination: NotificationsDetailView(showSettings: true, notificationViewModel: notifVM)) {
+                        NavigationLink(destination: NotificationsDetailView(showSettings: true, showNotifications: false, notificationViewModel: notifVM)) {
                             Label("Notifications", systemImage: "bell")
                         }
                     } header: {
@@ -107,6 +106,10 @@ struct ProfileView: View {
                     Section {
                         NavigationLink(destination: SettingsDetailView()) {
                             Label("App Settings", systemImage: "gearshape")
+                        }
+                        
+                        NavigationLink(destination: AccessibilitySettingsView()) {
+                            Label("Accessibility", systemImage: "figure.walk.circle")
                         }
                         
                         NavigationLink(destination: HelpSupportDetailView()) {
@@ -175,7 +178,7 @@ struct ProfileView: View {
 #Preview {
     NavigationStack {
         ProfileView()
-            .environmentObject(AppStateManager())
-            .environmentObject(AuthManager())
+            .environment(AppStateManager())
+            .environment(AuthManager())
     }
 }

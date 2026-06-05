@@ -1,17 +1,19 @@
+import Observation
 import Foundation
 import Combine
 
 @MainActor
-class AdminSignUpViewModel: ObservableObject {
-    @Published var fullName: String = ""
-    @Published var email: String = ""
-    @Published var phone: String = ""
-    @Published var password: String = ""
-    @Published var confirmPassword: String = ""
+@Observable
+class AdminSignUpViewModel {
+    var fullName: String = ""
+    var email: String = ""
+    var phone: String = ""
+    var password: String = ""
+    var confirmPassword: String = ""
 
-    @Published var isLoading: Bool = false
-    @Published var showSuccess: Bool = false
-    @Published var generalError: String = ""
+    var isLoading: Bool = false
+    var showSuccess: Bool = false
+    var generalError: String = ""
 
     var isMinLength: Bool { password.count >= 8 }
     var hasUppercase: Bool { password.rangeOfCharacter(from: .uppercaseLetters) != nil }

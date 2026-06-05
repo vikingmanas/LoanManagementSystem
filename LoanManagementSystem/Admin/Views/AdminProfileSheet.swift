@@ -1,12 +1,14 @@
 import SwiftUI
 
 struct AdminProfileSheet: View {
-    @EnvironmentObject private var authManager: AuthManager
-    @EnvironmentObject private var appState: AppStateManager
+    @Environment(AuthManager.self) private var authManager: AuthManager
+    @Environment(AppStateManager.self) private var appState: AppStateManager
     @Environment(\.dismiss) private var dismiss
     
     @AppStorage("biometricEnabled") private var biometricEnabled = false
-    @StateObject private var localSecurity = LocalSecurityService.shared
+    @AppStorage("isDarkMode") private var isDarkMode = false
+
+    @State private var localSecurity = LocalSecurityService.shared
     
     var body: some View {
         NavigationStack {
@@ -70,10 +72,25 @@ struct AdminProfileSheet: View {
                     }
                 }
                 
+
+                
                 Section("Security") {
-                    Toggle(isOn: $biometricEnabled) {
+                    Toggle(isOn: Binding(
+                        get: { biometricEnabled },
+                        set: { newValue in
+                            if newValue {
+                                Task {
+                                    let success = await localSecurity.authenticate(reason: "Verify identity to enable biometric login")
+                                    biometricEnabled = success
+                                }
+                            } else {
+                                biometricEnabled = false
+                            }
+                        }
+                    )) {
                         Label("\(localSecurity.biometricTypeName) Login", systemImage: "faceid")
                     }
+                    .disabled(!localSecurity.canUseBiometrics())
                     Button(action: {
                         // In a real app this would present a password change sheet
                     }) {
@@ -92,6 +109,12 @@ struct AdminProfileSheet: View {
                         Text("42")
                     } label: {
                         Label("Build Number", systemImage: "hammer")
+                    }
+                }
+
+                Section("General") {
+                    NavigationLink(destination: AccessibilitySettingsView()) {
+                        Label("Accessibility", systemImage: "figure.walk.circle")
                     }
                 }
                 
@@ -115,5 +138,6 @@ struct AdminProfileSheet: View {
                 }
             }
         }
+        .preferredColorScheme(isDarkMode ? .dark : .light)
     }
 }

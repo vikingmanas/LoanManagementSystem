@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AdminUserDetailView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: AdminStaffViewModel
+    @Bindable var viewModel: AdminStaffViewModel
     let member: StaffMember
 
     @State private var showingEditSheet = false
@@ -50,7 +50,7 @@ struct AdminUserDetailView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingEditSheet) {
+        .accessibleSheet(isPresented: $showingEditSheet) {
             AdminEditUserSheet(viewModel: viewModel, member: member)
         }
         .confirmationDialog(
@@ -155,7 +155,7 @@ struct AdminUserDetailView: View {
 
 struct AdminEditUserSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: AdminStaffViewModel
+    @Bindable var viewModel: AdminStaffViewModel
     let member: StaffMember
 
     @State private var fullName = ""

@@ -4,9 +4,9 @@ import UIKit
 // MARK: - Loans Tab (Marketplace only — no applications here)
 
 struct LoanApplicationTabView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
-    @EnvironmentObject private var authManager: AuthManager
-    @EnvironmentObject private var tabRouter: BorrowerTabRouter
+    @Bindable var viewModel: LoanApplicationViewModel
+    @Environment(AuthManager.self) private var authManager: AuthManager
+    @Environment(BorrowerTabRouter.self) private var tabRouter: BorrowerTabRouter
     @State private var navigationPath = NavigationPath()
 
     var body: some View {
@@ -68,7 +68,7 @@ struct LoanApplicationTabView: View {
                         navigationPath = NavigationPath()
                         tabRouter.select(.applications)
                     }
-                    .environmentObject(authManager)
+                    .environment(authManager)
                 case .tracking(let application):
                     LoanApplicationTrackingScreen(
                         viewModel: viewModel,
@@ -95,7 +95,7 @@ struct LoanApplicationTabView: View {
 // MARK: - Legacy discovery (kept for reference — superseded by LoansMarketplaceView)
 #if false
 private struct LoanDiscoveryContent: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let onSelectProduct: (BorrowerLoanProduct) -> Void
 
     var body: some View {
@@ -267,7 +267,7 @@ private struct LoanProductMetricChip: View {
 
 // MARK: - Loan Overview Screen
 private struct LoanOverviewScreen: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
     let onApply: () -> Void
     @Environment(\.dismiss) private var dismiss
@@ -417,7 +417,7 @@ private struct LoanOverviewScreen: View {
 
 // MARK: - Combined Application Screen
 private struct CombinedApplicationScreen: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let onVerify: () -> Void
     @Environment(\.dismiss) private var dismiss
     
@@ -562,7 +562,7 @@ private struct CombinedApplicationScreen: View {
         }
         .navigationTitle("Application")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $activeUploadDocument) { document in
+        .accessibleSheet(item: $activeUploadDocument) { document in
             DocumentUploadSheet(documentName: document.name) { fileName, source in
                 viewModel.uploadDocument(document.id, fileName: fileName, source: source)
             }
@@ -601,7 +601,7 @@ private struct DocumentRow: View {
 
 // MARK: - Document Verification Result View
 private struct DocumentVerificationResultView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let onSubmit: () -> Void
     @Environment(\.dismiss) private var dismiss
     
@@ -671,7 +671,7 @@ private struct DocumentVerificationResultView: View {
         }
         .navigationTitle("Verification")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $activeUploadDocument) { document in
+        .accessibleSheet(item: $activeUploadDocument) { document in
             DocumentUploadSheet(documentName: document.name) { fileName, source in
                 viewModel.uploadDocument(document.id, fileName: fileName, source: source)
             }
@@ -681,7 +681,7 @@ private struct DocumentVerificationResultView: View {
 
 // MARK: - Applications Content
 private struct BorrowerApplicationsContent: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let onSelectApplication: (BorrowerLoanApplication) -> Void
 
     @State private var draftPendingDeletion: BorrowerLoanApplication?
@@ -813,11 +813,11 @@ private struct ApplicationCard: View {
                     Text(application.displayIdentifier)
                         .font(.caption.monospaced())
                         .foregroundStyle(LMSColors.textSecondary)
-                    Text(application.isDraft ? "Step \(application.draftStepIndex) of 10" : "Last Update: \((application.submittedAt ?? application.updatedAt).formattedAsDDMMMYYYY())")
+                    Text(application.isDraft ? "Step \(application.draftStepIndex) of 9" : "Last Update: \((application.submittedAt ?? application.updatedAt).formattedAsDDMMMYYYY())")
                         .font(.system(size: 10))
                         .foregroundStyle(LMSColors.textTertiary)
                     if application.isDraft {
-                        Text("\(Int((Double(min(max(application.draftStepIndex, 1), 10)) / 10.0) * 100))% Complete")
+                        Text("\(Int((Double(min(max(application.draftStepIndex, 1), 9)) / 9.0) * 100))% Complete")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(LMSColors.brandNavy)
                         Text("Updated \(RelativeDateFormatter.shared.relativeString(from: application.updatedAt))")
@@ -865,8 +865,8 @@ extension BorrowerLoanProductType {
 
 // MARK: - Loan Application Tracking Screen
 struct LoanApplicationTrackingScreen: View {
-    @EnvironmentObject private var authManager: AuthManager
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Environment(AuthManager.self) private var authManager: AuthManager
+    @Bindable var viewModel: LoanApplicationViewModel
     let application: BorrowerLoanApplication
     let onResume: () -> Void
     let onDelete: () -> Void
@@ -990,7 +990,7 @@ struct LoanApplicationTrackingScreen: View {
         } message: {
             Text("This will permanently delete draft \(app.displayIdentifier). You cannot undo this action.")
         }
-        .sheet(item: $resubmittingDocument) { document in
+        .accessibleSheet(item: $resubmittingDocument) { document in
             DocumentUploadSheet(documentName: document.name) { fileName, source in
                 viewModel.uploadDocumentForApplication(
                     applicationID: app.id,
@@ -1000,7 +1000,7 @@ struct LoanApplicationTrackingScreen: View {
                 )
             }
         }
-        .sheet(isPresented: $showOfficerChat) {
+        .accessibleSheet(isPresented: $showOfficerChat) {
             NavigationStack {
                 BorrowerOfficerChatView(
                     application: app,
@@ -1008,7 +1008,7 @@ struct LoanApplicationTrackingScreen: View {
                 )
             }
         }
-        .sheet(isPresented: $showSanctionShareSheet) {
+        .accessibleSheet(isPresented: $showSanctionShareSheet) {
             BorrowerActivityShareSheet(activityItems: sanctionShareItems)
         }
         .task(id: app.assignedOfficerId) {
@@ -1091,30 +1091,19 @@ private struct BorrowerActivityShareSheet: UIViewControllerRepresentable {
 }
 
 private struct BorrowerOfficerChatView: View {
-    let application: BorrowerLoanApplication
-    let borrowerUserId: UUID?
-
+    @State private var viewModel: BorrowerOfficerChatViewModel
     @Environment(\.dismiss) private var dismiss
-    @State private var messages: [DBMessage] = []
-    @State private var messageText = ""
-    @State private var officerUserId: UUID?
-    @State private var isLoading = true
-    @State private var isSending = false
-    @State private var errorMessage: String?
 
-    private var canSend: Bool {
-        borrowerUserId != nil &&
-        officerUserId != nil &&
-        !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !isSending
+    init(application: BorrowerLoanApplication, borrowerUserId: UUID?) {
+        _viewModel = State(initialValue: BorrowerOfficerChatViewModel(application: application, borrowerUserId: borrowerUserId))
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            if isLoading {
+            if viewModel.isLoading {
                 ProgressView("Loading conversation...")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let errorMessage {
+            } else if let errorMessage = viewModel.errorMessage {
                 ContentUnavailableView(
                     "Messaging unavailable",
                     systemImage: "message.badge",
@@ -1124,15 +1113,15 @@ private struct BorrowerOfficerChatView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 10) {
-                            ForEach(messages) { message in
+                            ForEach(viewModel.messages) { message in
                                 BorrowerMessageBubble(
                                     message: message,
-                                    isOutgoing: message.senderId == borrowerUserId
+                                    isOutgoing: message.senderId == viewModel.borrowerUserId
                                 )
                                 .id(message.id)
                             }
 
-                            if messages.isEmpty {
+                            if viewModel.messages.isEmpty {
                                 ContentUnavailableView(
                                     "No messages yet",
                                     systemImage: "message",
@@ -1144,8 +1133,8 @@ private struct BorrowerOfficerChatView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 14)
                     }
-                    .onChange(of: messages.count) { _, _ in
-                        if let last = messages.last?.id {
+                    .onChange(of: viewModel.messages.count) { _, _ in
+                        if let last = viewModel.messages.last?.id {
                             withAnimation(.easeOut(duration: 0.2)) {
                                 proxy.scrollTo(last, anchor: .bottom)
                             }
@@ -1156,7 +1145,7 @@ private struct BorrowerOfficerChatView: View {
                 Divider()
 
                 HStack(alignment: .bottom, spacing: 10) {
-                    TextField("Message loan officer", text: $messageText, axis: .vertical)
+                    TextField("Message loan officer", text: $viewModel.messageText, axis: .vertical)
                         .lineLimit(1...4)
                         .textFieldStyle(.plain)
                         .padding(.horizontal, 12)
@@ -1164,15 +1153,15 @@ private struct BorrowerOfficerChatView: View {
                         .background(LMSColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
 
                     Button {
-                        Task { await sendMessage() }
+                        Task { await viewModel.sendMessage() }
                     } label: {
                         Image(systemName: "paperplane.fill")
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(.white)
                             .frame(width: 42, height: 42)
-                            .background(canSend ? LMSColors.brandNavy : LMSColors.textTertiary, in: Circle())
+                            .background(viewModel.canSend ? LMSColors.brandNavy : LMSColors.textTertiary, in: Circle())
                     }
-                    .disabled(!canSend)
+                    .disabled(!viewModel.canSend)
                     .accessibilityLabel("Send message")
                 }
                 .padding(12)
@@ -1180,7 +1169,7 @@ private struct BorrowerOfficerChatView: View {
             }
         }
         .background(LMSColors.background)
-        .navigationTitle(application.displayIdentifier)
+        .navigationTitle(viewModel.application.displayIdentifier)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -1188,75 +1177,8 @@ private struct BorrowerOfficerChatView: View {
             }
         }
         .task {
-            await loadConversation()
+            await viewModel.loadConversation()
         }
-    }
-
-    private func loadConversation() async {
-        isLoading = true
-        errorMessage = nil
-
-        do {
-            guard borrowerUserId != nil else {
-                errorMessage = "Sign in again to message your loan officer."
-                isLoading = false
-                return
-            }
-
-            if let assignedUserId = application.assignedOfficer?.userId {
-                officerUserId = assignedUserId
-            } else if application.assignedOfficerId != nil {
-                officerUserId = try await DatabaseService.shared.fetchAssignedLoanOfficerUserId(applicationId: application.id)
-            } else {
-                officerUserId = nil
-            }
-            guard officerUserId != nil else {
-                errorMessage = "No loan officer is available for this application yet."
-                isLoading = false
-                return
-            }
-
-            messages = try await DatabaseService.shared.fetchMessagesForApplication(applicationId: application.id)
-            isLoading = false
-        } catch {
-            errorMessage = "Could not load messages. Please try again."
-            isLoading = false
-        }
-    }
-
-    private func sendMessage() async {
-        guard let borrowerUserId,
-              let officerUserId else { return }
-
-        let trimmed = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-
-        isSending = true
-        messageText = ""
-        let outgoing = DBMessage(
-            messageId: UUID(),
-            senderId: borrowerUserId,
-            receiverId: officerUserId,
-            applicationId: application.id,
-            content: trimmed,
-            sentAt: Date(),
-            isRead: false
-        )
-        messages.append(outgoing)
-
-        do {
-            try await DatabaseService.shared.sendMessage(outgoing)
-            try? await DatabaseService.shared.createNotification(
-                userId: officerUserId,
-                title: "New borrower message",
-                message: "\(application.displayIdentifier): \(trimmed)"
-            )
-        } catch {
-            messages.removeAll { $0.id == outgoing.id }
-            messageText = trimmed
-            errorMessage = "Message could not be sent. Please try again."
-        }
-        isSending = false
     }
 }
 
@@ -1541,7 +1463,7 @@ private struct AssignedLoanOfficerCard: View {
 
 // MARK: - Task 2 Components (Timeline Stepper)
 private struct TimelineStepperCard: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let application: BorrowerLoanApplication
     
     @State private var expandedStages: Set<BorrowerApplicationStage> = []

@@ -1,3 +1,4 @@
+import Observation
 import Foundation
 import Combine
 import Supabase
@@ -13,12 +14,13 @@ public struct UserAccount: Codable {
 }
 
 @MainActor
-public class BorrowerProfileStore: ObservableObject {
+@Observable
+public class BorrowerProfileStore {
     public static let shared = BorrowerProfileStore()
 
-    @Published public var profile: BorrowerProfile?
-    @Published public var accounts: [UserAccount] = []
-    @Published var currentEmail: String?
+    public var profile: BorrowerProfile?
+    public var accounts: [UserAccount] = []
+    var currentEmail: String?
 
     private init() {
         setupDefaultAccount()
@@ -216,15 +218,19 @@ public class BorrowerProfileStore: ObservableObject {
         if let existingIndex = linkedAccounts.firstIndex(where: {
             $0.linkedLoanApplicationId == applicationId && $0.isOverdraftAccount
         }) {
+            var hasChanges = false
             if linkedAccounts[existingIndex].balance == 0 {
                 linkedAccounts[existingIndex].balance = sanctionedAmount
+                hasChanges = true
             }
-            linkedAccounts[existingIndex].odSanctionLimit = max(
-                linkedAccounts[existingIndex].odSanctionLimit ?? 0,
-                sanctionedAmount
-            )
-            borrowerProfile.linkedAccounts = linkedAccounts
-            persistBorrowerProfile(borrowerProfile, email: normalized)
+            if (linkedAccounts[existingIndex].odSanctionLimit ?? 0) < sanctionedAmount {
+                linkedAccounts[existingIndex].odSanctionLimit = sanctionedAmount
+                hasChanges = true
+            }
+            if hasChanges {
+                borrowerProfile.linkedAccounts = linkedAccounts
+                persistBorrowerProfile(borrowerProfile, email: normalized)
+            }
             return linkedAccounts[existingIndex].accountNumber
         }
 

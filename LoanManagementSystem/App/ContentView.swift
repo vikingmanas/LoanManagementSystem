@@ -7,13 +7,13 @@ import Supabase
 struct ContentView: View {
 
     // Supabase/Auth Manager
-    @EnvironmentObject private var authManager: AuthManager
+    @Environment(AuthManager.self) private var authManager: AuthManager
 
     // App State Manager
-    @StateObject private var appState = AppStateManager()
+    @State private var appState = AppStateManager()
 
     // Observed Profile Store
-    @ObservedObject private var profileStore = BorrowerProfileStore.shared
+    @Bindable private var profileStore = BorrowerProfileStore.shared
 
     // Splash control
     @State private var showSplash = true
@@ -21,6 +21,9 @@ struct ContentView: View {
     // Biometrics State
     @AppStorage("biometricEnabled") private var biometricEnabled = false
     @State private var isAppUnlocked = false
+
+    // Scene phase for re-locking on background
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -34,7 +37,7 @@ struct ContentView: View {
             } else if appState.showRoleSelection && !authManager.isAuthenticated && !appState.isAuthenticated {
 
                 RoleSelectionView()
-                    .environmentObject(appState)
+                    .environment(appState)
                     .transition(.asymmetric(
                         insertion: .move(edge: .trailing).combined(with: .opacity),
                         removal: .move(edge: .leading).combined(with: .opacity)
@@ -55,16 +58,16 @@ struct ContentView: View {
                         case .customer:
                             if appState.requiresBorrowerOnboarding && profileStore.profile?.isOnboardingCompleted != true {
                                 OnboardingQuestionnaireView()
-                                    .environmentObject(authManager)
-                                    .environmentObject(appState)
+                                    .environment(authManager)
+                                    .environment(appState)
                                     .transition(.asymmetric(
                                         insertion: .move(edge: .trailing).combined(with: .opacity),
                                         removal: .move(edge: .leading).combined(with: .opacity)
                                     ))
                             } else {
                                 MainTabView()
-                                    .environmentObject(authManager)
-                                    .environmentObject(appState)
+                                    .environment(authManager)
+                                    .environment(appState)
                                     .transition(.asymmetric(
                                         insertion: .move(edge: .trailing).combined(with: .opacity),
                                         removal: .move(edge: .leading).combined(with: .opacity)
@@ -72,24 +75,24 @@ struct ContentView: View {
                             }
                         case .loanOfficer:
                             LoanOfficerDashboardView()
-                                .environmentObject(authManager)
-                                .environmentObject(appState)
+                                .environment(authManager)
+                                .environment(appState)
                                 .transition(.asymmetric(
                                     insertion: .move(edge: .trailing).combined(with: .opacity),
                                     removal: .move(edge: .leading).combined(with: .opacity)
                                 ))
                         case .bankManager:
                             ManagerDashboardView()
-                                .environmentObject(authManager)
-                                .environmentObject(appState)
+                                .environment(authManager)
+                                .environment(appState)
                                 .transition(.asymmetric(
                                     insertion: .move(edge: .trailing).combined(with: .opacity),
                                     removal: .move(edge: .leading).combined(with: .opacity)
                                 ))
                         case .admin:
                             AdminDashboardView()
-                                .environmentObject(authManager)
-                                .environmentObject(appState)
+                                .environment(authManager)
+                                .environment(appState)
                                 .transition(.asymmetric(
                                     insertion: .move(edge: .trailing).combined(with: .opacity),
                                     removal: .move(edge: .leading).combined(with: .opacity)
@@ -102,16 +105,16 @@ struct ContentView: View {
                         // MARK: - Authentication Flow
                         if appState.selectedRole == .customer {
                             SignInView()
-                                .environmentObject(authManager)
-                                .environmentObject(appState)
+                                .environment(authManager)
+                                .environment(appState)
                                 .transition(.asymmetric(
                                     insertion: .move(edge: .leading).combined(with: .opacity),
                                     removal: .move(edge: .trailing).combined(with: .opacity)
                                 ))
                         } else {
                             StaffLoginView()
-                                .environmentObject(authManager)
-                                .environmentObject(appState)
+                                .environment(authManager)
+                                .environment(appState)
                                 .transition(.asymmetric(
                                     insertion: .move(edge: .leading).combined(with: .opacity),
                                     removal: .move(edge: .trailing).combined(with: .opacity)
@@ -143,7 +146,7 @@ struct ContentView: View {
             // MARK: - Splash Delay
             // Skip the splash delay inside SwiftUI Previews for instant canvas rendering.
             let isPreview = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
-            let delay = isPreview ? 0.5 : 1.5
+            let delay = isPreview ? 0.5 : 2.6
             
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 withAnimation(.easeInOut(duration: 0.5)) {
@@ -153,10 +156,24 @@ struct ContentView: View {
         }
         .onChange(of: authManager.isAuthenticated) {
             syncBorrowerProfileIfNeeded()
+            // Re-lock when user logs out so next login requires biometric
+            if !authManager.isAuthenticated {
+                isAppUnlocked = false
+            }
         }
         .onChange(of: authManager.userEmail) {
             syncBorrowerProfileIfNeeded()
         }
+        .onChange(of: scenePhase) {
+            // Re-lock the app whenever it goes to the background
+            if scenePhase == .background && biometricEnabled {
+                isAppUnlocked = false
+            }
+        }
+        .animation(
+            .easeInOut(duration: 0.3),
+            value: isAppUnlocked
+        )
     }
 
     private var isCurrentRoleAuthenticated: Bool {
@@ -189,40 +206,107 @@ struct ContentView: View {
 
     // MARK: - Splash View
     private var splashView: some View {
+        LMSAnimatedSplashView()
+    }
+}
+
+private struct LMSAnimatedSplashView: View {
+    @State private var logoVisible = false
+    @State private var titleVisible = false
+    @State private var orbiting = false
+
+    var body: some View {
         ZStack {
-            
-            LinearGradient(
+            Color(hex: "#020711")
+                .ignoresSafeArea()
+
+            RadialGradient(
                 colors: [
-                    LMSColors.brandNavy,
-                    Color(hex: "#2E3B84")
+                    Color(hex: "#12375E").opacity(0.72),
+                    Color(hex: "#071523").opacity(0.52),
+                    .clear
                 ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                center: .center,
+                startRadius: 12,
+                endRadius: 420
             )
             .ignoresSafeArea()
-            
-            VStack(spacing: 20) {
-                
-                Image(systemName: "indianrupeesign.circle.fill")
-                    .font(.system(size: 60))
-                    .foregroundColor(.white)
-                
-                Text("Loan Manager")
-                    .font(.system(.title, design: .rounded))
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                
-                ProgressView()
-                    .progressViewStyle(.circular)
-                    .tint(.white.opacity(0.8))
-                    .scaleEffect(1.1)
+
+            VStack(spacing: 24) {
+                ZStack {
+                    Circle()
+                        .stroke(
+                            AngularGradient(
+                                colors: [
+                                    .clear,
+                                    LMSColors.actionBlue.opacity(0.8),
+                                    LMSColors.emerald.opacity(0.9),
+                                    .clear
+                                ],
+                                center: .center
+                            ),
+                            lineWidth: 1.5
+                        )
+                        .frame(width: 226, height: 226)
+                        .rotationEffect(.degrees(orbiting ? 360 : 0))
+
+                    Circle()
+                        .stroke(LMSColors.actionBlue.opacity(0.18), lineWidth: 1)
+                        .frame(width: 194, height: 194)
+                        .scaleEffect(logoVisible ? 1 : 0.55)
+
+                    Circle()
+                        .fill(LMSColors.actionBlue.opacity(0.18))
+                        .frame(width: 168, height: 168)
+                        .blur(radius: 28)
+                        .scaleEffect(logoVisible ? 1.22 : 0.45)
+
+                    Image("SplashLogo")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 140, height: 140)
+                        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        )
+                        .shadow(color: LMSColors.actionBlue.opacity(0.6), radius: 28)
+                        .shadow(color: LMSColors.emerald.opacity(0.28), radius: 48)
+                        .scaleEffect(logoVisible ? 1 : 0.42)
+                        .opacity(logoVisible ? 1 : 0)
+                }
+
+                VStack(spacing: 7) {
+                    Text("LoanMate")
+                        .font(.system(size: 38, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+
+                    Text("Smarter lending. Simpler life.")
+                        .font(.system(.subheadline, design: .rounded).weight(.medium))
+                        .foregroundStyle(Color.white.opacity(0.58))
+                        .tracking(0.7)
+                }
+                .opacity(titleVisible ? 1 : 0)
+                .offset(y: titleVisible ? 0 : 16)
             }
-            
         }
+        .onAppear {
+            withAnimation(.spring(response: 0.85, dampingFraction: 0.72)) {
+                logoVisible = true
+            }
+            withAnimation(.linear(duration: 5).repeatForever(autoreverses: false)) {
+                orbiting = true
+            }
+            withAnimation(.easeOut(duration: 0.7).delay(0.45)) {
+                titleVisible = true
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("LoanMate")
     }
 }
 
 #Preview {
     ContentView()
-        .environmentObject(AuthManager())
+        .environment(AuthManager())
 }

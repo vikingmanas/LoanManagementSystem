@@ -3,8 +3,8 @@ import SwiftUI
 struct SecurityDetailView: View {
     @AppStorage("biometricEnabled") private var biometricEnabled = false
     @AppStorage("doubleAuthEnabled") private var doubleAuthEnabled = false
-    @EnvironmentObject private var authManager: AuthManager
-    @StateObject private var localSecurity = LocalSecurityService.shared
+    @Environment(AuthManager.self) private var authManager: AuthManager
+    @State private var localSecurity = LocalSecurityService.shared
     @State private var showOTPSheet = false
     @State private var securityMessage: String?
     
@@ -19,20 +19,23 @@ struct SecurityDetailView: View {
     var body: some View {
         Form {
             Section {
-                Toggle(isOn: $biometricEnabled) {
-                    Label("\(localSecurity.biometricTypeName) Login", systemImage: "faceid")
-                }
-
-                Button {
-                    Task {
-                        let success = await localSecurity.authenticate(reason: "Verify your identity to enable secure quick login.")
-                        securityMessage = success ? "\(localSecurity.biometricTypeName) verified successfully." : "Biometric verification was not completed."
-                        if !success {
+                Toggle(isOn: Binding(
+                    get: { biometricEnabled },
+                    set: { newValue in
+                        if newValue {
+                            Task {
+                                let success = await localSecurity.authenticate(reason: "Verify your identity to enable secure quick login.")
+                                biometricEnabled = success
+                                securityMessage = success
+                                    ? "\(localSecurity.biometricTypeName) enabled successfully."
+                                    : "Biometric verification was not completed."
+                            }
+                        } else {
                             biometricEnabled = false
                         }
                     }
-                } label: {
-                    Label("Test Biometric Login", systemImage: "checkmark.shield")
+                )) {
+                    Label("\(localSecurity.biometricTypeName) Login", systemImage: "faceid")
                 }
                 .disabled(!localSecurity.canUseBiometrics())
             } header: {
@@ -109,9 +112,9 @@ struct SecurityDetailView: View {
         }
         .navigationTitle("Security")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showOTPSheet) {
+        .accessibleSheet(isPresented: $showOTPSheet) {
             EmailOTPSetupSheet(isEnabled: $doubleAuthEnabled)
-                .environmentObject(authManager)
+                .environment(authManager)
         }
         .alert("Security Check", isPresented: Binding(
             get: { securityMessage != nil },
@@ -126,7 +129,7 @@ struct SecurityDetailView: View {
 
 private struct EmailOTPSetupSheet: View {
     @Binding var isEnabled: Bool
-    @EnvironmentObject private var authManager: AuthManager
+    @Environment(AuthManager.self) private var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
     @State private var enteredCode = ""
     @State private var errorMessage = ""

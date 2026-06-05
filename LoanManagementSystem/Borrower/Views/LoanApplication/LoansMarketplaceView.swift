@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - Loans Tab (Marketplace)
 
 struct LoansMarketplaceView: View {
-    @ObservedObject var viewModel: LoanApplicationViewModel
+    @Bindable var viewModel: LoanApplicationViewModel
     let onProductDetail: (BorrowerLoanProduct) -> Void
     let onApply: (BorrowerLoanProduct) -> Void
     let onSchemeDetail: (GovernmentSchemeCardModel) -> Void

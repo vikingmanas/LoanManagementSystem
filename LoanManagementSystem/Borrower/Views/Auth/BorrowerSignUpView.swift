@@ -2,9 +2,9 @@ import SwiftUI
 
 struct BorrowerSignUpView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var appState: AppStateManager
-    @EnvironmentObject var authManager: AuthManager
-    @StateObject private var viewModel = SignUpViewModel()
+    @Environment(AppStateManager.self) var appState: AppStateManager
+    @Environment(AuthManager.self) var authManager: AuthManager
+    @State private var viewModel = SignUpViewModel()
     @State private var showTermsSheet = false
     
     var body: some View {
@@ -27,19 +27,26 @@ struct BorrowerSignUpView: View {
                 
                 // Personal Information
                 Section(header: Text("Personal Details")) {
-                    LabeledContent("Name") {
+                    HStack {
+                        Text("Name")
+                            .frame(width: 95, alignment: .leading)
                         TextField("Full Name", text: $viewModel.fullName)
                             .textContentType(.name)
                     }
                     
-                    LabeledContent("Email") {
-                        TextField("example@mail.com", text: $viewModel.email)
+                    HStack {
+                        Text("Email")
+                            .frame(width: 95, alignment: .leading)
+                        TextField("Email", text: $viewModel.email)
                             .textContentType(.emailAddress)
                             .keyboardType(.emailAddress)
                             .textInputAutocapitalization(.never)
+                            .foregroundStyle(LMSColors.textPrimary)
                     }
                     
-                    LabeledContent("Mobile") {
+                    HStack {
+                        Text("Mobile")
+                            .frame(width: 95, alignment: .leading)
                         TextField("Phone Number", text: $viewModel.phone)
                             .textContentType(.telephoneNumber)
                             .keyboardType(.phonePad)
@@ -48,12 +55,16 @@ struct BorrowerSignUpView: View {
                 
                 // Additional Information (Optional)
                 Section(header: Text("Optional Details")) {
-                    LabeledContent("Alt. Mobile") {
+                    HStack {
+                        Text("Alt. Mobile")
+                            .frame(width: 95, alignment: .leading)
                         TextField("Optional", text: $viewModel.alternatePhone)
                             .keyboardType(.phonePad)
                     }
                     
-                    LabeledContent("Referral") {
+                    HStack {
+                        Text("Referral")
+                            .frame(width: 95, alignment: .leading)
                         TextField("Code", text: $viewModel.referralCode)
                             .textInputAutocapitalization(.characters)
                     }
@@ -131,7 +142,7 @@ struct BorrowerSignUpView: View {
                 appState.login(requiresBorrowerOnboarding: true)
             }
         }
-        .sheet(isPresented: $showTermsSheet) {
+        .accessibleSheet(isPresented: $showTermsSheet) {
             TermsAndConditionsSheet()
         }
     }
@@ -272,7 +283,7 @@ private struct TermsSection: View {
 
 #Preview("BorrowerSignUpView") {
     BorrowerSignUpView()
-        .environmentObject(AppStateManager())
-        .environmentObject(AuthManager())
+        .environment(AppStateManager())
+        .environment(AuthManager())
 }
 

@@ -2,7 +2,7 @@ import SwiftUI
 
 
 struct ManagerReportsView: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @State private var showReportSheet = false
     @State private var showAuditLog = false
 
@@ -41,10 +41,10 @@ struct ManagerReportsView: View {
                     .padding(.horizontal, LMSSpacing.screenHorizontal)
             }
         }
-        .sheet(isPresented: $showReportSheet) {
+        .accessibleSheet(isPresented: $showReportSheet) {
             ManagerReportSheet(viewModel: viewModel)
         }
-        .sheet(isPresented: $showAuditLog) {
+        .accessibleSheet(isPresented: $showAuditLog) {
             ManagerAuditLogSheet(events: viewModel.auditEvents)
         }
     }
@@ -104,7 +104,7 @@ private struct ReportButton: View {
 
 
 private struct ManagerInsightCard: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     private var snapshot: BranchLoanReportSnapshot {
         BranchLoanReportSnapshot(applicants: viewModel.applicants, officers: viewModel.officers)
     }
@@ -173,7 +173,7 @@ private struct ManagerInsightCard: View {
 
 
 struct ManagerReportSheet: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
     @State private var showShareSheet = false
     @State private var shareItems: [Any] = []
@@ -375,7 +375,7 @@ struct ManagerReportSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .sheet(isPresented: $showShareSheet) {
+            .accessibleSheet(isPresented: $showShareSheet) {
                 ShareSheet(activityItems: shareItems)
             }
             .alert("Export Failed", isPresented: Binding(

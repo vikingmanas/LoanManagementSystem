@@ -1,18 +1,7 @@
 import SwiftUI
 
 struct LinkedBankAccountsDetailView: View {
-    @ObservedObject var viewModel: BorrowerProfileViewModel
-    @State private var accountToDelete: LinkedBankAccount?
-    @State private var showingDeleteAlert = false
-    
-    private var hasPrimaryBank: Bool {
-        guard let bank = viewModel.profile?.bankDetails else { return false }
-        return !bank.bankName.isEmpty && !bank.accountNumber.isEmpty
-    }
-
-    private var linkedAccounts: [LinkedBankAccount] {
-        viewModel.profile?.linkedAccounts ?? []
-    }
+    @Bindable var viewModel: BorrowerProfileViewModel
 
     private var loanAccounts: [DashboardLoanAccount] {
         CentralLoanRepository.shared.applications
@@ -52,85 +41,11 @@ struct LinkedBankAccountsDetailView: View {
                 Text("Loan accounts are created automatically after approval and disbursement.")
             }
 
-            if let bank = viewModel.profile?.bankDetails, hasPrimaryBank {
-                Section {
-                    LabeledContent("Bank Name", value: bank.bankName)
-                    LabeledContent("Account Holder", value: bank.accountHolderName)
-                    LabeledContent("Account Number", value: maskAccountNumber(bank.accountNumber))
-                    LabeledContent("IFSC Code", value: bank.ifscCode)
-                    
-                    if let upi = bank.upiID {
-                        LabeledContent("UPI ID", value: upi)
-                    } else {
-                        LabeledContent("UPI ID", value: "Not Linked")
-                    }
-                    
-                    LabeledContent("Status") {
-                        if bank.isVerified {
-                            Text("Verified")
-                                .font(.caption.bold())
-                                .foregroundStyle(.green)
-                        } else {
-                            Text("Pending")
-                                .font(.caption.bold())
-                                .foregroundStyle(.orange)
-                        }
-                    }
-                } header: {
-                    Text("Primary Account")
-                }
-            }
-
-            let odAccounts = linkedAccounts.filter(\.isOverdraftAccount)
-            let savingsAccounts = linkedAccounts.filter { !$0.isOverdraftAccount }
-
-            if !odAccounts.isEmpty {
-                Section {
-                    ForEach(odAccounts) { account in
-                        linkedAccountDetails(account, isOD: true)
-                    }
-                    .onDelete { indexSet in
-                        if let index = indexSet.first {
-                            accountToDelete = odAccounts[index]
-                            showingDeleteAlert = true
-                        }
-                    }
-                } header: {
-                    Text("OD Accounts (EMI Deduction)")
-                } footer: {
-                    Text("Loan disbursement is credited here and monthly EMIs are deducted from this account.")
-                }
-            }
-
-            if !savingsAccounts.isEmpty {
-                Section {
-                    ForEach(savingsAccounts) { account in
-                        linkedAccountDetails(account, isOD: false)
-                    }
-                    .onDelete { indexSet in
-                        if let index = indexSet.first {
-                            accountToDelete = savingsAccounts[index]
-                            showingDeleteAlert = true
-                        }
-                    }
-                } header: {
-                    Text("Additional Accounts")
-                }
-            }
-
         }
-        .navigationTitle("Bank Accounts")
+        .navigationTitle("Loan Account")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Delete Bank Account?", isPresented: $showingDeleteAlert, presenting: accountToDelete) { account in
-            Button("Delete", role: .destructive) {
-                viewModel.deleteLinkedBankAccount(withId: account.id)
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: { account in
-            Text("Are you sure you want to delete the account ending in \(String(account.accountNumber.suffix(4)))?")
-        }
     }
-    
+
     private func maskAccountNumber(_ number: String) -> String {
         guard number.count > 4 else { return number }
         let suffix = number.suffix(4)
@@ -158,49 +73,5 @@ struct LinkedBankAccountsDetailView: View {
         .padding(.vertical, 4)
     }
 
-    @ViewBuilder
-    private func linkedAccountDetails(_ account: LinkedBankAccount, isOD: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label(account.bankName, systemImage: isOD ? "indianrupeesign.circle.fill" : "building.columns.fill")
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-
-                Spacer()
-
-                HStack(spacing: 8) {
-                    Text(maskAccountNumber(account.accountNumber))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    
-                    Button(role: .destructive) {
-                        accountToDelete = account
-                        showingDeleteAlert = true
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.subheadline)
-                            .foregroundStyle(.red)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            if !account.accountHolderName.isEmpty {
-                LabeledContent("Account Holder", value: account.accountHolderName)
-            }
-            LabeledContent("IFSC Code", value: account.ifscCode)
-            if !account.branch.isEmpty {
-                LabeledContent("Branch", value: account.branch)
-            }
-            if !account.customerId.isEmpty {
-                LabeledContent("Customer ID", value: account.customerId)
-            }
-            LabeledContent("Available Balance", value: account.balance.formattedAsINR())
-            if isOD, let limit = account.odSanctionLimit {
-                LabeledContent("OD Sanction Limit", value: limit.formattedAsINR())
-            }
-        }
-        .padding(.vertical, 4)
     }
-}
 

@@ -2,12 +2,13 @@ import SwiftUI
 
 
 struct ManagerProfileView: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var appState: AppStateManager
-    @EnvironmentObject var authManager: AuthManager
-    @AppStorage("isDarkMode") private var isDarkMode = false
+    @Environment(AppStateManager.self) var appState: AppStateManager
+    @Environment(AuthManager.self) var authManager: AuthManager
+
     @State private var showChangePassword = false
+    @AppStorage("isDarkMode") private var isDarkMode = false
 
     private var profile: ManagerStaffProfile {
         viewModel.managerProfile
@@ -124,10 +125,11 @@ struct ManagerProfileView: View {
                 }
             }
         }
-        .sheet(isPresented: $showChangePassword) {
+        .preferredColorScheme(isDarkMode ? .dark : .light)
+        .accessibleSheet(isPresented: $showChangePassword) {
             ChangePasswordSheet()
         }
-        .preferredColorScheme(isDarkMode ? .dark : .light)
+
     }
 }
 

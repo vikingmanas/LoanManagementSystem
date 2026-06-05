@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AdminBranchStaffView: View {
     let branch: BranchInfo
-    @ObservedObject var viewModel: AdminStaffViewModel
+    @Bindable var viewModel: AdminStaffViewModel
     
     var branchStaff: [StaffMember] {
         viewModel.staff(for: branch.branchId)

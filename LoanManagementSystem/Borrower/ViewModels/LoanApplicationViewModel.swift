@@ -1,33 +1,38 @@
+import Observation
 import SwiftUI
 import Combine
 import Supabase
 import UIKit
 
 @MainActor
-final class LoanApplicationViewModel: ObservableObject {
-    @Published var selectedApplicationFilter: BorrowerApplicationFilter = .all
-    @Published var selectedProductCategory: LoanProductCategoryFilter = .all
-    @Published var searchQuery: String = ""
+@Observable
+final class LoanApplicationViewModel {
+    var selectedApplicationFilter: BorrowerApplicationFilter = .all
+    var selectedProductCategory: LoanProductCategoryFilter = .all
+    var searchQuery: String = ""
     
-    @Published var products: [BorrowerLoanProduct] = []
-    @Published var applications: [BorrowerLoanApplication] = []
+    var products: [BorrowerLoanProduct] = []
+    var applications: [BorrowerLoanApplication] {
+        get { CentralLoanRepository.shared.applications }
+        set { CentralLoanRepository.shared.applications = newValue }
+    }
     
-    @Published var selectedProductID: UUID?
-    @Published var currentDraftID: UUID?
-    @Published var currentStepIndex: Int = 1
-    @Published var formData: BorrowerLoanFormData = .empty
-    @Published var documents: [BorrowerLoanDocumentItem] = []
+    var selectedProductID: UUID?
+    var currentDraftID: UUID?
+    var currentStepIndex: Int = 1
+    var formData: BorrowerLoanFormData = .empty
+    var documents: [BorrowerLoanDocumentItem] = []
     
-    @Published var selectedUploadSource: BorrowerDocumentUploadSource = .camera
-    @Published var activeInfoSheet: BorrowerContextHelpItem?
+    var selectedUploadSource: BorrowerDocumentUploadSource = .camera
+    var activeInfoSheet: BorrowerContextHelpItem?
     
-    @Published var lastDraftSavedAt: Date?
-    @Published var showSubmissionAlert: Bool = false
-    @Published var submissionAlertMessage: String = ""
+    var lastDraftSavedAt: Date?
+    var showSubmissionAlert: Bool = false
+    var submissionAlertMessage: String = ""
     
-    @Published var verificationComplete: Bool = false
-    @Published var showVerificationResult: Bool = false
-    @Published var branchesList: [BranchInfo] = []
+    var verificationComplete: Bool = false
+    var showVerificationResult: Bool = false
+    var branchesList: [BranchInfo] = []
     
     private var cancellables = Set<AnyCancellable>()
     
@@ -88,9 +93,6 @@ final class LoanApplicationViewModel: ObservableObject {
     ]
     
     init() {
-        CentralLoanRepository.shared.$applications
-            .assign(to: &$applications)
-        
         loadProducts()
         loadBranches()
     }
@@ -373,14 +375,14 @@ final class LoanApplicationViewModel: ObservableObject {
         guard application.currentStage == .draft else { return }
         selectedProductID = application.product.id
         currentDraftID = application.id
-        currentStepIndex = min(max(application.draftStepIndex, 1), 10)
+        currentStepIndex = min(max(application.draftStepIndex, 1), 9)
         formData = application.formData
         documents = application.documents
         lastDraftSavedAt = Date()
     }
     
     func updateDraftStep(_ step: Int) {
-        let clampedStep = min(max(step, 1), 10)
+        let clampedStep = min(max(step, 1), 9)
         currentStepIndex = clampedStep
         
         guard let currentDraftID,
@@ -864,6 +866,20 @@ final class LoanApplicationViewModel: ObservableObject {
             
             applications[index] = draft
             CentralLoanRepository.shared.submitApplication(draft)
+            
+            // Record audit log
+            Task {
+                do {
+                    try await DatabaseService.shared.logAuditAction(
+                        action: "Loan Submitted",
+                        entityType: "LoanApplication",
+                        entityId: draft.id
+                    )
+                } catch {
+                    print("Failed to log audit action for loan submission: \(error)")
+                }
+            }
+            
             self.currentDraftID = nil
             self.showSubmissionAlert = true
             self.submissionAlertMessage = "Application \(generatedApplicationID) submitted successfully on \(now.formattedAsDDMMMYYYY())."

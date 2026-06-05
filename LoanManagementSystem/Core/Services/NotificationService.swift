@@ -143,7 +143,7 @@ final class NotificationService {
     func fetchNotifications(userId: UUID) async throws -> [DBNotification] {
         let notifications: [DBNotification] = try await client
             .from("notifications")
-            .select()
+            .select("notification_id, user_id, notif_type, title, message, is_read, created_at")
             .eq("user_id", value: userId.uuidString)
             .order("created_at", ascending: false)
             .limit(100)
@@ -152,11 +152,40 @@ final class NotificationService {
         return notifications
     }
     
+    /// Subscribes to new notifications via Realtime.
+    func subscribeToNotifications(forUserId userId: UUID, onInsert: @escaping (DBNotification) -> Void) async -> RealtimeChannelV2 {
+        let channel = client.channel("notifications_user_\(userId.uuidString)")
+        
+        let stream = channel.postgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "notifications",
+            filter: .eq("user_id", value: userId.uuidString)
+        )
+        
+        Task {
+            for await action in stream {
+                do {
+                    let notification = try action.record.decode(as: DBNotification.self, decoder: SupabaseManager.shared.defaultDecoder)
+                    onInsert(notification)
+                } catch {
+                    print("[NotificationService] Error decoding realtime notification: \(error)")
+                }
+            }
+        }
+        
+        try? await channel.subscribeWithError()
+        return channel
+    }
+    
     /// Returns the count of unread notifications for the given user.
     func unreadCount(userId: UUID) async throws -> Int {
-        let notifications: [DBNotification] = try await client
+        struct NotificationIdOnly: Codable {
+            let notificationId: UUID
+        }
+        let notifications: [NotificationIdOnly] = try await client
             .from("notifications")
-            .select()
+            .select("notification_id")
             .eq("user_id", value: userId.uuidString)
             .eq("is_read", value: false)
             .execute()

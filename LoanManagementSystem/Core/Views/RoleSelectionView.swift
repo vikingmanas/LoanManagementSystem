@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct RoleSelectionView: View {
-    @EnvironmentObject var appState: AppStateManager
+    @Environment(AppStateManager.self) var appState: AppStateManager
     @State private var tempSelectedRole: PortalRole = .customer
     @State private var showAdminSignUp = false
 
@@ -121,7 +121,7 @@ struct RoleSelectionView: View {
                 .padding(.bottom, LMSSpacing.xxxl)
             }
         }
-        .sheet(isPresented: $showAdminSignUp) {
+        .accessibleSheet(isPresented: $showAdminSignUp) {
             AdminSignUpView()
         }
     }
@@ -196,6 +196,6 @@ struct RoleCardView: View {
 
 #Preview {
     RoleSelectionView()
-        .environmentObject(AppStateManager())
+        .environment(AppStateManager())
 }
 

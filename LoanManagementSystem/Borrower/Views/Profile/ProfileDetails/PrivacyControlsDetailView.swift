@@ -83,7 +83,7 @@ struct PrivacyControlsDetailView: View {
         }
         .navigationTitle("Privacy")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showShareSheet) {
+        .accessibleSheet(isPresented: $showShareSheet) {
             PrivacyShareSheet(activityItems: shareItems)
         }
         .alert("Privacy Request", isPresented: Binding(
