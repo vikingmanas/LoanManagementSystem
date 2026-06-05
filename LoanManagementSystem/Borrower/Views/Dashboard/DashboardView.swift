@@ -3602,6 +3602,40 @@ struct TopUpSheet: View {
 
 // MARK: - Premium Detail Views
 
+private struct PortfolioLoansView: View {
+    @Bindable var viewModel: DashboardViewModel
+    let onLoanTap: (DashboardLoanAccount) -> Void
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: LMSSpacing.md) {
+                if viewModel.loanAccounts.isEmpty {
+                    ContentUnavailableView(
+                        "No active loans",
+                        systemImage: "building.columns.fill",
+                        description: Text("Approved loans will appear here automatically.")
+                    )
+                    .padding(.top, 48)
+                } else {
+                    ForEach(viewModel.loanAccounts) { loan in
+                        ActiveLoanAccountCard(
+                            loan: loan,
+                            currentBalance: viewModel.currentAccountBalance(for: loan)
+                        ) {
+                            onLoanTap(loan)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
+            .padding(.vertical, LMSSpacing.md)
+        }
+        .background(LMSColors.background.ignoresSafeArea())
+        .navigationTitle("Loan Portfolio")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
 struct LoanDetailsView: View {
     let loan: DashboardLoanAccount
     

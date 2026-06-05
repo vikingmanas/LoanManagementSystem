@@ -4,10 +4,11 @@ struct AdminDashboardView: View {
     @State private var viewModel = AdminDashboardViewModel()
     @State private var staffViewModel = AdminStaffViewModel()
     @State private var selectedTab: AdminTab = .dashboard
+    @State private var showingProfile = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            AdminDashboardTabView(viewModel: viewModel)
+            AdminDashboardTabView(viewModel: viewModel, showingProfile: $showingProfile)
                 .tabItem {
                     Label("Dashboard", systemImage: "square.grid.2x2")
                 }
@@ -30,6 +31,11 @@ struct AdminDashboardView: View {
                     Label("Templates", systemImage: "text.bubble")
                 }
                 .tag(AdminTab.templates)
+        }
+        .sheet(isPresented: $showingProfile) {
+            NavigationStack {
+                AdminProfileSheet()
+            }
         }
     }
 }

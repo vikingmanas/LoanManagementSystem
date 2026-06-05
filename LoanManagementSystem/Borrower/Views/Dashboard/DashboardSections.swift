@@ -102,6 +102,7 @@ struct ProfileCompletionCardSection: View {
 
 struct LoanPortfolioSummarySection: View {
     @Bindable var viewModel: DashboardViewModel
+    let onTap: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
@@ -115,7 +116,10 @@ struct LoanPortfolioSummarySection: View {
                     .frame(height: 168)
                     .shimmer(active: true)
             } else {
-                LoanPortfolioSummaryCard(viewModel: viewModel)
+                Button(action: onTap) {
+                    LoanPortfolioSummaryCard(viewModel: viewModel)
+                }
+                .buttonStyle(DashboardPressableStyle())
             }
         }
         .padding(.horizontal, LMSSpacing.screenHorizontal)
