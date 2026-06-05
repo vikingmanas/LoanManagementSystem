@@ -8,7 +8,7 @@ private enum AddEntityType: String, CaseIterable {
 
 struct AdminAddUserSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: AdminStaffViewModel
+    @Bindable var viewModel: AdminStaffViewModel
 
     @State private var entityType: AddEntityType = .loanOfficer
 

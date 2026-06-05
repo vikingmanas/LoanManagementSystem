@@ -2,20 +2,20 @@ import SwiftUI
 
 
 struct ManagerProfileView: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var appState: AppStateManager
-    @EnvironmentObject var authManager: AuthManager
+    @Environment(AppStateManager.self) var appState: AppStateManager
+    @Environment(AuthManager.self) var authManager: AuthManager
 
     @State private var showChangePassword = false
+    @AppStorage("isDarkMode") private var isDarkMode = false
 
     private var profile: ManagerStaffProfile {
         viewModel.managerProfile
     }
 
     var body: some View {
-        NavigationStack {
-            List {
+        List {
                 // Header Section
                 Section {
                     VStack(spacing: LMSSpacing.md) {
@@ -115,15 +115,9 @@ struct ManagerProfileView: View {
                     }
                 }
             }
-            .navigationTitle("My Profile")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .bold()
-                }
-            }
-        }
+        .navigationTitle("My Profile")
+        .navigationBarTitleDisplayMode(.inline)
+        .preferredColorScheme(isDarkMode ? .dark : .light)
         .accessibleSheet(isPresented: $showChangePassword) {
             ChangePasswordSheet()
         }
@@ -226,4 +220,3 @@ private struct ManagerStatBox: View {
         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
     }
 }
-

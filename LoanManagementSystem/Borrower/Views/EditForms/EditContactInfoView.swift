@@ -2,7 +2,7 @@ import SwiftUI
 
 struct EditContactInfoView: View {
     @Environment(\.presentationMode) var presentationMode
-    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Bindable var viewModel: BorrowerProfileViewModel
 
     @State private var mobileNumber: String
     @State private var alternateNumber: String

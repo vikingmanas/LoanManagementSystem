@@ -1104,7 +1104,7 @@ final class DatabaseService {
             InsertAction.self,
             schema: "public",
             table: "messages",
-            filter: "application_id=eq.\(applicationId.uuidString)"
+            filter: .eq("application_id", value: applicationId.uuidString)
         )
         
         Task {
@@ -1118,7 +1118,7 @@ final class DatabaseService {
             }
         }
         
-        await channel.subscribe()
+        try? await channel.subscribeWithError()
         return channel
     }
     
@@ -1144,7 +1144,7 @@ final class DatabaseService {
             }
         }
         
-        await channel.subscribe()
+        try? await channel.subscribeWithError()
         return channel
     }
 
@@ -1175,6 +1175,27 @@ final class DatabaseService {
             .select()
             .execute()
             .value
+    }
+    
+    // MARK: - Audit Log Operations
+    func logAuditAction(action: String, entityType: String, entityId: UUID) async throws {
+        guard let userId = client.auth.currentSession?.user.id else {
+            print("[DatabaseService] Warning: No user session found. Skipping audit log.")
+            return
+        }
+        
+        let insertData: [String: String] = [
+            "user_id": userId.uuidString,
+            "action": action,
+            "entity_type": entityType,
+            "entity_id": entityId.uuidString,
+            "ip_address": "" // Blank or fetched from client if possible
+        ]
+        
+        try await client
+            .from("audit_logs")
+            .insert(insertData)
+            .execute()
     }
 }
 

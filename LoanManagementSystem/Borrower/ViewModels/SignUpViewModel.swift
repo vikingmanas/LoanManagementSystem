@@ -1,11 +1,13 @@
+import Observation
 import Foundation
 import Combine
 
 @MainActor
-class SignUpViewModel: ObservableObject {
-    @Published var fullName: String = ""
-    @Published var email: String = ""
-    @Published var phone: String = "" {
+@Observable
+class SignUpViewModel {
+    var fullName: String = ""
+    var email: String = ""
+    var phone: String = "" {
         didSet {
             let filtered = phone.filter { "0123456789".contains($0) }
             let newPhone = filtered.count > 10 ? String(filtered.prefix(10)) : filtered
@@ -14,11 +16,11 @@ class SignUpViewModel: ObservableObject {
             }
         }
     }
-    @Published var password: String = ""
-    @Published var confirmPassword: String = ""
+    var password: String = ""
+    var confirmPassword: String = ""
 
-    @Published var referralCode: String = ""
-    @Published var alternatePhone: String = "" {
+    var referralCode: String = ""
+    var alternatePhone: String = "" {
         didSet {
             let filtered = alternatePhone.filter { "0123456789".contains($0) }
             let newPhone = filtered.count > 10 ? String(filtered.prefix(10)) : filtered
@@ -28,13 +30,13 @@ class SignUpViewModel: ObservableObject {
         }
     }
 
-    @Published var acceptedTerms: Bool = false
-    @Published var acceptedPrivacy: Bool = false
+    var acceptedTerms: Bool = false
+    var acceptedPrivacy: Bool = false
 
-    @Published var isLoading: Bool = false
-    @Published var showSuccess: Bool = false
+    var isLoading: Bool = false
+    var showSuccess: Bool = false
 
-    @Published var generalError: String = ""
+    var generalError: String = ""
 
     var isMinLength: Bool { password.count >= 8 }
     var hasUppercase: Bool { password.rangeOfCharacter(from: .uppercaseLetters) != nil }

@@ -11,7 +11,7 @@ struct LoanApplicationReviewDetailView: View {
     typealias LoanApplication = OfficerLoanApplication
     let applicationId: String
     let initialDocumentId: UUID?
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) var dismiss
     
 
@@ -20,9 +20,8 @@ struct LoanApplicationReviewDetailView: View {
     @State private var rejectionText = ""
     @State private var rejectionPrompt: DocumentRejectionPrompt?
     @State private var documentActionStatus: OfficerDocumentStatus = .rejectFlag
-    @State private var escalationReason = ""
-    @State private var showingEscalationAlert = false
-    @State private var escalationAlertMessage = ""
+    @State private var showingActionAlert = false
+    @State private var actionAlertMessage = ""
     @State private var showingApplicationRejectPrompt = false
     @State private var applicationRejectReason = ""
     @State private var hasPresentedInitialDocument = false
@@ -43,6 +42,11 @@ struct LoanApplicationReviewDetailView: View {
     var loanDocuments: [LoanDocument] {
         guard let app = app else { return [] }
         return app.documents
+    }
+
+    private var prioritizedLoanDocuments: [LoanDocument] {
+        loanDocuments.filter { $0.status == .verified }
+            + loanDocuments.filter { $0.status != .verified }
     }
     
     var borrowerData: BorrowerDetails {
@@ -67,11 +71,7 @@ struct LoanApplicationReviewDetailView: View {
     }
 
     private func claimApplicationIfNeeded(_ app: LoanApplication) {
-        guard let officerId = viewModel.officerProfile?.id,
-              let officerName = viewModel.officerProfile?.fullName,
-              CentralLoanRepository.shared.isLoanUnassigned(applicationId: app.id) else { return }
-        CentralLoanRepository.shared.assignOfficer(userId: officerId, name: officerName, toApplicationId: app.id)
-        viewModel.refreshFromRepository()
+        viewModel.claimApplicationIfNeeded(applicationId: app.id)
     }
 
     private func presentInitialDocumentIfNeeded(in app: LoanApplication) {
@@ -171,8 +171,8 @@ struct LoanApplicationReviewDetailView: View {
                     dismiss()
                 } else {
                     applicationRejectReason = ""
-                    escalationAlertMessage = "Could not reject this application right now."
-                    showingEscalationAlert = true
+                    actionAlertMessage = "Could not reject this application right now."
+                    showingActionAlert = true
                 }
             }
             Button("Cancel", role: .cancel) {
@@ -358,7 +358,7 @@ struct LoanApplicationReviewDetailView: View {
                 ApplicationDetailRow("Age", value: borrowerData.age)
                 ApplicationDetailRow("Gender", value: borrowerData.gender)
                 ApplicationDetailRow("PAN Number", value: borrowerData.pan)
-                ApplicationDetailRow("CIBIL Score", value: app.cibilScore.map(String.init) ?? "Not provided", valueColor: app.cibilScore.map(cibilColor(for:)) ?? .secondary)
+                ApplicationDetailRow("CIBIL Score", value: app.cibilScore.map(String.init) ?? "Not provided", valueColor: app.cibilScore.map(viewModel.cibilColor(for:)) ?? .secondary)
                 ApplicationDetailRow("Email", value: borrowerData.email)
                 ApplicationDetailRow("Phone", value: borrowerData.phone)
                 ApplicationDetailRow("Address", value: borrowerData.address, isLast: true)
@@ -409,7 +409,7 @@ struct LoanApplicationReviewDetailView: View {
                     description: Text("No borrower document records were found for this application or customer.")
                 )
             } else {
-                ForEach(loanDocuments) { doc in
+                ForEach(prioritizedLoanDocuments) { doc in
                     OfficerDocumentReviewCard(
                         doc: doc,
                         borrowerName: app.borrowerName,
@@ -423,37 +423,7 @@ struct LoanApplicationReviewDetailView: View {
 
     
     private func creditRiskSection(_ app: LoanApplication) -> some View {
-        let cibil = app.cibilScore ?? 0
-        let minCibil = CentralLoanRepository.shared.globalRules.minCibilScore
-        let maxDTI = CentralLoanRepository.shared.globalRules.maxDTI
-        let monthlyIncome = app.borrowerDetails.monthlyIncome
-        let existingEMIs = app.borrowerDetails.existingEMIs
-        let requestedAmount = app.requestedAmount
-        
-        // Compute DTI ratio robustly
-        var incomeVal = parseAmount(monthlyIncome)
-        if incomeVal > 0 && incomeVal < 1000 {
-            incomeVal *= 100_000 // Fix "1.2 Lakh" parsing bug
-        }
-        let emisVal = parseAmount(existingEMIs)
-        let tenureMonths = max(1, Double(parseTenure(app.borrowerDetails.tenure)))
-        let proposedEMI = requestedAmount / tenureMonths
-        let totalObligations = emisVal + proposedEMI
-        let dtiRatio = incomeVal > 0 ? (totalObligations / incomeVal) * 100 : 0
-        
-        // Determine Risk
-        let riskLevel: String
-        let riskColor: Color
-        if cibil >= 750 && dtiRatio <= 40 {
-            riskLevel = "Low Risk"
-            riskColor = LMSColors.emerald
-        } else if cibil >= minCibil && dtiRatio <= maxDTI {
-            riskLevel = "Medium Risk"
-            riskColor = LMSColors.amber
-        } else {
-            riskLevel = "High Risk"
-            riskColor = LMSColors.coral
-        }
+        let metrics = viewModel.computeRiskMetrics(for: app)
         
         return Section {
             VStack(spacing: LMSSpacing.lg) {
@@ -461,17 +431,17 @@ struct LoanApplicationReviewDetailView: View {
                 HStack {
                     HStack(spacing: 4) {
                         Image(systemName: "sparkles")
-                            .foregroundStyle(riskColor)
+                            .foregroundStyle(metrics.riskColor)
                         Text("INTELLIRISK ENGINE™")
                             .font(.system(size: 10, weight: .heavy, design: .rounded))
                             .foregroundStyle(LMSColors.textSecondary)
                     }
                     Spacer()
-                    Text(riskLevel.uppercased())
+                    Text(metrics.riskLevel.uppercased())
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(riskColor)
+                        .background(metrics.riskColor)
                         .foregroundStyle(.white)
                         .clipShape(Capsule())
                 }
@@ -484,7 +454,7 @@ struct LoanApplicationReviewDetailView: View {
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .foregroundStyle(.white.opacity(0.8))
                         
-                        Text("\(Int(cibil))")
+                        Text("\(Int(metrics.cibil))")
                             .font(.system(size: 28, weight: .heavy, design: .rounded))
                             .foregroundStyle(.white)
                             .lineLimit(1)
@@ -492,17 +462,17 @@ struct LoanApplicationReviewDetailView: View {
                     }
                     .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(cibil >= 750 ? LMSColors.emerald : (cibil >= minCibil ? LMSColors.amber : LMSColors.coral))
+                    .background(metrics.cibil >= 750 ? LMSColors.emerald : (metrics.cibil >= metrics.minCibilScore ? LMSColors.amber : LMSColors.coral))
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     
                     // DTI Box
-                    let dtiColor = dtiRatio <= 40 ? LMSColors.emerald : (dtiRatio <= maxDTI ? LMSColors.amber : LMSColors.coral)
+                    let dtiColor = metrics.dtiRatio <= 40 ? LMSColors.emerald : (metrics.dtiRatio <= metrics.maxDTI ? LMSColors.amber : LMSColors.coral)
                     VStack(alignment: .leading, spacing: 8) {
                         Text("DTI RATIO")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .foregroundStyle(.white.opacity(0.8))
                         
-                        Text(String(format: "%.1f%%", dtiRatio))
+                        Text(String(format: "%.1f%%", metrics.dtiRatio))
                             .font(.system(size: 28, weight: .heavy, design: .rounded))
                             .foregroundStyle(.white)
                             .lineLimit(1)
@@ -521,7 +491,7 @@ struct LoanApplicationReviewDetailView: View {
                             .font(.subheadline)
                             .foregroundStyle(LMSColors.textSecondary)
                         Spacer()
-                        Text(monthlyIncome)
+                        Text(metrics.monthlyIncome)
                             .font(.subheadline.weight(.semibold))
                     }
                     Divider()
@@ -530,7 +500,7 @@ struct LoanApplicationReviewDetailView: View {
                             .font(.subheadline)
                             .foregroundStyle(LMSColors.textSecondary)
                         Spacer()
-                        Text(existingEMIs)
+                        Text(metrics.existingEMIs)
                             .font(.subheadline.weight(.semibold))
                     }
                     Divider()
@@ -539,7 +509,7 @@ struct LoanApplicationReviewDetailView: View {
                             .font(.subheadline)
                             .foregroundStyle(LMSColors.textSecondary)
                         Spacer()
-                        Text(CurrencyFormatter.shared.format(proposedEMI))
+                        Text(CurrencyFormatter.shared.format(metrics.proposedEMI))
                             .font(.subheadline.weight(.semibold))
                     }
                     Divider()
@@ -566,27 +536,7 @@ struct LoanApplicationReviewDetailView: View {
         }
         .listRowSeparator(.hidden)
     }
-    
-    private func parseAmount(_ value: String) -> Double {
-        if value == "Not provided" { return 0 }
-        let filtered = value.filter { "0123456789.".contains($0) }
-        let num = Double(filtered) ?? 0
-        let lower = value.lowercased()
-        if lower.contains("lakh") || lower.contains("l") {
-            return num * 100_000
-        } else if lower.contains("crore") || lower.contains("cr") {
-            return num * 10_000_000
-        } else if lower.contains("k") {
-            return num * 1_000
-        }
-        return num
-    }
-    
-    private func parseTenure(_ value: String) -> Int {
-        if value == "Not provided" { return 60 }
-        let filtered = value.filter { $0.isNumber }
-        return Int(filtered) ?? 60
-    }
+
     
     // MARK: - Sanction Letter
     
@@ -628,22 +578,11 @@ struct LoanApplicationReviewDetailView: View {
     }
     
     private func exportSanctionLetter(for app: LoanApplication) {
-        guard let borrowerApp = CentralLoanRepository.shared.applications.first(where: { $0.id == app.id }) else {
-            sanctionExportError = "Could not find the underlying application data."
-            return
-        }
         do {
-            let url = try SanctionLetterService.generateSanctionLetter(for: borrowerApp)
+            let url = try viewModel.generateSanctionLetter(for: app)
             HapticsManager.triggerImpact(style: .medium)
             sanctionShareItems = [url]
             showSanctionShareSheet = true
-            viewModel.logActivity(
-                borrowerName: app.borrowerName,
-                applicationId: app.applicationId,
-                loanType: app.loanType.rawValue,
-                eventType: .consentGiven,
-                description: "Sanction letter generated and shared by \(viewModel.officerProfile?.fullName ?? "Loan Officer")."
-            )
         } catch {
             sanctionExportError = error.localizedDescription
         }
@@ -655,76 +594,55 @@ struct LoanApplicationReviewDetailView: View {
     private func approvalSection(_ app: LoanApplication) -> some View {
         if shouldShowOfficerActions(for: app) {
             Section {
-                if canSendForFinalApproval(app) {
+                VStack(spacing: 12) {
                     Button {
                         HapticsManager.triggerImpact(style: .heavy)
                         viewModel.sendForFinalApproval(applicationId: app.applicationId)
                         dismiss()
                     } label: {
-                        Text("Send for Final Approval")
+                        Label("Send for Approval", systemImage: "paperplane.fill")
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(.blue)
                             .frame(maxWidth: .infinity)
-                            .multilineTextAlignment(.center)
+                            .frame(minHeight: 28)
                     }
-                } else {
-                    HStack {
-                        Spacer()
-                        Label("Verification incomplete - resolve all documents first.", systemImage: "lock.fill")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                    }
-                    .padding(.vertical, 4)
-                }
+                    .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.roundedRectangle(radius: 12))
+                    .controlSize(.large)
+                    .disabled(!canSendForFinalApproval(app))
 
-                if canRejectCompleteApplication(app) {
-                    Button(role: .destructive) {
-                        HapticsManager.triggerImpact(style: .medium)
-                        applicationRejectReason = ""
-                        showingApplicationRejectPrompt = true
-                    } label: {
-                        VStack(spacing: 3) {
-                            Text("Reject Application")
+                    if canRejectCompleteApplication(app) {
+                        Button(role: .destructive) {
+                            HapticsManager.triggerImpact(style: .medium)
+                            applicationRejectReason = ""
+                            showingApplicationRejectPrompt = true
+                        } label: {
+                            Label("Reject Application", systemImage: "xmark.circle")
                                 .font(.body.weight(.semibold))
-                            Text("Rejects the complete application")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity)
+                                .frame(minHeight: 28)
                         }
-                        .frame(maxWidth: .infinity)
-                        .multilineTextAlignment(.center)
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.roundedRectangle(radius: 12))
+                        .controlSize(.large)
+                        .tint(.red)
+                    }
+
+                    if !canSendForFinalApproval(app) {
+                        Label("Verify all documents before sending for approval.", systemImage: "lock.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
-
-                TextField("Escalation reason for branch manager", text: $escalationReason, axis: .vertical)
-                    .lineLimit(2...4)
-
-                Button {
-                    let reason = escalationReason.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !reason.isEmpty else {
-                        escalationAlertMessage = "Add a short reason before escalating to your manager."
-                        showingEscalationAlert = true
-                        return
-                    }
-                    if viewModel.escalateApplication(applicationId: app.applicationId, reason: reason) {
-                        HapticsManager.triggerNotification(type: .success)
-                        dismiss()
-                    } else {
-                        escalationAlertMessage = "Could not escalate this application right now."
-                        showingEscalationAlert = true
-                    }
-                } label: {
-                    Text("Escalate to Branch Manager")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(Color.purple)
-                        .frame(maxWidth: .infinity)
-                        .multilineTextAlignment(.center)
-                }
+                .padding(.vertical, 4)
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
-            .alert("Escalation", isPresented: $showingEscalationAlert) {
+            .alert("Application Action", isPresented: $showingActionAlert) {
                 Button("OK", role: .cancel) {}
             } message: {
-                Text(escalationAlertMessage)
+                Text(actionAlertMessage)
             }
         }
     }
@@ -750,9 +668,7 @@ struct LoanApplicationReviewDetailView: View {
     
 
     private func cibilColor(for score: Int) -> Color {
-        if score >= 750 { return LMSColors.emerald }
-        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return LMSColors.amber }
-        return LMSColors.coral
+        viewModel.cibilColor(for: score)
     }
 }
 

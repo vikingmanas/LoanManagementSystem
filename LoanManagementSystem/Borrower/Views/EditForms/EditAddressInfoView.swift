@@ -2,7 +2,7 @@ import SwiftUI
 
 struct EditAddressInfoView: View {
     @Environment(\.presentationMode) var presentationMode
-    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Bindable var viewModel: BorrowerProfileViewModel
 
     @State private var streetAddress: String
     @State private var city: String

@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 
 struct EditKYCView: View {
     @Environment(\.presentationMode) var presentationMode
-    @ObservedObject var viewModel: BorrowerProfileViewModel
+    @Bindable var viewModel: BorrowerProfileViewModel
     
     @State private var aadhaarStatus: VerificationStatus
     @State private var panStatus: VerificationStatus

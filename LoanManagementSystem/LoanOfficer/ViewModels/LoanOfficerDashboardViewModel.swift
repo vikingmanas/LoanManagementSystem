@@ -1,3 +1,4 @@
+import Observation
 import SwiftUI
 import Combine
 import Supabase
@@ -10,21 +11,22 @@ enum HistorySortOrder: String, CaseIterable {
 }
 
 @MainActor
-class LoanOfficerDashboardViewModel: ObservableObject {
+@Observable
+class LoanOfficerDashboardViewModel {
     typealias LoanApplication = OfficerLoanApplication
     typealias LoanType = OfficerLoanType
     typealias ApplicationStatus = OfficerApplicationStatus
     typealias DocumentStatus = OfficerDocumentStatus
     typealias DocumentType = OfficerDocumentType
-    @Published var applications: [LoanApplication] = []
-    @Published var activityFeed: [ActivityFeedItem] = []
-    @Published var applicationMessages: [UUID: [DBMessage]] = [:]
-    @Published var officerProfile: StaffMember? = nil
-    @Published var isLoading: Bool = true
-    @Published var hasError: Bool = false
-    @Published var selectedTab: Int = 0              // 0=Dashboard, 1=History
+    var applications: [LoanApplication] = []
+    var activityFeed: [ActivityFeedItem] = []
+    var applicationMessages: [UUID: [DBMessage]] = [:]
+    var officerProfile: StaffMember? = nil
+    var isLoading: Bool = true
+    var hasError: Bool = false
+    var selectedTab: Int = 0              // 0=Dashboard, 1=History
     
-    private var realtimeChannel: RealtimeChannelV2?
+    @ObservationIgnored private var realtimeChannel: RealtimeChannelV2?
     private var cancellables = Set<AnyCancellable>()
     private var isFetchingDashboardData = false
     
@@ -40,17 +42,17 @@ class LoanOfficerDashboardViewModel: ObservableObject {
     }
     
     // Tab 2 History Filter parameters
-    @Published var historyFilter: RegistryFilter = .all
-    @Published var historyLoanTypeFilter: LoanType? = nil
-    @Published var historySortOrder: HistorySortOrder = .newest
-    @Published var historySearchQuery: String = ""
+    var historyFilter: RegistryFilter = .all
+    var historyLoanTypeFilter: LoanType? = nil
+    var historySortOrder: HistorySortOrder = .newest
+    var historySearchQuery: String = ""
     
     // Date Range filters for history
-    @Published var historyStartDate: Date = Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date()
-    @Published var historyEndDate: Date = Date()
+    var historyStartDate: Date = Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date()
+    var historyEndDate: Date = Date()
     
     // Notifications Count
-    @Published var unreadActivityCount: Int = 0
+    var unreadActivityCount: Int = 0
     
     // MARK: - KPI Computed Properties
     var totalApplications: Int {
@@ -470,8 +472,14 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         print("Executing quick action: \(action)")
     }
     
-    func updateDocumentStatus(applicationId: String, docId: UUID, newStatus: DocumentStatus, rejectionReason: String? = nil) {
-        CentralLoanRepository.shared.updateDocumentStatus(applicationId: applicationId, docId: docId, status: newStatus, reason: rejectionReason)
+    @discardableResult
+    func updateDocumentStatus(applicationId: String, docId: UUID, newStatus: DocumentStatus, rejectionReason: String? = nil) -> Task<Bool, Never>? {
+        let syncTask = CentralLoanRepository.shared.updateDocumentStatus(
+            applicationId: applicationId,
+            docId: docId,
+            status: newStatus,
+            reason: rejectionReason
+        )
         refreshFromRepository()
 
         if let appIndex = applications.firstIndex(where: { $0.applicationId == applicationId }),
@@ -494,6 +502,8 @@ class LoanOfficerDashboardViewModel: ObservableObject {
                 description: newStatus == .verified ? "\(docName) verified successfully by \(officerName)." : "\(docName) rejected: \(rejectionReason ?? "Incorrect format.")"
             )
         }
+
+        return syncTask
     }
 
     func refreshDocuments(for applicationId: String) async {
@@ -506,6 +516,20 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }) {
             applications[idx].status = newStatus
             applications[idx].lastUpdatedDate = Date()
+            
+            let id = applications[idx].id
+            
+            Task {
+                do {
+                    try await DatabaseService.shared.logAuditAction(
+                        action: "Status Updated: \(newStatus.rawValue)",
+                        entityType: "LoanApplication",
+                        entityId: id
+                    )
+                } catch {
+                    print("Failed to log audit action for status update: \(error)")
+                }
+            }
             
             logActivity(
                 borrowerName: applications[idx].borrowerName,
@@ -527,6 +551,20 @@ class LoanOfficerDashboardViewModel: ObservableObject {
         CentralLoanRepository.shared.sendForFinalApproval(applicationId: applicationId, officerName: officerName)
         refreshFromRepository()
         if let idx = applications.firstIndex(where: { $0.applicationId == applicationId }) {
+            let id = applications[idx].id
+            
+            Task {
+                do {
+                    try await DatabaseService.shared.logAuditAction(
+                        action: "Sent to Manager for Final Approval",
+                        entityType: "LoanApplication",
+                        entityId: id
+                    )
+                } catch {
+                    print("Failed to log audit action for final approval send: \(error)")
+                }
+            }
+            
             logActivity(
                 borrowerName: applications[idx].borrowerName,
                 applicationId: applicationId,
@@ -601,6 +639,180 @@ class LoanOfficerDashboardViewModel: ObservableObject {
             }
             applications[idx].lastUpdatedDate = Date()
         }
+    }
+    
+    // MARK: - Chat Messaging Methods
+    
+    func markMessagesAsRead(for applicationId: UUID, incomingMessages: [DBMessage]) async {
+        guard let officerId = officerProfile?.id else { return }
+        let unreadIds = incomingMessages
+            .filter { $0.receiverId == officerId && !$0.isRead }
+            .map(\.messageId)
+        
+        if !unreadIds.isEmpty {
+            try? await DatabaseService.shared.markMessagesRead(messageIds: unreadIds)
+            // Update local state to reflect read status
+            if var msgs = applicationMessages[applicationId] {
+                let unreadIdSet = Set(unreadIds)
+                msgs = msgs.map { msg in
+                    if unreadIdSet.contains(msg.messageId) {
+                        return DBMessage(
+                            messageId: msg.messageId,
+                            senderId: msg.senderId,
+                            receiverId: msg.receiverId,
+                            applicationId: msg.applicationId,
+                            content: msg.content,
+                            sentAt: msg.sentAt,
+                            isRead: true
+                        )
+                    }
+                    return msg
+                }
+                applicationMessages[applicationId] = msgs
+            }
+        }
+    }
+    
+    func sendChatMessage(to borrowerId: UUID, for applicationId: UUID, content: String) async {
+        guard let officerId = officerProfile?.id else { return }
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        
+        let messageId = UUID()
+        let dbMsg = DBMessage(
+            messageId: messageId,
+            senderId: officerId,
+            receiverId: borrowerId,
+            applicationId: applicationId,
+            content: trimmed,
+            sentAt: Date(),
+            isRead: false
+        )
+        
+        do {
+            try await DatabaseService.shared.sendMessage(dbMsg)
+            try? await DatabaseService.shared.createNotification(
+                userId: borrowerId,
+                title: "New message from your loan officer",
+                message: trimmed
+            )
+            // Local state update
+            var msgs = applicationMessages[applicationId] ?? []
+            msgs.append(dbMsg)
+            applicationMessages[applicationId] = msgs
+            
+            await fetchDashboardData()
+        } catch {
+            print("Failed to send composed message to DB: \(error)")
+        }
+    }
+    
+    // MARK: - Business Logic & Helpers
+    
+    func claimApplicationIfNeeded(applicationId: UUID) {
+        guard let officerId = officerProfile?.id,
+              let officerName = officerProfile?.fullName,
+              CentralLoanRepository.shared.isLoanUnassigned(applicationId: applicationId) else { return }
+        CentralLoanRepository.shared.assignOfficer(userId: officerId, name: officerName, toApplicationId: applicationId)
+        refreshFromRepository()
+    }
+    
+    func generateSanctionLetter(for application: LoanApplication) throws -> URL {
+        guard let borrowerApp = CentralLoanRepository.shared.applications.first(where: { $0.id == application.id }) else {
+            throw NSError(domain: "LoanOfficerDashboardViewModel", code: 404, userInfo: [NSLocalizedDescriptionKey: "Could not find the underlying application data."])
+        }
+        let url = try SanctionLetterService.generateSanctionLetter(for: borrowerApp)
+        logActivity(
+            borrowerName: application.borrowerName,
+            applicationId: application.applicationId,
+            loanType: application.loanType.rawValue,
+            eventType: .consentGiven,
+            description: "Sanction letter generated and shared by \(officerProfile?.fullName ?? "Loan Officer")."
+        )
+        return url
+    }
+
+    struct RiskMetrics {
+        let riskLevel: String
+        let riskColor: Color
+        let cibil: Int
+        let dtiRatio: Double
+        let monthlyIncome: String
+        let existingEMIs: String
+        let proposedEMI: Double
+        let minCibilScore: Int
+        let maxDTI: Double
+    }
+
+    func computeRiskMetrics(for app: LoanApplication) -> RiskMetrics {
+        let cibil = app.cibilScore ?? 0
+        let minCibil = CentralLoanRepository.shared.globalRules.minCibilScore
+        let maxDTI = CentralLoanRepository.shared.globalRules.maxDTI
+        let monthlyIncome = app.borrowerDetails.monthlyIncome
+        let existingEMIs = app.borrowerDetails.existingEMIs
+        let requestedAmount = app.requestedAmount
+        
+        var incomeVal = parseAmount(monthlyIncome)
+        if incomeVal > 0 && incomeVal < 1000 {
+            incomeVal *= 100_000
+        }
+        let emisVal = parseAmount(existingEMIs)
+        let tenureMonths = max(1, Double(parseTenure(app.borrowerDetails.tenure)))
+        let proposedEMI = requestedAmount / tenureMonths
+        let totalObligations = emisVal + proposedEMI
+        let dtiRatio = incomeVal > 0 ? (totalObligations / incomeVal) * 100 : 0
+        
+        let riskLevel: String
+        let riskColor: Color
+        if cibil >= 750 && dtiRatio <= 40 {
+            riskLevel = "Low Risk"
+            riskColor = LMSColors.emerald
+        } else if cibil >= minCibil && dtiRatio <= maxDTI {
+            riskLevel = "Medium Risk"
+            riskColor = LMSColors.amber
+        } else {
+            riskLevel = "High Risk"
+            riskColor = LMSColors.coral
+        }
+        
+        return RiskMetrics(
+            riskLevel: riskLevel,
+            riskColor: riskColor,
+            cibil: cibil,
+            dtiRatio: dtiRatio,
+            monthlyIncome: monthlyIncome,
+            existingEMIs: existingEMIs,
+            proposedEMI: proposedEMI,
+            minCibilScore: minCibil,
+            maxDTI: maxDTI
+        )
+    }
+
+    func cibilColor(for score: Int) -> Color {
+        if score >= 750 { return LMSColors.emerald }
+        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return LMSColors.amber }
+        return LMSColors.coral
+    }
+
+    private func parseAmount(_ value: String) -> Double {
+        if value == "Not provided" { return 0 }
+        let filtered = value.filter { "0123456789.".contains($0) }
+        let num = Double(filtered) ?? 0
+        let lower = value.lowercased()
+        if lower.contains("lakh") || lower.contains("l") {
+            return num * 100_000
+        } else if lower.contains("crore") || lower.contains("cr") {
+            return num * 10_000_000
+        } else if lower.contains("k") {
+            return num * 1_000
+        }
+        return num
+    }
+    
+    private func parseTenure(_ value: String) -> Int {
+        if value == "Not provided" { return 60 }
+        let filtered = value.filter { $0.isNumber }
+        return Int(filtered) ?? 60
     }
 }
 

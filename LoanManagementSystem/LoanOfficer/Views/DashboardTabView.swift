@@ -2,7 +2,7 @@ import SwiftUI
 
 struct DashboardTabView: View {
     typealias LoanApplication = OfficerLoanApplication
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     
     // Callbacks to bubble up user actions to the main dashboard container
     var onDocumentSeeAllTapped: () -> Void

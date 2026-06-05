@@ -374,43 +374,56 @@ public struct LMSNotificationRow: View {
     }
 
     public var body: some View {
-        HStack(alignment: .top, spacing: LMSSpacing.md) {
+        HStack(alignment: .top, spacing: 12) {
+            // Unread Indicator
             ZStack {
-                RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
-                    .fill(notification.tint.opacity(0.12))
-                    .frame(width: 44, height: 44)
+                if notification.isUnread {
+                    Circle()
+                        .fill(LMSColors.actionBlue)
+                        .frame(width: 10, height: 10)
+                }
+            }
+            .frame(width: 12)
+            .padding(.top, 14)
+
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(notification.tint.opacity(0.1))
+                    .frame(width: 38, height: 38)
                 Image(systemName: notification.icon)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(notification.tint)
                     .symbolRenderingMode(.hierarchical)
             }
+            .padding(.top, 2)
 
-            VStack(alignment: .leading, spacing: LMSSpacing.xs) {
+            // Content
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(notification.title)
-                        .font(LMSFont.callout.weight(notification.isUnread ? .bold : .medium))
+                        .font(.system(.subheadline, design: .rounded).weight(notification.isUnread ? .bold : .semibold))
                         .foregroundStyle(LMSColors.textPrimary)
-                    Spacer(minLength: LMSSpacing.sm)
+                        .lineLimit(1)
+                    
+                    Spacer()
+                    
                     Text(timeText)
-                        .font(LMSFont.caption2)
+                        .font(.system(.caption2, design: .rounded))
                         .foregroundStyle(LMSColors.textTertiary)
                 }
+                
                 Text(notification.body)
-                    .font(LMSFont.footnote)
+                    .font(.system(.caption, design: .rounded))
                     .foregroundStyle(LMSColors.textSecondary)
-                    .lineLimit(3)
-            }
-
-            if notification.isUnread {
-                Circle()
-                    .fill(LMSColors.actionBlue)
-                    .frame(width: 8, height: 8)
-                    .padding(.top, 6)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.vertical, LMSSpacing.md)
-        .padding(.horizontal, LMSSpacing.lg)
-        .frame(minHeight: 72)
-        .contentShape(Rectangle())
+        .padding(.vertical, 12)
+        .padding(.trailing, LMSSpacing.md)
+        .padding(.leading, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

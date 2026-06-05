@@ -1,17 +1,17 @@
 import SwiftUI
 
 struct AdminProfileSheet: View {
-    @EnvironmentObject private var authManager: AuthManager
-    @EnvironmentObject private var appState: AppStateManager
+    @Environment(AuthManager.self) private var authManager: AuthManager
+    @Environment(AppStateManager.self) private var appState: AppStateManager
     @Environment(\.dismiss) private var dismiss
     
     @AppStorage("biometricEnabled") private var biometricEnabled = false
+    @AppStorage("isDarkMode") private var isDarkMode = false
 
-    @StateObject private var localSecurity = LocalSecurityService.shared
+    @State private var localSecurity = LocalSecurityService.shared
     
     var body: some View {
-        NavigationStack {
-            List {
+        List {
                 Section {
                     HStack(spacing: LMSSpacing.md) {
                         ZStack {
@@ -128,14 +128,9 @@ struct AdminProfileSheet: View {
                     }
                 }
             }
-            .listStyle(.insetGrouped)
-            .navigationTitle("Profile")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
-                }
-            }
-        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Profile")
+        .navigationBarTitleDisplayMode(.inline)
+        .preferredColorScheme(isDarkMode ? .dark : .light)
     }
 }

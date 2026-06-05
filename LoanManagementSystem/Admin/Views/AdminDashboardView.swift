@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct AdminDashboardView: View {
-    @StateObject private var viewModel = AdminDashboardViewModel()
-    @StateObject private var staffViewModel = AdminStaffViewModel()
+    @State private var viewModel = AdminDashboardViewModel()
+    @State private var staffViewModel = AdminStaffViewModel()
     @State private var selectedTab: AdminTab = .dashboard
     @State private var showingProfile = false
 
@@ -32,8 +32,10 @@ struct AdminDashboardView: View {
                 }
                 .tag(AdminTab.templates)
         }
-        .accessibleSheet(isPresented: $showingProfile) {
-            AdminProfileSheet()
+        .sheet(isPresented: $showingProfile) {
+            NavigationStack {
+                AdminProfileSheet()
+            }
         }
     }
 }

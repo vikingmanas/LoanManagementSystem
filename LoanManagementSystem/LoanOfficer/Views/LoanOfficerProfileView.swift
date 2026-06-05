@@ -2,12 +2,13 @@ import SwiftUI
 
 struct LoanOfficerProfileView: View {
     @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var appState: AppStateManager
-    @EnvironmentObject var authManager: AuthManager
+    @Environment(AppStateManager.self) var appState: AppStateManager
+    @Environment(AuthManager.self) var authManager: AuthManager
     
     @AppStorage("biometricEnabled") private var biometricEnabled = false
+    @AppStorage("isDarkMode") private var isDarkMode = false
 
-    @StateObject private var localSecurity = LocalSecurityService.shared
+    @State private var localSecurity = LocalSecurityService.shared
     @State private var showChangePassword = false
     
     private var officerApplications: [BorrowerLoanApplication] {
@@ -48,8 +49,7 @@ struct LoanOfficerProfileView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            List {
+        List {
                 // 1. OFFICER PROFILE HEADER CARD
                 Section {
                     VStack(spacing: 12) {
@@ -209,17 +209,12 @@ struct LoanOfficerProfileView: View {
                     }
                 }
             }
-            .listStyle(.insetGrouped)
-            .navigationTitle("My Profile")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
-            }
-            .accessibleSheet(isPresented: $showChangePassword) {
-                ChangePasswordSheet()
-            }
+        .listStyle(.insetGrouped)
+        .navigationTitle("My Profile")
+        .navigationBarTitleDisplayMode(.inline)
+        .accessibleSheet(isPresented: $showChangePassword) {
+            ChangePasswordSheet()
         }
+        .preferredColorScheme(isDarkMode ? .dark : .light)
     }
 }

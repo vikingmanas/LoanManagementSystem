@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AdminTemplatesTabView: View {
-    @StateObject private var viewModel = AdminTemplatesViewModel()
+    @State private var viewModel = AdminTemplatesViewModel()
     @State private var showingEditSheet = false
     @State private var selectedTemplate: MessageTemplate? = nil
     

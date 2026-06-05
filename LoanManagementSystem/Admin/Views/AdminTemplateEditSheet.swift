@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AdminTemplateEditSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: AdminTemplatesViewModel
+    @Bindable var viewModel: AdminTemplatesViewModel
     
     @State private var template: MessageTemplate
     private var isNew: Bool

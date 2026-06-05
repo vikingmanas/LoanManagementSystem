@@ -2,20 +2,19 @@ import SwiftUI
 
 struct ManagerApplicantDetailView: View {
     let applicant: ManagerApplicant
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
 
     @State private var actionType: ActionType? = nil
     @State private var managerRemarks = ""
 
     enum ActionType: Identifiable {
-        case approve, reject, escalate
+        case approve, reject, sendBack, escalate
         var id: String { String(describing: self) }
     }
 
     var body: some View {
-        NavigationStack {
-            List {
+        List {
                 // MARK: - Profile Header
                 Section {
                     VStack(spacing: LMSSpacing.md) {
@@ -92,10 +91,21 @@ struct ManagerApplicantDetailView: View {
                 }
 
                 // MARK: - Advanced Risk Engine
-                AdvancedRiskSection(applicant: applicant)
-                    .listRowInsets(EdgeInsets(top: LMSSpacing.lg, leading: 0, bottom: LMSSpacing.lg, trailing: 0))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                Section {
+                    AdvancedRiskSection(applicant: applicant)
+                        .background(
+                            NavigationLink("", destination: CIBILDetailView(
+                                score: applicant.cibilScore,
+                                insight: LoanRiskInsightService.insight(for: applicant)
+                            ))
+                            .opacity(0)
+                        )
+                        .listRowInsets(EdgeInsets(top: LMSSpacing.md, leading: 0, bottom: LMSSpacing.md, trailing: 0))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                } header: {
+                    Text("Risk Analysis")
+                }
 
                 // MARK: - Documents
                 Section("Documents") {
@@ -137,10 +147,6 @@ struct ManagerApplicantDetailView: View {
                             officerName: applicant.assignedOfficer,
                             remarks: applicant.officerRemarks
                         )
-                        
-                        if !applicant.managerRemarks.isEmpty {
-                            ManagerRemarksView(remarks: applicant.managerRemarks)
-                        }
                     }
                     .padding(.vertical, 8)
                     .listRowInsets(EdgeInsets(top: 0, leading: LMSSpacing.lg, bottom: 0, trailing: LMSSpacing.lg))
@@ -150,44 +156,50 @@ struct ManagerApplicantDetailView: View {
                 // MARK: - Actions
                 if applicant.status == .sentToManager || applicant.status == .needsClarification {
                     Section {
-                        Button(action: { actionType = .approve }) {
-                            HStack {
-                                Spacer()
-                                Text("Approve Application")
+                        VStack(spacing: 12) {
+                            Button {
+                                actionType = .approve
+                            } label: {
+                                Label("Approve Application", systemImage: "checkmark.seal.fill")
                                     .font(LMSFont.body.bold())
-                                Spacer()
+                                    .frame(maxWidth: .infinity)
+                                    .frame(minHeight: 28)
                             }
-                        }
-                        .tint(LMSColors.emerald)
+                            .buttonStyle(.borderedProminent)
+                            .buttonBorderShape(.roundedRectangle(radius: 12))
+                            .controlSize(.large)
+                            .tint(LMSColors.emerald)
 
-                        Button(role: .destructive, action: { actionType = .reject }) {
-                            HStack {
-                                Spacer()
-                                Text("Reject Application")
+                            Button(role: .destructive) {
+                                actionType = .reject
+                            } label: {
+                                Label("Reject Application", systemImage: "xmark.circle")
                                     .font(LMSFont.body.bold())
-                                Spacer()
+                                    .frame(maxWidth: .infinity)
+                                    .frame(minHeight: 28)
                             }
+                            .buttonStyle(.bordered)
+                            .buttonBorderShape(.roundedRectangle(radius: 12))
+                            .controlSize(.large)
+                            .tint(.red)
                         }
+                        .padding(.vertical, 4)
+                        .listRowInsets(EdgeInsets(top: 0, leading: LMSSpacing.lg, bottom: 0, trailing: LMSSpacing.lg))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                     }
                 }
-            }
-            .listStyle(.insetGrouped)
-            .navigationTitle("Application Review")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .bold()
-                }
-            }
-            .sheet(item: $actionType) { action in
-                ManagerApplicantActionSheet(
-                    applicant: applicant,
-                    actionType: action,
-                    viewModel: viewModel,
-                    onComplete: { dismiss() }
-                )
-            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Application Review")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $actionType) { action in
+            ManagerApplicantActionSheet(
+                applicant: applicant,
+                actionType: action,
+                viewModel: viewModel,
+                onComplete: { dismiss() }
+            )
         }
     }
 
@@ -202,53 +214,6 @@ struct ManagerApplicantDetailView: View {
 }
 
 // MARK: - Helper Views
-
-private struct CIBILScoreRow: View {
-    let score: Int
-
-    private var color: Color {
-        if score >= 700 { return LMSColors.emerald }
-        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return LMSColors.amber }
-        return LMSColors.coral
-    }
-
-    private var rating: String {
-        if score >= 750 { return "Excellent" }
-        if score >= 700 { return "Good" }
-        if score >= CentralLoanRepository.shared.globalRules.minCibilScore { return "Fair" }
-        return "Poor"
-    }
-
-    var body: some View {
-        HStack(spacing: LMSSpacing.md) {
-            ZStack {
-                Circle()
-                    .stroke(color.opacity(0.15), lineWidth: 4)
-                    .frame(width: 44, height: 44)
-                Circle()
-                    .trim(from: 0, to: Double(score) / 900.0)
-                    .stroke(color, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                    .frame(width: 44, height: 44)
-                    .rotationEffect(.degrees(-90))
-
-                Text("\(score)")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(LMSColors.textPrimary)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("CIBIL Score")
-                    .font(LMSFont.subheadline.bold())
-                Text(rating)
-                    .font(LMSFont.caption)
-                    .foregroundStyle(color)
-            }
-
-            Spacer()
-        }
-        .padding(.vertical, 2)
-    }
-}
 
 private struct DocumentRow: View {
     let doc: ManagerDocument
@@ -320,34 +285,11 @@ private struct OfficerRecommendationView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: LMSRadius.md)
                     .stroke(LMSColors.amber.opacity(0.15), lineWidth: 0.5)
-            )
-        }
-    }
-}
-
-private struct ManagerRemarksView: View {
-    let remarks: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
-            Label("PREVIOUS MANAGER REMARKS", systemImage: "pencil.and.outline")
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-                .foregroundStyle(LMSColors.textSecondary)
-
-            Text(remarks)
-                .font(LMSFont.footnote)
-                .foregroundStyle(LMSColors.textPrimary)
-                .padding(LMSSpacing.md)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(LMSColors.emerald.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md))
-                .overlay(
-                    RoundedRectangle(cornerRadius: LMSRadius.md)
-                        .stroke(LMSColors.emerald.opacity(0.15), lineWidth: 0.5)
                 )
         }
     }
 }
+
 
 private struct CIBILDetailView: View {
     let score: Int
@@ -446,7 +388,6 @@ private struct CIBILDetailView: View {
 
 private struct AdvancedRiskSection: View {
     let applicant: ManagerApplicant
-    @State private var appearAnimation = false
     
     private var riskPillStyle: LMSStatusPill.Style {
         switch applicant.riskLevel {
@@ -467,9 +408,13 @@ private struct AdvancedRiskSection: View {
                         .foregroundStyle(LMSColors.textSecondary)
                 }
                 Spacer()
-                LMSStatusPill(text: applicant.riskLevel.rawValue, style: riskPillStyle, icon: applicant.riskLevel.icon)
+                HStack(spacing: 8) {
+                    LMSStatusPill(text: applicant.riskLevel.rawValue, style: riskPillStyle, icon: applicant.riskLevel.icon)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(LMSColors.textTertiary)
+                }
             }
-            .padding(.horizontal, LMSSpacing.screenHorizontal)
 
             VStack(spacing: LMSSpacing.lg) {
                 // Solid Stat Cards
@@ -508,7 +453,6 @@ private struct AdvancedRiskSection: View {
                     .background(applicant.riskLevel.themeColor)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
-                .padding(.horizontal, LMSSpacing.screenHorizontal)
 
                 // Risk Factors List
                 if !applicant.riskFactors.isEmpty {
@@ -536,12 +480,7 @@ private struct AdvancedRiskSection: View {
                     }
                     .padding(16)
                     .background(LMSColors.surfaceElevated)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(LMSColors.separatorLight, lineWidth: 1)
-                    )
-                    .padding(.horizontal, LMSSpacing.screenHorizontal)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
             }
         }

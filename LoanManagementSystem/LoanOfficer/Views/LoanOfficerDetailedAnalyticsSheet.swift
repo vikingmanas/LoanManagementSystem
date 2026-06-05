@@ -2,7 +2,7 @@ import SwiftUI
 import Charts
 
 struct LoanOfficerDetailedAnalyticsSheet: View {
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     @Environment(\.dismiss) var dismiss
 
 

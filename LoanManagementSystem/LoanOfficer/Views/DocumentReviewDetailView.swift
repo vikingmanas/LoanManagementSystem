@@ -5,12 +5,14 @@ struct DocumentReviewDetailView: View {
     typealias DocumentType = OfficerDocumentType
     typealias DocumentStatus = OfficerDocumentStatus
     let item: DocumentQueueItem
-    @ObservedObject var viewModel: LoanOfficerDashboardViewModel
+    @Bindable var viewModel: LoanOfficerDashboardViewModel
     let isPresentedModally: Bool
     @Environment(\.dismiss) var dismiss
     
     @State private var showingRejectionAlert = false
     @State private var rejectionReason = ""
+    @State private var isApproving = false
+    @State private var approvalErrorMessage: String?
     
     init(item: DocumentQueueItem, viewModel: LoanOfficerDashboardViewModel, isPresentedModally: Bool = false) {
         self.item = item
@@ -79,6 +81,14 @@ struct DocumentReviewDetailView: View {
         } message: {
             Text("Enter clarification reason for requesting re-upload from borrower.")
         }
+        .alert("Approval Failed", isPresented: Binding(
+            get: { approvalErrorMessage != nil },
+            set: { if !$0 { approvalErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(approvalErrorMessage ?? "")
+        }
     }
     
     // MARK: - Borrower Info Section
@@ -119,7 +129,6 @@ struct DocumentReviewDetailView: View {
                     VStack(spacing: 0) {
                         DocumentDetailRow("Loan Type", value: app.loanType.rawValue, valueColor: app.loanType.themeColor)
                         DocumentDetailRow("Requested Amount", value: CurrencyFormatter.shared.format(app.requestedAmount))
-                        DocumentDetailRow("Branch", value: app.branch)
                         DocumentDetailRow("Document Stage", value: item.status.rawValue, valueColor: item.status.themeColor, isLast: true)
                     }
                 }
@@ -189,8 +198,7 @@ struct DocumentReviewDetailView: View {
                 VStack(spacing: 0) {
                     DocumentDetailRow("Document Type", value: item.docType.rawValue, icon: item.docType.symbol, valueColor: item.docType.iconColor)
                     DocumentDetailRow("Submitted", value: item.submittedDate.formattedAsDDMMMYYYY())
-                    DocumentDetailRow("Status", value: item.status.rawValue, valueColor: item.status.themeColor)
-                    DocumentDetailRow("OCR Status", value: documentDetails?.ocrStatus ?? "Not available", valueColor: LMSColors.actionBlue, isLast: true)
+                    DocumentDetailRow("Status", value: item.status.rawValue, valueColor: item.status.themeColor, isLast: true)
                 }
             }
         }
@@ -202,17 +210,39 @@ struct DocumentReviewDetailView: View {
         VStack(spacing: 12) {
             Button {
                 HapticsManager.triggerImpact(style: .heavy)
-                viewModel.updateDocumentStatus(applicationId: item.applicationId, docId: item.id, newStatus: .verified)
-                dismiss()
+                isApproving = true
+                let syncTask = viewModel.updateDocumentStatus(
+                    applicationId: item.applicationId,
+                    docId: item.id,
+                    newStatus: .verified
+                )
+                Task {
+                    let didPersist = await syncTask?.value ?? false
+                    isApproving = false
+                    if didPersist {
+                        await viewModel.refreshDocuments(for: item.applicationId)
+                        dismiss()
+                    } else {
+                        await viewModel.refreshDocuments(for: item.applicationId)
+                        approvalErrorMessage = "The document could not be approved right now. Please try again."
+                    }
+                }
             } label: {
-                Text("Verify & Approve")
-                    .font(.body.weight(.bold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.blue)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                HStack(spacing: 8) {
+                    if isApproving {
+                        ProgressView()
+                            .tint(.white)
+                    }
+                    Text(isApproving ? "Approving..." : "Verify & Approve")
+                        .font(.body.weight(.bold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.blue)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
+            .disabled(isApproving)
             
             Button {
                 HapticsManager.triggerImpact(style: .medium)

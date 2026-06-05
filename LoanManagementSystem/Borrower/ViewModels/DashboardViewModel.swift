@@ -5,24 +5,26 @@
 //  Created by Antigravity on 19/05/26.
 //
 
+import Observation
 import SwiftUI
 import Combine
 import Supabase
 
 @MainActor
-public final class DashboardViewModel: ObservableObject {
+@Observable
+public final class DashboardViewModel {
     public static let emiShortfallPenalty: Double = 500
 
-    @Published public var loanAccounts: [DashboardLoanAccount] = []
-    @Published public var bankAccount: BankAccount = BankAccount(accountNumber: "", accountType: .savings, availableBalance: 0)
-    @Published public var bankAccounts: [BankAccount] = []
-    @Published public var pendingEMIs: [EMIRecord] = []
-    @Published public var transactions: [Transaction] = []
-    @Published public var schemes: [GovernmentScheme] = []
-    @Published public var foreclosureRequests: [ForeclosureRequest] = []
-    @Published public var isLoading: Bool = true
-    @Published public var profileName: String = ""
-    @Published public var profileCompletionPercentage: Int = 0
+    public var loanAccounts: [DashboardLoanAccount] = []
+    public var bankAccount: BankAccount = BankAccount(accountNumber: "", accountType: .savings, availableBalance: 0)
+    public var bankAccounts: [BankAccount] = []
+    public var pendingEMIs: [EMIRecord] = []
+    public var transactions: [Transaction] = []
+    public var schemes: [GovernmentScheme] = []
+    public var foreclosureRequests: [ForeclosureRequest] = []
+    public var isLoading: Bool = true
+    public var profileName: String = ""
+    public var profileCompletionPercentage: Int = 0
     
     // Notification support
     public let notificationViewModel = NotificationViewModel()
@@ -30,29 +32,6 @@ public final class DashboardViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     public init() {
-        CentralLoanRepository.shared.$disbursementEvents
-            .dropFirst()
-            .debounce(for: .seconds(2), scheduler: DispatchQueue.main)
-            .sink { [weak self] _ in
-                Task { await self?.fetchDashboardData() }
-            }
-            .store(in: &cancellables)
-
-        CentralLoanRepository.shared.$applications
-            .dropFirst()
-            .debounce(for: .seconds(2), scheduler: DispatchQueue.main)
-            .sink { [weak self] _ in
-                Task { await self?.fetchDashboardData() }
-            }
-            .store(in: &cancellables)
-
-        BorrowerProfileStore.shared.$profile
-            .dropFirst()
-            .debounce(for: .seconds(2), scheduler: DispatchQueue.main)
-            .sink { [weak self] _ in
-                Task { await self?.fetchDashboardData() }
-            }
-            .store(in: &cancellables)
     }
     
     public var totalOutstanding: Double { loanAccounts.map(\.principalOutstanding).reduce(0, +) }
@@ -155,7 +134,7 @@ public final class DashboardViewModel: ObservableObject {
 
     public var profileMissingRequirements: [String] {
         guard let profile = BorrowerProfileStore.shared.profile else {
-            return ["Complete personal details", "Verify contact information", "Link your bank account"]
+            return ["Complete personal details", "Verify contact information", "Add profile photo"]
         }
         var missing: [String] = []
         if profile.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -166,12 +145,6 @@ public final class DashboardViewModel: ObservableObject {
         }
         if !profile.isPhoneVerified {
             missing.append("Verify mobile number")
-        }
-        if profile.bankDetails.accountNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            missing.append("Link bank account")
-        }
-        if profile.kycVerification.aadhaarStatus != .verified {
-            missing.append("Complete KYC verification")
         }
         if profile.profileImageData == nil {
             missing.append("Add profile photo")

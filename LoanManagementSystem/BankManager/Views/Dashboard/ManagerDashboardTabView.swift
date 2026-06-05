@@ -2,7 +2,7 @@ import SwiftUI
 
 
 struct ManagerDashboardTabView: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @Binding var selectedTab: ManagerWorkspaceTab
     var onSelectApplicant: (ManagerApplicant) -> Void
 
@@ -51,7 +51,7 @@ struct ManagerDashboardTabView: View {
 // MARK: - Action Items Row (replaces 4-card Branch Command Center)
 
 private struct ActionItemsRow: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @Binding var selectedTab: ManagerWorkspaceTab
     @State private var showDecisionsDueSheet = false
 
@@ -162,7 +162,7 @@ private struct ActionItemCard: View {
 // MARK: - Branch quick access (full analytics live on Branch tab)
 
 private struct BranchDashboardPromoCard: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @Binding var showBranchOverview: Bool
 
     var body: some View {
@@ -241,7 +241,7 @@ private struct BranchDashboardPromoCard: View {
 // MARK: - Team Insights Row
 
 private struct TeamInsightsRow: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @State private var showPerformanceSheet = false
 
     var body: some View {
@@ -320,7 +320,9 @@ private struct TeamInsightsOfficerCard: View {
             .padding(.top, 4)
         }
         .padding(LMSSpacing.md)
-        .frame(width: 220)
+        .containerRelativeFrame(.horizontal) { width, _ in
+            width - (LMSSpacing.screenHorizontal * 2)
+        }
         .background(LMSColors.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
@@ -331,7 +333,7 @@ private struct TeamInsightsOfficerCard: View {
 // MARK: - Officer Performance Report Sheet
 
 struct OfficerPerformanceReportSheet: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     @Environment(\.dismiss) var dismiss
     @State private var draftRatings: [UUID: Double] = [:]
 
@@ -437,7 +439,7 @@ struct OfficerPerformanceReportSheet: View {
 }
 
 private struct OfficerPerformanceRatingCard: View {
-    @ObservedObject var viewModel: ManagerDashboardViewModel
+    @Bindable var viewModel: ManagerDashboardViewModel
     let summary: ManagerOfficerPerformanceSummary
     @Binding var selectedRating: Double
     let onSave: () -> Void
@@ -632,5 +634,4 @@ private struct PerformanceMetric: View {
         .frame(maxWidth: .infinity)
     }
 }
-
 
