@@ -84,7 +84,7 @@ private struct LoanOfficerTodayView: View {
     @State private var showingReadyToSendApps = false
     
     private var pendingApps: [OfficerLoanApplication] {
-        viewModel.applications.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending || $0.status == .documentsRejected }
+        viewModel.applications.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending || $0.status == .documentsRejected || $0.status == .underReview }
     }
 
     private var nextApplication: OfficerLoanApplication? {
@@ -193,7 +193,7 @@ private struct OfficerActionItemsRow: View {
     @Binding var showingReadyToSendApps: Bool
     
     private var pendingAppsCount: Int {
-        viewModel.applications.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending || $0.status == .documentsRejected }.count
+        viewModel.applications.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending || $0.status == .documentsRejected || $0.status == .underReview }.count
     }
     
     var body: some View {
