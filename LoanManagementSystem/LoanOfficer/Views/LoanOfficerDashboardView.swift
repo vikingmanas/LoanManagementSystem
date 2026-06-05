@@ -81,12 +81,6 @@ private struct LoanOfficerTodayView: View {
         viewModel.applications.filter { $0.status == .pending || $0.status == .applied || $0.status == .documentsPending || $0.status == .documentsRejected }
     }
 
-    private var nextApplication: OfficerLoanApplication? {
-        viewModel.applications.first { app in
-            app.status == .pending || app.status == .underReview || app.status == .documentsPending || app.status == .documentsRejected
-        }
-    }
-
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: LMSSpacing.xl) {
@@ -99,10 +93,6 @@ private struct LoanOfficerTodayView: View {
                     showingReadyToSendApps: $showingReadyToSendApps
                 )
                 .padding(.top, LMSSpacing.md)
-
-                if let app = nextApplication {
-                    OfficerNextActionCard(app: app, selectedApp: $selectedApplication)
-                }
 
                 OfficerReviewSnapshotView(
                     viewModel: viewModel,
@@ -268,54 +258,6 @@ private struct OfficerActionCard: View {
             .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
         }
         .buttonStyle(.plain)
-    }
-}
-
-// MARK: - Next Action Card
-
-private struct OfficerNextActionCard: View {
-    let app: OfficerLoanApplication
-    @Binding var selectedApp: OfficerLoanApplication?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: LMSSpacing.sm) {
-            Text("Next Best Action")
-                .font(.system(.title3, design: .rounded).bold())
-                .foregroundStyle(LMSColors.textPrimary)
-                .padding(.horizontal, LMSSpacing.screenHorizontal)
-
-            Button {
-                selectedApp = app
-            } label: {
-                HStack(alignment: .center, spacing: 12) {
-                    OfficerAvatar(name: app.borrowerName, tint: app.loanType.themeColor)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(app.borrowerName)
-                            .font(.system(.body, design: .rounded).weight(.semibold))
-                            .foregroundStyle(LMSColors.textPrimary)
-                        Text("\(app.loanType.rawValue) · \(CurrencyFormatter.shared.format(app.requestedAmount))")
-                            .font(.system(.subheadline, design: .rounded))
-                            .foregroundStyle(LMSColors.textSecondary)
-                        Text(app.status.rawValue)
-                            .font(.system(.caption, design: .rounded).weight(.semibold))
-                            .foregroundStyle(app.status.themeColor)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(.headline, design: .rounded).weight(.semibold))
-                        .foregroundStyle(LMSColors.textTertiary)
-                }
-                .padding(LMSSpacing.lg)
-                .background(LMSColors.surfaceElevated)
-                .clipShape(RoundedRectangle(cornerRadius: LMSRadius.lg, style: .continuous))
-                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, LMSSpacing.screenHorizontal)
-        }
     }
 }
 

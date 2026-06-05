@@ -129,7 +129,6 @@ struct DocumentReviewDetailView: View {
                     VStack(spacing: 0) {
                         DocumentDetailRow("Loan Type", value: app.loanType.rawValue, valueColor: app.loanType.themeColor)
                         DocumentDetailRow("Requested Amount", value: CurrencyFormatter.shared.format(app.requestedAmount))
-                        DocumentDetailRow("Branch", value: app.branch)
                         DocumentDetailRow("Document Stage", value: item.status.rawValue, valueColor: item.status.themeColor, isLast: true)
                     }
                 }
@@ -199,8 +198,7 @@ struct DocumentReviewDetailView: View {
                 VStack(spacing: 0) {
                     DocumentDetailRow("Document Type", value: item.docType.rawValue, icon: item.docType.symbol, valueColor: item.docType.iconColor)
                     DocumentDetailRow("Submitted", value: item.submittedDate.formattedAsDDMMMYYYY())
-                    DocumentDetailRow("Status", value: item.status.rawValue, valueColor: item.status.themeColor)
-                    DocumentDetailRow("OCR Status", value: documentDetails?.ocrStatus ?? "Not available", valueColor: LMSColors.actionBlue, isLast: true)
+                    DocumentDetailRow("Status", value: item.status.rawValue, valueColor: item.status.themeColor, isLast: true)
                 }
             }
         }
