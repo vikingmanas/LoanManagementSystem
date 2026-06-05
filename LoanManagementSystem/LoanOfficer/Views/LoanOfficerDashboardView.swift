@@ -55,7 +55,9 @@ struct LoanOfficerDashboardView: View {
             }
         }
         .accessibleSheet(isPresented: $showingProfile) {
-            LoanOfficerProfileView()
+            NavigationStack {
+                LoanOfficerProfileView()
+            }
         }
     }
 }

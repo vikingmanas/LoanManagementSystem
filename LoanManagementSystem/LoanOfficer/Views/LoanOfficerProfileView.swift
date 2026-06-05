@@ -208,6 +208,6 @@ struct LoanOfficerProfileView: View {
         .accessibleSheet(isPresented: $showChangePassword) {
             ChangePasswordSheet()
         }
-        .preferredColorScheme(isDarkMode ? .dark : .light)
+        .accessibilityOverrides()
     }
 }

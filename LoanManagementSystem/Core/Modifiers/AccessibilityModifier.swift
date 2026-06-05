@@ -77,7 +77,7 @@ extension View {
 public func withAnimation<Result>(_ animation: Animation? = .default, _ body: () throws -> Result) rethrows -> Result {
     let reduceMotion = UserDefaults.standard.bool(forKey: "reduceMotion")
     if reduceMotion {
-        var transaction = Transaction(animation: nil)
+        var transaction = SwiftUI.Transaction(animation: nil)
         transaction.disablesAnimations = true
         return try SwiftUI.withTransaction(transaction, body)
     } else {
