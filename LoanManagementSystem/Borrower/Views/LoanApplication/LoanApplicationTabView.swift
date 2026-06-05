@@ -1740,10 +1740,23 @@ private struct SubmittedDocumentsCard: View {
                 .foregroundStyle(LMSColors.textPrimary)
             
             VStack(spacing: LMSSpacing.md) {
-                ForEach(application.documents) { doc in
-                    TrackingDocumentStatusRow(doc: doc, onResubmit: { onResubmit(doc) })
-                    if doc.id != application.documents.last?.id {
-                        Divider().background(LMSColors.separatorLight)
+                if application.documents.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "doc.text.viewfinder")
+                            .font(.system(size: 32, weight: .light))
+                            .foregroundStyle(LMSColors.textTertiary)
+                        Text("No document Uploaded yet")
+                            .font(LMSFont.subheadline.weight(.medium))
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+                    .padding(.vertical, LMSSpacing.lg)
+                    .frame(maxWidth: .infinity)
+                } else {
+                    ForEach(application.documents) { doc in
+                        TrackingDocumentStatusRow(doc: doc, onResubmit: { onResubmit(doc) })
+                        if doc.id != application.documents.last?.id {
+                            Divider().background(LMSColors.separatorLight)
+                        }
                     }
                 }
             }

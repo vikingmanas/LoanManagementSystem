@@ -1250,7 +1250,7 @@ final class CentralLoanRepository {
             },
             notes: app.formData.loanPurpose.isEmpty ? "General financing requirement" : app.formData.loanPurpose,
             branch: "",
-            cibilScore: app.formData.creditScoreValue > 0 ? app.formData.creditScoreValue : 750,
+            cibilScore: generateMockCibilScore(for: app),
             sentToManagerDate: sentToManagerDate,
             managerStatus: managerStatus,
             borrowerDetails: borrowerDetails
@@ -1331,7 +1331,7 @@ final class CentralLoanRepository {
             borrowerInitials: initials.isEmpty ? "B" : initials,
             loanType: type,
             requestedAmount: app.formData.requestedAmountValue,
-            cibilScore: app.formData.creditScoreValue > 0 ? app.formData.creditScoreValue : 750,
+            cibilScore: generateMockCibilScore(for: app),
             status: status,
             riskLevel: advancedRisk.riskLevel,
             assignedOfficer: assignedOfficerName,
@@ -1348,6 +1348,26 @@ final class CentralLoanRepository {
             riskFactors: advancedRisk.factors,
             compositeRiskScore: advancedRisk.compositeScore
         )
+    }
+
+    private func generateMockCibilScore(for app: BorrowerLoanApplication) -> Int {
+        if app.formData.creditScoreValue > 0 {
+            return app.formData.creditScoreValue
+        }
+        
+        let uniqueString = (app.formData.emailAddress.lowercased() + app.formData.mobileNumber).trimmingCharacters(in: .whitespacesAndNewlines)
+        if uniqueString.isEmpty { return 750 }
+        
+        var stableHash = 0
+        for char in uniqueString.unicodeScalars {
+            stableHash = (stableHash &* 31) &+ Int(char.value)
+        }
+        
+        let minScore = 600
+        let maxScore = 850
+        let range = maxScore - minScore + 1
+        
+        return minScore + (abs(stableHash) % range)
     }
     
     private func mapToLoanDocument(from item: BorrowerLoanDocumentItem) -> LoanDocument {
