@@ -1,4 +1,3 @@
-import Foundation
 import AVFoundation
 import SwiftUI
 
@@ -6,22 +5,21 @@ class VoiceOverManager {
     static let shared = VoiceOverManager()
     private let synthesizer = AVSpeechSynthesizer()
     
-    var isEnabled: Bool {
-        return UserDefaults.standard.bool(forKey: "enableVoiceOver")
+    private init() {}
+    
+    var enableVoiceOver: Bool {
+        UserDefaults.standard.bool(forKey: "enableVoiceOver")
     }
     
     func speak(_ text: String) {
-        guard isEnabled else { return }
-        
-        // Stop current speech if any
-        if synthesizer.isSpeaking {
-            synthesizer.stopSpeaking(at: .immediate)
-        }
+        guard enableVoiceOver else { return }
         
         let utterance = AVSpeechUtterance(string: text)
+        // Adjust the voice and language as needed
         utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        utterance.rate = 0.5 // Standard rate
+        utterance.rate = 0.5
         
+        synthesizer.stopSpeaking(at: .immediate)
         synthesizer.speak(utterance)
     }
 }

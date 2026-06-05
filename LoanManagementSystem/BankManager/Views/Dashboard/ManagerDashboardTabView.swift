@@ -45,6 +45,7 @@ private struct ActionItemsRow: View {
     @Bindable var viewModel: ManagerDashboardViewModel
     @Binding var selectedTab: ManagerWorkspaceTab
     @State private var showDecisionsDueSheet = false
+    @State private var showEscalatedSheet = false
 
     private var pendingCount: Int { viewModel.pendingApplicants.count }
     private var escalatedCount: Int {
@@ -77,7 +78,9 @@ private struct ActionItemsRow: View {
                     icon: "arrow.up.forward.circle.fill",
                     tint: escalatedCount == 0 ? LMSColors.emerald : LMSColors.coral,
                     action: {
-                        selectedTab = .branch
+                        if escalatedCount > 0 {
+                            showEscalatedSheet = true
+                        }
                     }
                 )
             }
@@ -88,8 +91,17 @@ private struct ActionItemsRow: View {
             ManagerApplicantListSheet(
                 title: "Under Review",
                 systemImage: "checklist.checked",
-                description: "No pending applications require your attention.",
+                description: "These applications are waiting for your final approval.",
                 applicants: viewModel.pendingApplicants,
+                viewModel: viewModel
+            )
+        }
+        .accessibleSheet(isPresented: $showEscalatedSheet) {
+            ManagerApplicantListSheet(
+                title: "Manager Review",
+                systemImage: "arrow.up.forward.circle.fill",
+                description: "These applications were escalated by loan officers for your review.",
+                applicants: viewModel.officerEscalatedApplicants,
                 viewModel: viewModel
             )
         }

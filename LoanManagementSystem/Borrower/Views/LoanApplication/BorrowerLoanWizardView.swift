@@ -353,7 +353,7 @@ struct BorrowerLoanWizardView: View {
     @State private var stepValidationMessage: String?
 
     private var progressValue: Double {
-        Double(currentStep) / 10.0
+        Double(currentStep) / 9.0
     }
 
     private var localDraftAutosaveToken: String {
@@ -577,7 +577,7 @@ struct BorrowerLoanWizardView: View {
                         .font(LMSFont.subheadline.weight(.semibold))
                         .foregroundStyle(LMSColors.textPrimary)
                         .lineLimit(1)
-                    Text("Step \(currentStep) of 10")
+                    Text("Step \(currentStep) of 9")
                         .font(LMSFont.caption2.weight(.medium))
                         .foregroundStyle(LMSColors.textSecondary)
                 }
@@ -661,15 +661,6 @@ struct BorrowerLoanWizardView: View {
                     savingsInvestments: $savingsInvestments
                 )
             case 5:
-                Step5BankDetailsView(
-                    bankName: $bankName,
-                    accountNo: $bankAccountNumber,
-                    ifscCode: $bankIFSCCode,
-                    registeredMobile: $bankRegisteredMobile,
-                    monthlySalaryDeposited: $monthlySalaryDeposited,
-                    autoDebitConsent: $autoDebitConsent
-                )
-            case 6:
                 Step6DocumentCenterOverhaulView(
                     viewModel: viewModel,
                     product: product,
@@ -697,7 +688,7 @@ struct BorrowerLoanWizardView: View {
                         ensureRequiredDocumentsLoaded()
                     }
                 )
-            case 7:
+            case 6:
                 Step7SignaturePhotoView(
                     signatureImage: $signatureImage,
                     isSignatureEmpty: $isSignatureEmpty,
@@ -712,7 +703,7 @@ struct BorrowerLoanWizardView: View {
                         showSelfiePhotoPicker = true
                     }
                 )
-            case 8:
+            case 7:
                 Step8NomineeReferencesView(
                     nomineeName: $nomineeName,
                     nomineeRelation: $coApplicantRelation,
@@ -720,7 +711,7 @@ struct BorrowerLoanWizardView: View {
                     refName: $ocrPANFather,
                     refPhone: $ocrPANNumber
                 )
-            case 9:
+            case 8:
                 Step9ReviewOverhaulView(
                     viewModel: viewModel,
                     product: product,
@@ -730,7 +721,7 @@ struct BorrowerLoanWizardView: View {
                         }
                     }
                 )
-            case 10:
+            case 9:
                 Step10TermsConsentView(
                     viewModel: viewModel,
                     product: product,
@@ -772,7 +763,7 @@ struct BorrowerLoanWizardView: View {
             }
 
             Button(action: handleNextAction) {
-                Text(currentStep == 10 ? "Submit Application" : "Continue")
+                Text(currentStep == 9 ? "Submit Application" : "Continue")
                     .font(LMSFont.button)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 52)
@@ -789,11 +780,11 @@ struct BorrowerLoanWizardView: View {
     }
 
     private var isCurrentStepActionDisabled: Bool {
-        guard currentStep == 10 else { return false }
-        return !isStep10ReadyForSubmission
+        guard currentStep == 9 else { return false }
+        return !isStep9ReadyForSubmission
     }
 
-    private var isStep10ReadyForSubmission: Bool {
+    private var isStep9ReadyForSubmission: Bool {
         isLoanPurposeValid && acceptTerms && acceptBureau
     }
 
@@ -808,12 +799,11 @@ struct BorrowerLoanWizardView: View {
         case 2: return "Eligibility Plan"
         case 3: return "Personal Details"
         case 4: return "Employment Info"
-        case 5: return "Bank Details"
-        case 6: return "Documents Setup"
-        case 7: return "Signature & Selfie"
-        case 8: return "Nominee & Contact"
-        case 9: return "Review Details"
-        case 10: return "Consent & Submit"
+        case 5: return "Documents Setup"
+        case 6: return "Signature & Selfie"
+        case 7: return "Nominee & Contact"
+        case 8: return "Review Details"
+        case 9: return "Consent & Submit"
         default: return "Loan Wizard"
         }
     }
@@ -835,7 +825,7 @@ struct BorrowerLoanWizardView: View {
         }
 
         viewModel.prefillEmptyFieldsFromProfile()
-        currentStep = min(max(viewModel.currentStepIndex, 1), 10)
+        currentStep = min(max(viewModel.currentStepIndex, 1), 9)
 
         ensureRequiredDocumentsLoaded()
         hydrateWizardStateFromFormData()
@@ -1105,14 +1095,14 @@ struct BorrowerLoanWizardView: View {
         syncWizardFormToViewModel()
         triggerAutosave()
 
-        if currentStep < 10 {
+        if currentStep < 9 {
             if let validationMessage = validationMessageForCurrentStep() {
                 stepValidationMessage = validationMessage
                 HapticsManager.triggerNotification(type: .warning)
                 return
             }
 
-            if currentStep == 6 {
+            if currentStep == 5 {
                 let unuploadedDocuments = viewModel.documents.filter { $0.status == .pendingUpload }
                 if !unuploadedDocuments.isEmpty {
                     stepValidationMessage = "Upload all required documents: \(unuploadedDocuments.map(\.name).joined(separator: ", "))."
@@ -1167,9 +1157,7 @@ struct BorrowerLoanWizardView: View {
                 return addressValidation
             }
             return viewModel.validationMessage(for: .preferredBranch)
-        case 5:
-            return MobileNumberValidator.message(for: bankRegisteredMobile, required: false)
-        case 7:
+        case 6:
             if isSignatureEmpty || signatureImage == nil {
                 return "Please provide your signature photo"
             }
@@ -1177,10 +1165,10 @@ struct BorrowerLoanWizardView: View {
                 return "Please provide your selfie photo"
             }
             return nil
-        case 8:
+        case 7:
             if let nomineeValidation = MobileNumberValidator.message(for: nomineeMobile, required: false) { return nomineeValidation }
             return MobileNumberValidator.validationMessage(for: ocrPANNumber)
-        case 10:
+        case 9:
             if !isLoanPurposeValid {
                 return "Please provide the purpose of the loan."
             }
