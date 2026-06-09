@@ -1,14 +1,11 @@
 import Foundation
 
-
-
 struct AuditLog: Codable, Identifiable {
     let id: UUID
     let userId: UUID
     let action: String
     let entityType: String
     let entityId: UUID
-
 
     let oldValue: Data?
     let newValue: Data?
@@ -27,4 +24,3 @@ struct AuditLog: Codable, Identifiable {
         case ts
     }
 }
-

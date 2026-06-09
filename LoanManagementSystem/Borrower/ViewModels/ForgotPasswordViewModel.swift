@@ -59,11 +59,10 @@ class ForgotPasswordViewModel {
         let cleanedEmail = emailOrPhone.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         isLoading = true
         
-        // 1. Verify if the email is actually registered in the database
         let isRegistered = await AuthService.shared.isEmailRegistered(cleanedEmail)
         
         if isRegistered {
-            // 2. If registered, proceed to send the reset code
+
             let success = await authManager.resetPassword(email: cleanedEmail)
             if success {
                 currentStep = .otp
@@ -72,7 +71,7 @@ class ForgotPasswordViewModel {
                 errorMessage = authManager.errorMessage ?? "Unable to send reset code. Please try again."
             }
         } else {
-            // 3. If not registered, show error message
+
             errorMessage = "You are not registered."
         }
         

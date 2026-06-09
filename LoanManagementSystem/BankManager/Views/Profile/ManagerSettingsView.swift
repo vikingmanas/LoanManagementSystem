@@ -1,6 +1,5 @@
 import SwiftUI
 
-
 struct ManagerSettingsView: View {
     @Environment(\.dismiss) var dismiss
 
@@ -105,7 +104,6 @@ struct ManagerSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
-
 
 private struct PermissionRow: View {
     let label: String

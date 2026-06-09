@@ -1,6 +1,5 @@
 import SwiftUI
 
-
 struct SecureInputField: View {
     var placeholder: String
     @Binding var text: String
@@ -70,8 +69,6 @@ struct SecureInputField: View {
         }
     }
 
-
-
     private var iconColor: Color {
         if isError { return LMSColors.coral }
         if isFocused { return LMSColors.brandNavy }
@@ -94,4 +91,3 @@ struct SecureInputField: View {
     SecureInputField(placeholder: "Password", text: $text)
         .padding()
 }
-

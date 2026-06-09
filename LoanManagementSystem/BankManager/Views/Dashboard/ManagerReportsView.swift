@@ -1,6 +1,5 @@
 import SwiftUI
 
-
 struct ManagerReportsView: View {
     @Bindable var viewModel: ManagerDashboardViewModel
     @State private var showReportSheet = false
@@ -49,7 +48,6 @@ struct ManagerReportsView: View {
         }
     }
 }
-
 
 private struct ReportButton: View {
     let icon: String
@@ -101,7 +99,6 @@ private struct ReportButton: View {
         .buttonStyle(LMSPressableStyle())
     }
 }
-
 
 private struct ManagerInsightCard: View {
     @Bindable var viewModel: ManagerDashboardViewModel
@@ -170,7 +167,6 @@ private struct ManagerInsightCard: View {
         )
     }
 }
-
 
 struct ManagerReportSheet: View {
     @Bindable var viewModel: ManagerDashboardViewModel
@@ -571,7 +567,6 @@ private struct ShareSheet: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
-
 struct ManagerAuditLogSheet: View {
     @Environment(\.dismiss) var dismiss
     let events: [ManagerAuditEvent]
@@ -621,4 +616,3 @@ struct ManagerAuditLogSheet: View {
         }
     }
 }
-

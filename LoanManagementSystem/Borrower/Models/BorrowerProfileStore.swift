@@ -30,8 +30,6 @@ public class BorrowerProfileStore {
         self.accounts = []
     }
 
-
-
     @discardableResult
     func ensureProfile(email: String, name: String? = nil, phone: String? = nil, alternatePhone: String? = nil) -> BorrowerProfile {
         let cleanedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -152,7 +150,6 @@ public class BorrowerProfileStore {
                 }
             } else {
 
-
                 let customerId = "C-\(Int.random(in: 100000...999999))"
                 var newProfile = makeEmptyProfile(
                     name: name ?? email,
@@ -171,7 +168,6 @@ public class BorrowerProfileStore {
             self.currentEmail = email
         } catch {
             print("Error fetching profile from Supabase: \(error.localizedDescription)")
-
 
             if let cachedProfile = DatabaseService.shared.loadProfileLocally(userId: uid) {
                 self.profile = cachedProfile
@@ -432,8 +428,6 @@ public class BorrowerProfileStore {
         )
     }
 }
-
-
 
 extension Encodable {
     var asDictionary: [String: Any]? {

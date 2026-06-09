@@ -70,5 +70,3 @@ struct EditAddressInfoView: View {
         }
     }
 }
-
-

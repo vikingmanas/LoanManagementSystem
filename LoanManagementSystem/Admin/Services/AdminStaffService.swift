@@ -8,7 +8,6 @@ final class AdminStaffService {
 
     private init() {}
 
-
     private struct DBUser: Codable {
         let id: UUID
         let email: String
@@ -70,7 +69,6 @@ final class AdminStaffService {
         }
     }
 
-
     func fetchBranches() async throws -> [BranchInfo] {
         let branches: [BranchInfo] = try await client
             .from("branches")
@@ -79,7 +77,6 @@ final class AdminStaffService {
             .value
         return branches
     }
-
 
     func fetchStaffMembers() async throws -> [StaffMember] {
         async let usersTask: [DBUser] = client
@@ -165,7 +162,6 @@ final class AdminStaffService {
         )
     }
 
-
     func createAdmin(name: String, email: String, phone: String, password: String) async throws {
         let attributes = AdminUserAttributes(
             email: email,
@@ -203,7 +199,6 @@ final class AdminStaffService {
         }
     }
 
-
     func createStaffMember(payload: CreateStaffPayload) async throws {
 
         let attributes = AdminUserAttributes(
@@ -220,7 +215,6 @@ final class AdminStaffService {
         let newUser = try await adminClient.auth.admin.createUser(attributes: attributes)
         let newUserId = newUser.id
 
-
         let userInsert: [String: String] = [
             "id": newUserId.uuidString,
             "email": payload.email,
@@ -232,7 +226,6 @@ final class AdminStaffService {
 
         do {
             try await adminClient.from("users").upsert(userInsert).execute()
-
 
             if payload.role == "loan_officer" {
                 let officerInsert: [String: String] = [
@@ -253,9 +246,8 @@ final class AdminStaffService {
                 try await adminClient.from("managers").insert(managerInsert).execute()
             }
             
-            // Send welcome email with login credentials
             let roleName = payload.role == "loan_officer" ? "Loan Officer" : "Bank Manager"
-            // Resolve branch name
+
             var branchName = "N/A"
             if let branches = try? await fetchBranches() {
                 branchName = branches.first(where: { $0.id == payload.branchId })?.name ?? "N/A"
@@ -276,11 +268,9 @@ final class AdminStaffService {
         }
     }
 
-
     func deleteStaffMember(userId: UUID) async throws {
         try await adminClient.auth.admin.deleteUser(id: userId)
     }
-
 
     func updateStaffMember(
         id: UUID,
@@ -304,7 +294,6 @@ final class AdminStaffService {
             .update(userUpdate)
             .eq("id", value: id)
             .execute()
-
 
         if role == .loanOfficer {
             let officerUpdate: [String: String] = [
@@ -345,4 +334,3 @@ final class AdminStaffService {
             .execute()
     }
 }
-

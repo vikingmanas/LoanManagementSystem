@@ -13,7 +13,7 @@ public struct EMITrackerView: View {
     
     public var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            // Header
+
             HStack {
                 Text("REPAYMENT STATUS")
                     .font(.system(.caption, design: .rounded).bold())
@@ -37,7 +37,7 @@ public struct EMITrackerView: View {
                 LoadingTrackerSkeleton()
             } else {
                 VStack(spacing: 16) {
-                    // 1. Upcoming EMI Hero Card
+
                     if let nextEMI = viewModel.nextEMI {
                         UpcomingEMICard(
                             nextEMI: nextEMI,
@@ -51,7 +51,6 @@ public struct EMITrackerView: View {
                         AllCaughtUpCard()
                     }
                     
-                    // 2. Pending List (Collapsed)
                     let unpaidEMIs = viewModel.pendingEMIs.filter { $0.status != .paid }
                     if !unpaidEMIs.isEmpty {
                         VStack(spacing: 0) {

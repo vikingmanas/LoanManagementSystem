@@ -9,7 +9,6 @@ struct HistoryTabView: View {
         NavigationStack {
             VStack(spacing: 0) {
 
-
                 if !viewModel.bankAccounts.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 12) {
@@ -64,7 +63,6 @@ struct HistoryTabView: View {
                                 .shadow(color: isAllSelected ? LMSColors.brandNavy.opacity(0.18) : Color.clear, radius: 8, x: 0, y: 4)
                             }
                             .buttonStyle(.plain)
-
 
                             ForEach(viewModel.bankAccounts) { account in
                                 let isSelected = selectedBankAccountId == account.id
@@ -130,7 +128,6 @@ struct HistoryTabView: View {
                     .background(LMSColors.background)
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
-
 
                 HStack(alignment: .center) {
                     Text("Recent Transactions")
@@ -267,8 +264,6 @@ struct HistoryTabView: View {
         }
     }
 
-
-
     private func groupTransactionsByDate(_ txs: [Transaction]) -> [DateGroup] {
         let calendar = Calendar.current
         let grouped = Dictionary(grouping: txs) { tx in
@@ -293,8 +288,6 @@ struct HistoryTabView: View {
             return formatter.string(from: date)
         }
     }
-
-
 
     private func getGradientColors(for type: DashboardAccountType?) -> [Color] {
         guard let type = type else {
@@ -330,10 +323,7 @@ struct HistoryTabView: View {
     }
 }
 
-
 struct DateGroup: Identifiable {
     let id: Date
     let transactions: [Transaction]
 }
-
-

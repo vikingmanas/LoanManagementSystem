@@ -15,7 +15,6 @@ final class SupabaseManager {
             let container = try decoder.singleValueContainer()
             let string = try container.decode(String.self)
 
-            // Try ISO8601DateFormatter (handles variable length fractional seconds automatically)
             let isoFormatter = ISO8601DateFormatter()
             isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             if let date = isoFormatter.date(from: string) {
@@ -76,4 +75,3 @@ final class SupabaseManager {
         )
     }
 }
-

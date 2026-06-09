@@ -1,6 +1,5 @@
 import SwiftUI
 
-
 struct ManagerDashboardTabView: View {
     @Bindable var viewModel: ManagerDashboardViewModel
     @Binding var selectedTab: ManagerWorkspaceTab
@@ -12,11 +11,9 @@ struct ManagerDashboardTabView: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: LMSSpacing.xl) {
 
-                // Key Performance Indicators
                 ActionItemsRow(viewModel: viewModel, selectedTab: $selectedTab)
                     .padding(.top, LMSSpacing.md)
 
-                // Approval Request
                 ManagerApprovalQueueView(
                     viewModel: viewModel,
                     onViewAll: {
@@ -44,21 +41,12 @@ struct ManagerDashboardTabView: View {
     }
 }
 
-
-
-
-
-// MARK: - Action Items Row (replaces 4-card Branch Command Center)
-
 private struct ActionItemsRow: View {
     @Bindable var viewModel: ManagerDashboardViewModel
     @Binding var selectedTab: ManagerWorkspaceTab
     @State private var showDecisionsDueSheet = false
 
     private var pendingCount: Int { viewModel.pendingApplicants.count }
-    private var escalatedCount: Int {
-        viewModel.officerEscalatedApplicants.count
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
@@ -67,29 +55,18 @@ private struct ActionItemsRow: View {
                 .foregroundStyle(LMSColors.textPrimary)
                 .padding(.horizontal, LMSSpacing.screenHorizontal)
 
-            HStack(spacing: LMSSpacing.md) {
-                ActionItemCard(
-                    title: "Under Review",
-                    value: "\(pendingCount)",
-                    icon: "checklist.checked",
-                    tint: pendingCount == 0 ? LMSColors.emerald : LMSColors.amber,
-                    action: {
-                        if pendingCount > 0 {
-                            showDecisionsDueSheet = true
-                        }
+            ActionItemCard(
+                title: "Under Review",
+                subtitle: pendingCount == 1 ? "1 application needs your approval" : "\(pendingCount) applications need your approval",
+                value: "\(pendingCount)",
+                icon: "checklist.checked",
+                tint: pendingCount == 0 ? LMSColors.emerald : LMSColors.amber,
+                action: {
+                    if pendingCount > 0 {
+                        showDecisionsDueSheet = true
                     }
-                )
-
-                ActionItemCard(
-                    title: "Manager Review",
-                    value: "\(escalatedCount)",
-                    icon: "arrow.up.forward.circle.fill",
-                    tint: escalatedCount == 0 ? LMSColors.emerald : LMSColors.coral,
-                    action: {
-                        selectedTab = .branch
-                    }
-                )
-            }
+                }
+            )
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, LMSSpacing.screenHorizontal)
         }
@@ -97,7 +74,7 @@ private struct ActionItemsRow: View {
             ManagerApplicantListSheet(
                 title: "Under Review",
                 systemImage: "checklist.checked",
-                description: "No pending applications require your attention.",
+                description: "These applications are waiting for your final approval.",
                 applicants: viewModel.pendingApplicants,
                 viewModel: viewModel
             )
@@ -107,6 +84,7 @@ private struct ActionItemsRow: View {
 
 private struct ActionItemCard: View {
     let title: String
+    var subtitle: String? = nil
     let value: String
     let icon: String
     let tint: Color
@@ -148,6 +126,12 @@ private struct ActionItemCard: View {
                     .foregroundStyle(LMSColors.textSecondary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.8)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(LMSColors.textTertiary)
+                        .padding(.top, 4)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -157,9 +141,6 @@ private struct ActionItemCard: View {
         .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
     }
 }
-
-
-// MARK: - Branch quick access (full analytics live on Branch tab)
 
 private struct BranchDashboardPromoCard: View {
     @Bindable var viewModel: ManagerDashboardViewModel
@@ -236,9 +217,6 @@ private struct BranchDashboardPromoCard: View {
         .background(LMSColors.background, in: RoundedRectangle(cornerRadius: LMSRadius.sm, style: .continuous))
     }
 }
-
-
-// MARK: - Team Insights Row
 
 private struct TeamInsightsRow: View {
     @Bindable var viewModel: ManagerDashboardViewModel
@@ -328,9 +306,6 @@ private struct TeamInsightsOfficerCard: View {
         .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
     }
 }
-
-
-// MARK: - Officer Performance Report Sheet
 
 struct OfficerPerformanceReportSheet: View {
     @Bindable var viewModel: ManagerDashboardViewModel
@@ -634,4 +609,3 @@ private struct PerformanceMetric: View {
         .frame(maxWidth: .infinity)
     }
 }
-

@@ -32,7 +32,6 @@ struct ActivityFeedRow: View {
                 }
             }
 
-
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .top) {
                     Text(item.borrowerName)
@@ -69,7 +68,6 @@ struct ActivityFeedRow: View {
             }
 
             Spacer()
-
 
             if item.requiresAction, let actionType = item.actionType {
                 Button(action: {
@@ -144,5 +142,3 @@ struct ActivityFeedRow: View {
         .accessibilityLabel("\(item.borrowerName), \(item.loanType). \(item.eventDescription) Application ID \(item.applicationId), \(RelativeDateFormatter.shared.relativeString(from: item.timestamp)). Status \(item.isRead ? "read" : "unread").")
     }
 }
-
-

@@ -37,8 +37,6 @@ class AppStateManager {
     var showRoleSelection: Bool = false
     var requiresBorrowerOnboarding: Bool = false
     
-    // Mock user details could be stored here later
-    
     func login(requiresBorrowerOnboarding: Bool = false) {
         self.requiresBorrowerOnboarding = requiresBorrowerOnboarding
         isAuthenticated = true

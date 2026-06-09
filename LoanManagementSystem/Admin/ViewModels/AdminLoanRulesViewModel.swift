@@ -14,7 +14,7 @@ final class AdminLoanRulesViewModel {
     var errorMessage: String?
     
     init() {
-        // Load global rules from UserDefaults if saved (local fallback)
+
         if let data = UserDefaults.standard.data(forKey: "GlobalLoanRules"),
            let savedRules = try? JSONDecoder().decode(GlobalLoanRules.self, from: data) {
             self.globalRules = savedRules
@@ -32,7 +32,6 @@ final class AdminLoanRulesViewModel {
             let rules = try await AdminDashboardService.shared.fetchGlobalRules()
             self.globalRules = rules
             
-            // Sync local cache
             if let encoded = try? JSONEncoder().encode(rules) {
                 UserDefaults.standard.set(encoded, forKey: "GlobalLoanRules")
             }
@@ -78,7 +77,7 @@ final class AdminLoanRulesViewModel {
             if let encoded = try? JSONEncoder().encode(rules) {
                 UserDefaults.standard.set(encoded, forKey: "GlobalLoanRules")
             }
-            // Update central repository singleton in real-time for current session
+
             CentralLoanRepository.shared.globalRules = rules
         } catch {
             logger.error("AdminLoanRulesViewModel: Failed to save rules to Supabase: \(error.localizedDescription)")

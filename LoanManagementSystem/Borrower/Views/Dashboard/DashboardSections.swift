@@ -1,7 +1,5 @@
 import SwiftUI
 
-// MARK: - Scroll Header (replaces "Dashboard" large title)
-
 struct DashboardScrollHeader: View {
     let greeting: String
     let subtitle: String
@@ -21,8 +19,6 @@ struct DashboardScrollHeader: View {
         .padding(.horizontal, LMSSpacing.screenHorizontal)
     }
 }
-
-// MARK: - Profile Completion
 
 struct ProfileCompletionCardSection: View {
     let percentage: Int
@@ -98,10 +94,9 @@ struct ProfileCompletionCardSection: View {
     }
 }
 
-// MARK: - Loan Portfolio Summary
-
 struct LoanPortfolioSummarySection: View {
     @Bindable var viewModel: DashboardViewModel
+    let onTap: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.sm) {
@@ -115,7 +110,10 @@ struct LoanPortfolioSummarySection: View {
                     .frame(height: 168)
                     .shimmer(active: true)
             } else {
-                LoanPortfolioSummaryCard(viewModel: viewModel)
+                Button(action: onTap) {
+                    LoanPortfolioSummaryCard(viewModel: viewModel)
+                }
+                .buttonStyle(DashboardPressableStyle())
             }
         }
         .padding(.horizontal, LMSSpacing.screenHorizontal)
@@ -188,8 +186,6 @@ struct LoanPortfolioSummaryCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
-
-// MARK: - Active Loan Accounts
 
 struct ActiveLoanAccountsSection: View {
     @Bindable var viewModel: DashboardViewModel
@@ -334,8 +330,6 @@ struct ActiveLoanAccountCard: View {
     }
 }
 
-// MARK: - Upcoming Payment
-
 struct UpcomingPaymentSection: View {
     @Bindable var viewModel: DashboardViewModel
     var onPayNow: () -> Void
@@ -415,8 +409,6 @@ struct UpcomingPaymentSection: View {
         .padding(.horizontal, LMSSpacing.screenHorizontal)
     }
 }
-
-// MARK: - Quick Actions
 
 struct DashboardQuickActionsSection: View {
     var onPayEMI: () -> Void
@@ -513,8 +505,6 @@ struct DashboardQuickActionTile: View {
         action.icon
     }
 }
-
-// MARK: - Transaction History
 
 enum DashboardTransactionFilter: String, CaseIterable, Identifiable {
     case all = "All"
@@ -1049,8 +1039,6 @@ private extension TransactionType {
         }
     }
 }
-
-// MARK: - Notifications
 
 struct DashboardNotificationsSection: View {
     let notifications: [LMSNotification]

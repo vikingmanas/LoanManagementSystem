@@ -1,8 +1,6 @@
 import SwiftUI
 import UIKit
 
-// MARK: - Loans Tab (Marketplace only — no applications here)
-
 struct LoanApplicationTabView: View {
     @Bindable var viewModel: LoanApplicationViewModel
     @Environment(AuthManager.self) private var authManager: AuthManager
@@ -92,7 +90,6 @@ struct LoanApplicationTabView: View {
     }
 }
 
-// MARK: - Legacy discovery (kept for reference — superseded by LoansMarketplaceView)
 #if false
 private struct LoanDiscoveryContent: View {
     @Bindable var viewModel: LoanApplicationViewModel
@@ -100,7 +97,7 @@ private struct LoanDiscoveryContent: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            // Search Bar
+
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(LMSColors.brandNavy)
@@ -163,7 +160,6 @@ private struct LoanDiscoveryContent: View {
     }
 }
 
-// MARK: - Premium Native Loan Card
 private struct LoanProductCard: View {
     let product: BorrowerLoanProduct
 
@@ -263,9 +259,6 @@ private struct LoanProductMetricChip: View {
     }
 }
 
-
-
-// MARK: - Loan Overview Screen
 private struct LoanOverviewScreen: View {
     @Bindable var viewModel: LoanApplicationViewModel
     let product: BorrowerLoanProduct
@@ -274,7 +267,7 @@ private struct LoanOverviewScreen: View {
 
     var body: some View {
         List {
-            // MARK: Professional Hero
+
             Section {
                 VStack(spacing: 20) {
                     ZStack {
@@ -303,7 +296,6 @@ private struct LoanOverviewScreen: View {
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets())
 
-            // MARK: Human-Centric Financial Logic
             Section {
                 LabeledContent {
                     Text(product.maximumAmount.formattedAsINR())
@@ -329,7 +321,6 @@ private struct LoanOverviewScreen: View {
                 Text("Final interest rate and loan amount are subject to credit appraisal and internal bank policies.")
             }
             
-            // MARK: EMI Calculator Preview
             Section {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack(alignment: .lastTextBaseline, spacing: 4) {
@@ -357,7 +348,6 @@ private struct LoanOverviewScreen: View {
                 Text("Estimated Repayment")
             }
 
-            // MARK: Key Features
             Section {
                 ForEach(product.benefits, id: \.self) { benefit in
                     Label {
@@ -372,7 +362,6 @@ private struct LoanOverviewScreen: View {
                 Text("Why choose this loan?")
             }
 
-            // MARK: Eligibility & Requirements
             Section {
                 ForEach(product.eligibilityCriteria, id: \.self) { criterion in
                     HStack(alignment: .top, spacing: 12) {
@@ -415,7 +404,6 @@ private struct LoanOverviewScreen: View {
     }
 }
 
-// MARK: - Combined Application Screen
 private struct CombinedApplicationScreen: View {
     @Bindable var viewModel: LoanApplicationViewModel
     let onVerify: () -> Void
@@ -570,7 +558,6 @@ private struct CombinedApplicationScreen: View {
     }
 }
 
-// MARK: - Document Row
 private struct DocumentRow: View {
     let document: BorrowerLoanDocumentItem
     let onUpload: () -> Void
@@ -599,7 +586,6 @@ private struct DocumentRow: View {
     }
 }
 
-// MARK: - Document Verification Result View
 private struct DocumentVerificationResultView: View {
     @Bindable var viewModel: LoanApplicationViewModel
     let onSubmit: () -> Void
@@ -679,7 +665,6 @@ private struct DocumentVerificationResultView: View {
     }
 }
 
-// MARK: - Applications Content
 private struct BorrowerApplicationsContent: View {
     @Bindable var viewModel: LoanApplicationViewModel
     let onSelectApplication: (BorrowerLoanApplication) -> Void
@@ -844,7 +829,6 @@ private struct ApplicationCard: View {
 
 #endif
 
-// MARK: - Product Category Extension
 extension BorrowerLoanProductType {
     var tintColor: Color {
         switch self {
@@ -863,7 +847,6 @@ extension BorrowerLoanProductType {
     }
 }
 
-// MARK: - Loan Application Tracking Screen
 struct LoanApplicationTrackingScreen: View {
     @Environment(AuthManager.self) private var authManager: AuthManager
     @Bindable var viewModel: LoanApplicationViewModel
@@ -887,14 +870,12 @@ struct LoanApplicationTrackingScreen: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: LMSSpacing.sectionGap) {
                 
-                // Task 1: Premium Header Card
                 TrackingHeaderCard(
                     application: app,
                     progress: viewModel.progressValue(for: app),
                     onResume: onResume
                 )
                 
-                // Task 2: Interactive Timeline Stepper
                 TimelineStepperCard(
                     viewModel: viewModel,
                     application: app
@@ -915,7 +896,6 @@ struct LoanApplicationTrackingScreen: View {
                     }
                 )
                 
-                // Task 4: Documents Section with Resubmission Action Sheet
                 SubmittedDocumentsCard(
                     application: app,
                     onResubmit: { doc in
@@ -929,12 +909,10 @@ struct LoanApplicationTrackingScreen: View {
                     }
                 }
                 
-                // Task 3: Collapsible Info Sections
                 SubmittedInfoViewerCard(
                     application: app
                 )
                 
-                // If it is draft, show standard delete option in page body too
                 if app.isDraft {
                     Button(role: .destructive, action: {
                         showDeleteConfirmation = true
@@ -1212,7 +1190,6 @@ private struct BorrowerMessageBubble: View {
     }
 }
 
-// MARK: - Task 1 Components (Header Card)
 private struct TrackingHeaderCard: View {
     let application: BorrowerLoanApplication
     let progress: Double
@@ -1220,9 +1197,9 @@ private struct TrackingHeaderCard: View {
     
     var body: some View {
         VStack(spacing: LMSSpacing.lg) {
-            // Icon + Title + Status
+
             HStack(alignment: .top, spacing: LMSSpacing.md) {
-                // Category Tinted Icon
+
                 ZStack {
                     RoundedRectangle(cornerRadius: 16)
                         .fill(application.product.type.tintColor.opacity(0.12))
@@ -1254,7 +1231,6 @@ private struct TrackingHeaderCard: View {
                 
                 Spacer()
                 
-                // Large Badge Status
                 HStack(spacing: 4) {
                     Circle()
                         .fill(application.currentStage.tintColor)
@@ -1271,7 +1247,6 @@ private struct TrackingHeaderCard: View {
             
             Divider().background(LMSColors.separatorLight)
             
-            // Grid details
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("SUBMITTED ON")
@@ -1461,7 +1436,6 @@ private struct AssignedLoanOfficerCard: View {
     }
 }
 
-// MARK: - Task 2 Components (Timeline Stepper)
 private struct TimelineStepperCard: View {
     @Bindable var viewModel: LoanApplicationViewModel
     let application: BorrowerLoanApplication
@@ -1528,7 +1502,7 @@ private struct TimelineStepRow: View {
     
     var body: some View {
         HStack(alignment: .top, spacing: LMSSpacing.lg) {
-            // Icon and vertical connector
+
             VStack(spacing: 0) {
                 ZStack {
                     if isCompleted || (isCurrent && stage == .approved) {
@@ -1562,7 +1536,6 @@ private struct TimelineStepRow: View {
                 }
             }
             
-            // Content
             VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                 Button(action: onTap) {
                     HStack {
@@ -1608,7 +1581,6 @@ private struct TimelineStepRow: View {
     }
 }
 
-// MARK: - Task 3 Components (Submitted Info Viewer)
 private struct SubmittedInfoViewerCard: View {
     let application: BorrowerLoanApplication
     
@@ -1623,7 +1595,7 @@ private struct SubmittedInfoViewerCard: View {
                 .foregroundStyle(LMSColors.textPrimary)
             
             VStack(spacing: LMSSpacing.sm) {
-                // Personal Section
+
                 CollapsibleSection(
                     title: "Personal Details",
                     icon: "person.crop.circle.fill",
@@ -1642,7 +1614,6 @@ private struct SubmittedInfoViewerCard: View {
                 
                 Divider().background(LMSColors.separatorLight)
                 
-                // Professional/Financial Section
                 CollapsibleSection(
                     title: "Employment & Income",
                     icon: "briefcase.fill",
@@ -1670,7 +1641,6 @@ private struct SubmittedInfoViewerCard: View {
                 
                 Divider().background(LMSColors.separatorLight)
                 
-                // Loan Requirements Section
                 CollapsibleSection(
                     title: "Loan Requirements",
                     icon: "indianrupeesign.circle.fill",
@@ -1759,7 +1729,6 @@ private struct InfoRow: View {
     }
 }
 
-// MARK: - Task 4 Components (Documents Section)
 private struct SubmittedDocumentsCard: View {
     let application: BorrowerLoanApplication
     let onResubmit: (BorrowerLoanDocumentItem) -> Void
@@ -1771,10 +1740,23 @@ private struct SubmittedDocumentsCard: View {
                 .foregroundStyle(LMSColors.textPrimary)
             
             VStack(spacing: LMSSpacing.md) {
-                ForEach(application.documents) { doc in
-                    TrackingDocumentStatusRow(doc: doc, onResubmit: { onResubmit(doc) })
-                    if doc.id != application.documents.last?.id {
-                        Divider().background(LMSColors.separatorLight)
+                if application.documents.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "doc.text.viewfinder")
+                            .font(.system(size: 32, weight: .light))
+                            .foregroundStyle(LMSColors.textTertiary)
+                        Text("No document Uploaded yet")
+                            .font(LMSFont.subheadline.weight(.medium))
+                            .foregroundStyle(LMSColors.textSecondary)
+                    }
+                    .padding(.vertical, LMSSpacing.lg)
+                    .frame(maxWidth: .infinity)
+                } else {
+                    ForEach(application.documents) { doc in
+                        TrackingDocumentStatusRow(doc: doc, onResubmit: { onResubmit(doc) })
+                        if doc.id != application.documents.last?.id {
+                            Divider().background(LMSColors.separatorLight)
+                        }
                     }
                 }
             }
@@ -1792,7 +1774,7 @@ private struct TrackingDocumentStatusRow: View {
     
     var body: some View {
         HStack(alignment: .center, spacing: LMSSpacing.md) {
-            // Icon
+
             ZStack {
                 RoundedRectangle(cornerRadius: LMSRadius.sm)
                     .fill(doc.status.tintColor.opacity(0.08))
@@ -1803,7 +1785,6 @@ private struct TrackingDocumentStatusRow: View {
                     .foregroundStyle(doc.status.tintColor)
             }
             
-            // Text
             VStack(alignment: .leading, spacing: 2) {
                 Text(doc.name)
                     .font(LMSFont.footnote.weight(.semibold))
@@ -1827,7 +1808,6 @@ private struct TrackingDocumentStatusRow: View {
             
             Spacer()
             
-            // Status and actions
             VStack(alignment: .trailing, spacing: LMSSpacing.xs) {
                 HStack(spacing: LMSSpacing.xs) {
                     Circle()
@@ -1891,7 +1871,6 @@ private struct TrackingDocumentStatusRow: View {
     }
 }
 
-// MARK: - Document Upload Sheet
 struct DocumentUploadSheet: View {
     let documentName: String
     let onUpload: (String, BorrowerDocumentUploadSource) -> Void
@@ -1900,11 +1879,9 @@ struct DocumentUploadSheet: View {
     @State private var uploadSource: BorrowerDocumentUploadSource = .camera
     @State private var fileName: String = ""
     
-    // Camera States
     @State private var hasCaptured: Bool = false
     @State private var capturedImageName: String = ""
     
-    // Gallery States
     @State private var selectedIndex: Int? = nil
 
     private var isValidFormat: Bool {
@@ -1914,7 +1891,7 @@ struct DocumentUploadSheet: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            // Header
+
             VStack(spacing: 4) {
                 Text(documentName)
                     .font(LMSFont.title3)
@@ -1925,7 +1902,6 @@ struct DocumentUploadSheet: View {
             }
             .padding(.top, 16)
 
-            // Source Selector Segmented Control
             Picker("Source", selection: $uploadSource) {
                 Text("Camera").tag(BorrowerDocumentUploadSource.camera)
                 Text("Gallery").tag(BorrowerDocumentUploadSource.gallery)
@@ -1933,7 +1909,6 @@ struct DocumentUploadSheet: View {
             .pickerStyle(.segmented)
             .padding(.horizontal, 16)
 
-            // Content Area based on Selection
             Group {
                 switch uploadSource {
                 case .camera:
@@ -1954,7 +1929,6 @@ struct DocumentUploadSheet: View {
             .frame(height: 220)
             .padding(.horizontal, 16)
 
-            // Filename input & Validation Area
             VStack(alignment: .leading, spacing: 8) {
                 Text("FILE NAME")
                     .font(.system(size: 10, weight: .bold))
@@ -1977,7 +1951,6 @@ struct DocumentUploadSheet: View {
                     }
                 }
 
-                // Format Warning Banner
                 if !fileName.isEmpty {
                     HStack(spacing: 6) {
                         Image(systemName: isValidFormat ? "checkmark.seal.fill" : "xmark.octagon.fill")
@@ -1997,7 +1970,6 @@ struct DocumentUploadSheet: View {
 
             Spacer()
 
-            // Confirm Upload Button
             Button(action: {
                 onUpload(fileName, uploadSource)
                 dismiss()
@@ -2021,7 +1993,6 @@ struct DocumentUploadSheet: View {
     }
 }
 
-// MARK: - Camera Simulation View
 struct CameraSimulationView: View {
     @Binding var hasCaptured: Bool
     @Binding var capturedImageName: String
@@ -2060,7 +2031,7 @@ struct CameraSimulationView: View {
                 }
             } else {
                 VStack(spacing: 14) {
-                    // Shutter frame
+
                     ZStack {
                         RoundedRectangle(cornerRadius: 12)
                             .stroke(Color.white.opacity(0.4), style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [8, 8]))
@@ -2093,7 +2064,6 @@ struct CameraSimulationView: View {
     }
 }
 
-// MARK: - Gallery Simulation View
 struct GallerySimulationView: View {
     @Binding var selectedIndex: Int?
     @Binding var fileName: String
@@ -2103,8 +2073,8 @@ struct GallerySimulationView: View {
         (name: "PAN_Copy.png", label: "PAN Copy", ext: "PNG"),
         (name: "UtilityBill.pdf", label: "Utility Bill", ext: "PDF"),
         (name: "RentAgreement.pdf", label: "Rent Contract", ext: "PDF"),
-        (name: "SalarySlip_May.jpg", label: "May Salary Slip", ext: "JPG"), // Invalid to test validation
-        (name: "Doc_Draft.doc", label: "Doc Draft", ext: "DOC") // Invalid to test validation
+        (name: "SalarySlip_May.jpg", label: "May Salary Slip", ext: "JPG"),
+        (name: "Doc_Draft.doc", label: "Doc Draft", ext: "DOC")
     ]
 
     var body: some View {

@@ -25,7 +25,6 @@ struct ManagerBranchTabView: View {
                 branchHeaderCard
             }
 
-            // MARK: - Consolidated Analytics Card
             Section {
                 VStack(spacing: LMSSpacing.lg) {
                     Picker("Analytics View", selection: $selectedAnalyticsTab) {
@@ -146,8 +145,6 @@ struct ManagerBranchTabView: View {
         .sheet(isPresented: $showAuditLog) { ManagerAuditLogSheet(events: viewModel.auditEvents) }
     }
 
-    // MARK: - Chart Logic
-
     @ViewBuilder
     private var unifiedChartView: some View {
         switch selectedAnalyticsTab {
@@ -245,8 +242,6 @@ struct ManagerBranchTabView: View {
         }
     }
 
-    // MARK: - Header & Components
-
     private var branchHeaderCard: some View {
         VStack(alignment: .leading, spacing: LMSSpacing.md) {
             HStack(alignment: .top) {
@@ -309,8 +304,6 @@ struct ManagerBranchTabView: View {
         .padding(.vertical, 2)
     }
 
-    // MARK: - Data Preparation
-
     private var loanTypeChartData: [BranchChartSlice] {
         snapshot.loanTypeRows.map {
             BranchChartSlice(id: $0.loanType.rawValue, label: $0.loanType.rawValue, value: $0.disbursedAmount, color: $0.loanType.themeColor)
@@ -334,8 +327,6 @@ struct ManagerBranchTabView: View {
         .filter { $0.value > 0 }
     }
 }
-
-// MARK: - Supporting Views
 
 private struct OfficerMiniRow: View {
     let summary: ManagerOfficerPerformanceSummary

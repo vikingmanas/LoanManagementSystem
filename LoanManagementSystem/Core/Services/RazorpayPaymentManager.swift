@@ -7,7 +7,6 @@ class RazorpayPaymentManager: NSObject, RazorpayPaymentCompletionProtocolWithDat
     
     private var razorpay: RazorpayCheckout!
     
-    // The user will replace this with their actual test key
     private let testAPIKey = "rzp_test_Sx4QQYFH2GpWM0"
     
     var onPaymentSuccess: ((String) -> Void)?
@@ -18,7 +17,7 @@ class RazorpayPaymentManager: NSObject, RazorpayPaymentCompletionProtocolWithDat
     }
     
     func presentPayment(amountInINR: Double, receiptId: String, from viewController: UIViewController) {
-        // Razorpay expects the amount in the smallest currency sub-unit (paise for INR)
+
         let amountInPaise = Int(amountInINR * 100)
         
         self.razorpay = RazorpayCheckout.initWithKey(testAPIKey, andDelegateWithData: self)
@@ -30,14 +29,12 @@ class RazorpayPaymentManager: NSObject, RazorpayPaymentCompletionProtocolWithDat
             "receipt": receiptId,
             "name": "Loan Management System",
             "theme": [
-                "color": "#1C243B" // LMS brandNavy
+                "color": "#1C243B"
             ]
         ]
         
         razorpay.open(options, displayController: viewController)
     }
-    
-    // MARK: - RazorpayPaymentCompletionProtocolWithData
     
     func onPaymentError(_ code: Int32, description str: String, andData response: [AnyHashable : Any]?) {
         DispatchQueue.main.async {

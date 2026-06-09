@@ -47,5 +47,3 @@ struct EditLoanOverviewView: View {
         }
     }
 }
-
-

@@ -167,7 +167,6 @@ struct EditAdditionalInfoView: View {
             return
         }
 
-
         viewModel.updateAdditionalInfo(
             occupation: occupation,
             hasExistingBankAccount: hasExistingBankAccount,
@@ -208,4 +207,3 @@ struct EditAdditionalInfoView: View {
 #Preview {
     EditAdditionalInfoView(viewModel: BorrowerProfileViewModel())
 }
-

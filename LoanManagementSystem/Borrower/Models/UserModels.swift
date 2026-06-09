@@ -1,13 +1,5 @@
 
-
-
-
-
-
-
 import Foundation
-
-
 
 enum UserRole: String, Codable {
     case borrower
@@ -23,8 +15,6 @@ enum UserStatus: String, Codable {
 enum KYCStatus: String, Codable {
     case pending, inProgress = "in_progress", verified, rejected
 }
-
-
 
 struct AppUser: Codable, Identifiable {
     let id: UUID
@@ -112,4 +102,3 @@ struct Admin: Codable, Identifiable {
         case adminLevel = "admin_level"
     }
 }
-

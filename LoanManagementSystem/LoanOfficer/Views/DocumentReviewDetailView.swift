@@ -91,8 +91,6 @@ struct DocumentReviewDetailView: View {
         }
     }
     
-    // MARK: - Borrower Info Section
-    
     private var borrowerSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionTitle("Borrower & Loan")
@@ -129,15 +127,12 @@ struct DocumentReviewDetailView: View {
                     VStack(spacing: 0) {
                         DocumentDetailRow("Loan Type", value: app.loanType.rawValue, valueColor: app.loanType.themeColor)
                         DocumentDetailRow("Requested Amount", value: CurrencyFormatter.shared.format(app.requestedAmount))
-                        DocumentDetailRow("Branch", value: app.branch)
                         DocumentDetailRow("Document Stage", value: item.status.rawValue, valueColor: item.status.themeColor, isLast: true)
                     }
                 }
             }
         }
     }
-    
-    // MARK: - Document Preview
     
     private var documentPreviewSection: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -199,14 +194,11 @@ struct DocumentReviewDetailView: View {
                 VStack(spacing: 0) {
                     DocumentDetailRow("Document Type", value: item.docType.rawValue, icon: item.docType.symbol, valueColor: item.docType.iconColor)
                     DocumentDetailRow("Submitted", value: item.submittedDate.formattedAsDDMMMYYYY())
-                    DocumentDetailRow("Status", value: item.status.rawValue, valueColor: item.status.themeColor)
-                    DocumentDetailRow("OCR Status", value: documentDetails?.ocrStatus ?? "Not available", valueColor: LMSColors.actionBlue, isLast: true)
+                    DocumentDetailRow("Status", value: item.status.rawValue, valueColor: item.status.themeColor, isLast: true)
                 }
             }
         }
     }
-    
-    // MARK: - Actions
     
     private var actionsSection: some View {
         VStack(spacing: 12) {

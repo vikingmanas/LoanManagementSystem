@@ -32,8 +32,13 @@ struct AdminDashboardView: View {
                 }
                 .tag(AdminTab.templates)
         }
-        .accessibleSheet(isPresented: $showingProfile) {
-            AdminProfileSheet()
+        .onChange(of: selectedTab) { _, tab in
+            VoiceOverManager.shared.speak("\(String(describing: tab).capitalized) tab selected")
+        }
+        .sheet(isPresented: $showingProfile) {
+            NavigationStack {
+                AdminProfileSheet()
+            }
         }
     }
 }

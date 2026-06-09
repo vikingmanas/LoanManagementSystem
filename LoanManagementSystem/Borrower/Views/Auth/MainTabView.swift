@@ -61,6 +61,9 @@ struct MainTabView: View {
         .task {
             await dashboardViewModel.fetchDashboardData()
         }
+        .onChange(of: tabRouter.selectedTab) { _, newValue in
+            VoiceOverManager.shared.speak("\(newValue) tab selected")
+        }
     }
 }
 

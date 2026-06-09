@@ -1,6 +1,5 @@
 import SwiftUI
 
-
 struct PasswordStrengthView: View {
     var isMinLength: Bool
     var hasUppercase: Bool
@@ -58,7 +57,6 @@ struct PasswordStrengthView: View {
                     .animation(.easeInOut, value: metCount)
             }
 
-
             HStack(spacing: LMSSpacing.lg) {
                 VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                     RequirementRow(isMet: isMinLength, text: "Min 8 characters")
@@ -96,4 +94,3 @@ struct RequirementRow: View {
     PasswordStrengthView(isMinLength: true, hasUppercase: false, hasNumber: true, hasSpecialChar: false)
         .padding()
 }
-

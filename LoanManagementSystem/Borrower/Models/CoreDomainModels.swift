@@ -1,13 +1,5 @@
 
-
-
-
-
-
-
 import Foundation
-
-
 
 enum BranchStatus: String, Codable {
     case active, inactive, closed
@@ -28,8 +20,6 @@ enum AccountStatus: String, Codable {
 enum EMIStatus: String, Codable {
     case pending, paid, overdue, bounced
 }
-
-
 
 struct Branch: Codable, Identifiable {
     let id: UUID
@@ -154,4 +144,3 @@ struct EMISchedule: Codable, Identifiable {
         case paidAmount = "paid_amount"
     }
 }
-

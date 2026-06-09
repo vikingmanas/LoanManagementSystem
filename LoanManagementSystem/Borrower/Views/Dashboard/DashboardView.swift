@@ -1,9 +1,9 @@
 import SwiftUI
 import UIKit
 
-// MARK: - Navigation Destinations
 public enum DashboardRoute: Hashable {
     case loanDetails(DashboardLoanAccount)
+    case portfolioLoans
     case bankDetails(BankAccount)
     case insuranceDetails
     case allPendingEMIs
@@ -21,14 +21,13 @@ public enum DashboardRoute: Hashable {
     case support
 }
 
-// MARK: - Native Status Banner Section
 struct StatusBannerSection: View {
     @Bindable var viewModel: DashboardViewModel
     @Binding var navigationPath: [DashboardRoute]
 
     var body: some View {
         VStack(spacing: 12) {
-            // Profile Completion Row (Priority 1)
+
             if viewModel.profileCompletionPercentage < 100 {
                 Button {
                     navigationPath.append(.profile)
@@ -67,14 +66,13 @@ struct StatusBannerSection: View {
                 .buttonStyle(DashboardPressableStyle())
             }
             
-            // Account Health Status Row (High-Signal Urgent Alert)
             Button {
                 handleAlertTap()
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: viewModel.isAccountHealthy ? "shield.checkered" : "exclamationmark.shield.fill")
                         .font(.title3)
-                        .foregroundStyle(viewModel.isAccountHealthy ? LMSColors.emerald : LMSColors.coral) // Premium Coral Red
+                        .foregroundStyle(viewModel.isAccountHealthy ? LMSColors.emerald : LMSColors.coral)
                     
                     VStack(alignment: .leading, spacing: 2) {
                         Text(viewModel.isAccountHealthy ? "Account Secure" : "Action Required")
@@ -115,7 +113,6 @@ struct StatusBannerSection: View {
     }
 }
 
-// MARK: - Native Quick Actions Section
 struct QuickActionGridSection: View {
     var onPay: () -> Void
     var onStatement: () -> Void
@@ -167,8 +164,6 @@ struct QuickActionButton: View {
     }
 }
 
-// MARK: - Dashboard View
-
 public struct DashboardView: View {
     @Environment(AppStateManager.self) var appState: AppStateManager
     @Environment(AuthManager.self) var authManager: AuthManager
@@ -205,7 +200,10 @@ public struct DashboardView: View {
                         ))
                     }
 
-                    LoanPortfolioSummarySection(viewModel: viewModel)
+                    LoanPortfolioSummarySection(
+                        viewModel: viewModel,
+                        onTap: { navigationPath.append(.portfolioLoans) }
+                    )
 
                     DashboardQuickActionsSection(
                         onPayEMI: { navigationPath.append(.payEMI) },
@@ -259,6 +257,13 @@ public struct DashboardView: View {
                 switch route {
                 case .loanDetails(let loan):
                     LoanDetailsView(loan: loan)
+                case .portfolioLoans:
+                    PortfolioLoansView(
+                        viewModel: viewModel,
+                        onLoanTap: { loan in
+                            navigationPath.append(.loanDetails(loan))
+                        }
+                    )
                 case .bankDetails(let bank):
                     BankDetailsView(bank: bank, viewModel: viewModel)
                 case .insuranceDetails:
@@ -323,8 +328,6 @@ public struct DashboardView: View {
         }
     }
 }
-
-// MARK: - Repayment Schedule
 
 private enum RepaymentScheduleStatus: String {
     case paid = "Paid"
@@ -652,7 +655,6 @@ private struct RepaymentScheduleRow: View {
     }
 }
 
-// MARK: - Section 6: Govt Schemes
 struct GovernmentSchemesSection: View {
     @Bindable var viewModel: DashboardViewModel
     let onSchemeTap: (GovernmentScheme) -> Void
@@ -702,8 +704,6 @@ struct GovernmentSchemesSection: View {
         }
     }
 }
-
-// MARK: - EMI Calculator
 
 private enum EMICalculatorTenureUnit: String, CaseIterable, Identifiable {
     case months = "Months"
@@ -1012,8 +1012,6 @@ private struct EMICalculatorView: View {
     }
 }
 
-// MARK: - Quick Action Action Sheets
-
 private enum EMIPaymentStep: Int, CaseIterable {
     case selectLoan, details, options, confirm
     var title: String {
@@ -1118,7 +1116,7 @@ struct PayEMIWorkflowView: View {
                 stickyCTA
             }
         }
-        } // End Group
+        }
         }
         .withWindowAccessor(window: $window)
     }
@@ -1211,6 +1209,7 @@ struct PayEMIWorkflowView: View {
                 }
             }
             .pickerStyle(.inline)
+            .labelsHidden()
 
             if paymentOption == .schedule {
                 DatePicker("Payment Date", selection: $scheduledDate, in: Date()..., displayedComponents: .date)
@@ -1910,25 +1909,169 @@ struct StatementWorkflowView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             let ext = format == .pdf ? "pdf" : "csv"
             let url = FileManager.default.temporaryDirectory.appendingPathComponent("LoanManagementSystem-\(selectedAccount.subtitle.suffix(4))-statement.\(ext)")
-            let rows = filteredTransactions(for: selectedAccount)
-                .map { "\($0.date.formattedAsDDMMMYYYY()),\($0.title),\($0.amount),\($0.referenceNo)" }
-                .joined(separator: "\n")
-            let body = "LoanManagementSystem Secure Statement\nAccount,\(selectedAccount.title) \(selectedAccount.subtitle)\nPeriod,\(period.rawValue)\nFormat,\(format.rawValue)\n\nDate,Description,Amount,Reference\n\(rows)"
-            try? body.data(using: .utf8)?.write(to: url, options: .atomic)
-            generatedURL = url
+            let transactions = filteredTransactions(for: selectedAccount)
+            do {
+                if format == .pdf {
+                    try writePDFStatement(to: url, account: selectedAccount, transactions: transactions)
+                } else {
+                    try writeCSVStatement(to: url, account: selectedAccount, transactions: transactions)
+                }
+                generatedURL = url
+            } catch {
+                generatedURL = nil
+            }
             isGenerating = false
             HapticsManager.triggerNotification(type: .success)
         }
     }
 
     private func filteredTransactions(for account: StatementAccountOption) -> [Transaction] {
+        let dateRange = statementDateRange
+        let periodTransactions = viewModel.transactions.filter {
+            $0.date >= dateRange.start && $0.date <= dateRange.end
+        }
+
         if let bank = account.bank {
-            return viewModel.transactions.filter { $0.bankAccountId == nil || $0.bankAccountId == bank.id }
+            return periodTransactions
+                .filter { $0.bankAccountId == nil || $0.bankAccountId == bank.id }
+                .sorted { $0.date > $1.date }
         }
         if let loan = account.loan {
-            return viewModel.transactions.filter { $0.title.localizedCaseInsensitiveContains(loan.loanType) }
+            let matched = periodTransactions.filter {
+                $0.bankAccountId == loan.linkedBankAccountId ||
+                $0.title.localizedCaseInsensitiveContains(loan.loanType) ||
+                $0.title.localizedCaseInsensitiveContains(loan.accountNumber) ||
+                $0.referenceNo.localizedCaseInsensitiveContains(loan.accountNumber)
+            }
+
+            return (matched.isEmpty ? periodTransactions : matched).sorted { $0.date > $1.date }
         }
-        return viewModel.transactions
+        return periodTransactions.sorted { $0.date > $1.date }
+    }
+
+    private var statementDateRange: (start: Date, end: Date) {
+        let calendar = Calendar.current
+        let end = period == .custom ? endDate : Date()
+        let start: Date
+        switch period {
+        case .days30:
+            start = calendar.date(byAdding: .day, value: -30, to: end) ?? end
+        case .months3:
+            start = calendar.date(byAdding: .month, value: -3, to: end) ?? end
+        case .months6:
+            start = calendar.date(byAdding: .month, value: -6, to: end) ?? end
+        case .year1:
+            start = calendar.date(byAdding: .year, value: -1, to: end) ?? end
+        case .custom:
+            start = min(startDate, endDate)
+        }
+        return (calendar.startOfDay(for: start), end)
+    }
+
+    private func writeCSVStatement(to url: URL, account: StatementAccountOption, transactions: [Transaction]) throws {
+        func escape(_ value: String) -> String {
+            guard value.contains(",") || value.contains("\"") || value.contains("\n") else { return value }
+            return "\"\(value.replacingOccurrences(of: "\"", with: "\"\""))\""
+        }
+
+        var rows = [
+            ["LoanManagementSystem Transaction Statement"],
+            ["Loan Account", "\(account.title) \(account.subtitle)"],
+            ["Period", period.rawValue],
+            ["Generated", Date().formatted(date: .abbreviated, time: .shortened)],
+            ["Transactions", "\(transactions.count)"],
+            [],
+            ["Date", "Description", "Type", "Debit", "Credit", "Reference"]
+        ]
+        rows += transactions.map {
+            [
+                $0.date.formatted(date: .abbreviated, time: .shortened),
+                $0.title,
+                $0.type.rawValue,
+                $0.type.isDebit ? $0.amount.formattedAsINR() : "",
+                $0.type.isDebit ? "" : $0.amount.formattedAsINR(),
+                $0.referenceNo
+            ]
+        }
+        if transactions.isEmpty {
+            rows.append(["", "No transactions found for the selected period", "", "", "", ""])
+        }
+
+        let csv = rows.map { $0.map(escape).joined(separator: ",") }.joined(separator: "\n")
+        guard let data = csv.data(using: .utf8) else {
+            throw CocoaError(.fileWriteInapplicableStringEncoding)
+        }
+        try data.write(to: url, options: .atomic)
+    }
+
+    private func writePDFStatement(to url: URL, account: StatementAccountOption, transactions: [Transaction]) throws {
+        let page = CGRect(x: 0, y: 0, width: 595, height: 842)
+        let renderer = UIGraphicsPDFRenderer(bounds: page)
+
+        try renderer.writePDF(to: url) { context in
+            var y: CGFloat = 42
+
+            func draw(_ text: String, x: CGFloat, width: CGFloat, font: UIFont, color: UIColor = .black) {
+                let style = NSMutableParagraphStyle()
+                style.lineBreakMode = .byTruncatingTail
+                (text as NSString).draw(
+                    in: CGRect(x: x, y: y, width: width, height: 22),
+                    withAttributes: [.font: font, .foregroundColor: color, .paragraphStyle: style]
+                )
+            }
+
+            func beginPage(showHeader: Bool = true) {
+                context.beginPage()
+                y = 42
+                if showHeader {
+                    draw("LoanManagementSystem Transaction Statement", x: 36, width: 520, font: .boldSystemFont(ofSize: 18))
+                    y += 28
+                }
+            }
+
+            func drawTableHeader() {
+                UIColor(red: 0.04, green: 0.15, blue: 0.28, alpha: 1).setFill()
+                UIBezierPath(roundedRect: CGRect(x: 32, y: y - 4, width: 531, height: 24), cornerRadius: 4).fill()
+                draw("Date", x: 40, width: 80, font: .boldSystemFont(ofSize: 9), color: .white)
+                draw("Description", x: 120, width: 190, font: .boldSystemFont(ofSize: 9), color: .white)
+                draw("Type", x: 310, width: 75, font: .boldSystemFont(ofSize: 9), color: .white)
+                draw("Amount", x: 385, width: 85, font: .boldSystemFont(ofSize: 9), color: .white)
+                draw("Reference", x: 470, width: 85, font: .boldSystemFont(ofSize: 9), color: .white)
+                y += 26
+            }
+
+            beginPage()
+            draw("Account", x: 36, width: 80, font: .boldSystemFont(ofSize: 10), color: .darkGray)
+            draw("\(account.title) \(account.subtitle)", x: 120, width: 430, font: .systemFont(ofSize: 10))
+            y += 18
+            draw("Period", x: 36, width: 80, font: .boldSystemFont(ofSize: 10), color: .darkGray)
+            draw(period.rawValue, x: 120, width: 430, font: .systemFont(ofSize: 10))
+            y += 18
+            draw("Transactions", x: 36, width: 80, font: .boldSystemFont(ofSize: 10), color: .darkGray)
+            draw("\(transactions.count)", x: 120, width: 430, font: .systemFont(ofSize: 10))
+            y += 30
+            drawTableHeader()
+
+            if transactions.isEmpty {
+                draw("No transactions found for the selected period.", x: 40, width: 510, font: .systemFont(ofSize: 10), color: .darkGray)
+            }
+
+            for transaction in transactions {
+                if y > page.height - 55 {
+                    beginPage()
+                    drawTableHeader()
+                }
+                draw(transaction.date.formattedAsDDMMMYYYY(), x: 40, width: 80, font: .systemFont(ofSize: 8))
+                draw(transaction.title, x: 120, width: 190, font: .systemFont(ofSize: 8))
+                draw(transaction.type.rawValue, x: 310, width: 75, font: .systemFont(ofSize: 8))
+                let amount = "\(transaction.type.isDebit ? "-" : "+")\(transaction.amount.formattedAsINR())"
+                draw(amount, x: 385, width: 85, font: .boldSystemFont(ofSize: 8))
+                draw(transaction.referenceNo, x: 470, width: 85, font: .systemFont(ofSize: 8))
+                y += 24
+                UIColor.lightGray.withAlphaComponent(0.4).setStroke()
+                UIBezierPath(rect: CGRect(x: 34, y: y - 5, width: 527, height: 1)).stroke()
+            }
+        }
     }
 }
 
@@ -3444,7 +3587,39 @@ struct TopUpSheet: View {
 
 }
 
-// MARK: - Premium Detail Views
+private struct PortfolioLoansView: View {
+    @Bindable var viewModel: DashboardViewModel
+    let onLoanTap: (DashboardLoanAccount) -> Void
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: LMSSpacing.md) {
+                if viewModel.loanAccounts.isEmpty {
+                    ContentUnavailableView(
+                        "No active loans",
+                        systemImage: "building.columns.fill",
+                        description: Text("Approved loans will appear here automatically.")
+                    )
+                    .padding(.top, 48)
+                } else {
+                    ForEach(viewModel.loanAccounts) { loan in
+                        ActiveLoanAccountCard(
+                            loan: loan,
+                            currentBalance: viewModel.currentAccountBalance(for: loan)
+                        ) {
+                            onLoanTap(loan)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, LMSSpacing.screenHorizontal)
+            .padding(.vertical, LMSSpacing.md)
+        }
+        .background(LMSColors.background.ignoresSafeArea())
+        .navigationTitle("Loan Portfolio")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
 
 struct LoanDetailsView: View {
     let loan: DashboardLoanAccount
@@ -3607,7 +3782,6 @@ struct InsuranceDetailsView: View {
     }
 }
 
-
 struct AllPendingEMIsView: View {
     @Bindable var viewModel: DashboardViewModel
     
@@ -3724,8 +3898,6 @@ struct SchemeDetailsView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
-
-// MARK: - Helpers
 
 private func dashboardInitials(viewModel: DashboardViewModel, authManager: AuthManager) -> String {
     let profileStore = BorrowerProfileStore.shared

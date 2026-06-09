@@ -1,38 +1,33 @@
 import Foundation
 import SwiftUI
 
-// MARK: - Navigation
 enum AdminTab: Hashable {
     case dashboard, staff, loanRules, templates
 }
 
-// MARK: - Dashboard KPIs
 struct AdminKPI: Identifiable, Hashable {
     let id = UUID()
     let title: String
     let value: String
     let icon: String
-    let trend: Double // Positive for up, negative for down
+    let trend: Double
     let themeColor: Color
 }
 
-// MARK: - Branch KPI Data
 struct KPIBranchData: Identifiable, Hashable {
     let id = UUID()
     let branchName: String
     let branchCode: String
     let value: String
-    let trend: Double // Positive for up, negative for down
+    let trend: Double
 }
 
-// MARK: - System Health
 struct SystemHealth: Equatable {
-    var serverUptime: Double // Percentage (e.g. 99.98)
+    var serverUptime: Double
     var activeSessions: Int
     var lastBackupTime: Date
 }
 
-// MARK: - Audit Trail
 enum AuditLogType: String, Codable, CaseIterable {
     case userAction = "User Action"
     case documentAction = "Document Action"
@@ -52,11 +47,10 @@ enum AuditLogType: String, Codable, CaseIterable {
         return LMSColors.textPrimary
     }
     
-    /// The tinted icon color used in the purple card design
     var cardIconColor: Color {
         switch self {
-        case .userAction: return Color(hex: "7C5CFC") // Purple
-        case .documentAction: return Color(hex: "7C5CFC") // Purple
+        case .userAction: return Color(hex: "7C5CFC")
+        case .documentAction: return Color(hex: "7C5CFC")
         case .loanAction: return LMSColors.emerald
         case .systemAction: return LMSColors.textSecondary
         }
@@ -99,7 +93,6 @@ struct AuditLogEntry: Identifiable, Codable, Hashable {
         return LMSColors.textPrimary
     }
     
-    /// Color used for the icon background tint in the card-style layout
     var cardIconColor: Color {
         if type == .loanAction {
             if action.lowercased().contains("disburs") {
@@ -112,7 +105,6 @@ struct AuditLogEntry: Identifiable, Codable, Hashable {
         return type.cardIconColor
     }
     
-    /// A human-readable role badge derived from the entity type context
     var roleBadge: String {
         let actionLower = action.lowercased()
         if actionLower.contains("staff") || actionLower.contains("created staff") {
@@ -136,7 +128,6 @@ struct AuditLogEntry: Identifiable, Codable, Hashable {
         return "System"
     }
     
-    /// Color for the role badge pill
     var roleBadgeColor: Color {
         switch roleBadge {
         case "Officer": return LMSColors.emerald
@@ -148,7 +139,6 @@ struct AuditLogEntry: Identifiable, Codable, Hashable {
     }
 }
 
-// MARK: - Admin Communication Center
 enum AdminIssueCategory: String, CaseIterable, Identifiable, Hashable {
     case customerFeedback = "Customer Feedback"
     case branchOperations = "Branch Operations"
@@ -207,7 +197,6 @@ enum AdminIssueStatus: String, CaseIterable, Identifiable, Hashable {
     }
 }
 
-// MARK: - Loan Products
 struct AdminLoanProduct: Identifiable, Codable, Hashable {
     let id: UUID
     var name: String
@@ -217,16 +206,15 @@ struct AdminLoanProduct: Identifiable, Codable, Hashable {
     var maxRate: Double
     var minAmount: Double
     var maxAmount: Double
-    var maxTenure: Int // in months
-    var processingFee: Double // Percentage
+    var maxTenure: Int
+    var processingFee: Double
     var requiredDocuments: [String]
 }
 
-// MARK: - Global Rules
 struct GlobalLoanRules: Codable, Equatable {
     var minCibilScore: Int
-    var maxDTI: Double // Debt-to-Income ratio max percentage
-    var maxLTV: Double // Loan-to-Value ratio max percentage
+    var maxDTI: Double
+    var maxLTV: Double
 
     enum CodingKeys: String, CodingKey {
         case minCibilScore, maxDTI, maxLTV
@@ -244,7 +232,6 @@ struct GlobalLoanRules: Codable, Equatable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
-        // Decode minCibilScore (try camelCase, snake_case, or auto-converted key)
         if let val = try? container.decode(Int.self, forKey: .minCibilScore) {
             self.minCibilScore = val
         } else if let val = try? container.decode(Int.self, forKey: .minCibilScoreSnake) {
@@ -253,7 +240,6 @@ struct GlobalLoanRules: Codable, Equatable {
             self.minCibilScore = try container.decode(Int.self, forKey: .minCibilScore)
         }
 
-        // Decode maxDTI (try Double then Int)
         if let val = try? container.decode(Double.self, forKey: .maxDTI) {
             self.maxDTI = val
         } else if let val = try? container.decode(Int.self, forKey: .maxDTI) {
@@ -266,7 +252,6 @@ struct GlobalLoanRules: Codable, Equatable {
             self.maxDTI = try container.decode(Double.self, forKey: .maxDTI)
         }
 
-        // Decode maxLTV (try Double then Int)
         if let val = try? container.decode(Double.self, forKey: .maxLTV) {
             self.maxLTV = val
         } else if let val = try? container.decode(Int.self, forKey: .maxLTV) {
@@ -288,7 +273,6 @@ struct GlobalLoanRules: Codable, Equatable {
     }
 }
 
-// MARK: - Message Templates
 enum MessageTemplateType: String, Codable, CaseIterable {
     case email = "Email"
     case sms = "SMS"

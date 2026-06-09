@@ -11,6 +11,9 @@ struct StaffLoginView: View {
     @State private var passwordError: String = ""
     @State private var generalError: String = ""
     @State private var isLoading: Bool = false
+    @State private var showOTPVerification: Bool = false
+    @State private var pendingRole: String = ""
+    @State private var emailForOTP: String = ""
 
     var isFormValid: Bool {
         return !employeeID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -24,7 +27,6 @@ struct StaffLoginView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
-
 
                         Button(action: {
                             HapticsManager.triggerImpact(style: .medium)
@@ -45,26 +47,9 @@ struct StaffLoginView: View {
                         .buttonStyle(.plain)
                         .padding(.top, 16)
 
-
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(spacing: 12) {
-//                                ZStack {
-//                                    RoundedRectangle(cornerRadius: 12)
-//                                        .fill(Color.AppTheme.primary.opacity(0.12))
-//                                        .frame(width: 44, height: 44)
-//
-//                                    Image(systemName: appState.selectedRole.icon)
-//                                        .font(.title3)
-//                                        .foregroundColor(Color.AppTheme.primary)
-//                                }
-//
-//                                Text("Branch Staff")
-//                                    .font(.system(.caption, design: .rounded).weight(.bold))
-//                                    .foregroundColor(.secondary)
-//                                    .padding(.horizontal, 10)
-//                                    .padding(.vertical, 4)
-//                                    .background(Color.secondary.opacity(0.1))
-//                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
                             }
 
                             Text("\(appState.selectedRole.rawValue) Portal")
@@ -75,8 +60,6 @@ struct StaffLoginView: View {
                                 .font(Font.AppTheme.subtitle)
                                 .foregroundColor(Color.AppTheme.textSecondary)
                         }
-//                        .padding(.top, 12)
-
 
                         if !generalError.isEmpty {
                             HStack(alignment: .top, spacing: 8) {
@@ -92,7 +75,6 @@ struct StaffLoginView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                             .transition(.move(edge: .top).combined(with: .opacity))
                         }
-
 
                         VStack(alignment: .leading, spacing: 20) {
                             VStack(alignment: .leading, spacing: 6) {
@@ -152,14 +134,15 @@ struct StaffLoginView: View {
                 }
             }
             .hideNavigationBar()
+            .navigationDestination(isPresented: $showOTPVerification) {
+                StaffOTPVerificationView(email: emailForOTP, pendingRole: pendingRole)
+            }
         }
     }
-
 
     private var employeeIDPlaceholder: String {
         "Staff email address"
     }
-
 
     private func handleStaffLogin() {
 
@@ -168,7 +151,6 @@ struct StaffLoginView: View {
         generalError = ""
 
         let cleanedID = employeeID.trimmingCharacters(in: .whitespacesAndNewlines)
-
 
         if cleanedID.isEmpty {
             employeeIDError = "Staff email cannot be empty"
@@ -180,7 +162,6 @@ struct StaffLoginView: View {
             return
         }
 
-
         guard cleanedID.contains("@") else {
             employeeIDError = "Enter the staff email address created by the admin."
             return
@@ -190,27 +171,24 @@ struct StaffLoginView: View {
         isLoading = true
 
         Task {
-            let result = await authManager.signIn(email: emailToAuthenticate, password: password)
+            let result = await authManager.verifyPasswordAndTriggerOTP(email: emailToAuthenticate, password: password)
             self.isLoading = false
 
             if result.success {
-
                 if let role = result.role {
-                    switch role {
-                    case "admin":
+                    if role == "admin" {
                         appState.selectedRole = .admin
-                    case "manager", "loan_manager":
-                        appState.selectedRole = .bankManager
-                    case "loan_officer":
-                        appState.selectedRole = .loanOfficer
-                    default:
-                        appState.selectedRole = .customer
+                        HapticsManager.triggerImpact(style: .heavy)
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                            appState.login()
+                        }
+                    } else {
+                        // Manager or Loan Officer: Needs OTP
+                        HapticsManager.triggerImpact(style: .medium)
+                        self.pendingRole = role
+                        self.emailForOTP = emailToAuthenticate
+                        self.showOTPVerification = true
                     }
-                }
-
-                HapticsManager.triggerImpact(style: .heavy)
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                    appState.login()
                 }
             } else {
                 HapticsManager.triggerImpact(style: .light)
@@ -219,4 +197,3 @@ struct StaffLoginView: View {
         }
     }
 }
-

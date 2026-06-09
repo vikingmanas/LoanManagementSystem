@@ -1,13 +1,5 @@
 
-
-
-
-
-
-
 import Foundation
-
-
 
 enum DocumentType: String, Codable {
     case identityProof = "identity_proof"
@@ -44,8 +36,6 @@ enum PeriodType: String, Codable {
 enum ReportFormat: String, Codable {
     case pdf, csv, excel
 }
-
-
 
 struct Document: Codable, Identifiable {
     let id: UUID
@@ -188,4 +178,3 @@ struct Report: Codable, Identifiable {
         case createdAt = "created_at"
     }
 }
-

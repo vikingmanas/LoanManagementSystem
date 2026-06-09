@@ -1,6 +1,5 @@
 import SwiftUI
 
-
 struct AppTheme {
     static let brandNavy      = LMSColors.brandNavy
     static let actionBlue     = LMSColors.actionBlue
@@ -10,7 +9,6 @@ struct AppTheme {
     static let neutralSurface = LMSColors.surface
     static let background     = LMSColors.surfaceElevated
 }
-
 
 struct OfficerLoanApplication: Identifiable, Hashable {
     let id: UUID
@@ -81,7 +79,6 @@ public enum RegistryFilter: String, CaseIterable, Identifiable {
     case approvalQueue
     case completed
     
-
     public var id: String { rawValue }
 
     public var title: String {
@@ -148,7 +145,6 @@ enum OfficerApplicationStatus: String, CaseIterable, Codable, Hashable {
     case rejected = "Rejected"
     case disbursed = "Disbursed"
     case onHold = "On Hold"
-
 
     case applied = "Applied"
     case documentsPending = "Documents Pending"
@@ -277,7 +273,6 @@ enum OfficerDocumentType: String, CaseIterable, Codable, Hashable {
     }
 }
 
-
 struct ActivityFeedItem: Identifiable, Hashable {
     let id: UUID
     var borrowerName: String
@@ -360,7 +355,6 @@ enum ActivityActionType: String, Codable, Hashable {
     }
 }
 
-
 struct CurrencyFormatter {
     static let shared = CurrencyFormatter()
 
@@ -412,7 +406,10 @@ struct RelativeDateFormatter {
 
 struct HapticsManager {
     static var isEnabled: Bool {
-        UserDefaults.standard.object(forKey: "enableHaptics") as? Bool ?? true
+        if UserDefaults.standard.object(forKey: "enableHaptics") == nil {
+            return true
+        }
+        return UserDefaults.standard.bool(forKey: "enableHaptics")
     }
 
     static func triggerImpact(style: UIImpactFeedbackGenerator.FeedbackStyle) {

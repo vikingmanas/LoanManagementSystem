@@ -57,7 +57,7 @@ enum StaffStatus: String, Codable, CaseIterable, Identifiable {
 
 struct StaffMember: Identifiable, Codable, Hashable {
     let id: UUID
-    /// `loan_officers.officer_id` used in Supabase `loan_applications.officer_id`.
+
     var loanOfficerRecordId: UUID?
     var email: String
     var role: StaffRole

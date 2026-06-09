@@ -24,7 +24,7 @@ class LoanOfficerDashboardViewModel {
     var officerProfile: StaffMember? = nil
     var isLoading: Bool = true
     var hasError: Bool = false
-    var selectedTab: Int = 0              // 0=Dashboard, 1=History
+    var selectedTab: Int = 0
     
     @ObservationIgnored private var realtimeChannel: RealtimeChannelV2?
     private var cancellables = Set<AnyCancellable>()
@@ -41,20 +41,16 @@ class LoanOfficerDashboardViewModel {
         refreshFromRepository()
     }
     
-    // Tab 2 History Filter parameters
     var historyFilter: RegistryFilter = .all
     var historyLoanTypeFilter: LoanType? = nil
     var historySortOrder: HistorySortOrder = .newest
     var historySearchQuery: String = ""
     
-    // Date Range filters for history
     var historyStartDate: Date = Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date()
     var historyEndDate: Date = Date()
     
-    // Notifications Count
     var unreadActivityCount: Int = 0
     
-    // MARK: - KPI Computed Properties
     var totalApplications: Int {
         applications.count
     }
@@ -116,7 +112,7 @@ class LoanOfficerDashboardViewModel {
     }
     
     var pendingDocumentCount: Int {
-        // Sum all documents that are pending, uploaded, under review, or re-uploaded across all apps
+
         applications.reduce(0) { count, app in
             count + app.documents.filter { $0.status != .verified }.count
         }
@@ -126,7 +122,7 @@ class LoanOfficerDashboardViewModel {
         var items: [DocumentQueueItem] = []
         for app in applications {
             for doc in app.documents {
-                // Use application's submittedDate as a fallback for pending uploads so they appear in the "Missing" filter
+
                 let date = doc.uploadedDate ?? app.submittedDate
                 items.append(DocumentQueueItem(
                     id: doc.id,
@@ -150,7 +146,6 @@ class LoanOfficerDashboardViewModel {
         }
     }
     
-    /// Documents uploaded today — officer review queue for the current day.
     var todayDocumentQueueList: [DocumentQueueItem] {
         documentQueueList.filter { Calendar.current.isDateInToday($0.submittedDate) }
     }
@@ -170,11 +165,9 @@ class LoanOfficerDashboardViewModel {
         }
     }
     
-    // MARK: - Filtered List for Tab 2 (History)
     var filteredApplications: [LoanApplication] {
         var list = applications
         
-        // 1. Filter by Status (Registry Category)
         list = list.filter { app in
             switch historyFilter {
             case .all:
@@ -192,12 +185,10 @@ class LoanOfficerDashboardViewModel {
             }
         }
         
-        // 2. Filter by Loan Type
         if let typeFilter = historyLoanTypeFilter {
             list = list.filter { $0.loanType == typeFilter }
         }
         
-        // 3. Filter by Search Query (Name, ID, Branch, or Notes)
         let query = historySearchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if !query.isEmpty {
             list = list.filter {
@@ -208,12 +199,10 @@ class LoanOfficerDashboardViewModel {
             }
         }
         
-        // 4. Date Range Filter
         list = list.filter {
             $0.submittedDate >= historyStartDate && $0.submittedDate <= historyEndDate
         }
         
-        // 5. Sorting
         switch historySortOrder {
         case .newest:
             list.sort { $0.submittedDate > $1.submittedDate }
@@ -228,7 +217,6 @@ class LoanOfficerDashboardViewModel {
         return list
     }
     
-    // MARK: - Fetch Data
     func fetchDashboardData() async {
         guard !isFetchingDashboardData else { return }
         isFetchingDashboardData = true
@@ -243,15 +231,12 @@ class LoanOfficerDashboardViewModel {
                 }
             }
             
-            // Fetch all submitted applications from Supabase for the officer view
             await CentralLoanRepository.shared.fetchAllSubmittedApplicationsFromSupabase()
             refreshFromRepository()
             await loadAssignedApplicationMessages()
             
-            // Simulate brief loading delay for UI
             try await Task.sleep(nanoseconds: 400_000_000)
             
-            // Starts empty to remove mock feed items
             self.activityFeed = []
             
             if let officerId = self.officerProfile?.id {
@@ -292,8 +277,6 @@ class LoanOfficerDashboardViewModel {
         }
     }
 
-    /// Lightweight refresh that only fetches messages — used by chat tab timer
-    /// to avoid the heavy fetchDashboardData() call every polling interval.
     func refreshMessagesOnly() async {
         guard let officerId = self.officerProfile?.id else { return }
         do {
@@ -330,7 +313,7 @@ class LoanOfficerDashboardViewModel {
 
     func refreshFromRepository() {
         guard let officerProfile else {
-            // Keep the queue safe and empty until the profile is successfully loaded from the DB
+
             self.applications = []
             return
         }
@@ -392,7 +375,6 @@ class LoanOfficerDashboardViewModel {
         applicationMessages = nextMessages
     }
     
-    // MARK: - Realtime
     func setupRealtime() async {
         guard let profileId = officerProfile?.id else { return }
         
@@ -410,13 +392,11 @@ class LoanOfficerDashboardViewModel {
     private func handleNewRealtimeMessage(_ msg: DBMessage, profileId: UUID) {
         guard let appId = msg.applicationId else { return }
         
-        // Append message if not already present
         var messagesForApp = applicationMessages[appId] ?? []
         if !messagesForApp.contains(where: { $0.messageId == msg.messageId }) {
             messagesForApp.append(msg)
             applicationMessages[appId] = messagesForApp.sorted { $0.sentAt < $1.sentAt }
             
-            // Add to activity feed if received
             if msg.receiverId == profileId && !msg.isRead {
                 let borrowerName = applications.first(where: { $0.id == appId })?.borrowerName ?? "Borrower"
                 let appDisplayId = applications.first(where: { $0.id == appId })?.applicationId ?? "APP"
@@ -447,7 +427,6 @@ class LoanOfficerDashboardViewModel {
         self.unreadActivityCount = self.activityFeed.filter { !$0.isRead }.count
     }
     
-    // MARK: - User Interactions
     func markActivityRead(_ id: UUID) {
         if let index = activityFeed.firstIndex(where: { $0.id == id }) {
             activityFeed[index].isRead = true
@@ -601,8 +580,6 @@ class LoanOfficerDashboardViewModel {
         return true
     }
 
-
-    
     func logActivity(borrowerName: String, applicationId: String, loanType: String, eventType: ActivityEventType, description: String) {
         let newFeed = ActivityFeedItem(
             id: UUID(),
@@ -641,8 +618,6 @@ class LoanOfficerDashboardViewModel {
         }
     }
     
-    // MARK: - Chat Messaging Methods
-    
     func markMessagesAsRead(for applicationId: UUID, incomingMessages: [DBMessage]) async {
         guard let officerId = officerProfile?.id else { return }
         let unreadIds = incomingMessages
@@ -651,7 +626,7 @@ class LoanOfficerDashboardViewModel {
         
         if !unreadIds.isEmpty {
             try? await DatabaseService.shared.markMessagesRead(messageIds: unreadIds)
-            // Update local state to reflect read status
+
             if var msgs = applicationMessages[applicationId] {
                 let unreadIdSet = Set(unreadIds)
                 msgs = msgs.map { msg in
@@ -696,7 +671,7 @@ class LoanOfficerDashboardViewModel {
                 title: "New message from your loan officer",
                 message: trimmed
             )
-            // Local state update
+
             var msgs = applicationMessages[applicationId] ?? []
             msgs.append(dbMsg)
             applicationMessages[applicationId] = msgs
@@ -706,8 +681,6 @@ class LoanOfficerDashboardViewModel {
             print("Failed to send composed message to DB: \(error)")
         }
     }
-    
-    // MARK: - Business Logic & Helpers
     
     func claimApplicationIfNeeded(applicationId: UUID) {
         guard let officerId = officerProfile?.id,
@@ -816,7 +789,6 @@ class LoanOfficerDashboardViewModel {
     }
 }
 
-// Wrapper for UI list handling
 struct DocumentQueueItem: Identifiable, Hashable {
     typealias DocumentType = OfficerDocumentType
     typealias DocumentStatus = OfficerDocumentStatus

@@ -11,7 +11,6 @@ struct AdminSignUpView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
 
-
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Create Admin Account")
                             .font(Font.AppTheme.title)
@@ -23,7 +22,6 @@ struct AdminSignUpView: View {
                     }
                     .padding(.top, 20)
                     .padding(.bottom, 10)
-
 
                     if !viewModel.generalError.isEmpty {
                         HStack {
@@ -38,7 +36,6 @@ struct AdminSignUpView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
 
-
                     if viewModel.showSuccess {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
@@ -51,7 +48,6 @@ struct AdminSignUpView: View {
                         .foregroundStyle(LMSColors.emerald)
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
-
 
                     VStack(spacing: 16) {
                         CustomTextField(
@@ -79,7 +75,6 @@ struct AdminSignUpView: View {
                                 text: $viewModel.password
                             )
 
-
                             if !viewModel.password.isEmpty {
                                 PasswordStrengthView(
                                     isMinLength: viewModel.isMinLength,
@@ -97,7 +92,6 @@ struct AdminSignUpView: View {
                         )
                     }
 
-
                     PrimaryButton(
                         title: "Create Admin",
                         isLoading: viewModel.isLoading,
@@ -111,7 +105,6 @@ struct AdminSignUpView: View {
                     .padding(.top, 16)
 
                     Spacer(minLength: 40)
-
 
                     HStack {
                         Spacer()
@@ -137,4 +130,3 @@ struct AdminSignUpView: View {
 #Preview {
     AdminSignUpView()
 }
-

@@ -7,7 +7,6 @@ struct KPIGridView: View {
     var body: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: LMSSpacing.md), GridItem(.flexible(), spacing: LMSSpacing.md)], spacing: LMSSpacing.md) {
             
-            // Card A1: Total Applications
             KPICard(
                 symbol: "doc.text.fill",
                 symbolColor: LMSColors.actionBlue,
@@ -31,7 +30,6 @@ struct KPIGridView: View {
                 onCardSelected(.all)
             }
             
-            // Card A2: New Cases
             KPICard(
                 symbol: "sparkles",
                 symbolColor: LMSColors.amber,
@@ -50,7 +48,6 @@ struct KPIGridView: View {
                 onCardSelected(.newCases)
             }
             
-            // Card A3: Approval Queue
             KPICard(
                 symbol: "briefcase.fill",
                 symbolColor: LMSColors.brandNavy,
@@ -69,7 +66,6 @@ struct KPIGridView: View {
                 onCardSelected(.approvalQueue)
             }
             
-            // Card A4: Completed
             KPICard(
                 symbol: "checkmark.seal.fill",
                 symbolColor: LMSColors.emerald,

@@ -1,9 +1,3 @@
-//
-//  DashboardViewModel.swift
-//  LoanManagementSystem
-//
-//  Created by Antigravity on 19/05/26.
-//
 
 import Observation
 import SwiftUI
@@ -26,7 +20,6 @@ public final class DashboardViewModel {
     public var profileName: String = ""
     public var profileCompletionPercentage: Int = 0
     
-    // Notification support
     public let notificationViewModel = NotificationViewModel()
     
     private var cancellables = Set<AnyCancellable>()
@@ -40,7 +33,7 @@ public final class DashboardViewModel {
     public var repaidFraction:   Double { totalSanctioned > 0 ? (totalRepaid / totalSanctioned) : 0 }
     
     public var loansClosedCount: Int {
-        // Closed if outstanding principal has reached 0 (or below due to rounding).
+
         loanAccounts.filter { $0.principalOutstanding <= 0.0 }.count
     }
     
@@ -134,7 +127,7 @@ public final class DashboardViewModel {
 
     public var profileMissingRequirements: [String] {
         guard let profile = BorrowerProfileStore.shared.profile else {
-            return ["Complete personal details", "Verify contact information", "Link your bank account"]
+            return ["Complete personal details", "Verify contact information", "Add profile photo"]
         }
         var missing: [String] = []
         if profile.fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -145,12 +138,6 @@ public final class DashboardViewModel {
         }
         if !profile.isPhoneVerified {
             missing.append("Verify mobile number")
-        }
-        if profile.bankDetails.accountNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            missing.append("Link bank account")
-        }
-        if profile.kycVerification.aadhaarStatus != .verified {
-            missing.append("Complete KYC verification")
         }
         if profile.profileImageData == nil {
             missing.append("Add profile photo")
@@ -181,7 +168,6 @@ public final class DashboardViewModel {
             }
         }
         
-        // Simulate a 0.8s network latency delay
         do {
             try await Task.sleep(nanoseconds: 800_000_000)
             try Task.checkCancellation()
@@ -189,7 +175,6 @@ public final class DashboardViewModel {
             return
         }
         
-        // Load loan accounts from approved/disbursed applications in CentralLoanRepository
         let approvedApps = CentralLoanRepository.shared.applications.filter {
             $0.currentStage == .approved || $0.currentStage == .disbursed
         }
@@ -241,7 +226,6 @@ public final class DashboardViewModel {
         
         self.schemes = []
 
-        // Fetch actual transactions from Supabase if borrower profile is available
         let localTransactions = transactions
         var dbTransactionsList: [Transaction] = []
         if let profile = BorrowerProfileStore.shared.profile {
@@ -284,14 +268,11 @@ public final class DashboardViewModel {
         applyEMIPaymentsToLoanOutstanding()
         refreshPendingEMIs()
         
-        // Configure notifications from Supabase
         if let profile = BorrowerProfileStore.shared.profile,
            let userId = UUID(uuidString: profile.id) {
             notificationViewModel.configure(userId: userId)
         }
     }
-
-
 
     private func buildBankAccounts(from profile: BorrowerProfile, disbursedCredits: [String: Double]) -> [BankAccount] {
         var accounts: [BankAccount] = []
@@ -425,8 +406,6 @@ public final class DashboardViewModel {
             }
     }
 
-    
-    // Quick-action methods
     public func payNextEMI() {
         let dueEMIs = nextDueEMIs
         guard !dueEMIs.isEmpty,
@@ -447,7 +426,6 @@ public final class DashboardViewModel {
             return false
         }
         
-        // Trigger haptic feedback
         HapticsManager.triggerImpact(style: .medium)
         
         guard let repaymentAccount = emiRepaymentAccount(),
@@ -472,7 +450,6 @@ public final class DashboardViewModel {
 
             pendingEMIs[index].status = .paid
                 
-            // Add a new transaction row for the EMI paid
             let refNo = "TXN\(Int.random(in: 1000000...9999999))"
             let newTx = Transaction(
                 title: "EMI paid for \(emi.loanType)",
@@ -603,7 +580,6 @@ public final class DashboardViewModel {
                 balance: updatedBalance
             )
             
-            // Add a credit transaction row
             let refNo = "TXN\(Int.random(in: 1000000...9999999))"
             let newTx = Transaction(
                 title: "Account Top-Up",

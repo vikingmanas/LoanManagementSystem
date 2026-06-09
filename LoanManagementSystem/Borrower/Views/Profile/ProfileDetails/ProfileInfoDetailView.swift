@@ -133,7 +133,6 @@ struct ProfileInfoDetailView: View {
     }
 }
 
-// Internal Wrapper for Push-based editing (Non-Modal)
 struct UnifiedProfileEditScreen: View {
     @Bindable var viewModel: BorrowerProfileViewModel
     @Environment(\.dismiss) private var dismiss
@@ -145,8 +144,7 @@ struct UnifiedProfileEditScreen: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        // This triggers the internal save if we were using a single view,
-                        // but since we want "edit and done", we'll ensure the content handles it.
+
                         dismiss()
                     }
                     .fontWeight(.bold)

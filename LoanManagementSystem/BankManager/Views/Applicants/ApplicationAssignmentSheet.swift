@@ -1,7 +1,5 @@
 import SwiftUI
 
-// MARK: - Main Sheet
-
 struct ApplicationAssignmentSheet: View {
     let applicant: ManagerApplicant
     let officers: [ManagerOfficer]
@@ -36,8 +34,6 @@ struct ApplicationAssignmentSheet: View {
         }
     }
 
-    // MARK: Derived data
-
     private var filteredOfficers: [ManagerOfficer] {
         var result = officers
 
@@ -55,7 +51,6 @@ struct ApplicationAssignmentSheet: View {
         case .busy:      result = result.filter { $0.capacityPercentage >= 0.75 }
         }
 
-        // Currently assigned floats to the top; remainder sorted by least loaded
         return result.sorted {
             if $0.id == applicant.assignedOfficerId { return true  }
             if $1.id == applicant.assignedOfficerId { return false }
@@ -65,8 +60,6 @@ struct ApplicationAssignmentSheet: View {
 
     private var availableCount: Int { officers.filter { $0.capacityPercentage < 0.75 }.count }
     private var busyCount: Int { officers.count - availableCount }
-
-    // MARK: Body
 
     var body: some View {
         NavigationStack {
@@ -104,11 +97,9 @@ struct ApplicationAssignmentSheet: View {
         .animation(.spring(response: 0.42, dampingFraction: 0.78), value: showSuccess)
     }
 
-    // MARK: – Application header
-
     private var applicationHeader: some View {
         HStack(spacing: LMSSpacing.md) {
-            // Loan type icon
+
             ZStack {
                 RoundedRectangle(cornerRadius: LMSRadius.md, style: .continuous)
                     .fill(applicant.loanType.themeColor.opacity(0.14))
@@ -128,7 +119,7 @@ struct ApplicationAssignmentSheet: View {
                         .font(.system(.caption2, design: .monospaced))
                         .foregroundStyle(LMSColors.textTertiary)
                     Text("·").foregroundStyle(LMSColors.textTertiary)
-                    // Loan type badge
+
                     HStack(spacing: 3) {
                         Image(systemName: applicant.loanType.symbol)
                             .font(.system(size: 7, weight: .bold))
@@ -167,8 +158,6 @@ struct ApplicationAssignmentSheet: View {
         .background(LMSColors.surfaceElevated)
     }
 
-    // MARK: – Stats strip
-
     private var statsStrip: some View {
         HStack(spacing: 0) {
             AssignmentStatPill(icon: "person.3.fill",
@@ -190,11 +179,9 @@ struct ApplicationAssignmentSheet: View {
         .background(LMSColors.surface)
     }
 
-    // MARK: – Filter + search
-
     private var filterAndSearch: some View {
         VStack(spacing: LMSSpacing.sm) {
-            // Search bar
+
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(LMSColors.textSecondary)
@@ -217,7 +204,6 @@ struct ApplicationAssignmentSheet: View {
                     .stroke(LMSColors.separatorLight, lineWidth: 0.5)
             )
 
-            // Filter tabs
             HStack(spacing: LMSSpacing.sm) {
                 ForEach(OfficerAvailabilityFilter.allCases, id: \.self) { filter in
                     Button(action: {
@@ -258,8 +244,6 @@ struct ApplicationAssignmentSheet: View {
         .background(LMSColors.surfaceElevated)
     }
 
-    // MARK: – Officer scroll list
-
     private var officerList: some View {
         ScrollView(.vertical, showsIndicators: false) {
             LazyVStack(spacing: LMSSpacing.sm) {
@@ -272,7 +256,7 @@ struct ApplicationAssignmentSheet: View {
                     .frame(maxWidth: .infinity)
                     .padding(.top, 60)
                 } else {
-                    // Currently assigned (always shown at top if matched)
+
                     let currentOfficer = filteredOfficers.first { $0.id == applicant.assignedOfficerId }
                     let otherOfficers  = filteredOfficers.filter { $0.id != applicant.assignedOfficerId }
 
@@ -310,8 +294,6 @@ struct ApplicationAssignmentSheet: View {
         .background(LMSColors.background)
     }
 
-    // MARK: – Success overlay
-
     private var successOverlay: some View {
         VStack(spacing: LMSSpacing.lg) {
             ZStack {
@@ -338,8 +320,6 @@ struct ApplicationAssignmentSheet: View {
         .shadow(color: .black.opacity(0.22), radius: 24, x: 0, y: 12)
     }
 
-    // MARK: – Actions
-
     private func performAssign(officer: ManagerOfficer) {
         guard pendingOfficerId == nil else { return }
         HapticsManager.triggerImpact(style: .heavy)
@@ -361,8 +341,6 @@ struct ApplicationAssignmentSheet: View {
     }
 }
 
-// MARK: - Officer Assignment Card
-
 struct OfficerAssignmentCard: View {
     let officer: ManagerOfficer
     let applicantLoanType: ManagerLoanType
@@ -383,16 +361,15 @@ struct OfficerAssignmentCard: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            // Left accent bar
+
             Rectangle()
                 .fill(isCurrentlyAssigned ? LMSColors.emerald : officer.capacityColor)
                 .frame(width: 3)
 
             VStack(spacing: 0) {
-                // ── Main row ─────────────────────────────────────────────
+
                 HStack(alignment: .top, spacing: LMSSpacing.md) {
 
-                    // Avatar
                     ZStack {
                         Circle()
                             .fill(
@@ -414,7 +391,6 @@ struct OfficerAssignmentCard: View {
                             .padding(-3)
                     )
 
-                    // Officer details
                     VStack(alignment: .leading, spacing: LMSSpacing.xs) {
                         HStack(spacing: LMSSpacing.sm) {
                             Text(officer.name)
@@ -439,7 +415,6 @@ struct OfficerAssignmentCard: View {
                             .font(.system(.caption2, design: .rounded))
                             .foregroundStyle(LMSColors.textSecondary)
 
-                        // Capacity bar
                         HStack(spacing: LMSSpacing.xs) {
                             GeometryReader { geo in
                                 ZStack(alignment: .leading) {
@@ -466,9 +441,8 @@ struct OfficerAssignmentCard: View {
 
                     Spacer(minLength: LMSSpacing.sm)
 
-                    // Right column: approval ring + CTA
                     VStack(spacing: LMSSpacing.sm) {
-                        // Approval rate ring
+
                         if officer.loansProcessedYTD > 0 {
                             ZStack {
                                 Circle()
@@ -489,7 +463,6 @@ struct OfficerAssignmentCard: View {
                             }
                         }
 
-                        // CTA button
                         if isCurrentlyAssigned {
                             HStack(spacing: 3) {
                                 Image(systemName: "checkmark.circle.fill")
@@ -539,7 +512,6 @@ struct OfficerAssignmentCard: View {
                 }
                 .padding(LMSSpacing.lg)
 
-                // ── Bottom stats bar ──────────────────────────────────────
                 HStack(spacing: 0) {
                     OfficerMiniStat(
                         icon:  "star.fill",
@@ -562,7 +534,7 @@ struct OfficerAssignmentCard: View {
                         tint:  LMSColors.emerald
                     )
                     Divider().frame(height: 22)
-                    // Capacity status badge
+
                     OfficerMiniStat(
                         icon:  officer.capacityPercentage > 0.85
                                 ? "exclamationmark.circle.fill"
@@ -600,8 +572,6 @@ struct OfficerAssignmentCard: View {
                 radius: 8, x: 0, y: 3)
     }
 }
-
-// MARK: - Supporting Views
 
 private struct AssignmentSectionLabel: View {
     let title: String
@@ -665,6 +635,3 @@ private struct OfficerMiniStat: View {
         .frame(maxWidth: .infinity)
     }
 }
-
-// MARK: - Preview
-

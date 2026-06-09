@@ -1,34 +1,25 @@
 import SwiftUI
 import Supabase
 
-// MARK: - ContentView (Auth Router)
-/// Root view that switches between authentication and dashboard flows
-/// based on the current Supabase auth state.
 struct ContentView: View {
 
-    // Supabase/Auth Manager
     @Environment(AuthManager.self) private var authManager: AuthManager
 
-    // App State Manager
     @State private var appState = AppStateManager()
 
-    // Observed Profile Store
     @Bindable private var profileStore = BorrowerProfileStore.shared
 
-    // Splash control
     @State private var showSplash = true
 
-    // Biometrics State
     @AppStorage("biometricEnabled") private var biometricEnabled = false
+    @AppStorage("reduceMotion") private var reduceMotion = false
     @State private var isAppUnlocked = false
 
-    // Scene phase for re-locking on background
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
 
-            // MARK: - Splash Screen
             if showSplash || !authManager.isAuthStateResolved {
 
                 splashView
@@ -47,7 +38,6 @@ struct ContentView: View {
 
                 Group {
 
-                    // MARK: - Authenticated Flow
                     if isCurrentRoleAuthenticated {
                         
                         if biometricEnabled && !isAppUnlocked {
@@ -102,7 +92,6 @@ struct ContentView: View {
 
                     } else {
 
-                        // MARK: - Authentication Flow
                         if appState.selectedRole == .customer {
                             SignInView()
                                 .environment(authManager)
@@ -143,8 +132,6 @@ struct ContentView: View {
         .onAppear {
             authManager.configure(appState: appState)
 
-            // MARK: - Splash Delay
-            // Skip the splash delay inside SwiftUI Previews for instant canvas rendering.
             let isPreview = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
             let delay = isPreview ? 0.5 : 2.6
             
@@ -156,7 +143,7 @@ struct ContentView: View {
         }
         .onChange(of: authManager.isAuthenticated) {
             syncBorrowerProfileIfNeeded()
-            // Re-lock when user logs out so next login requires biometric
+
             if !authManager.isAuthenticated {
                 isAppUnlocked = false
             }
@@ -165,7 +152,7 @@ struct ContentView: View {
             syncBorrowerProfileIfNeeded()
         }
         .onChange(of: scenePhase) {
-            // Re-lock the app whenever it goes to the background
+
             if scenePhase == .background && biometricEnabled {
                 isAppUnlocked = false
             }
@@ -174,10 +161,15 @@ struct ContentView: View {
             .easeInOut(duration: 0.3),
             value: isAppUnlocked
         )
+        .transaction { transaction in
+            if reduceMotion {
+                transaction.animation = nil
+            }
+        }
     }
 
     private var isCurrentRoleAuthenticated: Bool {
-        // Block dashboard routing while user is in the password reset flow
+
         guard !authManager.isResettingPassword else { return false }
         
         if appState.selectedRole == .customer {
@@ -204,7 +196,6 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Splash View
     private var splashView: some View {
         LMSAnimatedSplashView()
     }

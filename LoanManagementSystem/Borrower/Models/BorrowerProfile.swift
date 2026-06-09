@@ -31,7 +31,6 @@ public struct BorrowerProfile: Codable, Equatable {
     
     public var profileImageData: Data? = nil
     
-    // New Onboarding Questionnaire Fields
     public var occupation: String
     public var industry: String
     public var yearsOfExperience: Int
@@ -58,48 +57,32 @@ public struct BorrowerProfile: Codable, Equatable {
     
     public var profileCompletionPercentage: Int {
         var completedScore = 0
-        let totalPossible = 130
+        let totalPossible = 110
         
-        // 1. Personal Info
         if !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 10 }
         if !gender.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         if !maritalStatus.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         if !nationality.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
-        completedScore += 5 // DOB is always populated from setup
+        completedScore += 5
         
-        // 2. Contact Info
         if !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         if isEmailVerified { completedScore += 5 }
         if !mobileNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         if isPhoneVerified { completedScore += 5 }
         if let alt = alternateNumber, !alt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         
-        // 3. Address
         if !currentAddress.streetAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
            !currentAddress.city.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 10 }
         
-        // 4. Employment & Income
         if !employment.companyName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
            !employment.designation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 10 }
         if !occupation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         if income.monthlyIncome > 0 { completedScore += 10 }
         
-        // 5. Bank Account
-        if !bankDetails.bankName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-           !bankDetails.accountNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-           !bankDetails.ifscCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
-        
-        // 6. Onboarding Questionnaire Details
         if !preferredBranch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 10 }
         if !nomineeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
            !nomineeRelationship.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { completedScore += 5 }
         
-        // 7. KYC Uploads
-        if kycVerification.aadhaarFileName != nil { completedScore += 5 }
-        if kycVerification.panFileName != nil { completedScore += 5 }
-        if kycVerification.addressProofFileName != nil { completedScore += 5 }
-        
-        // 8. Profile Picture
         if profileImageData != nil { completedScore += 5 }
         
         let percentage = (Double(completedScore) / Double(totalPossible)) * 100
@@ -181,7 +164,7 @@ public struct AddressInfo: Codable, Equatable {
 }
 
 public struct EmploymentInfo: Codable, Equatable {
-    public let employmentType: String // e.g. Salaried, Self-employed
+    public let employmentType: String
     public let companyName: String
     public let designation: String
     public let workExperienceYears: Int

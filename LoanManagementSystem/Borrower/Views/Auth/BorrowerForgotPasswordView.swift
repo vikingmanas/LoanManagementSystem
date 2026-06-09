@@ -11,7 +11,6 @@ struct BorrowerForgotPasswordView: View {
 
             VStack(alignment: .leading, spacing: LMSSpacing.xxl) {
                 
-                // Title Header Section
                 VStack(alignment: .leading, spacing: LMSSpacing.sm) {
                     Text(headerTitle)
                         .font(LMSFont.largeTitle)
@@ -23,7 +22,6 @@ struct BorrowerForgotPasswordView: View {
                 }
                 .padding(.top, 20)
 
-                // Error Message Banner
                 if !viewModel.errorMessage.isEmpty {
                     HStack(spacing: LMSSpacing.xs) {
                         Image(systemName: "exclamationmark.triangle.fill")
@@ -38,7 +36,6 @@ struct BorrowerForgotPasswordView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
                 } 
                 
-                // Success Message Banner
                 if viewModel.showSuccessMessage {
                     HStack(spacing: LMSSpacing.xs) {
                         Image(systemName: "checkmark.seal.fill")
@@ -53,7 +50,6 @@ struct BorrowerForgotPasswordView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
-                // Content based on Current Step
                 switch viewModel.currentStep {
                 case .email:
                     emailStepView
@@ -65,7 +61,6 @@ struct BorrowerForgotPasswordView: View {
 
                 Spacer()
 
-                // Action Button
                 PrimaryButton(
                     title: buttonTitle,
                     isLoading: viewModel.isLoading,
@@ -95,8 +90,6 @@ struct BorrowerForgotPasswordView: View {
         }
     }
 
-    // MARK: - Step Views
-
     private var emailStepView: some View {
         CustomTextField(
             icon: "envelope.fill",
@@ -116,7 +109,7 @@ struct BorrowerForgotPasswordView: View {
                 keyboardType: .numberPad
             )
             .onChange(of: viewModel.otpToken) {
-                // Allow only digits, max 6 characters
+
                 let filtered = viewModel.otpToken.filter { $0.isNumber }
                 if filtered.count > 6 {
                     viewModel.otpToken = String(filtered.prefix(6))
@@ -167,8 +160,6 @@ struct BorrowerForgotPasswordView: View {
         }
     }
 
-    // MARK: - Dynamic Headers & Buttons
-
     private var headerTitle: String {
         switch viewModel.currentStep {
         case .email:
@@ -213,8 +204,6 @@ struct BorrowerForgotPasswordView: View {
         }
     }
 
-    // MARK: - Helper Actions
-
     private func handleButtonAction() async {
         switch viewModel.currentStep {
         case .email:
@@ -235,7 +224,7 @@ struct BorrowerForgotPasswordView: View {
             let success = await viewModel.resetPassword(authManager: authManager)
             if success {
                 HapticsManager.triggerNotification(type: .success)
-                // Dismiss back to login after a short delay so user sees the success message
+
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                     viewModel.resetWizard()
                     dismiss()
@@ -257,7 +246,7 @@ struct BorrowerForgotPasswordView: View {
                 viewModel.errorMessage = ""
             }
         case .resetPassword:
-            // Abort the flow: sign out the recovery session and go back to login
+
             authManager.isResettingPassword = false
             authManager.signOut()
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {

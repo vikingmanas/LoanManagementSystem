@@ -6,7 +6,6 @@ struct ManagerDashboardView: View {
     @State private var notificationViewModel = NotificationViewModel()
 
     @State private var selectedTab: ManagerWorkspaceTab = .dashboard
-    @State private var showProfileSheet = false
     @State private var showSearchSheet = false
     @State private var selectedApplicant: ManagerApplicant?
 
@@ -51,7 +50,7 @@ struct ManagerDashboardView: View {
         .tint(LMSColors.brandNavy)
         .task {
             await viewModel.fetchDashboardData(authManager: authManager)
-            // Configure notification VM with current user ID
+
             if let userId = authManager.currentUser?.uid,
                let uuid = UUID(uuidString: userId) {
                 notificationViewModel.configure(userId: uuid)
@@ -62,13 +61,11 @@ struct ManagerDashboardView: View {
         }
         .onChange(of: selectedTab) { _, tab in
             viewModel.selectedTab = tab.rawValue
+            VoiceOverManager.shared.speak("\(String(describing: tab).capitalized) tab selected")
         }
         .onChange(of: viewModel.selectedTab) { _, rawValue in
             guard let tab = ManagerWorkspaceTab(rawValue: rawValue), tab != selectedTab else { return }
             selectedTab = tab
-        }
-        .accessibleSheet(isPresented: $showProfileSheet) {
-            ManagerProfileView(viewModel: viewModel)
         }
         .accessibleSheet(isPresented: $showSearchSheet) {
             ManagerSearchSheet(viewModel: viewModel) { applicant in
@@ -81,10 +78,13 @@ struct ManagerDashboardView: View {
     @ToolbarContentBuilder
     private var dashboardToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            HStack(spacing: LMSSpacing.sm) {
+            HStack(spacing: 2) {
                 notificationButton
                 profileButton
             }
+            .padding(.horizontal, 3)
+            .padding(.vertical, 3)
+            .glassEffect(.regular, in: Capsule())
         }
     }
 
@@ -100,17 +100,24 @@ struct ManagerDashboardView: View {
             NotificationsListView(viewModel: notificationViewModel, isPushed: true)
         } label: {
             Image(systemName: notificationViewModel.unreadCount > 0 ? "bell.badge" : "bell")
+                .symbolRenderingMode(.hierarchical)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(LMSColors.brandNavy)
+                .frame(width: 40, height: 42)
         }
         .accessibilityLabel("Notifications")
     }
 
     private var profileButton: some View {
-        Button(action: { showProfileSheet = true }) {
+        NavigationLink {
+            ManagerProfileView(viewModel: viewModel)
+        } label: {
             Text(viewModel.managerProfile.initials)
                 .font(.caption.weight(.bold))
                 .foregroundStyle(.white)
-                .frame(width: 30, height: 30)
+                .frame(width: 36, height: 36)
                 .background(LMSColors.brandNavy.gradient, in: Circle())
+                .frame(width: 40, height: 42)
         }
         .accessibilityLabel("Manager profile")
     }

@@ -10,7 +10,7 @@ struct BorrowerSignUpView: View {
     var body: some View {
         NavigationStack {
             Form {
-                // Header Information
+
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Create Account")
@@ -25,7 +25,6 @@ struct BorrowerSignUpView: View {
                     .listRowInsets(EdgeInsets(top: 10, leading: 0, bottom: 20, trailing: 0))
                 }
                 
-                // Personal Information
                 Section(header: Text("Personal Details")) {
                     HStack {
                         Text("Name")
@@ -53,24 +52,8 @@ struct BorrowerSignUpView: View {
                     }
                 }
                 
-                // Additional Information (Optional)
-                Section(header: Text("Optional Details")) {
-                    HStack {
-                        Text("Alt. Mobile")
-                            .frame(width: 95, alignment: .leading)
-                        TextField("Optional", text: $viewModel.alternatePhone)
-                            .keyboardType(.phonePad)
-                    }
-                    
-                    HStack {
-                        Text("Referral")
-                            .frame(width: 95, alignment: .leading)
-                        TextField("Code", text: $viewModel.referralCode)
-                            .textInputAutocapitalization(.characters)
-                    }
-                }
+
                 
-                // Security
                 Section(header: Text("Security"), footer: passwordRequirementsFooter) {
                     SecureField("Password", text: $viewModel.password)
                         .textContentType(.newPassword)
@@ -79,14 +62,12 @@ struct BorrowerSignUpView: View {
                         .textContentType(.newPassword)
                 }
                 
-                // Agreements
                 Section {
                     termsAgreementRow
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 }
                 
-                // Action
                 Section {
                     Button {
                         Task {
@@ -108,7 +89,6 @@ struct BorrowerSignUpView: View {
                     .foregroundStyle(.white)
                 }
                 
-                // Error Section
                 if !viewModel.generalError.isEmpty {
                     Section {
                         Label(viewModel.generalError, systemImage: "exclamationmark.triangle.fill")
@@ -117,7 +97,6 @@ struct BorrowerSignUpView: View {
                     }
                 }
                 
-                // Footer
                 Section {
                     HStack {
                         Spacer()
@@ -139,7 +118,7 @@ struct BorrowerSignUpView: View {
         }
         .onChange(of: viewModel.showSuccess) { _, success in
             if success {
-                appState.login(requiresBorrowerOnboarding: true)
+                appState.login(requiresBorrowerOnboarding: false)
             }
         }
         .accessibleSheet(isPresented: $showTermsSheet) {
@@ -286,4 +265,3 @@ private struct TermsSection: View {
         .environment(AppStateManager())
         .environment(AuthManager())
 }
-

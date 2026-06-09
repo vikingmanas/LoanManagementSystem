@@ -9,7 +9,6 @@ struct BranchOverviewDetailSheet: View {
             ScrollView {
                 VStack(spacing: LMSSpacing.xl) {
                     
-                    // Header Status
                     VStack(spacing: LMSSpacing.md) {
                         ZStack {
                             Circle()
@@ -32,7 +31,6 @@ struct BranchOverviewDetailSheet: View {
                     .frame(maxWidth: .infinity)
                     .padding(.top, LMSSpacing.xl)
 
-                    // Audit Status
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Latest Audit Rating")
@@ -53,7 +51,6 @@ struct BranchOverviewDetailSheet: View {
                     .shadow(color: .black.opacity(0.02), radius: 5, x: 0, y: 2)
                     .padding(.horizontal, LMSSpacing.screenHorizontal)
 
-                    // Detailed Metrics
                     VStack(alignment: .leading, spacing: LMSSpacing.md) {
                         Text("Performance Breakdown")
                             .font(.system(.footnote, design: .rounded).bold())

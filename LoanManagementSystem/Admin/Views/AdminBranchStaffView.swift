@@ -19,10 +19,9 @@ struct AdminBranchStaffView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: LMSSpacing.lg) {
-                // Branch Header
+
                 branchHeader
                 
-                // Staff Lists
                 if branchStaff.isEmpty {
                     ContentUnavailableView(
                         "No Staff Assigned",
@@ -105,6 +104,3 @@ struct AdminBranchStaffView: View {
         }
     }
 }
-
-// Ensure StaffMemberRow is accessible here. It was private in AdminUsersTabView, so we should make it non-private or duplicate its logic.
-// The easiest way is to create a shared view or just extract it. I will extract it in the multi_replace step.

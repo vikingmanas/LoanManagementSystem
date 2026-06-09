@@ -9,7 +9,6 @@ struct PortfolioMetricsSheet: View {
             ScrollView {
                 VStack(spacing: 20) {
 
-
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Portfolio Distribution")
                             .font(.system(.title3, design: .rounded).bold())
@@ -23,7 +22,6 @@ struct PortfolioMetricsSheet: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
 
-
                     KPIGridView(viewModel: viewModel) { selectedStatus in
 
                         HapticsManager.triggerImpact(style: .medium)
@@ -32,7 +30,6 @@ struct PortfolioMetricsSheet: View {
                         dismiss()
                     }
                     .padding(.horizontal, 16)
-
 
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Active Action Guidelines")
@@ -75,5 +72,3 @@ struct PortfolioMetricsSheet: View {
         }
     }
 }
-
-

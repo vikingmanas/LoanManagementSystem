@@ -1,7 +1,6 @@
 import SwiftUI
 import Combine
 
-// MARK: - Shimmer Modifier
 public struct ShimmerModifier: ViewModifier {
     @State private var phase: CGFloat = 0
     let enabled: Bool
@@ -44,7 +43,6 @@ extension View {
     }
 }
 
-// MARK: - Refined Portfolio Carousel View
 public struct PortfolioCarouselView: View {
     @Bindable var viewModel: DashboardViewModel
     @State private var currentIndex = 0
@@ -82,11 +80,10 @@ public struct PortfolioCarouselView: View {
                             EmptyLoanAccountStateCard()
                                 .frame(width: 310, height: 185)
                         } else {
-                            // Card 1: Portfolio summary (totals)
+
                             TotalLoanOutstandingCard(viewModel: viewModel)
                                 .frame(width: 310, height: 185)
                             
-                            // Cards 2..N: One card per approved/disbursed loan
                             ForEach(viewModel.loanAccounts) { loan in
                                 LoanAccountCardRefined(
                                     loan: loan
@@ -96,7 +93,6 @@ public struct PortfolioCarouselView: View {
                                 .frame(width: 310, height: 185)
                             }
                             
-                            // Card Last: Insurance
                             LoanProtectionCardRefined()
                                 .frame(width: 310, height: 185)
                                 .onTapGesture { onNavigateToInsurance() }
@@ -110,7 +106,6 @@ public struct PortfolioCarouselView: View {
     }
 }
 
-// MARK: - Empty State Card
 private struct EmptyLoanAccountStateCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -144,7 +139,6 @@ private struct EmptyLoanAccountStateCard: View {
     }
 }
 
-// MARK: - Card 1: Total Loan Outstanding Card
 struct TotalLoanOutstandingCard: View {
     @Bindable var viewModel: DashboardViewModel
     
@@ -194,14 +188,6 @@ struct TotalLoanOutstandingCard: View {
             
             Spacer()
             
-//            HStack {
-//                Text("Manage Loans")
-//                    .font(.system(.caption, design: .rounded).bold())
-//                    .foregroundStyle(.white)
-//                Spacer()
-//                Image(systemName: "chevron.right.circle.fill")
-//                    .foregroundStyle(.white.opacity(0.5))
-//            }
         }
         .padding(LMSSpacing.xl)
         .background(
@@ -213,10 +199,10 @@ struct TotalLoanOutstandingCard: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
         .shadow(color: LMSColors.brandNavy.opacity(0.25), radius: 12, x: 0, y: 6)
+        .voiceOverCard(text: "Total Active Loans: \(viewModel.loanAccounts.count). Total Outstanding: \(viewModel.totalOutstanding.formattedAsINR()).")
     }
 }
 
-// MARK: - Loan Account Card
 private struct LoanAccountCardRefined: View {
     let loan: DashboardLoanAccount
     let onOpen: () -> Void
@@ -325,12 +311,10 @@ private struct LoanAccountCardRefined: View {
         .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 5)
         .contentShape(Rectangle())
         .onTapGesture { onOpen() }
+        .voiceOverCard(text: "Loan Account \(loan.loanType). Status: \(statusText). Outstanding: \(loan.principalOutstanding.formattedAsINR())")
     }
 }
 
-// MARK: - Bank Account Card (legacy adapter)
-// This is no longer used by the main borrower dashboard carousel (loan accounts only),
-// but it is kept to avoid breaking the older `PortfolioCardView` adapter.
 private struct BankAccountCardRefined: View {
     let account: BankAccount
     let isLowBalance: Bool
@@ -384,10 +368,10 @@ private struct BankAccountCardRefined: View {
         )
         .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 5)
         .onTapGesture { onTransfer() }
+        .voiceOverCard(text: "Bank Account \(account.bankName). Available Balance: \(account.availableBalance.formattedAsINR())")
     }
 }
 
-// MARK: - Insurance Card
 struct LoanProtectionCardRefined: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -453,10 +437,10 @@ struct LoanProtectionCardRefined: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: LMSRadius.card, style: .continuous))
         .shadow(color: Color(hex: "667EEA").opacity(0.3), radius: 12, x: 0, y: 6)
+        .voiceOverCard(text: "Loan Protection. Active. Coverage Up To ₹ 15,00,000")
     }
 }
 
-// MARK: - Legacy Adapters
 public struct PortfolioCardView: View {
     public enum CardType: Hashable {
         case loan(DashboardLoanAccount)

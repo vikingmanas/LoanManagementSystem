@@ -35,7 +35,6 @@ public struct CustomerInsightCardView: View {
             Divider()
                 .background(Color.white.opacity(0.15))
 
-
             VStack(spacing: LMSSpacing.lg) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -82,7 +81,6 @@ public struct CustomerInsightCardView: View {
 
             Divider()
                 .background(Color.white.opacity(0.15))
-
 
             HStack(spacing: LMSSpacing.xl) {
                 InsightSummaryItem(
@@ -170,5 +168,3 @@ public struct InsightSummaryItem: View {
         .frame(maxWidth: .infinity)
     }
 }
-
-

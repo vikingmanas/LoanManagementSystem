@@ -211,7 +211,7 @@ enum LoanApplicationPersistence {
                 emergencyContactMobile: app.formData.emergencyContactMobile,
                 signatureImageData: {
                     let sig = app.formData.signatureImageData
-                    // Never persist base64 blobs to UserDefaults — only URLs
+
                     if sig.count > 1000, !sig.starts(with: "http") { return nil }
                     return sig.isEmpty ? nil : sig
                 }(),

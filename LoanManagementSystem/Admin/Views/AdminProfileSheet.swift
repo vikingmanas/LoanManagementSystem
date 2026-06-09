@@ -11,8 +11,7 @@ struct AdminProfileSheet: View {
     @State private var localSecurity = LocalSecurityService.shared
     
     var body: some View {
-        NavigationStack {
-            List {
+        List {
                 Section {
                     HStack(spacing: LMSSpacing.md) {
                         ZStack {
@@ -72,8 +71,6 @@ struct AdminProfileSheet: View {
                     }
                 }
                 
-
-                
                 Section("Security") {
                     Toggle(isOn: Binding(
                         get: { biometricEnabled },
@@ -92,7 +89,7 @@ struct AdminProfileSheet: View {
                     }
                     .disabled(!localSecurity.canUseBiometrics())
                     Button(action: {
-                        // In a real app this would present a password change sheet
+
                     }) {
                         Label("Change Password", systemImage: "lock.rotation")
                     }
@@ -129,15 +126,9 @@ struct AdminProfileSheet: View {
                     }
                 }
             }
-            .listStyle(.insetGrouped)
-            .navigationTitle("Profile")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
-                }
-            }
-        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Profile")
+        .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(isDarkMode ? .dark : .light)
     }
 }

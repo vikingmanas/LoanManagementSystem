@@ -1,6 +1,5 @@
 import SwiftUI
 
-
 enum LMSStatusType {
     case success
     case warning
@@ -40,7 +39,6 @@ struct StatusBadgeView: View {
         .clipShape(Capsule())
     }
 
-
     private var resolvedColor: Color {
         if let type { return type.color }
         switch status.lowercased() {
@@ -66,4 +64,3 @@ struct StatusBadgeView: View {
         StatusBadgeView(status: "Active", type: .success)
     }
 }
-

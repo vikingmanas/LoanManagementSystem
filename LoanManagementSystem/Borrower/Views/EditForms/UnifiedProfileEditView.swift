@@ -1,10 +1,8 @@
 import SwiftUI
 
-// MARK: - Unified Content View (Shared Logic)
 struct UnifiedProfileEditContentView: View {
     @Bindable var viewModel: BorrowerProfileViewModel
     
-    // States
     @State private var fullName: String = ""
     @State private var gender: String = ""
     @State private var maritalStatus: String = ""
@@ -45,7 +43,7 @@ struct UnifiedProfileEditContentView: View {
     
     var body: some View {
         Form {
-            // Identity Section
+
             Section {
                 if isKYCVerified {
                     LabeledContent("Full Name", value: fullName)
@@ -84,7 +82,6 @@ struct UnifiedProfileEditContentView: View {
                 }
             }
             
-            // Personal Section
             Section {
                 Picker("Gender", selection: $gender) {
                     Text("Select Gender").tag("")
@@ -102,7 +99,6 @@ struct UnifiedProfileEditContentView: View {
                 Text("Personal Info")
             }
             
-            // Contact Section
             Section {
                 TextField("Mobile Number", text: $mobileNumber)
                     .keyboardType(.phonePad)
@@ -129,7 +125,6 @@ struct UnifiedProfileEditContentView: View {
                 Text("Contact Details")
             }
             
-            // Address Section
             Section {
                 TextField("Street Address", text: $streetAddress)
                 TextField("City", text: $city)
@@ -140,7 +135,6 @@ struct UnifiedProfileEditContentView: View {
                 Text("Address Information")
             }
             
-            // Employment Section
             Section {
                 TextField("Employment Type", text: $employmentType)
                 TextField("Company Name", text: $companyName)
@@ -150,7 +144,6 @@ struct UnifiedProfileEditContentView: View {
                 Text("Professional Info")
             }
             
-            // References Section
             Section {
                 TextField("Emergency Contact Name", text: $emergencyContactName)
                 TextField("Emergency Contact Mobile", text: $emergencyContactNumber).keyboardType(.phonePad)
@@ -158,7 +151,6 @@ struct UnifiedProfileEditContentView: View {
                 Text("Emergency Contact")
             }
             
-            // Nominee Section
             Section {
                 TextField("Nominee Name", text: $nomineeName)
                 Picker("Relationship", selection: $nomineeRelationship) {
@@ -168,7 +160,6 @@ struct UnifiedProfileEditContentView: View {
                 Text("Nominee Details")
             }
             
-            // Bank Preferences
             Section {
                 TextField("Occupation", text: $occupation)
                 Toggle("Existing Bank Customer", isOn: $hasExistingBankAccount)
@@ -229,12 +220,6 @@ struct UnifiedProfileEditContentView: View {
     private func saveChanges() {
         guard var updatedProfile = viewModel.profile else { return }
         
-        // Build a single comprehensive profile update from ALL form fields at once.
-        // Previously, 5 separate update calls each read the stale viewModel.profile
-        // (due to Combine's .receive(on: .main) delay), causing each call to overwrite
-        // the previous one's changes.
-        
-        // Personal Info
         updatedProfile.fullName = fullName
         updatedProfile.gender = gender
         updatedProfile.maritalStatus = maritalStatus
@@ -243,7 +228,6 @@ struct UnifiedProfileEditContentView: View {
         updatedProfile.aadhaarNumber = aadhaarNumber
         updatedProfile.panNumber = panNumber
         
-        // Contact
         if updatedProfile.mobileNumber != mobileNumber {
             updatedProfile.mobileNumber = mobileNumber
             updatedProfile.isPhoneVerified = false
@@ -254,7 +238,6 @@ struct UnifiedProfileEditContentView: View {
         }
         updatedProfile.alternateNumber = alternateNumber.isEmpty ? nil : alternateNumber
         
-        // Address
         let newAddress = AddressInfo(
             streetAddress: streetAddress,
             city: city,
@@ -266,7 +249,6 @@ struct UnifiedProfileEditContentView: View {
         updatedProfile.currentAddress = newAddress
         updatedProfile.permanentAddress = isSameAsCurrent ? newAddress : updatedProfile.permanentAddress
         
-        // Employment & Income
         updatedProfile.employment = EmploymentInfo(
             employmentType: employmentType,
             companyName: companyName,
@@ -283,7 +265,6 @@ struct UnifiedProfileEditContentView: View {
             incomeSource: updatedProfile.income.incomeSource
         )
         
-        // Additional Info
         updatedProfile.occupation = occupation
         updatedProfile.hasExistingBankAccount = hasExistingBankAccount
         updatedProfile.existingCustomerId = existingCustomerId.isEmpty ? nil : existingCustomerId
@@ -293,7 +274,6 @@ struct UnifiedProfileEditContentView: View {
         updatedProfile.nomineeName = nomineeName
         updatedProfile.nomineeRelationship = nomineeRelationship
         
-        // Single save — all fields preserved
         BorrowerProfileStore.shared.updateProfile(updatedProfile)
     }
 
@@ -314,7 +294,6 @@ struct UnifiedProfileEditContentView: View {
     }
 }
 
-// MARK: - Legacy View (Modal Wrapper)
 struct UnifiedProfileEditView: View {
     @Environment(\.dismiss) private var dismiss
     @Bindable var viewModel: BorrowerProfileViewModel

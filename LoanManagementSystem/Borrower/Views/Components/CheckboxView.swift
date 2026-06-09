@@ -1,6 +1,5 @@
 import SwiftUI
 
-
 struct CheckboxView: View {
     @Binding var isChecked: Bool
     var label: String
@@ -35,4 +34,3 @@ struct CheckboxView: View {
     CheckboxView(isChecked: .constant(true), label: "I agree to the Terms and Conditions")
         .padding()
 }
-
